@@ -95,6 +95,13 @@ class PublicRoutesTest extends WebTestCase
             $this->assertResponseIsSuccessful();
             $this->assertStringContainsString('text/csv', $client->getResponse()->headers->get('Content-Type'));
         }
+
+        $roniberto = $em->getRepository(\App\Entity\Researcher::class)->findOneBy(['slug' => 'roniberto-morato-do-amaral']);
+        if ($roniberto) {
+            $client->request('GET', '/professor/' . $roniberto->getSlug());
+            $this->assertResponseIsSuccessful();
+            $this->assertStringContainsString('Inteligência competitiva', $client->getResponse()->getContent());
+        }
     }
 
     public function testLargeProfessorProfilePageMemoryUsage(): void

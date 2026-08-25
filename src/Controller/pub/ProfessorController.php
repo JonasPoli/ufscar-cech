@@ -386,38 +386,98 @@ class ProfessorController extends AbstractController
         uasort($collaboratorsMap, fn($a, $b) => $b['count'] <=> $a['count']);
         $topCoauthors = array_slice($collaboratorsMap, 0, 12, true);
 
-        // 6. Compute Research Keyword / Topic Cloud
+        // 6. Compute Research Keyword / Topic Cloud (N-Grams & Sintagmas Compostos)
         $stopWords = [
             'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na', 'nos', 'nas', 'por', 'para', 'com', 'sem',
-            'uma', 'um', 'umas', 'uns', 'o', 'a', 'os', 'as', 'e', 'ou', 'se', 'que', 'como', 'sob', 'sobre',
-            'estudo', 'analise', 'análise', 'pesquisa', 'brasil', 'educacao', 'educação', 'ensino', 'caso',
-            'desenvolvimento', 'processo', 'reflexoes', 'perspectivas', 'proposta', 'aspectos', 'artigo',
-            'the', 'and', 'for', 'with', 'from', 'about', 'study', 'analysis', 'brazil', 'education', 'social'
+            'sob', 'sobre', 'entre', 'até', 'ante', 'após', 'uma', 'um', 'umas', 'uns', 'o', 'a', 'os', 'as',
+            'e', 'ou', 'se', 'que', 'como', 'qual', 'quais', 'onde', 'quando', 'mais', 'menos', 'muito', 'muita',
+            'sua', 'seu', 'suas', 'seus', 'este', 'esta', 'estes', 'estas', 'esse', 'essa', 'esses', 'essas',
+            'aquele', 'aquela', 'aqueles', 'aquelas', 'isto', 'isso', 'aquilo', 'estudo', 'analise', 'análise',
+            'pesquisa', 'brasil', 'caso', 'desenvolvimento', 'processo', 'reflexoes', 'reflexões', 'perspectivas',
+            'proposta', 'aspectos', 'artigo', 'relatorio', 'relatório', 'projeto', 'trabalho', 'volume', 'anais',
+            'revista', 'caderno', 'livro', 'capitulo', 'capítulo', 'resumo', 'edição', 'parte', 'partir', 'base',
+            'uso', 'guia', 'apresentação', 'considerações', 'introdução', 'conclusão', 'ad', 'hoc', 'parecerista',
+            'parecer', 'consultor', 'consultoria', 'cnpq', 'fapesp', 'capes', 'encaminhado', 'concedida', 'submetido',
+            'the', 'and', 'for', 'with', 'from', 'about', 'study', 'analysis', 'brazil', 'social', 'using',
+            'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'year', 'data'
         ];
-        $keywordsMap = [];
+        $connectors = ['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'na', 'no', 'para', 'of', 'in', 'and'];
 
+        $unigramCounts = [];
+        $compoundCounts = [];
+
+        $titleSources = [];
         foreach ($researcher->getProductions() as $prod) {
-            $tokens = preg_split('/[\s\-_,.:;()\/\'"]+/u', mb_strtolower($prod->getTitle()));
-            foreach ($tokens as $token) {
-                $token = trim($token);
-                if (mb_strlen($token) >= 4 && !in_array($token, $stopWords, true) && !is_numeric($token)) {
-                    $keywordsMap[$token] = ($keywordsMap[$token] ?? 0) + 1;
-                }
-            }
+            $titleSources[] = ['text' => $prod->getTitle(), 'weight' => 1];
         }
-
         foreach ($researcher->getResearchProjects() as $proj) {
-            $tokens = preg_split('/[\s\-_,.:;()\/\'"]+/u', mb_strtolower($proj->getName()));
-            foreach ($tokens as $token) {
-                $token = trim($token);
-                if (mb_strlen($token) >= 4 && !in_array($token, $stopWords, true) && !is_numeric($token)) {
-                    $keywordsMap[$token] = ($keywordsMap[$token] ?? 0) + 2;
+            $titleSources[] = ['text' => $proj->getName(), 'weight' => 2];
+        }
+
+        foreach ($titleSources as $source) {
+            $text = $source['text'] ?? '';
+            $weight = $source['weight'] ?? 1;
+            if (!$text) {
+                continue;
+            }
+
+            $clean = mb_strtolower(trim($text));
+            preg_match_all('/[a-záàâãéèêíïóôõöúçñ0-9]+/u', $clean, $matches);
+            $words = $matches[0] ?? [];
+            $totalWords = count($words);
+
+            for ($i = 0; $i < $totalWords; $i++) {
+                $w1 = $words[$i];
+                if (mb_strlen($w1) < 3 || in_array($w1, $stopWords, true) || is_numeric($w1)) {
+                    continue;
+                }
+
+                $unigramCounts[$w1] = ($unigramCounts[$w1] ?? 0) + $weight;
+
+                // Bigrama Direto: W1 W2
+                if ($i + 1 < $totalWords) {
+                    $w2 = $words[$i + 1];
+                    if (mb_strlen($w2) >= 3 && !in_array($w2, $stopWords, true) && !is_numeric($w2)) {
+                        $phrase = $w1 . ' ' . $w2;
+                        $compoundCounts[$phrase] = ($compoundCounts[$phrase] ?? 0) + $weight;
+                    }
+                    // Bigrama com conector: W1 [conector] W3
+                    if (in_array($w2, $connectors, true) && $i + 2 < $totalWords) {
+                        $w3 = $words[$i + 2];
+                        if (mb_strlen($w3) >= 3 && !in_array($w3, $stopWords, true) && !is_numeric($w3)) {
+                            $phrase = $w1 . ' ' . $w2 . ' ' . $w3;
+                            $compoundCounts[$phrase] = ($compoundCounts[$phrase] ?? 0) + $weight;
+                        }
+                    }
                 }
             }
         }
 
-        arsort($keywordsMap);
-        $topKeywords = array_slice($keywordsMap, 0, 24, true);
+        // Filtrar compostos com frequência mínima (>= 2)
+        $validCompounds = array_filter($compoundCounts, fn($c) => $c >= 2);
+        arsort($validCompounds);
+
+        // Descontar ocorrências absorvidas para que palavras individuais não dupliquem os compostos
+        $absorbed = [];
+        foreach ($validCompounds as $phrase => $count) {
+            $parts = explode(' ', $phrase);
+            foreach ($parts as $p) {
+                if (!in_array($p, $connectors, true)) {
+                    $absorbed[$p] = ($absorbed[$p] ?? 0) + $count;
+                }
+            }
+        }
+
+        $finalKeywords = $validCompounds;
+        foreach ($unigramCounts as $word => $count) {
+            $netCount = $count - ($absorbed[$word] ?? 0);
+            if ($netCount >= 2) {
+                $finalKeywords[$word] = $netCount;
+            }
+        }
+
+        arsort($finalKeywords);
+        $topKeywords = array_slice($finalKeywords, 0, 24, true);
 
         return $this->render('pub/professor/show.html.twig', [
             'researcher' => $researcher,
