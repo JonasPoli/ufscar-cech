@@ -397,9 +397,14 @@ class ProfessorController extends AbstractController
             'proposta', 'aspectos', 'artigo', 'relatorio', 'relatório', 'projeto', 'trabalho', 'volume', 'anais',
             'revista', 'caderno', 'livro', 'capitulo', 'capítulo', 'resumo', 'edição', 'parte', 'partir', 'base',
             'uso', 'guia', 'apresentação', 'considerações', 'introdução', 'conclusão', 'ad', 'hoc', 'parecerista',
-            'parecer', 'consultor', 'consultoria', 'cnpq', 'fapesp', 'capes', 'encaminhado', 'concedida', 'submetido',
+            'parecer', 'consultor', 'consultoria', 'cnpq', 'fapesp', 'capes', 'encaminhado', 'concedida', 'submetido', 'submetida',
+            'apreciação', 'comitê', 'ética', 'hospital', 'clínicas', 'faculdade', 'universidade', 'instituto',
+            'departamento', 'escola', 'ribeirão', 'preto', 'são', 'paulo', 'usp', 'ufscar', 'unesp', 'unicamp',
+            'sociedade', 'encontro', 'reunião', 'congresso', 'simpósio', 'seminário', 'jornada', 'progresso',
+            'fundação', 'amparo', 'nacional', 'internacional', 'brasileira', 'brasileiro', 'estado', 'periódico',
+            'submetidos', 'trabalhos', 'membro', 'avaliador', 'comissão', 'coordenador', 'coordenadora',
             'the', 'and', 'for', 'with', 'from', 'about', 'study', 'analysis', 'brazil', 'social', 'using',
-            'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'year', 'data'
+            'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'year', 'data', 'journal'
         ];
         $connectors = ['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'na', 'no', 'para', 'of', 'in', 'and'];
 
@@ -428,7 +433,7 @@ class ProfessorController extends AbstractController
 
             for ($i = 0; $i < $totalWords; $i++) {
                 $w1 = $words[$i];
-                if (mb_strlen($w1) < 3 || in_array($w1, $stopWords, true) || is_numeric($w1)) {
+                if (mb_strlen($w1) < 3 || in_array($w1, $stopWords, true) || is_numeric($w1) || preg_match('/^[ivxlcdm]+$/i', $w1)) {
                     continue;
                 }
 
@@ -437,14 +442,14 @@ class ProfessorController extends AbstractController
                 // Bigrama Direto: W1 W2
                 if ($i + 1 < $totalWords) {
                     $w2 = $words[$i + 1];
-                    if (mb_strlen($w2) >= 3 && !in_array($w2, $stopWords, true) && !is_numeric($w2)) {
+                    if (mb_strlen($w2) >= 3 && !in_array($w2, $stopWords, true) && !is_numeric($w2) && !preg_match('/^[ivxlcdm]+$/i', $w2)) {
                         $phrase = $w1 . ' ' . $w2;
                         $compoundCounts[$phrase] = ($compoundCounts[$phrase] ?? 0) + $weight;
                     }
                     // Bigrama com conector: W1 [conector] W3
                     if (in_array($w2, $connectors, true) && $i + 2 < $totalWords) {
                         $w3 = $words[$i + 2];
-                        if (mb_strlen($w3) >= 3 && !in_array($w3, $stopWords, true) && !is_numeric($w3)) {
+                        if (mb_strlen($w3) >= 3 && !in_array($w3, $stopWords, true) && !is_numeric($w3) && !preg_match('/^[ivxlcdm]+$/i', $w3)) {
                             $phrase = $w1 . ' ' . $w2 . ' ' . $w3;
                             $compoundCounts[$phrase] = ($compoundCounts[$phrase] ?? 0) + $weight;
                         }

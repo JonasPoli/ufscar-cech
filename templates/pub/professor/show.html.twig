@@ -463,51 +463,89 @@
         {% endif %}
     </div>
 
+    <!-- ── Global Filter & Real-Time Search Toolbar (Filtragem Abrangente em Todas as Abas) ── -->
+    <div id="globalFilterBar" class="glass-card rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 transition-all duration-300 no-print">
+        <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+            <div class="relative flex-1">
+                <input type="text" id="prodSearchInput" oninput="applyGlobalFilter()" placeholder="Buscar por termo, título, orientando, projeto, autor, evento, instituição ou ano..." class="w-full rounded-2xl border border-slate-300 bg-white/90 px-4 py-2.5 pl-10 pr-10 text-sm text-slate-900 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900/90 dark:text-white focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/15 transition-all shadow-inner" />
+                <sl-icon name="search" class="absolute left-3.5 top-3.5 text-slate-400 text-sm"></sl-icon>
+                <button type="button" id="btnClearInputQuick" onclick="clearGlobalFilters()" class="hidden absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs p-1" title="Limpar busca">
+                    <sl-icon name="x-circle-fill" class="text-base"></sl-icon>
+                </button>
+            </div>
+
+            <div class="flex items-center gap-2.5 shrink-0 flex-wrap">
+                <button type="button" id="btnOnlyDoi" onclick="toggleOnlyDoi()" class="inline-flex items-center gap-1.5 rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 transition-colors shadow-sm">
+                    <sl-icon name="link-45deg" class="text-sky-500"></sl-icon> Apenas com DOI
+                </button>
+                <button type="button" id="btnClearFiltersMain" onclick="clearGlobalFilters()" class="hidden inline-flex items-center gap-1.5 rounded-2xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white px-4 py-2.5 text-xs font-bold shadow-lg shadow-rose-600/25 transition-all animate-bounce">
+                    <sl-icon name="x-circle-fill" class="text-sm"></sl-icon> Limpar Filtro
+                </button>
+            </div>
+        </div>
+
+        <!-- Active Filter Status Banner (Destaque do Estado Filtrado) -->
+        <div id="filterStatusBanner" class="hidden mt-3.5 pt-3 border-t border-slate-200/70 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/15 dark:bg-amber-400/15 border border-amber-500/40 text-amber-900 dark:text-amber-300 px-3 py-1 font-semibold">
+                    <sl-icon name="funnel-fill" class="text-amber-500"></sl-icon>
+                    Filtrando por: <span id="filterActiveLabel" class="font-bold underline ml-1"></span>
+                </span>
+                <span id="filterMatchesSummary" class="text-slate-700 dark:text-slate-200 font-medium"></span>
+            </div>
+            <button type="button" onclick="clearGlobalFilters()" class="text-rose-600 dark:text-rose-400 font-bold hover:underline inline-flex items-center gap-1">
+                <sl-icon name="arrow-counterclockwise"></sl-icon> Remover todos os filtros
+            </button>
+        </div>
+    </div>
+
     <!-- ── Main Content Tabs (Completude de Todas as Seções do Lattes) ── -->
     <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm">
         <sl-tab-group id="mainTabGroup">
             <sl-tab slot="nav" panel="productions">
-                <sl-icon name="journal-bookmark" class="mr-1"></sl-icon> Produção Científica & Técnica ({{ researcher.productions|length }})
+                <sl-icon name="journal-bookmark" class="mr-1"></sl-icon> Produção Científica & Técnica (<span id="tabCount-productions" data-initial="{{ researcher.productions|length }}">{{ researcher.productions|length }}</span>)
             </sl-tab>
             <sl-tab slot="nav" panel="orientations">
-                <sl-icon name="people" class="mr-1"></sl-icon> Orientações ({{ researcher.orientations|length }})
+                <sl-icon name="people" class="mr-1"></sl-icon> Orientações (<span id="tabCount-orientations" data-initial="{{ researcher.orientations|length }}">{{ researcher.orientations|length }}</span>)
             </sl-tab>
             {% if researcher.researchProjects|length > 0 %}
                 <sl-tab slot="nav" panel="projects">
-                    <sl-icon name="kanban" class="mr-1"></sl-icon> Projetos ({{ researcher.researchProjects|length }})
+                    <sl-icon name="kanban" class="mr-1"></sl-icon> Projetos (<span id="tabCount-projects" data-initial="{{ researcher.researchProjects|length }}">{{ researcher.researchProjects|length }}</span>)
                 </sl-tab>
             {% endif %}
             {% if researcher.professionalExperiences|length > 0 %}
                 <sl-tab slot="nav" panel="experience">
-                    <sl-icon name="briefcase" class="mr-1"></sl-icon> Atuação Profissional ({{ researcher.professionalExperiences|length }})
+                    <sl-icon name="briefcase" class="mr-1"></sl-icon> Atuação Profissional (<span id="tabCount-experience" data-initial="{{ researcher.professionalExperiences|length }}">{{ researcher.professionalExperiences|length }}</span>)
                 </sl-tab>
             {% endif %}
             <sl-tab slot="nav" panel="education">
-                <sl-icon name="mortarboard" class="mr-1"></sl-icon> Formação Acadêmica ({{ researcher.educations|filter(e => e.level not in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO'])|length }})
+                {% set mainEduCount = researcher.educations|filter(e => e.level not in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO'])|length %}
+                <sl-icon name="mortarboard" class="mr-1"></sl-icon> Formação Acadêmica (<span id="tabCount-education" data-initial="{{ mainEduCount }}">{{ mainEduCount }}</span>)
             </sl-tab>
-            {% if researcher.educations|filter(e => e.level in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO'])|length > 0 %}
+            {% set compEduCount = researcher.educations|filter(e => e.level in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO'])|length %}
+            {% if compEduCount > 0 %}
                 <sl-tab slot="nav" panel="complementary">
-                    <sl-icon name="award" class="mr-1"></sl-icon> Formação Complementar ({{ researcher.educations|filter(e => e.level in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO'])|length }})
+                    <sl-icon name="award" class="mr-1"></sl-icon> Formação Complementar (<span id="tabCount-complementary" data-initial="{{ compEduCount }}">{{ compEduCount }}</span>)
                 </sl-tab>
             {% endif %}
             {% if researcher.examinationBoards|length > 0 %}
                 <sl-tab slot="nav" panel="boards">
-                    <sl-icon name="clipboard-check" class="mr-1"></sl-icon> Bancas ({{ researcher.examinationBoards|length }})
+                    <sl-icon name="clipboard-check" class="mr-1"></sl-icon> Bancas (<span id="tabCount-boards" data-initial="{{ researcher.examinationBoards|length }}">{{ researcher.examinationBoards|length }}</span>)
                 </sl-tab>
             {% endif %}
             {% if researcher.eventParticipations|length > 0 %}
                 <sl-tab slot="nav" panel="events">
-                    <sl-icon name="calendar-event" class="mr-1"></sl-icon> Eventos ({{ researcher.eventParticipations|length }})
+                    <sl-icon name="calendar-event" class="mr-1"></sl-icon> Eventos (<span id="tabCount-events" data-initial="{{ researcher.eventParticipations|length }}">{{ researcher.eventParticipations|length }}</span>)
                 </sl-tab>
             {% endif %}
             {% if researcher.awards|length > 0 %}
                 <sl-tab slot="nav" panel="awards">
-                    <sl-icon name="trophy" class="mr-1"></sl-icon> Prêmios e Títulos ({{ researcher.awards|length }})
+                    <sl-icon name="trophy" class="mr-1"></sl-icon> Prêmios e Títulos (<span id="tabCount-awards" data-initial="{{ researcher.awards|length }}">{{ researcher.awards|length }}</span>)
                 </sl-tab>
             {% endif %}
             {% if researcher.knowledgeAreas|length > 0 %}
                 <sl-tab slot="nav" panel="areas">
-                    <sl-icon name="diagram-2" class="mr-1"></sl-icon> Áreas de Atuação ({{ researcher.knowledgeAreas|length }})
+                    <sl-icon name="diagram-2" class="mr-1"></sl-icon> Áreas de Atuação (<span id="tabCount-areas" data-initial="{{ researcher.knowledgeAreas|length }}">{{ researcher.knowledgeAreas|length }}</span>)
                 </sl-tab>
             {% endif %}
 
@@ -516,75 +554,65 @@
             ══════════════════════════════════════════════════════════════ -->
             <sl-tab-panel name="productions" class="pt-6 space-y-6">
 
-                <!-- Real-time Filter & Search Toolbar -->
-                <div class="rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 bg-slate-50/70 dark:bg-slate-900/60 space-y-3 no-print">
-                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                        <div class="relative flex-1">
-                            <input type="text" id="prodSearchInput" oninput="filterProductions()" placeholder="Buscar por título, autor, periódico, evento ou ano..." class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 pl-9 text-xs text-slate-900 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20" />
-                            <sl-icon name="search" class="absolute left-3 top-2.5 text-slate-400 text-xs"></sl-icon>
-                        </div>
-
-                        <div class="flex items-center gap-2 shrink-0">
-                            <button type="button" id="btnOnlyDoi" onclick="toggleOnlyDoi()" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 transition-colors">
-                                <sl-icon name="link-45deg"></sl-icon> Apenas com DOI
-                            </button>
-                            <button type="button" onclick="clearProdFilters()" class="rounded-xl px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
-                                Limpar
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Category Pills -->
-                    <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                <!-- Production Category Pills Toolbar -->
+                <div class="rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 bg-slate-50/70 dark:bg-slate-900/60 no-print">
+                    <div class="flex flex-wrap items-center gap-1.5">
                         <button type="button" onclick="setCategoryFilter('all')" class="category-pill active rounded-lg px-2.5 py-1 text-xs font-semibold bg-sky-600 text-white shadow-sm transition-all" data-category="all">
-                            Todas ({{ researcher.productions|length }})
+                            Todas (<span class="pill-count" data-initial="{{ researcher.productions|length }}">{{ researcher.productions|length }}</span>)
                         </button>
                         {% if articles|length > 0 %}
                             <button type="button" onclick="setCategoryFilter('artigo')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="artigo">
-                                Artigos ({{ articles|length }})
+                                Artigos (<span class="pill-count" data-initial="{{ articles|length }}">{{ articles|length }}</span>)
                             </button>
                         {% endif %}
                         {% if books|length > 0 %}
                             <button type="button" onclick="setCategoryFilter('livro')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="livro">
-                                Livros ({{ books|length }})
+                                Livros (<span class="pill-count" data-initial="{{ books|length }}">{{ books|length }}</span>)
                             </button>
                         {% endif %}
                         {% if chapters|length > 0 %}
                             <button type="button" onclick="setCategoryFilter('capitulo')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="capitulo">
-                                Capítulos ({{ chapters|length }})
+                                Capítulos (<span class="pill-count" data-initial="{{ chapters|length }}">{{ chapters|length }}</span>)
                             </button>
                         {% endif %}
                         {% if newspaperTexts|length > 0 %}
                             <button type="button" onclick="setCategoryFilter('jornal')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="jornal">
-                                Jornais/Revistas ({{ newspaperTexts|length }})
+                                Jornais/Revistas (<span class="pill-count" data-initial="{{ newspaperTexts|length }}">{{ newspaperTexts|length }}</span>)
                             </button>
                         {% endif %}
                         {% if events|length > 0 %}
                             <button type="button" onclick="setCategoryFilter('evento')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="evento">
-                                Congressos ({{ events|length }})
+                                Congressos (<span class="pill-count" data-initial="{{ events|length }}">{{ events|length }}</span>)
                             </button>
                         {% endif %}
                         {% if techWorks|length > 0 %}
                             <button type="button" onclick="setCategoryFilter('tecnico')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="tecnico">
-                                Trabalhos Técnicos ({{ techWorks|length }})
+                                Trabalhos Técnicos (<span class="pill-count" data-initial="{{ techWorks|length }}">{{ techWorks|length }}</span>)
                             </button>
                         {% endif %}
                         {% if software|length > 0 or patents|length > 0 %}
+                            {% set innovCount = software|length + patents|length %}
                             <button type="button" onclick="setCategoryFilter('inovacao')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="inovacao">
-                                Inovação ({{ software|length + patents|length }})
+                                Inovação (<span class="pill-count" data-initial="{{ innovCount }}">{{ innovCount }}</span>)
                             </button>
                         {% endif %}
                         {% if artistic|length > 0 %}
                             <button type="button" onclick="setCategoryFilter('artes')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="artes">
-                                Artes ({{ artistic|length }})
+                                Artes (<span class="pill-count" data-initial="{{ artistic|length }}">{{ artistic|length }}</span>)
                             </button>
                         {% endif %}
                         {% if otherProds|length > 0 %}
                             <button type="button" onclick="setCategoryFilter('outra')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="outra">
-                                Outras ({{ otherProds|length }})
+                                Outras (<span class="pill-count" data-initial="{{ otherProds|length }}">{{ otherProds|length }}</span>)
                             </button>
                         {% endif %}
                     </div>
+                </div>
+
+                <!-- Empty State Message for Productions -->
+                <div id="empty-productions" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                    <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhuma produção encontrada para o filtro selecionado.</p>
                 </div>
 
                 <!-- 1. Articles in Journals -->
@@ -923,6 +951,12 @@
                  TAB 2: ORIENTAÇÕES E SUPERVISÕES (CONCLUÍDAS E EM ANDAMENTO)
             ══════════════════════════════════════════════════════════════ -->
             <sl-tab-panel name="orientations" class="pt-6 space-y-8">
+                <!-- Empty State Message for Orientations -->
+                <div id="empty-orientations" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                    <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhuma orientação encontrada para o filtro aplicado.</p>
+                </div>
+
                 <!-- Completed Orientations -->
                 {% if completedOrientations|length > 0 %}
                     <div class="space-y-4">
@@ -945,7 +979,7 @@
                         </h3>
                         <div class="space-y-3">
                             {% for o in completedOrientations %}
-                                <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50 hover:border-emerald-300 transition-colors">
+                                <div class="orientation-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50 hover:border-emerald-300 transition-colors">
                                     <div class="flex items-center justify-between">
                                         {% if o.orientationType == 'DOUTORADO' %}
                                             <span class="rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2 py-0.5 text-[11px] font-bold">Doutorado</span>
@@ -1000,7 +1034,7 @@
                         </h3>
                         <div class="space-y-3">
                             {% for o in ongoingOrientations %}
-                                <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50 hover:border-sky-300 transition-colors">
+                                <div class="orientation-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50 hover:border-sky-300 transition-colors">
                                     <div class="flex items-center justify-between">
                                         {% if o.orientationType == 'DOUTORADO' %}
                                             <span class="rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2 py-0.5 text-[11px] font-bold">Doutorado</span>
@@ -1039,13 +1073,19 @@
             ══════════════════════════════════════════════════════════════ -->
             {% if researcher.researchProjects|length > 0 %}
                 <sl-tab-panel name="projects" class="pt-6 space-y-4">
+                    <!-- Empty State Message for Projects -->
+                    <div id="empty-projects" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhum projeto encontrado para o filtro aplicado.</p>
+                    </div>
+
                     <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
                         <sl-icon name="kanban" class="text-sky-600 dark:text-sky-400"></sl-icon>
                         Projetos de Pesquisa, Extensão & Desenvolvimento ({{ researcher.researchProjects|length }})
                     </h3>
                     <div class="space-y-4">
                         {% for proj in researcher.researchProjects %}
-                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-2.5 bg-white/50 dark:bg-slate-900/50 hover:border-slate-300 transition-colors">
+                            <div class="project-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-2.5 bg-white/50 dark:bg-slate-900/50 hover:border-slate-300 transition-colors">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <div class="flex items-center gap-2">
                                         <span class="rounded-md {% if proj.nature == 'EXTENSAO' %}bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300{% elseif proj.nature == 'DESENVOLVIMENTO' %}bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300{% else %}bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300{% endif %} px-2.5 py-0.5 text-[11px] font-bold">
@@ -1089,13 +1129,19 @@
             ══════════════════════════════════════════════════════════════ -->
             {% if researcher.professionalExperiences|length > 0 %}
                 <sl-tab-panel name="experience" class="pt-6 space-y-4">
+                    <!-- Empty State Message for Experience -->
+                    <div id="empty-experience" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhuma atuação profissional encontrada para o filtro aplicado.</p>
+                    </div>
+
                     <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
                         <sl-icon name="briefcase" class="text-sky-600 dark:text-sky-400"></sl-icon>
                         Atuação Profissional e Vínculos Institucionais
                     </h3>
                     <div class="space-y-4">
                         {% for exp in researcher.professionalExperiences %}
-                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-2 bg-white/50 dark:bg-slate-900/50">
+                            <div class="experience-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-2 bg-white/50 dark:bg-slate-900/50">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <div class="flex items-center gap-2">
                                         {{ institution_badge(exp.institutionName) }}
@@ -1133,6 +1179,12 @@
                  TAB 5: FORMAÇÃO ACADÊMICA E TITULAÇÕES
             ══════════════════════════════════════════════════════════════ -->
             <sl-tab-panel name="education" class="pt-6 space-y-4">
+                <!-- Empty State Message for Education -->
+                <div id="empty-education" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                    <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhuma formação acadêmica encontrada para o filtro aplicado.</p>
+                </div>
+
                 <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
                     <sl-icon name="mortarboard" class="text-indigo-600 dark:text-indigo-400"></sl-icon>
                     Formação Acadêmica / Titulação & Pós-Doutorado
@@ -1140,7 +1192,7 @@
 
                 <div class="space-y-6 relative border-l-2 border-slate-200 dark:border-slate-800 ml-4 pl-6 pt-2">
                     {% for e in researcher.educations|filter(e => e.level not in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO']) %}
-                        <div class="relative space-y-1.5">
+                        <div class="education-item relative space-y-1.5">
                             <div class="absolute -left-[31px] top-1.5 h-3.5 w-3.5 rounded-full bg-sky-600 border-2 border-white dark:border-slate-950"></div>
                             <div class="flex items-center gap-2">
                                 <span class="rounded-md bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
@@ -1181,13 +1233,19 @@
             ══════════════════════════════════════════════════════════════ -->
             {% if researcher.educations|filter(e => e.level in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO'])|length > 0 %}
                 <sl-tab-panel name="complementary" class="pt-6 space-y-4">
+                    <!-- Empty State Message for Complementary Education -->
+                    <div id="empty-complementary" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhum curso de formação complementar encontrado para o filtro aplicado.</p>
+                    </div>
+
                     <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
                         <sl-icon name="award" class="text-amber-500"></sl-icon>
                         Formação Complementar & Cursos de Extensão
                     </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {% for ce in researcher.educations|filter(e => e.level in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO']) %}
-                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50">
+                            <div class="complementary-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50">
                                 <div class="flex items-center justify-between">
                                     <span class="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                                         {{ ce.level|replace({'_': ' '}) }}
@@ -1210,13 +1268,19 @@
             ══════════════════════════════════════════════════════════════ -->
             {% if researcher.examinationBoards|length > 0 %}
                 <sl-tab-panel name="boards" class="pt-6 space-y-4">
+                    <!-- Empty State Message for Boards -->
+                    <div id="empty-boards" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhuma participação em banca encontrada para o filtro aplicado.</p>
+                    </div>
+
                     <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
                         <sl-icon name="clipboard-check" class="text-indigo-600 dark:text-indigo-400"></sl-icon>
                         Participação em Bancas Julgadoras e Comissões ({{ researcher.examinationBoards|length }})
                     </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {% for b in researcher.examinationBoards %}
-                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
+                            <div class="board-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
                                 <div class="flex items-center justify-between">
                                     <span class="rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 px-2 py-0.5 text-[11px] font-bold">
                                         {{ b.boardType }}
@@ -1243,13 +1307,19 @@
             ══════════════════════════════════════════════════════════════ -->
             {% if researcher.eventParticipations|length > 0 %}
                 <sl-tab-panel name="events" class="pt-6 space-y-4">
+                    <!-- Empty State Message for Events -->
+                    <div id="empty-events" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhum evento encontrado para o filtro aplicado.</p>
+                    </div>
+
                     <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
                         <sl-icon name="calendar-event" class="text-teal-600 dark:text-teal-400"></sl-icon>
                         Participação em Eventos, Congressos e Exposições ({{ researcher.eventParticipations|length }})
                     </h3>
                     <div class="space-y-3">
                         {% for ev in researcher.eventParticipations %}
-                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
+                            <div class="event-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-2">
                                         <span class="rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 px-2 py-0.5 text-[11px] font-bold">
@@ -1278,12 +1348,18 @@
             ══════════════════════════════════════════════════════════════ -->
             {% if researcher.awards|length > 0 %}
                 <sl-tab-panel name="awards" class="pt-6 space-y-4">
+                    <!-- Empty State Message for Awards -->
+                    <div id="empty-awards" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhum prêmio ou título encontrado para o filtro aplicado.</p>
+                    </div>
+
                     <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
                         <sl-icon name="trophy" class="text-amber-500"></sl-icon> Prêmios e Distinções
                     </h3>
                     <div class="space-y-3">
                         {% for a in researcher.awards %}
-                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50">
+                            <div class="award-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50">
                                 <div class="flex items-center justify-between">
                                     <h4 class="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">{{ a.name }}</h4>
                                     {% if a.year %}<span class="text-xs font-semibold text-amber-600 dark:text-amber-400 font-mono">{{ a.year }}</span>{% endif %}
@@ -1302,12 +1378,18 @@
             ══════════════════════════════════════════════════════════════ -->
             {% if researcher.knowledgeAreas|length > 0 %}
                 <sl-tab-panel name="areas" class="pt-6 space-y-4">
+                    <!-- Empty State Message for Knowledge Areas -->
+                    <div id="empty-areas" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhuma área de atuação encontrada para o filtro aplicado.</p>
+                    </div>
+
                     <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
                         <sl-icon name="diagram-2" class="text-sky-600 dark:text-sky-400"></sl-icon> Áreas de Atuação do CNPq
                     </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {% for ka in researcher.knowledgeAreas %}
-                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
+                            <div class="area-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
                                 <span class="text-[11px] font-bold uppercase text-sky-600 dark:text-sky-400">{{ ka.majorArea }}</span>
                                 <h4 class="text-sm font-semibold text-slate-900 dark:text-white">{{ ka.area }}</h4>
                                 {% if ka.subArea %}<p class="text-xs text-slate-500 dark:text-slate-400">Subárea: {{ ka.subArea }}</p>{% endif %}
@@ -1361,67 +1443,213 @@ function setCategoryFilter(category) {
             btn.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
         }
     });
-    filterProductions();
+    applyGlobalFilter();
 }
 
 function toggleOnlyDoi() {
     onlyDoi = !onlyDoi;
     const btn = document.getElementById('btnOnlyDoi');
     if (onlyDoi) {
-        btn.classList.add('bg-sky-50', 'border-sky-500', 'text-sky-700', 'dark:bg-sky-950', 'dark:text-sky-300');
+        btn.classList.add('bg-sky-100', 'border-sky-500', 'text-sky-800', 'dark:bg-sky-950', 'dark:text-sky-300', 'ring-2', 'ring-sky-500/30');
     } else {
-        btn.classList.remove('bg-sky-50', 'border-sky-500', 'text-sky-700', 'dark:bg-sky-950', 'dark:text-sky-300');
+        btn.classList.remove('bg-sky-100', 'border-sky-500', 'text-sky-800', 'dark:bg-sky-950', 'dark:text-sky-300', 'ring-2', 'ring-sky-500/30');
     }
-    filterProductions();
+    applyGlobalFilter();
 }
 
 function filterByKeyword(keyword) {
     const searchInput = document.getElementById('prodSearchInput');
-    searchInput.value = keyword;
-    filterProductions();
-    // switch tab to productions
-    const tabGroup = document.getElementById('mainTabGroup');
-    if (tabGroup) tabGroup.show('productions');
-    searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (searchInput) searchInput.value = keyword;
+    applyGlobalFilter();
+
+    const filterBar = document.getElementById('globalFilterBar');
+    if (filterBar) {
+        filterBar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
-function clearProdFilters() {
-    document.getElementById('prodSearchInput').value = '';
+function clearGlobalFilters() {
+    const searchInput = document.getElementById('prodSearchInput');
+    if (searchInput) searchInput.value = '';
     onlyDoi = false;
-    document.getElementById('btnOnlyDoi').classList.remove('bg-sky-50', 'border-sky-500', 'text-sky-700', 'dark:bg-sky-950', 'dark:text-sky-300');
+    const btnDoi = document.getElementById('btnOnlyDoi');
+    if (btnDoi) {
+        btnDoi.classList.remove('bg-sky-100', 'border-sky-500', 'text-sky-800', 'dark:bg-sky-950', 'dark:text-sky-300', 'ring-2', 'ring-sky-500/30');
+    }
     setCategoryFilter('all');
 }
 
-function filterProductions() {
-    const term = (document.getElementById('prodSearchInput').value || '').toLowerCase().trim();
+// Backward compatibility alias
+function clearProdFilters() {
+    clearGlobalFilters();
+}
 
+function updateTabCount(panelName, currentCount) {
+    const el = document.getElementById('tabCount-' + panelName);
+    if (!el) return;
+    const initial = parseInt(el.getAttribute('data-initial') || '0', 10);
+    const searchInput = document.getElementById('prodSearchInput');
+    const rawTerm = (searchInput ? searchInput.value : '').trim();
+    const isFiltered = rawTerm !== '' || onlyDoi;
+
+    if (isFiltered) {
+        if (currentCount > 0) {
+            el.innerHTML = `<span class="font-bold text-sky-600 dark:text-sky-400">${currentCount}</span><span class="opacity-50 text-[10px]">/${initial}</span>`;
+        } else {
+            el.innerHTML = `<span class="text-rose-500/70 dark:text-rose-400/70 font-medium text-[11px]">0</span><span class="opacity-40 text-[10px]">/${initial}</span>`;
+        }
+    } else {
+        el.textContent = initial;
+    }
+}
+
+function checkPanelEmpty(panelName, count) {
+    const emptyEl = document.getElementById('empty-' + panelName);
+    if (emptyEl) {
+        if (count === 0) {
+            emptyEl.classList.remove('hidden');
+        } else {
+            emptyEl.classList.add('hidden');
+        }
+    }
+}
+
+function applyGlobalFilter() {
+    const searchInput = document.getElementById('prodSearchInput');
+    const rawTerm = (searchInput ? searchInput.value : '').trim();
+    const term = rawTerm.toLowerCase();
+    const isFiltered = term !== '' || onlyDoi;
+
+    // Filter control UI elements
+    const filterBar = document.getElementById('globalFilterBar');
+    const btnClearMain = document.getElementById('btnClearFiltersMain');
+    const btnClearQuick = document.getElementById('btnClearInputQuick');
+    const statusBanner = document.getElementById('filterStatusBanner');
+    const activeLabel = document.getElementById('filterActiveLabel');
+    const matchesSummary = document.getElementById('filterMatchesSummary');
+
+    if (isFiltered) {
+        if (filterBar) {
+            filterBar.classList.add('ring-2', 'ring-sky-500/50', 'border-sky-400', 'dark:border-sky-500', 'bg-sky-50/40', 'dark:bg-sky-950/30');
+        }
+        if (btnClearMain) btnClearMain.classList.remove('hidden');
+        if (btnClearQuick) btnClearQuick.classList.remove('hidden');
+        if (statusBanner) statusBanner.classList.remove('hidden');
+        
+        let labelParts = [];
+        if (term !== '') labelParts.push(`"${rawTerm}"`);
+        if (onlyDoi) labelParts.push('Apenas com DOI');
+        if (activeLabel) activeLabel.textContent = labelParts.join(' + ');
+    } else {
+        if (filterBar) {
+            filterBar.classList.remove('ring-2', 'ring-sky-500/50', 'border-sky-400', 'dark:border-sky-500', 'bg-sky-50/40', 'dark:bg-sky-950/30');
+        }
+        if (btnClearMain) btnClearMain.classList.add('hidden');
+        if (btnClearQuick) btnClearQuick.classList.add('hidden');
+        if (statusBanner) statusBanner.classList.add('hidden');
+    }
+
+    let totalMatchesAllTabs = 0;
+
+    // 1. Filter Productions Tab
+    let prodMatchesVisible = 0;
+    const catCounts = { all: 0, artigo: 0, livro: 0, capitulo: 0, jornal: 0, evento: 0, tecnico: 0, inovacao: 0, artes: 0, outra: 0 };
+
+    document.querySelectorAll('.prod-item').forEach(item => {
+        const itemCat = item.getAttribute('data-category');
+        const hasDoi = item.getAttribute('data-has-doi') === '1';
+        const text = item.textContent.toLowerCase();
+
+        const matchDoi = !onlyDoi || hasDoi;
+        const matchTerm = term === '' || text.includes(term);
+        const matchesCriteria = matchDoi && matchTerm;
+
+        if (matchesCriteria) {
+            catCounts.all++;
+            if (catCounts[itemCat] !== undefined) {
+                catCounts[itemCat]++;
+            }
+            if (itemCat === 'inovacao' || itemCat === 'software' || itemCat === 'patente') {
+                if (itemCat !== 'inovacao') catCounts.inovacao = (catCounts.inovacao || 0) + 1;
+            }
+        }
+
+        const matchCat = (currentCategory === 'all') || (currentCategory === itemCat) || (currentCategory === 'inovacao' && (itemCat === 'inovacao' || itemCat === 'software' || itemCat === 'patente'));
+
+        if (matchesCriteria && matchCat) {
+            item.style.display = '';
+            prodMatchesVisible++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+
+    // Update visibility of production sub-sections
     document.querySelectorAll('.prod-section').forEach(sec => {
-        const secCat = sec.getAttribute('data-section-category');
-        let visibleCount = 0;
+        const visibleItems = sec.querySelectorAll('.prod-item:not([style*="display: none"])');
+        sec.style.display = visibleItems.length > 0 ? '' : 'none';
+    });
 
-        sec.querySelectorAll('.prod-item').forEach(item => {
-            const itemCat = item.getAttribute('data-category');
-            const hasDoi = item.getAttribute('data-has-doi') === '1';
+    // Update category pill counts
+    document.querySelectorAll('.category-pill').forEach(pill => {
+        const cat = pill.getAttribute('data-category');
+        const countSpan = pill.querySelector('.pill-count');
+        if (countSpan && catCounts[cat] !== undefined) {
+            const initial = parseInt(countSpan.getAttribute('data-initial') || '0', 10);
+            const current = catCounts[cat];
+            if (isFiltered) {
+                if (current > 0) {
+                    countSpan.innerHTML = `<span class="font-bold">${current}</span><span class="opacity-60 text-[10px]">/${initial}</span>`;
+                } else {
+                    countSpan.innerHTML = `<span class="opacity-40 text-[10px]">0/${initial}</span>`;
+                }
+            } else {
+                countSpan.textContent = initial;
+            }
+        }
+    });
+
+    updateTabCount('productions', catCounts.all);
+    totalMatchesAllTabs += catCounts.all;
+    checkPanelEmpty('productions', prodMatchesVisible);
+
+    // 2. Filter Helper for all other tabs
+    function filterSimpleTab(panelName, itemSelector) {
+        let count = 0;
+        document.querySelectorAll(itemSelector).forEach(item => {
             const text = item.textContent.toLowerCase();
-
-            const matchCat = (currentCategory === 'all') || (currentCategory === itemCat) || (currentCategory === 'inovacao' && (itemCat === 'inovacao' || itemCat === 'software' || itemCat === 'patente'));
-            const matchDoi = !onlyDoi || hasDoi;
-            const matchTerm = term === '' || text.includes(term);
-
-            if (matchCat && matchDoi && matchTerm) {
+            const matches = (term === '' || text.includes(term)) && !onlyDoi;
+            if (matches) {
                 item.style.display = '';
-                visibleCount++;
+                count++;
             } else {
                 item.style.display = 'none';
             }
         });
+        updateTabCount(panelName, count);
+        totalMatchesAllTabs += count;
+        checkPanelEmpty(panelName, count);
+        return count;
+    }
 
-        if (visibleCount === 0) {
-            sec.style.display = 'none';
-        } else {
-            sec.style.display = '';
-        }
-    });
+    filterSimpleTab('orientations', '.orientation-item');
+    filterSimpleTab('projects', '.project-item');
+    filterSimpleTab('experience', '.experience-item');
+    filterSimpleTab('education', '.education-item');
+    filterSimpleTab('complementary', '.complementary-item');
+    filterSimpleTab('boards', '.board-item');
+    filterSimpleTab('events', '.event-item');
+    filterSimpleTab('awards', '.award-item');
+    filterSimpleTab('areas', '.area-item');
+
+    if (matchesSummary) {
+        matchesSummary.textContent = `• ${totalMatchesAllTabs} registro(s) encontrado(s) no currículo`;
+    }
+}
+
+// Backward compatibility alias
+function filterProductions() {
+    applyGlobalFilter();
 }
 
 function copyCitation(btn, title, venue, year, doi) {
