@@ -322,6 +322,7 @@ class ProfessorController extends AbstractController
                         'idLattes' => $matchedR->getIdLattes(),
                         'fullName' => $matchedR->getFullName(),
                         'department' => $matchedR->getDepartment(),
+                        'photoUrl' => $matchedR->getPhotoUrl(),
                     ];
                 } elseif ($author->getAuthorIdentity()) {
                     $key = 'identity_' . $author->getAuthorIdentity()->getId();
@@ -344,6 +345,7 @@ class ProfessorController extends AbstractController
                             'idLattes' => $resolved['researcher']['idLattes'],
                             'fullName' => $resolved['researcher']['fullName'],
                             'department' => $resolved['researcher']['department'],
+                            'photoUrl' => $resolved['researcher']['photoUrl'] ?? null,
                         ];
                     } elseif ($resolved && !empty($resolved['identityId'])) {
                         $key = 'identity_' . $resolved['identityId'];

@@ -117,7 +117,7 @@ class AuthorResolverService
         $conn = $this->em->getConnection();
 
         $researchers = $conn->fetchAllAssociative('
-            SELECT id, full_name, slug, id_lattes, department, department_code, citation_names
+            SELECT id, full_name, slug, id_lattes, department, department_code, photo_url, citation_names
             FROM researchers
         ');
 
@@ -129,6 +129,7 @@ class AuthorResolverService
                 'idLattes' => (string)$r['id_lattes'],
                 'department' => $r['department'] ? (string)$r['department'] : null,
                 'departmentCode' => $r['department_code'] ? (string)$r['department_code'] : null,
+                'photoUrl' => $r['photo_url'] ? (string)$r['photo_url'] : null,
             ];
 
             $fullName = (string)$r['full_name'];
