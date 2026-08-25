@@ -416,6 +416,11 @@ class LattesXmlParserService
                     $production->setPages($this->truncate((string)($details['PAGINA-INICIAL'] ?? '') . '-' . (string)($details['PAGINA-FINAL'] ?? ''), 50));
                 }
 
+                $kws = $this->extractKeywords($article);
+                if (!empty($kws)) {
+                    $production->setKeywords($kws);
+                }
+
                 $this->parseAuthors($article, $production);
                 $this->em->persist($production);
             }
@@ -441,6 +446,11 @@ class LattesXmlParserService
                 if ($details) {
                     $production->setPublisher($this->truncate((string)($details['NOME-DA-EDITORA'] ?? ''), 500));
                     $production->setIsbn($this->truncate((string)($details['ISBN'] ?? ''), 50));
+                }
+
+                $kws = $this->extractKeywords($book);
+                if (!empty($kws)) {
+                    $production->setKeywords($kws);
                 }
 
                 $this->parseAuthors($book, $production);
@@ -472,6 +482,11 @@ class LattesXmlParserService
                     $production->setPages($this->truncate((string)($details['PAGINA-INICIAL'] ?? '') . '-' . (string)($details['PAGINA-FINAL'] ?? ''), 50));
                 }
 
+                $kws = $this->extractKeywords($chapter);
+                if (!empty($kws)) {
+                    $production->setKeywords($kws);
+                }
+
                 $this->parseAuthors($chapter, $production);
                 $this->em->persist($production);
             }
@@ -500,6 +515,11 @@ class LattesXmlParserService
                     $production->setIsbn($this->truncate((string)($details['ISBN'] ?? ''), 50));
                 }
 
+                $kws = $this->extractKeywords($event);
+                if (!empty($kws)) {
+                    $production->setKeywords($kws);
+                }
+
                 $this->parseAuthors($event, $production);
                 $this->em->persist($production);
             }
@@ -526,6 +546,11 @@ class LattesXmlParserService
                     $production->setIssn($this->truncate((string)($details['ISSN'] ?? ''), 50));
                 }
 
+                $kws = $this->extractKeywords($articleText);
+                if (!empty($kws)) {
+                    $production->setKeywords($kws);
+                }
+
                 $this->parseAuthors($articleText, $production);
                 $this->em->persist($production);
             }
@@ -548,6 +573,11 @@ class LattesXmlParserService
                 $production->setNature($this->truncate((string)$tag, 100));
                 $production->setYear((int)($basicData['ANO'] ?? $basicData['ANO-DO-ARTIGO'] ?? 0) ?: null);
                 $production->setDoi($this->truncate((string)($basicData['DOI'] ?? ''), 255));
+
+                $kws = $this->extractKeywords($item);
+                if (!empty($kws)) {
+                    $production->setKeywords($kws);
+                }
 
                 $this->parseAuthors($item, $production);
                 $this->em->persist($production);
@@ -581,9 +611,29 @@ class LattesXmlParserService
             $production->setYear((int)($first['ANO'] ?? 0) ?: null);
             $production->setDoi($this->truncate((string)($first['DOI'] ?? ''), 255));
 
+            $kws = $this->extractKeywords($item);
+            if (!empty($kws)) {
+                $production->setKeywords($kws);
+            }
+
             $this->parseAuthors($item, $production);
             $this->em->persist($production);
         }
+    }
+
+    private function extractKeywords(\SimpleXMLElement $item): array
+    {
+        $keywords = [];
+        $kwNode = $item->{'PALAVRAS-CHAVE'} ?? null;
+        if ($kwNode) {
+            for ($i = 1; $i <= 6; $i++) {
+                $kw = trim((string)($kwNode["PALAVRA-CHAVE-$i"] ?? ''));
+                if ($kw !== '') {
+                    $keywords[] = $kw;
+                }
+            }
+        }
+        return $keywords;
     }
 
     private function parseAuthors(\SimpleXMLElement $item, ProductionItem $production): void

@@ -217,6 +217,24 @@ class ProductionItem
     public function getExtraData(): ?array { return $this->extraData ?? []; }
     public function setExtraData(?array $v): static { $this->extraData = $v; return $this; }
 
+    public function getKeywords(): array
+    {
+        return $this->extraData['keywords'] ?? [];
+    }
+
+    public function setKeywords(array $keywords): static
+    {
+        $cleaned = array_values(array_filter(array_map('trim', $keywords)));
+        $extra = $this->extraData ?? [];
+        if (empty($cleaned)) {
+            unset($extra['keywords']);
+        } else {
+            $extra['keywords'] = $cleaned;
+        }
+        $this->extraData = $extra;
+        return $this;
+    }
+
     public function getCreatedAt(): \DateTimeImmutable { return $this->createdAt; }
     public function getUpdatedAt(): \DateTimeImmutable { return $this->updatedAt; }
 
