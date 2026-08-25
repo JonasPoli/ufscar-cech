@@ -7,8 +7,18 @@ use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
 
+/**
+ * Extensão Twig responsável por resolver estratos Qualis CAPES e renderizar badges coloridos nos templates.
+ *
+ * Provê filtros e funções:
+ * - `resolve_qualis(journalName, issn)`: Retorna string com estrato (ex: 'A1', 'B2').
+ * - `qualis_badge(journalName, issn)`: Renderiza badge HTML com cores temáticas por estrato.
+ */
 class QualisExtension extends AbstractExtension
 {
+    /**
+     * @param JournalResolverService $resolver Serviço de resolução de periódicos e Qualis
+     */
     public function __construct(
         private readonly JournalResolverService $resolver
     ) {}

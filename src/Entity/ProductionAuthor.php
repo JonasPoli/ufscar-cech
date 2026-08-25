@@ -5,6 +5,16 @@ namespace App\Entity;
 use App\Repository\ProductionAuthorRepository;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Entidade representando um Autor / Coautor em uma produção científica.
+ *
+ * Preserva o nome bruto do autor como veio do Lattes (`author_name`, `citation_name`, `id_lattes`),
+ * a ordem de autoria (`author_order`) e armazena os vínculos de índice resultantes da resolução ontológica:
+ * - `author_identity_id` (FK para AuthorIdentity no Tesauro)
+ * - `matched_researcher_id` (FK para Researcher se for docente do CECH)
+ * - `is_cech_researcher` (Flag indicativa de docente interno)
+ * - `is_indexed` (Flag de controle do pipeline de normalização)
+ */
 #[ORM\Entity(repositoryClass: ProductionAuthorRepository::class)]
 #[ORM\Table(name: 'production_authors')]
 class ProductionAuthor

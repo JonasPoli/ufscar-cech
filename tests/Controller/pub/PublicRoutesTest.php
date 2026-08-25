@@ -18,18 +18,41 @@ class PublicRoutesTest extends WebTestCase
     public function testIndicadoresPageIsSuccessful(): void
     {
         $client = static::createClient();
-        $client->request('GET', '/indicadores');
+        $crawler = $client->request('GET', '/indicadores');
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Indicadores');
+        $this->assertSelectorTextContains('#fig1LegendList', 'Departamento');
+        $this->assertStringNotContainsString('D3.js Observable Template', $client->getResponse()->getContent());
+        $this->assertStringNotContainsString('D3.js Sankey Observable', $client->getResponse()->getContent());
+        $this->assertStringNotContainsString('D3.js Sankey & Mobilidade', $client->getResponse()->getContent());
+
+        for ($i = 1; $i <= 17; $i++) {
+            $this->assertStringContainsString("Figura {$i}", $client->getResponse()->getContent());
+        }
     }
 
     public function testSearchPageIsSuccessful(): void
     {
         $client = static::createClient();
-        $client->request('GET', '/busca?q=educacao');
+        $em = static::getContainer()->get('doctrine.orm.entity_manager');
+        $researcher = $em->getRepository(\App\Entity\Researcher::class)->findOneBy([]);
+        if ($researcher) {
+            $researcher->setDepartmentCode('AC');
+            $researcher->setDepartment('Departamento de Artes e Comunicação');
+            $em->flush();
+        }
+
+        $crawler = $client->request('GET', '/busca?q=roniberto&dept=&type=all');
 
         $this->assertResponseIsSuccessful();
+        $content = $client->getResponse()->getContent();
+        $this->assertStringNotContainsString('(AC) (AC)', $content);
+        $this->assertStringNotContainsString('(PS) (PS)', $content);
+        $this->assertStringNotContainsString('(CA) (CA)', $content);
+        if ($researcher) {
+            $this->assertStringContainsString('Departamento de Artes e Comunicação (AC)', $content);
+        }
     }
 
     public function testDepartmentsPageIsSuccessful(): void
@@ -68,6 +91,22 @@ class PublicRoutesTest extends WebTestCase
             $client->request('GET', '/professor/' . $identifier . '/export/csv');
             $this->assertResponseIsSuccessful();
             $this->assertStringContainsString('text/csv', $client->getResponse()->headers->get('Content-Type'));
+        }
+    }
+
+    public function testLargeProfessorProfilePageMemoryUsage(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get('doctrine.orm.entity_manager');
+        $researcher = $em->getRepository(\App\Entity\Researcher::class)->findOneBy(['slug' => 'zilda-aparecida-pereira-del-prette'])
+            ?: $em->getRepository(\App\Entity\Researcher::class)->findOneBy([]);
+
+        if ($researcher) {
+            $identifier = $researcher->getSlug() ?: $researcher->getIdLattes();
+            $client->request('GET', '/professor/' . $identifier);
+
+            $this->assertResponseIsSuccessful();
+            $this->assertSelectorTextContains('h1', $researcher->getFullName());
         }
     }
 

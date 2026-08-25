@@ -14,13 +14,77 @@ use Doctrine\Persistence\ManagerRegistry;
  */
 class ResearcherRepository extends ServiceEntityRepository
 {
+    public const DEPARTMENT_MAP = [
+        'AC' => 'Departamento de Artes e Comunicação',
+        'DAC' => 'Departamento de Artes e Comunicação',
+        'CA' => 'Departamento de Ciências Ambientais',
+        'DCA' => 'Departamento de Ciências Ambientais',
+        'DCAm' => 'Departamento de Ciências Ambientais',
+        'CI' => 'Departamento de Ciência da Informação',
+        'DCI' => 'Departamento de Ciência da Informação',
+        'CS' => 'Departamento de Ciências Sociais',
+        'DCSo' => 'Departamento de Ciências Sociais',
+        'DCS' => 'Departamento de Ciências Sociais',
+        'ED' => 'Departamento de Educação',
+        'DEd' => 'Departamento de Educação',
+        'DEC' => 'Departamento de Educação e Comunicação',
+        'FI' => 'Departamento de Filosofia',
+        'FIL' => 'Departamento de Filosofia',
+        'DFil' => 'Departamento de Filosofia',
+        'IFD' => 'Departamento de Metodologia de Ensino / Formação Docente',
+        'DME' => 'Departamento de Metodologia de Ensino',
+        'DMTE' => 'Departamento de Metodologia e Teoria da Educação',
+        'DTE' => 'Departamento de Teoria e Prática da Educação',
+        'LE' => 'Departamento de Letras',
+        'DL' => 'Departamento de Letras',
+        'PS' => 'Departamento de Psicologia',
+        'DPsi' => 'Departamento de Psicologia',
+        'SO' => 'Departamento de Sociologia',
+        'DSo' => 'Departamento de Sociologia',
+        'TPP' => 'Departamento de Teoria e Prática Pedagógica',
+        'DTPP' => 'Departamento de Teoria e Prática Pedagógica',
+        'DEF' => 'Departamento de Educação Física',
+        'DAD' => 'Departamento de Administração',
+        'DART' => 'Departamento de Artes',
+        'DMUS' => 'Departamento de Música',
+        'GEO' => 'Departamento de Geografia',
+        'HIS' => 'Departamento de História',
+    ];
+
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Researcher::class);
     }
 
     /**
-     * Finds researchers by query, department, and pagination.
+     * Resolves aliases for a given department code or name to match all variations.
+     */
+    public static function getDepartmentFilterValues(string $department): array
+    {
+        $map = [
+            'CS' => ['CS', 'DCSo', 'DCS', 'Departamento de Ciências Sociais'],
+            'DCSo' => ['CS', 'DCSo', 'DCS', 'Departamento de Ciências Sociais'],
+            'Departamento de Ciências Sociais' => ['CS', 'DCSo', 'DCS', 'Departamento de Ciências Sociais'],
+            'AC' => ['AC', 'DAC', 'Departamento de Artes e Comunicação'],
+            'DAC' => ['AC', 'DAC', 'Departamento de Artes e Comunicação'],
+            'Departamento de Artes e Comunicação' => ['AC', 'DAC', 'Departamento de Artes e Comunicação'],
+            'CA' => ['CA', 'DCA', 'DCAm', 'Departamento de Ciências Ambientais'],
+            'CI' => ['CI', 'DCI', 'Departamento de Ciência da Informação'],
+            'ED' => ['ED', 'DEd', 'DEC', 'Departamento de Educação'],
+            'FI' => ['FI', 'FIL', 'DFil', 'Departamento de Filosofia'],
+            'FIL' => ['FI', 'FIL', 'DFil', 'Departamento de Filosofia'],
+            'IFD' => ['IFD', 'DME', 'DMTE', 'Departamento de Metodologia de Ensino / Formação Docente', 'Departamento de Metodologia de Ensino'],
+            'LE' => ['LE', 'DL', 'Departamento de Letras'],
+            'PS' => ['PS', 'DPsi', 'Departamento de Psicologia'],
+            'SO' => ['SO', 'DSo', 'Departamento de Sociologia'],
+            'TPP' => ['TPP', 'DTPP', 'DTE', 'Departamento de Teoria e Prática Pedagógica'],
+        ];
+
+        return $map[$department] ?? [$department];
+    }
+
+    /**
+     * Searches researchers by full name, citation names, Lattes ID, ORCID, or department.
      *
      * @param string|null $query Search term for name, citation names, Lattes ID, or ORCID
      * @param string|null $department Filter by department name or code
@@ -39,8 +103,9 @@ class ResearcherRepository extends ServiceEntityRepository
         }
 
         if ($department !== null && $department !== '' && $department !== 'all') {
-            $qb->andWhere('r.department = :dept OR r.departmentCode = :dept')
-               ->setParameter('dept', $department);
+            $depts = self::getDepartmentFilterValues($department);
+            $qb->andWhere('r.department IN (:depts) OR r.departmentCode IN (:depts)')
+               ->setParameter('depts', $depts);
         }
 
         $qb->setFirstResult(($page - 1) * $limit)
@@ -63,8 +128,9 @@ class ResearcherRepository extends ServiceEntityRepository
         }
 
         if ($department !== null && $department !== '' && $department !== 'all') {
-            $qb->andWhere('r.department = :dept OR r.departmentCode = :dept')
-               ->setParameter('dept', $department);
+            $depts = self::getDepartmentFilterValues($department);
+            $qb->andWhere('r.department IN (:depts) OR r.departmentCode IN (:depts)')
+               ->setParameter('depts', $depts);
         }
 
         return (int) $qb->getQuery()->getSingleScalarResult();
@@ -88,8 +154,9 @@ class ResearcherRepository extends ServiceEntityRepository
             ->orderBy('r.fullName', 'ASC');
 
         if ($department !== null && $department !== '' && $department !== 'all') {
-            $qb->andWhere('r.department = :dept OR r.departmentCode = :dept')
-               ->setParameter('dept', $department);
+            $depts = self::getDepartmentFilterValues($department);
+            $qb->andWhere('r.department IN (:depts) OR r.departmentCode IN (:depts)')
+               ->setParameter('depts', $depts);
         }
 
         return $qb->getQuery()->getArrayResult();
@@ -106,18 +173,52 @@ class ResearcherRepository extends ServiceEntityRepository
         $conn = $this->getEntityManager()->getConnection();
         $sql = "
             SELECT 
+                COALESCE(NULLIF(r.department_code, ''), r.department, 'Outros') AS departmentCode,
                 r.department,
-                r.department_code AS departmentCode,
                 COUNT(DISTINCT r.id) AS totalFaculty,
                 COUNT(p.id) AS totalProductions
             FROM researchers r
             LEFT JOIN production_items p ON p.researcher_id = r.id
-            WHERE r.department IS NOT NULL AND r.department != ''
-            GROUP BY r.department, r.department_code
-            ORDER BY totalFaculty DESC, totalProductions DESC
-            LIMIT " . (int)$limit;
+            WHERE (r.department IS NOT NULL AND r.department != '') OR (r.department_code IS NOT NULL AND r.department_code != '')
+            GROUP BY departmentCode, r.department";
 
-        return $conn->fetchAllAssociative($sql);
+        $rows = $conn->fetchAllAssociative($sql);
+        $aggregated = [];
+        foreach ($rows as $r) {
+            $code = trim((string)($r['departmentCode'] ?? ''));
+            if ($code === 'DCSo') {
+                $code = 'CS';
+            }
+            if ($code === '') {
+                $code = 'Outros';
+            }
+
+            $rawName = trim((string)($r['department'] ?? ''));
+            $cleanName = self::DEPARTMENT_MAP[$code] ?? $rawName;
+            if (preg_match('/^Departamento \(([A-Za-z]+)\)$/', $cleanName, $m)) {
+                $cleanName = self::DEPARTMENT_MAP[$m[1]] ?? $cleanName;
+            }
+
+            if (!isset($aggregated[$code])) {
+                $aggregated[$code] = [
+                    'departmentCode' => $code,
+                    'department' => $cleanName,
+                    'totalFaculty' => 0,
+                    'totalProductions' => 0,
+                ];
+            }
+            $aggregated[$code]['totalFaculty'] += (int)$r['totalFaculty'];
+            $aggregated[$code]['totalProductions'] += (int)$r['totalProductions'];
+        }
+
+        usort($aggregated, function($a, $b) {
+            if ($a['totalFaculty'] !== $b['totalFaculty']) {
+                return $b['totalFaculty'] <=> $a['totalFaculty'];
+            }
+            return $b['totalProductions'] <=> $a['totalProductions'];
+        });
+
+        return array_slice(array_values($aggregated), 0, $limit);
     }
 
     /**
@@ -146,38 +247,71 @@ class ResearcherRepository extends ServiceEntityRepository
      */
     public function findByDepartmentCodeOrName(string $codeOrName): array
     {
+        $depts = self::getDepartmentFilterValues($codeOrName);
+
         return $this->createQueryBuilder('r')
-            ->where('r.departmentCode = :val OR r.department = :val')
-            ->setParameter('val', $codeOrName)
+            ->where('r.departmentCode IN (:depts) OR r.department IN (:depts)')
+            ->setParameter('depts', $depts)
             ->orderBy('r.fullName', 'ASC')
             ->getQuery()
             ->getResult();
     }
 
     /**
-     * Returns a list of all distinct departments.
+     * Returns a list of all distinct departments normalized and cleaned.
      *
-     * @return array Array with code and name
+     * @return array Array with code, name, and facultyCount
      */
     public function findAllDistinctDepartments(): array
     {
-        return $this->createQueryBuilder('r')
-            ->select('DISTINCT r.departmentCode as code, r.department as name, COUNT(r.id) as facultyCount')
-            ->where('r.department IS NOT NULL AND r.department != \'\'')
+        $rows = $this->createQueryBuilder('r')
+            ->select('r.departmentCode as code, r.department as name, COUNT(r.id) as facultyCount')
+            ->where('(r.department IS NOT NULL AND r.department != \'\') OR (r.departmentCode IS NOT NULL AND r.departmentCode != \'\')')
             ->groupBy('r.departmentCode, r.department')
-            ->orderBy('r.department', 'ASC')
             ->getQuery()
             ->getResult();
+
+        $aggregated = [];
+        foreach ($rows as $r) {
+            $code = trim((string)($r['code'] ?? ''));
+            if ($code === 'DCSo') {
+                $code = 'CS';
+            }
+            if ($code === '') {
+                $code = 'Outros';
+            }
+
+            $rawName = trim((string)($r['name'] ?? ''));
+            $cleanName = self::DEPARTMENT_MAP[$code] ?? $rawName;
+            if (preg_match('/^Departamento \(([A-Za-z]+)\)$/', $cleanName, $m)) {
+                $cleanName = self::DEPARTMENT_MAP[$m[1]] ?? $cleanName;
+            }
+
+            if (!isset($aggregated[$code])) {
+                $aggregated[$code] = [
+                    'code' => $code,
+                    'name' => $cleanName,
+                    'facultyCount' => 0,
+                ];
+            }
+            $aggregated[$code]['facultyCount'] += (int)$r['facultyCount'];
+        }
+
+        usort($aggregated, fn($a, $b) => strcoll($a['name'], $b['name']));
+
+        return array_values($aggregated);
     }
 
     /**
-     * Efficiently loads a Researcher with productions and production authors to eliminate N+1 queries.
+     * Efficiently loads a Researcher with productions, production authors, matched researchers and author identities to eliminate N+1 queries and lazy proxy overhead.
      */
     public function findWithAllDetails(string|int $slugOrId): ?Researcher
     {
         $qb = $this->createQueryBuilder('r')
             ->leftJoin('r.productions', 'p')->addSelect('p')
-            ->leftJoin('p.authors', 'pa')->addSelect('pa');
+            ->leftJoin('p.authors', 'pa')->addSelect('pa')
+            ->leftJoin('pa.matchedResearcher', 'pmr')->addSelect('pmr')
+            ->leftJoin('pa.authorIdentity', 'pai')->addSelect('pai');
 
         if (is_numeric($slugOrId)) {
             $qb->where('r.id = :id OR r.idLattes = :lattes')

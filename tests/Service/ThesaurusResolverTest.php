@@ -102,5 +102,42 @@ class ThesaurusResolverTest extends KernelTestCase
         }
         $em->flush();
     }
+
+    public function testAuthorInvertName(): void
+    {
+        $inv1 = AuthorResolverService::invertName('GREGOLIN, José Angelo Rodrigues');
+        $this->assertSame('José Angelo Rodrigues GREGOLIN', $inv1);
+
+        $inv2 = AuthorResolverService::invertName('Amaral, Roniberto Morato do');
+        $this->assertSame('Roniberto Morato do Amaral', $inv2);
+
+        $inv3 = AuthorResolverService::invertName('José Angelo Rodrigues Gregolin');
+        $this->assertSame('Gregolin, José Angelo Rodrigues', $inv3);
+
+        $this->assertNull(AuthorResolverService::invertName(''));
+    }
+
+    public function testAuthorResolverWithInvertedAbntCitation(): void
+    {
+        $em = static::getContainer()->get('doctrine.orm.entity_manager');
+        $researcher = $em->getRepository(Researcher::class)->findOneBy([]) ?? (function() use ($em) {
+            $r = new Researcher();
+            $r->setIdLattes('1111222233334444');
+            $r->setFullName('Maria da Silva Santos');
+            $em->persist($r);
+            $em->flush();
+            return $r;
+        })();
+
+        $this->authorResolver->clearCache();
+        $invCitation = AuthorResolverService::invertName($researcher->getFullName());
+        $this->assertNotNull($invCitation);
+
+        $resolved = $this->authorResolver->resolveAuthorData($invCitation);
+        $this->assertNotNull($resolved);
+        $this->assertNotNull($resolved['researcher']);
+        $this->assertSame($researcher->getFullName(), $resolved['researcher']['fullName']);
+    }
 }
+
 

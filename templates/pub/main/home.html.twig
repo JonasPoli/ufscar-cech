@@ -1,3 +1,12 @@
+{#
+    Template: templates/pub/main/home.html.twig
+    Finalidade: Página inicial do Portal CECH com busca rápida, destaques de departamentos e contadores globais.
+    
+    Variáveis Recebidas do Controller (MainController::home):
+    @var stats array{totalResearchers: int, totalArticles: int, totalBooks: int, totalOrientations: int} Métricas gerais do centro
+    @var departments array<int, array{name: string, code: string, count: int}> Relação de departamentos acadêmicos e contagem de docentes
+    @var recentResearchers \App\Entity\Researcher[] Últimos pesquisadores atualizados
+#}
 {% extends 'pub/base.html.twig' %}
 
 {% block title %}Portal CECH | Produção Científica e Acadêmica UFSCar{% endblock %}

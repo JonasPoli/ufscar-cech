@@ -10,8 +10,21 @@ use Twig\Extension\AbstractExtension;
 use Twig\TwigFilter;
 use Twig\TwigFunction;
 
+/**
+ * Extensão Twig que expõe funções e filtros utilitários de Tesauros nos templates.
+ *
+ * Provê helpers para:
+ * - Resolução e renderização de bandeiras de países (`country_flag`, `country_badge`, `country_name`).
+ * - Resolução e badges estilizados de instituições (`institution_name`, `institution_badge`).
+ * - Renderização de coautores e links para perfis de docentes (`author_html`, `render_production_authors`, `author_thesaurus_variants`).
+ */
 class ThesaurusExtension extends AbstractExtension
 {
+    /**
+     * @param CountryResolverService $countryResolver Serviço de resolução de países
+     * @param InstitutionResolverService $institutionResolver Serviço de resolução institucional
+     * @param AuthorResolverService $authorResolver Serviço de resolução de autores e coautores
+     */
     public function __construct(
         private readonly CountryResolverService $countryResolver,
         private readonly InstitutionResolverService $institutionResolver,

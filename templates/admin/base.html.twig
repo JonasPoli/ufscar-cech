@@ -1,3 +1,17 @@
+{#
+    Template: templates/admin/base.html.twig
+    Finalidade: Layout mestre do painel administrativo (Admin Portal) do CECH.
+    
+    Recursos Integrados:
+    - Shoelace Web Components (sl-card, sl-button, sl-icon, sl-dialog)
+    - DataTables para paginação e ordenação assíncrona/síncrona de tabelas
+    - Sidebar de navegação com destaques ativos para cada módulo CRUD
+    - Flash messages de sucesso, aviso e erro do Symfony
+    
+    Variáveis Globais:
+    @var app.user \App\Entity\User Usuário autenticado
+    @var site_settings \App\Entity\SiteSetting|null Configurações globais
+#}
 <!DOCTYPE html>
 <html lang="pt-BR" class="h-full">
     <head>

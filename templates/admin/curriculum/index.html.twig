@@ -61,7 +61,7 @@
             <select name="dept" onchange="this.form.submit()" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
                 <option value="">Todos os Departamentos</option>
                 {% for d in departments %}
-                    <option value="{{ d.code ?: d.name }}" {% if selectedDept == (d.code ?: d.name) %}selected{% endif %}>
+                    <option value="{{ d.code }}" {% if selectedDept == d.code or selectedDept == d.name %}selected{% endif %}>
                         {{ d.name }} ({{ d.code }})
                     </option>
                 {% endfor %}

@@ -8,8 +8,26 @@ use App\Service\Thesaurus\JournalResolverService;
 use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\ORM\EntityManagerInterface;
 
+/**
+ * Serviço analítico para consolidação e cálculo de indicadores cienciométricos e estatísticas do CECH.
+ *
+ * Provê dados estruturados para renderização de gráficos interativos (ApexCharts / Chart.js / Sankey / Heatmap)
+ * cobrindo:
+ * - Resumo executivo global (pesquisadores, artigos, livros, orientações).
+ * - Trajetória de formação acadêmica (graduação, mestrado, doutorado, pós-doutorado).
+ * - Séries temporais de produção e estratos Qualis CAPES (A1 a C).
+ * - Matriz de calor anual de produção por tipo de item.
+ * - Redes de coautoria interna entre docentes do CECH e parcerias nacionais/internacionais.
+ * - Fluxos de formação e destinos acadêmicos (diagramas de Sankey).
+ */
 class StatisticsService
 {
+    /**
+     * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
+     * @param InstitutionResolverService $institutionResolver Serviço de resolução institucional
+     * @param CountryResolverService $countryResolver Serviço de resolução de países
+     * @param JournalResolverService $journalResolver Serviço de resolução de periódicos Qualis
+     */
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly InstitutionResolverService $institutionResolver,
@@ -18,7 +36,10 @@ class StatisticsService
     ) {}
 
     /**
-     * Normaliza e consolida variações de cursos e áreas (Tesauro de Formação Acadêmica).
+     * Normaliza e consolida variações textuais de cursos de graduação e pós-graduação sob denominações canônicas.
+     *
+     * @param string|null $course Nome bruto do curso como veio no Lattes
+     * @return string Nome canônico padronizado do curso
      */
     public static function normalizeCourseName(?string $course): string
     {
@@ -208,7 +229,7 @@ class StatisticsService
     }
 
     /**
-     * Resumo quantitativo global do centro.
+     * Resumo quantitativo global do centro (com contagem bruta declarada e contagem única deduplicada institucional).
      */
     public function getGlobalSummary(): array
     {
@@ -220,12 +241,57 @@ class StatisticsService
         $orientationsCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM orientations WHERE nature = 'CONCLUIDA'");
         $booksCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type IN ('LIVRO', 'CAPITULO')");
 
+        // Unique deduplicated counts (Institutional CECH View)
+        $uniqueProductionsCount = (int)$conn->fetchOne("
+            SELECT COUNT(*) FROM (
+                SELECT 1
+                FROM production_items
+                GROUP BY 
+                    CASE 
+                        WHEN (doi IS NOT NULL AND TRIM(doi) != '') 
+                        THEN CONCAT('DOI:', LOWER(TRIM(doi)))
+                        ELSE CONCAT('TITLE:', item_type, ':', COALESCE(`year`, ''), ':', LOWER(TRIM(title)))
+                    END
+            ) as unique_prods
+        ");
+
+        $uniqueArticlesQualisCount = (int)$conn->fetchOne("
+            SELECT COUNT(*) FROM (
+                SELECT 1
+                FROM production_items
+                WHERE item_type = 'ARTIGO' AND qualis IS NOT NULL AND qualis != ''
+                GROUP BY 
+                    CASE 
+                        WHEN (doi IS NOT NULL AND TRIM(doi) != '') 
+                        THEN CONCAT('DOI:', LOWER(TRIM(doi)))
+                        ELSE CONCAT('TITLE:', COALESCE(`year`, ''), ':', LOWER(TRIM(title)))
+                    END
+            ) as unique_qualis
+        ");
+
+        $uniqueBooksCount = (int)$conn->fetchOne("
+            SELECT COUNT(*) FROM (
+                SELECT 1
+                FROM production_items
+                WHERE item_type IN ('LIVRO', 'CAPITULO')
+                GROUP BY 
+                    CASE 
+                        WHEN (isbn IS NOT NULL AND TRIM(isbn) != '') 
+                        THEN CONCAT('ISBN:', item_type, ':', LOWER(TRIM(isbn)), ':', LOWER(TRIM(title)))
+                        ELSE CONCAT('TITLE:', item_type, ':', COALESCE(`year`, ''), ':', LOWER(TRIM(title)))
+                    END
+            ) as unique_books
+        ");
+
         return [
             'totalResearchers' => $researchersCount,
             'totalProductions' => $productionsCount,
+            'uniqueProductions' => $uniqueProductionsCount,
             'totalArticlesQualis' => $articlesQualisCount,
+            'uniqueArticlesQualis' => $uniqueArticlesQualisCount,
             'totalOrientations' => $orientationsCount,
             'totalBooksAndChapters' => $booksCount,
+            'uniqueBooksAndChapters' => $uniqueBooksCount,
         ];
     }
 
@@ -244,10 +310,70 @@ class StatisticsService
             WHERE status = 1
             GROUP BY deptCode, deptName
             ORDER BY total DESC
-            LIMIT 15
         ";
 
-        return $conn->fetchAllAssociative($sql);
+        $rows = $conn->fetchAllAssociative($sql);
+
+        $departmentNames = [
+            'PS' => 'Departamento de Psicologia (DPsi)',
+            'DPsi' => 'Departamento de Psicologia (DPsi)',
+            'LE' => 'Departamento de Letras (DL)',
+            'DL' => 'Departamento de Letras (DL)',
+            'CS' => 'Departamento de Ciências Sociais (DCSo)',
+            'DCSo' => 'Departamento de Ciências Sociais (DCSo)',
+            'DCS' => 'Departamento de Ciências Sociais (DCSo)',
+            'AC' => 'Departamento de Artes e Comunicação (DAC)',
+            'DAC' => 'Departamento de Artes e Comunicação (DAC)',
+            'IFD' => 'Departamento de Metodologia de Ensino / Formação Docente',
+            'DME' => 'Departamento de Metodologia de Ensino (DME)',
+            'ED' => 'Departamento de Educação (DEd)',
+            'DEd' => 'Departamento de Educação (DEd)',
+            'DEC' => 'Departamento de Educação e Comunicação (DEC)',
+            'TPP' => 'Departamento de Teoria e Prática Pedagógica (DTPP)',
+            'DTPP' => 'Departamento de Teoria e Prática Pedagógica (DTPP)',
+            'DTE' => 'Departamento de Teoria e Prática da Educação (DTE)',
+            'CI' => 'Departamento de Ciência da Informação (DCI)',
+            'DCI' => 'Departamento de Ciência da Informação (DCI)',
+            'FI' => 'Departamento de Filosofia (DFil)',
+            'FIL' => 'Departamento de Filosofia (DFil)',
+            'DFil' => 'Departamento de Filosofia (DFil)',
+            'SO' => 'Departamento de Sociologia (DSo)',
+            'DSo' => 'Departamento de Sociologia (DSo)',
+            'CA' => 'Departamento de Ciências Ambientais (DCAm)',
+            'DCA' => 'Departamento de Ciências Ambientais (DCAm)',
+            'DCAm' => 'Departamento de Ciências Ambientais (DCAm)',
+            'Outros' => 'Outros Departamentos / Sem Lotação Direta',
+        ];
+
+        $aggregated = [];
+        foreach ($rows as $r) {
+            $code = trim((string)$r['deptCode']);
+            if ($code === 'DCSo') {
+                $code = 'CS';
+            }
+            if ($code === '') {
+                $code = 'Outros';
+            }
+
+            $rawName = trim((string)$r['deptName']);
+            $name = $departmentNames[$code] ?? $rawName;
+            if (preg_match('/^Departamento \(([A-Za-z]+)\)$/', $name, $m)) {
+                $name = $departmentNames[$m[1]] ?? $name;
+            }
+
+            if (!isset($aggregated[$code])) {
+                $aggregated[$code] = [
+                    'deptCode' => $code,
+                    'deptName' => $name,
+                    'total' => 0,
+                ];
+            }
+            $aggregated[$code]['total'] += (int)$r['total'];
+        }
+
+        usort($aggregated, fn($a, $b) => $b['total'] <=> $a['total']);
+
+        return array_values($aggregated);
     }
 
     /**
@@ -711,7 +837,7 @@ class StatisticsService
     }
 
     /**
-     * Fig. 13: Rede de Coautoria e Colaboração Docente.
+     * Fig. 13: Rede de Coautoria e Colaboração Docente (Obras Únicas Conjuntas Deduplicadas via DOI/Título).
      */
     public function getFig13CoauthorshipNetwork(int $limit = 10): array
     {
@@ -722,14 +848,21 @@ class StatisticsService
                 r1.slug as slug1,
                 r2.full_name as author2,
                 r2.slug as slug2,
-                COUNT(DISTINCT pa1.production_item_id) as collaborations
+                COUNT(DISTINCT 
+                    CASE 
+                        WHEN (pi.doi IS NOT NULL AND TRIM(pi.doi) != '') 
+                        THEN CONCAT('DOI:', LOWER(TRIM(pi.doi)))
+                        ELSE CONCAT('TITLE:', pi.item_type, ':', LOWER(TRIM(pi.title)))
+                    END
+                ) as collaborations
             FROM production_authors pa1
             JOIN production_authors pa2 
                 ON pa1.production_item_id = pa2.production_item_id 
-               AND pa1.id_lattes < pa2.id_lattes
-            JOIN researchers r1 ON r1.id_lattes = pa1.id_lattes
-            JOIN researchers r2 ON r2.id_lattes = pa2.id_lattes
-            GROUP BY r1.full_name, r1.slug, r2.full_name, r2.slug
+               AND pa1.matched_researcher_id < pa2.matched_researcher_id
+            JOIN production_items pi ON pi.id = pa1.production_item_id
+            JOIN researchers r1 ON r1.id = pa1.matched_researcher_id
+            JOIN researchers r2 ON r2.id = pa2.matched_researcher_id
+            GROUP BY r1.id, r1.full_name, r1.slug, r2.id, r2.full_name, r2.slug
             ORDER BY collaborations DESC
             LIMIT :lim
         ";

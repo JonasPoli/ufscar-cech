@@ -18,12 +18,26 @@ use App\Service\Thesaurus\JournalResolverService;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Service responsible for normalizing and indexing researchers' co-authors,
- * journals, and institutions into dedicated index columns without altering
- * raw Lattes data.
+ * Serviço responsável pela normalização, enriquecimento e indexação das relações de um pesquisador.
+ *
+ * Executa as seguintes etapas sem alterar os dados brutos do Lattes:
+ * 1. Sincroniza nomes e citações bibliográficas com o Tesauro de Autores (author_identities / variants).
+ * 2. Resolve o periódico e atribui o melhor estrato Qualis CAPES para cada artigo científico.
+ * 3. Resolve todos os coautores de cada produção, identificando docentes internos do CECH (matched_researcher_id, is_cech_researcher).
+ * 4. Resolve e vincula instituições de formação acadêmica (Education) e atuação profissional (ProfessionalExperience).
+ * 5. Analisa vínculos com a UFSCar para determinar anos de admissão, desligamento e status ativo/aposentado.
+ * 6. Marca a data e hora da indexação (last_indexed_at).
  */
 class CurriculumNormalizationService
 {
+    /**
+     * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
+     * @param ResearcherRepository $researcherRepo Repositório de pesquisadores
+     * @param AuthorResolverService $authorResolver Serviço de resolução e desambiguação de autores
+     * @param JournalResolverService $journalResolver Serviço de resolução de periódicos e Qualis
+     * @param InstitutionResolverService $institutionResolver Serviço de resolução de instituições
+     * @param AuthorThesaurusService $authorThesaurusService Serviço de gerenciamento do tesauro de autores
+     */
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly ResearcherRepository $researcherRepo,
@@ -34,16 +48,21 @@ class CurriculumNormalizationService
     ) {}
 
     /**
-     * Normalizes and indexes all relations for a single Researcher.
+     * Normaliza e indexa todas as produções, coautores, periódicos e instituições de um único pesquisador.
      *
+     * @param Researcher $researcher Entidade do pesquisador a ser indexado
      * @return array{
      *     productionsProcessed: int,
      *     authorsIndexed: int,
      *     authorsCechMatched: int,
      *     qualisResolved: int,
      *     institutionsResolved: int,
-     *     thesaurusVariantsAdded?: int
-     * }
+     *     thesaurusVariantsAdded?: int,
+     *     admissionYear?: ?int,
+     *     leaveYear?: ?int,
+     *     isActiveInCech?: bool,
+     *     cechPeriodLabel?: string
+     * } Estatísticas do processamento de normalização
      */
     public function normalizeResearcher(Researcher $researcher): array
     {
@@ -205,8 +224,11 @@ class CurriculumNormalizationService
     }
 
     /**
-     * Returns statistics for the indexing overview dashboard.
+     * Retorna estatísticas consolidadas e KPIs de indexação para o painel de controle administrativo.
      *
+     * Permite filtrar por departamento específico ou obter os totais de todo o centro.
+     *
+     * @param string|null $department Sigla ou nome do departamento (opcional)
      * @return array{
      *     totalResearchers: int,
      *     indexedResearchers: int,

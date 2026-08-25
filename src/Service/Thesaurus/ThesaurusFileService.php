@@ -7,11 +7,23 @@ use League\Csv\Writer;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
+/**
+ * Serviço de importação e exportação de arquivos de Tesauro em múltiplos formatos.
+ *
+ * Suporta formatos de interoperabilidade científica:
+ * - VantagePoint (.the): Formato padrão de tesauro bibliométrico com termos principais e regras de matching ^...$.
+ * - CSV (.csv): Formato tabular com colunas preferred_name e variant_name (com suporte a variantes com pipe |).
+ * - JSON (.json): Estruturas hierárquicas de termos preferenciais e arrays de variações.
+ * - XML (.xml): Esquemas estruturados para intercâmbio de ontologias.
+ */
 class ThesaurusFileService
 {
     /**
-     * Parses a thesaurus file (.the, .csv, .json, .xml).
-     * Returns an array of records: [ ['header' => string, 'variations' => string[]], ... ]
+     * Realiza o parsing de um arquivo de tesauro identificando o formato pela extensão ou parâmetro.
+     *
+     * @param string $filePath Caminho absoluto ou relativo do arquivo no disco
+     * @param string|null $extension Extensão forçada ('the', 'csv', 'json', 'xml')
+     * @return array<int, array{header: string, preferred_name: string, variations: array<string>, variants: array<string>}>
      */
     public function parseFile(string $filePath, ?string $extension = null): array
     {
@@ -29,6 +41,12 @@ class ThesaurusFileService
         };
     }
 
+    /**
+     * Faz o parsing do conteúdo no formato VantagePoint (.the).
+     *
+     * @param string $content Conteúdo bruto em texto
+     * @return array<int, array{header: string, preferred_name: string, variations: array<string>, variants: array<string>}>
+     */
     public function parseTheContent(string $content): array
     {
         if (!mb_detect_encoding($content, 'UTF-8', true)) {

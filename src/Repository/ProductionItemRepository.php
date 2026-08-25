@@ -46,6 +46,18 @@ class ProductionItemRepository extends ServiceEntityRepository
     }
 
     /**
+     * Counts total productions for a given department code or name.
+     */
+    public function countByDepartment(string $deptCode, string $deptName): int
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        return (int)$conn->fetchOne(
+            'SELECT COUNT(pi.id) FROM production_items pi JOIN researchers r ON pi.researcher_id = r.id WHERE r.department_code = :code OR r.department = :name',
+            ['code' => $deptCode, 'name' => $deptName]
+        );
+    }
+
+    /**
      * Gets total counts of publications grouped by item type.
      *
      * @return array Map of itemType => count
@@ -107,8 +119,9 @@ class ProductionItemRepository extends ServiceEntityRepository
         }
 
         if ($department !== null && $department !== '' && $department !== 'all') {
-            $qb->andWhere('r.department = :dept OR r.departmentCode = :dept')
-               ->setParameter('dept', $department);
+            $depts = ResearcherRepository::getDepartmentFilterValues($department);
+            $qb->andWhere('r.department IN (:depts) OR r.departmentCode IN (:depts)')
+               ->setParameter('depts', $depts);
         }
 
         $qb->setFirstResult(($page - 1) * $limit)
@@ -132,8 +145,9 @@ class ProductionItemRepository extends ServiceEntityRepository
         }
 
         if ($department !== null && $department !== '' && $department !== 'all') {
-            $qb->andWhere('r.department = :dept OR r.departmentCode = :dept')
-               ->setParameter('dept', $department);
+            $depts = ResearcherRepository::getDepartmentFilterValues($department);
+            $qb->andWhere('r.department IN (:depts) OR r.departmentCode IN (:depts)')
+               ->setParameter('depts', $depts);
         }
 
         return (int) $qb->getQuery()->getSingleScalarResult();

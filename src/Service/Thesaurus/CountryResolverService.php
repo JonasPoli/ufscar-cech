@@ -8,18 +8,35 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
+/**
+ * Serviço de resolução geográfica para Países e conversão de códigos ISO para bandeiras Emoji.
+ *
+ * Mapeia nomes de países em português, inglês, gentílicos (ex: 'brasileira', 'brasileiro'),
+ * códigos ISO-2/ISO-3 e variantes históricas para a entidade canônica Country.
+ */
 class CountryResolverService
 {
+    /** Chave de cache do índice do tesauro de países */
     public const CACHE_KEY = 'thesaurus_country_index_v2';
 
-    /** @var array<string, array{id: int, commonName: string, isoAlpha2: ?string, isoAlpha3: ?string}>|null */
+    /**
+     * Índice em memória de países mapeados por ISO2, ISO3, nome comum e variações.
+     * @var array<string, array{id: int, commonName: string, isoAlpha2: ?string, isoAlpha3: ?string}>|null
+     */
     private ?array $countryIndex = null;
 
+    /**
+     * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
+     * @param CacheInterface|null $cache Serviço opcional de cache do Symfony
+     */
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly ?CacheInterface $cache = null
     ) {}
 
+    /**
+     * Invalida o cache em memória e o cache persistido do índice de países.
+     */
     public function clearCache(): void
     {
         $this->countryIndex = null;
@@ -28,6 +45,12 @@ class CountryResolverService
         }
     }
 
+    /**
+     * Converte um código ISO-3166-1 alpha-2 (2 letras) para o caractere emoji da respectiva bandeira.
+     *
+     * @param string|null $code Código de 2 letras (ex: 'BR', 'US', 'FR')
+     * @return string Emoji da bandeira ou ícone de globo 🌐 caso inválido
+     */
     public static function countryCodeToEmoji(?string $code): string
     {
         if (!$code || strlen($code) !== 2) {
@@ -40,6 +63,9 @@ class CountryResolverService
         return mb_chr($first, 'UTF-8') . mb_chr($second, 'UTF-8');
     }
 
+    /**
+     * Inicializa o índice geográfico buscando do cache ou construindo a partir do banco de dados.
+     */
     private function initIndex(): void
     {
         if ($this->countryIndex !== null) {
@@ -240,7 +266,9 @@ class CountryResolverService
     }
 
     /**
-     * Resolves a country data array by query (name, code, variant).
+     * Resolve um termo de busca (nome, gentílico, código ISO) para a estrutura de dados do país.
+     *
+     * @param string|null $query Texto ou código de busca
      * @return array{id: int, commonName: string, isoAlpha2: ?string, isoAlpha3: ?string}|null
      */
     public function resolveCountryData(?string $query): ?array
@@ -263,7 +291,7 @@ class CountryResolverService
             return $this->countryIndex[$normLower];
         }
 
-        // Substring / partial match fallback
+        // Fallback para correspondência parcial de string
         foreach ($this->countryIndex as $key => $data) {
             if (strlen($key) > 3 && (str_contains($norm, $key) || str_contains($key, $norm))) {
                 return $data;
@@ -273,6 +301,12 @@ class CountryResolverService
         return null;
     }
 
+    /**
+     * Resolve um termo de busca para a entidade Country do Doctrine.
+     *
+     * @param string|null $query Nome ou código do país
+     * @return Country|null
+     */
     public function resolveCountry(?string $query): ?Country
     {
         $data = $this->resolveCountryData($query);
@@ -280,6 +314,12 @@ class CountryResolverService
         return $this->em->getRepository(Country::class)->find($data['id']);
     }
 
+    /**
+     * Retorna a bandeira emoji correspondente ao país informado.
+     *
+     * @param string|null $query Nome ou código do país
+     * @return string Emoji da bandeira ou '🌐'
+     */
     public function getCountryFlag(?string $query): string
     {
         $data = $this->resolveCountryData($query);
@@ -289,6 +329,12 @@ class CountryResolverService
         return '🌐';
     }
 
+    /**
+     * Retorna o nome comum oficial do país formatado em português.
+     *
+     * @param string|null $query Texto original
+     * @return string Nome do país
+     */
     public function getCountryDisplayName(?string $query): string
     {
         $data = $this->resolveCountryData($query);
@@ -298,6 +344,13 @@ class CountryResolverService
         return $query ?: '';
     }
 
+    /**
+     * Renderiza um badge HTML estilizado com o emoji da bandeira e o nome do país.
+     *
+     * @param string|null $query Nome ou código do país
+     * @param string $extraClasses Classes CSS adicionais do Tailwind
+     * @return string Código HTML seguro formatado
+     */
     public function renderCountryBadge(?string $query, string $extraClasses = ''): string
     {
         if ($query === null || trim($query) === '') {

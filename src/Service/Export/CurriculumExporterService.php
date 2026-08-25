@@ -8,12 +8,30 @@ use League\Csv\Writer;
 use Symfony\Component\HttpFoundation\Response;
 use Twig\Environment;
 
+/**
+ * Serviço de exportação de dados curriculares e produções científicas.
+ *
+ * Suporta a geração de arquivos nos formatos:
+ * - JSON (.json): Estrutura completa de dados biográficos, formações, produções e orientações.
+ * - CSV (.csv): Resumo tabular formatado com delimitador ponto-e-vírgula e UTF-8 BOM.
+ * - BibTeX (.bib): Citações bibliográficas padronizadas de artigos, livros e capítulos.
+ * - HTML / PDF: Template estilizado para impressão e download de currículos individuais.
+ */
 class CurriculumExporterService
 {
+    /**
+     * @param Environment $twig Motor de templates Twig para renderização do layout de impressão
+     */
     public function __construct(
         private readonly Environment $twig
     ) {}
 
+    /**
+     * Exporta um array de pesquisadores para resposta HTTP em formato JSON.
+     *
+     * @param array<Researcher> $researchers Lista de pesquisadores
+     * @return Response Resposta com cabeçalhos de download JSON
+     */
     public function exportJson(array $researchers): Response
     {
         $data = [];

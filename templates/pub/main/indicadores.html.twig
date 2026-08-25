@@ -54,13 +54,13 @@
             <div class="absolute -right-3 -bottom-3 w-16 h-16 bg-emerald-500/10 rounded-full blur-xl group-hover:scale-150 transition"></div>
             <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
                 <span class="text-xs font-semibold uppercase tracking-wider">Produções Totais</span>
-                <sl-icon name="collection" class="text-emerald-500 text-lg"></sl-icon>
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">Únicas</span>
             </div>
             <div class="text-3xl font-extrabold text-slate-900 dark:text-white font-heading">
-                {{ summary.totalProductions|number_format(0, ',', '.') }}
+                {{ summary.uniqueProductions|number_format(0, ',', '.') }}
             </div>
-            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Artigos, livros, eventos, etc.
+            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1" title="Soma direta de todas as produções cadastradas nos currículos Lattes individuais">
+                {{ summary.totalProductions|number_format(0, ',', '.') }} registros nos Lattes
             </div>
         </div>
 
@@ -68,13 +68,13 @@
             <div class="absolute -right-3 -bottom-3 w-16 h-16 bg-indigo-500/10 rounded-full blur-xl group-hover:scale-150 transition"></div>
             <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
                 <span class="text-xs font-semibold uppercase tracking-wider">Artigos Qualis</span>
-                <sl-icon name="journal-check" class="text-indigo-500 text-lg"></sl-icon>
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">Únicos</span>
             </div>
             <div class="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 font-heading">
-                {{ summary.totalArticlesQualis|number_format(0, ',', '.') }}
+                {{ summary.uniqueArticlesQualis|number_format(0, ',', '.') }}
             </div>
-            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Indexados na base CAPES
+            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1" title="Soma direta dos artigos com Qualis nos currículos Lattes">
+                {{ summary.totalArticlesQualis|number_format(0, ',', '.') }} registros nos Lattes
             </div>
         </div>
 
@@ -96,13 +96,13 @@
             <div class="absolute -right-3 -bottom-3 w-16 h-16 bg-purple-500/10 rounded-full blur-xl group-hover:scale-150 transition"></div>
             <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
                 <span class="text-xs font-semibold uppercase tracking-wider">Livros & Capítulos</span>
-                <sl-icon name="book" class="text-purple-500 text-lg"></sl-icon>
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300">Únicos</span>
             </div>
             <div class="text-3xl font-extrabold text-slate-900 dark:text-white font-heading">
-                {{ summary.totalBooksAndChapters|number_format(0, ',', '.') }}
+                {{ summary.uniqueBooksAndChapters|number_format(0, ',', '.') }}
             </div>
-            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Obras e coletâneas publicadas
+            <div class="text-xs text-slate-500 dark:text-slate-400 mt-1" title="Soma direta de livros e capítulos nos currículos Lattes">
+                {{ summary.totalBooksAndChapters|number_format(0, ',', '.') }} registros nos Lattes
             </div>
         </div>
     </div>
@@ -143,33 +143,58 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {# Fig 1: Vínculos Institucionais #}
-            <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
+            <div class="col-span-1 lg:col-span-2 glass-card rounded-2xl p-6 sm:p-8 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 1</span>
                         <span class="text-xs text-slate-400">{{ fig1Dept|length }} Departamentos</span>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                    <h3 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white font-heading">
                         Vínculos Departamentais do Corpo Docente
                     </h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-6">
                         Distribuição do número de docentes vinculados por departamento do CECH.
                     </p>
                 </div>
-                <div class="h-80">
-                    <canvas id="chartFig1"></canvas>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    {# Chart canvas (left side) #}
+                    <div class="lg:col-span-7 h-80 sm:h-96">
+                        <canvas id="chartFig1"></canvas>
+                    </div>
+
+                    {# Legend (right side) #}
+                    <div class="lg:col-span-5 bg-slate-50/80 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 flex flex-col justify-center">
+                        <div class="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-200/60 dark:border-slate-700/60">
+                            <span class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                                <sl-icon name="list-ul" class="text-blue-500"></sl-icon> Legenda dos Departamentos
+                            </span>
+                            <span class="text-[11px] text-slate-400 font-medium">Sigla &bull; Nome &bull; Docentes</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-1.5 text-xs max-h-80 overflow-y-auto pr-1 scrollbar-thin" id="fig1LegendList">
+                            {% set deptColors = ['#0284c7', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#e11d48', '#64748b'] %}
+                            {% for d in fig1Dept %}
+                                {% set color = deptColors[loop.index0 % deptColors|length] %}
+                                <div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-slate-900/50 border border-slate-200/40 dark:border-slate-800/80 hover:bg-white dark:hover:bg-slate-800 transition">
+                                    <div class="flex items-center gap-2 min-w-0">
+                                        <span class="w-3 h-3 rounded-sm flex-shrink-0 shadow-xs" style="background-color: {{ color }};"></span>
+                                        <span class="font-mono font-bold text-slate-900 dark:text-white text-xs w-9 flex-shrink-0">{{ d.deptCode }}</span>
+                                        <span class="text-slate-600 dark:text-slate-300 truncate text-[11px]" title="{{ d.deptName }}">{{ d.deptName }}</span>
+                                    </div>
+                                    <span class="font-mono font-bold text-slate-800 dark:text-slate-200 text-xs ml-1 flex-shrink-0">{{ d.total }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {# Fig 2: Formação de Graduação (Observable Horizontal Bar Grouped Template) #}
+            {# Fig 2: Formação de Graduação #}
             <div class="col-span-1 lg:col-span-2 glass-card rounded-2xl p-6 sm:p-8 border border-slate-200/60 dark:border-white/10 shadow-sm">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 border-b border-slate-100 dark:border-white/5 pb-4">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
                             <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 2</span>
-                            <span class="inline-flex items-center gap-1 rounded-md bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-                                D3.js Observable Template
-                            </span>
                         </div>
                         <h3 class="text-xl font-bold text-slate-900 dark:text-white font-heading">
                             Formação de graduação do corpo docente
@@ -193,15 +218,12 @@
                 </div>
             </div>
 
-            {# Fig 16: Trajetória Acadêmica e Origem dos Docentes (D3.js Sankey Diagram Observable) #}
+            {# Fig 3: Trajetória Acadêmica e Origem dos Docentes #}
             <div class="col-span-1 lg:col-span-2 glass-card rounded-2xl p-6 sm:p-8 border border-slate-200/60 dark:border-white/10 shadow-sm">
                 <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6 border-b border-slate-100 dark:border-white/5 pb-5">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 16</span>
-                            <span class="inline-flex items-center gap-1 rounded-md bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-                                <sl-icon name="diagram-3"></sl-icon> D3.js Sankey Observable
-                            </span>
+                            <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 3</span>
                             <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
                                 Fluxo Linear de Origem
                             </span>
@@ -326,15 +348,12 @@
                 </div>
             </div>
 
-            {# Fig 17: Destino Institucional dos Docentes Egressos (D3.js Sankey & Mobilidade Acadêmica) #}
+            {# Fig 4: Destino Institucional dos Docentes Egressos #}
             <div class="col-span-1 lg:col-span-2 glass-card rounded-2xl p-6 sm:p-8 border border-slate-200/60 dark:border-white/10 shadow-sm">
                 <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6 border-b border-slate-100 dark:border-white/5 pb-5">
                     <div>
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 17</span>
-                            <span class="inline-flex items-center gap-1 rounded-md bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:text-indigo-300">
-                                <sl-icon name="diagram-3"></sl-icon> D3.js Sankey & Mobilidade
-                            </span>
+                            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 4</span>
                             <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
                                 Docentes Egressos
                             </span>
@@ -581,11 +600,11 @@
 
             </div>
 
-            {# Fig 3: Formação de Doutorado #}
+            {# Fig 5: Formação de Doutorado #}
             <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 3</span>
+                        <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 5</span>
                         <span class="text-xs text-slate-400">Doutorados</span>
                     </div>
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
@@ -600,11 +619,11 @@
                 </div>
             </div>
 
-            {# Fig 4: Áreas CNPq #}
+            {# Fig 6: Áreas CNPq #}
             <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 4</span>
+                        <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 6</span>
                         <span class="text-xs text-slate-400">Tabela CNPq</span>
                     </div>
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
@@ -619,11 +638,11 @@
                 </div>
             </div>
 
-            {# Fig 6: Origem Geográfica dos Docentes #}
+            {# Fig 7: Origem Geográfica dos Docentes #}
             <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 6</span>
+                        <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 7</span>
                         <span class="text-xs text-slate-400">Naturalidade</span>
                     </div>
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
@@ -676,18 +695,18 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            {# Fig 7: Evolução de Titulações (Span 2 cols) #}
+            {# Fig 9: Evolução de Titulações (Span 2 cols) #}
             <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm lg:col-span-2 flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Figura 7</span>
+                        <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Figura 9</span>
                         <span class="text-xs text-slate-400">Série Histórica 2010–{{ fig7Graduations.years|last }}</span>
                     </div>
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
-                        Formação Anual de Mestres, Doutores e Bolsistas
+                        Evolução Anual de Orientações Concluídas
                     </h3>
                     <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                        Orientações concluídas por ano discriminadas por nível de titulação (Mestrado, Doutorado, Pós-Doutorado e IC).
+                        Orientações concluídas por ano discriminadas por nível de titulação acadêmica: Mestrado, Doutorado, Pós-Doutorado e Iniciação Científica (IC).
                     </p>
                 </div>
                 <div class="h-80">
@@ -695,11 +714,11 @@
                 </div>
             </div>
 
-            {# Fig 9: Pirâmide de Formação #}
+            {# Fig 10: Pirâmide de Formação #}
             <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Figura 9</span>
+                        <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Figura 10</span>
                         <span class="text-xs text-slate-400">Fluxo</span>
                     </div>
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
@@ -714,11 +733,11 @@
                 </div>
             </div>
 
-            {# Fig 5: Formação dos Estudantes Orientados (Span 3 cols) #}
+            {# Fig 11: Formação dos Estudantes Orientados (Span 3 cols) #}
             <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm lg:col-span-3 flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Figura 5</span>
+                        <span class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Figura 11</span>
                         <span class="text-xs text-slate-400">Cursos dos Orientandos</span>
                     </div>
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
@@ -750,12 +769,12 @@
             </div>
         </div>
 
-        {# Fig 10: Matriz Geral de Produções (Heatmap Table) #}
+        {# Fig 12: Matriz Geral de Produções (Heatmap Table) #}
         <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                     <div class="flex items-center gap-2 mb-1">
-                        <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 10</span>
+                        <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 12</span>
                         <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
                             Matriz Heatmap Anual
                         </span>
@@ -824,11 +843,11 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            {# Fig 11: Qualis vs Sem Qualis #}
+            {# Fig 13: Qualis vs Sem Qualis #}
             <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 11</span>
+                        <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 13</span>
                         <span class="text-xs text-slate-400">Qualificação CAPES</span>
                     </div>
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
@@ -843,11 +862,11 @@
                 </div>
             </div>
 
-            {# Fig 12: Distribuição por Estrato Qualis (A1..C) #}
+            {# Fig 14: Distribuição por Estrato Qualis (A1..C) #}
             <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 12</span>
+                        <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 14</span>
                         <span class="text-xs text-slate-400">Estratos A1 a C</span>
                     </div>
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
@@ -879,12 +898,12 @@
             </div>
         </div>
 
-        {# Fig 13: Rede de Coautoria Docente #}
+        {# Fig 15: Rede de Coautoria Docente #}
         <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm space-y-4">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="flex items-center gap-2 mb-1">
-                        <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Figura 13</span>
+                        <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Figura 15</span>
                         <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300">
                             Colaboração Interna
                         </span>
@@ -931,11 +950,11 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            {# Fig 14: Parcerias Nacionais #}
+            {# Fig 16: Parcerias Nacionais #}
             <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Figura 14</span>
+                        <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Figura 16</span>
                         <span class="text-xs text-slate-400">Top Instituições Nacionais</span>
                     </div>
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
@@ -950,11 +969,11 @@
                 </div>
             </div>
 
-            {# Fig 15: Parcerias Internacionais #}
+            {# Fig 17: Parcerias Internacionais #}
             <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
                 <div>
                     <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Figura 15</span>
+                        <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Figura 17</span>
                         <span class="text-xs text-slate-400">Top Internacional</span>
                     </div>
                     <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
@@ -1012,6 +1031,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Fig 1: Vínculos Departamentais ──
     const fig1Data = {{ fig1Dept|json_encode|raw }};
+    const fig1DeptColors = ['#0284c7', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#e11d48', '#64748b'];
+
     new Chart(document.getElementById('chartFig1'), {
         type: 'bar',
         data: {
@@ -1019,7 +1040,7 @@ document.addEventListener('DOMContentLoaded', () => {
             datasets: [{
                 label: 'Docentes',
                 data: fig1Data.map(d => parseInt(d.total)),
-                backgroundColor: '#0284c7',
+                backgroundColor: fig1Data.map((d, i) => fig1DeptColors[i % fig1DeptColors.length]),
                 borderRadius: 6
             }]
         },
@@ -1031,18 +1052,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        title: (items) => fig1Data[items[0].dataIndex].deptName || items[0].label
+                        title: (items) => {
+                            const item = fig1Data[items[0].dataIndex];
+                            return item.deptName ? `${item.deptName} (${item.deptCode})` : items[0].label;
+                        },
+                        label: (item) => `${item.raw} docentes vinculados`
                     }
                 }
             },
             scales: {
                 x: { grid: { color: gridColor }, ticks: { color: textColor } },
-                y: { grid: { display: false }, ticks: { color: textColor } }
+                y: { grid: { display: false }, ticks: { color: textColor, font: { weight: 'bold', size: 11 } } }
             }
         }
     });
 
-    // ── Fig 2: Formação de Graduação do Corpo Docente (D3.js Observable Template) ──
+    // ── Fig 2: Formação de Graduação do Corpo Docente ──
     (function initFig2ObservableChart() {
         const container = document.getElementById('chartFig2');
         const tooltip = document.getElementById('chartFig2Tooltip');
@@ -1397,7 +1422,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })();
 
-    // ── Fig 16: Trajetória Acadêmica e Origem dos Docentes (D3.js Sankey Diagram Observable) ──
+    // ── Fig 3: Trajetória Acadêmica e Origem dos Docentes (Sankey) ──
     (function initFig16SankeyChart() {
         const container = document.getElementById('chartFig16');
         const tooltip = document.getElementById('chartFig16Tooltip');
@@ -2240,7 +2265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // ── Fig 17: Destino Institucional dos Docentes Egressos do CECH (D3.js Sankey & Mobilidade) ──
+    // ── Fig 4: Destino Institucional dos Docentes Egressos do CECH (Sankey) ──
     (function initFig17ExitsChart() {
         const container = document.getElementById('chartFig17');
         const tooltip = document.getElementById('chartFig17Tooltip');

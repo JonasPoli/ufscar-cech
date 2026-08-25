@@ -9,8 +9,22 @@ use App\Entity\Researcher;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 
+/**
+ * Serviço central de gerenciamento e sincronização do Tesauro de Autores.
+ *
+ * Responsável por:
+ * 1. Manter a integridade das identidades canônicas de autores (author_identities).
+ * 2. Mapear e indexar todas as variações de nomes e citações bibliográficas (author_name_variants).
+ * 3. Armazenar identificadores externos (ORCID, Lattes ID) em author_external_identifiers.
+ * 4. Reconstruir e limpar o tesauro garantindo a vinculação correta com os pesquisadores do CECH.
+ */
 class AuthorThesaurusService
 {
+    /**
+     * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
+     * @param Connection $conn Conexão DBAL direta para operações de alta performance em lote
+     * @param AuthorResolverService|null $authorResolver Serviço de resolução de autores para invalidação de cache
+     */
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly Connection $conn,
@@ -18,8 +32,9 @@ class AuthorThesaurusService
     ) {}
 
     /**
-     * Passo 01: Limpa completamente as tabelas do Tesauro de Autores
-     * (author_name_variants, author_external_identifiers, author_identities).
+     * Limpa completamente as tabelas do Tesauro de Autores
+     * (author_name_variants, author_external_identifiers, author_identities)
+     * e desvincula os relacionamentos existentes em production_authors.
      */
     public function truncateAuthorThesaurus(): void
     {
@@ -36,12 +51,17 @@ class AuthorThesaurusService
     }
 
     /**
-     * Passo 02: Cadastra ou atualiza o pesquisador e cada uma das suas formas/variações de nome
+     * Cadastra ou atualiza o pesquisador e cada uma das suas formas/variações de nome
      * no Tesauro de Autores (author_identities, author_name_variants e author_external_identifiers).
      *
-     * Verifica uma por uma cada forma de escrever o nome e cadastra o que estiver faltando.
+     * Regra de negócio:
+     * - Verifica se o nome completo já existe como identidade normalizada.
+     * - Se não existir, cria a identidade canônica (AuthorIdentity).
+     * - Cadastra o nome completo e cada token de citação bibliográfica como variante (AuthorNameVariant).
+     * - Registra o identificador ORCID em author_external_identifiers.
      *
-     * @return array{identityCreated: bool, variantsAdded: int, variantsChecked: int}
+     * @param Researcher $researcher Pesquisador a ser sincronizado
+     * @return array{identityCreated: bool, variantsAdded: int, variantsChecked: int} Estatísticas da operação
      */
     public function syncResearcher(Researcher $researcher): array
     {
@@ -338,42 +358,63 @@ class AuthorThesaurusService
             $normPref = mb_substr(StringNormalizer::normalizeString($preferred, true), 0, 250, 'UTF-8');
             $normCit = $citationName !== '' ? mb_substr(StringNormalizer::normalizeString($citationName, true), 0, 250, 'UTF-8') : '';
 
+            $invPref = AuthorResolverService::invertName($preferred);
+            $normInvPref = $invPref ? mb_substr(StringNormalizer::normalizeString($invPref, true), 0, 250, 'UTF-8') : '';
+
+            $invCit = $citationName !== '' ? AuthorResolverService::invertName($citationName) : null;
+            $normInvCit = $invCit ? mb_substr(StringNormalizer::normalizeString($invCit, true), 0, 250, 'UTF-8') : '';
+
             // Check if matches an existing identity or variant
             $matchedIdentityId = null;
             if (isset($variantsMap[$normPref])) {
                 $matchedIdentityId = $variantsMap[$normPref];
             } elseif ($normCit !== '' && isset($variantsMap[$normCit])) {
                 $matchedIdentityId = $variantsMap[$normCit];
+            } elseif ($normInvPref !== '' && isset($variantsMap[$normInvPref])) {
+                $matchedIdentityId = $variantsMap[$normInvPref];
+            } elseif ($normInvCit !== '' && isset($variantsMap[$normInvCit])) {
+                $matchedIdentityId = $variantsMap[$normInvCit];
             } elseif (isset($identityMap[$normPref])) {
                 $matchedIdentityId = $identityMap[$normPref];
+            } elseif ($normInvPref !== '' && isset($identityMap[$normInvPref])) {
+                $matchedIdentityId = $identityMap[$normInvPref];
             }
 
             if (!$matchedIdentityId) {
+                // If preferred is in ABNT format (e.g. "GREGOLIN, José Angelo Rodrigues"), use the natural inverted order for preferred_name
+                $canonicalPreferred = ($invPref && str_contains($preferred, ',')) ? $invPref : $preferred;
+                $normCanonical = mb_substr(StringNormalizer::normalizeString($canonicalPreferred, true), 0, 250, 'UTF-8');
+
                 // Create new identity for co-author
                 $this->conn->insert('author_identities', [
-                    'preferred_name' => $preferred,
-                    'normalized_name' => $normPref,
+                    'preferred_name' => $canonicalPreferred,
+                    'normalized_name' => $normCanonical,
                     'status' => 1,
                     'review_reasons' => null,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
                 $matchedIdentityId = (int)$this->conn->lastInsertId();
+                $identityMap[$normCanonical] = $matchedIdentityId;
                 $identityMap[$normPref] = $matchedIdentityId;
                 $identitiesCount++;
 
-                // Add preferred name as variant
+                // Add canonical and preferred names as variants
                 $this->conn->insert('author_name_variants', [
                     'author_identity_id' => $matchedIdentityId,
-                    'original_name' => $preferred,
-                    'normalized_name' => $normPref,
-                    'display_name' => $preferred,
+                    'original_name' => $canonicalPreferred,
+                    'normalized_name' => $normCanonical,
+                    'display_name' => $canonicalPreferred,
                     'source' => 'production',
                     'status' => 1,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
+                $variantsMap[$normCanonical] = $matchedIdentityId;
                 $variantsMap[$normPref] = $matchedIdentityId;
+                if ($normInvPref !== '') {
+                    $variantsMap[$normInvPref] = $matchedIdentityId;
+                }
                 $variantsCount++;
             }
 
@@ -391,6 +432,9 @@ class AuthorThesaurusService
                     'updated_at' => $now,
                 ]);
                 $variantsMap[$normCit] = $matchedIdentityId;
+                if ($normInvCit !== '') {
+                    $variantsMap[$normInvCit] = $matchedIdentityId;
+                }
                 $variantsCount++;
             }
         }

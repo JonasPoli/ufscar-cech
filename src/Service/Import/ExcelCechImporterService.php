@@ -8,14 +8,28 @@ use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\ORM\EntityManagerInterface;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
+/**
+ * Serviço de importação e enriquecimento a partir da planilha oficial de docentes do CECH.
+ *
+ * Utiliza o PhpSpreadsheet para ler as planilhas institucionais (.xlsx),
+ * mapeando códigos de departamento (ex: 'LE', 'FIL', 'CS', 'DPsi'), nomes completos,
+ * e-mails institucionais e datas de admissão, cruzando os dados com a base Lattes pelo ID de 16 dígitos.
+ */
 class ExcelCechImporterService
 {
+    /**
+     * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
+     */
     public function __construct(
         private readonly EntityManagerInterface $em
     ) {}
 
     /**
-     * Imports faculty metadata from "Info docentes do CECH.xlsx"
+     * Importa metadados docentes a partir de uma planilha Excel institucional (.xlsx).
+     *
+     * @param string $filePath Caminho para o arquivo Excel
+     * @return int Total de registros de docentes processados/atualizados
+     * @throws \InvalidArgumentException Se o arquivo não existir
      */
     public function importFacultyInfo(string $filePath): int
     {
@@ -35,19 +49,38 @@ class ExcelCechImporterService
         $count = 0;
 
         $departmentNames = [
-            'LE' => 'Departamento de Letras',
-            'FIL' => 'Departamento de Filosofia',
+            'AC' => 'Departamento de Artes e Comunicação',
+            'DAC' => 'Departamento de Artes e Comunicação',
+            'CA' => 'Departamento de Ciências Ambientais',
+            'DCA' => 'Departamento de Ciências Ambientais',
+            'DCAm' => 'Departamento de Ciências Ambientais',
+            'CI' => 'Departamento de Ciência da Informação',
+            'DCI' => 'Departamento de Ciência da Informação',
             'CS' => 'Departamento de Ciências Sociais',
-            'DPsi' => 'Departamento de Psicologia',
+            'DCSo' => 'Departamento de Ciências Sociais',
+            'DCS' => 'Departamento de Ciências Sociais',
+            'ED' => 'Departamento de Educação',
+            'DEd' => 'Departamento de Educação',
             'DEC' => 'Departamento de Educação e Comunicação',
+            'FI' => 'Departamento de Filosofia',
+            'FIL' => 'Departamento de Filosofia',
+            'DFil' => 'Departamento de Filosofia',
+            'IFD' => 'Departamento de Metodologia de Ensino / Formação Docente',
             'DME' => 'Departamento de Metodologia de Ensino',
-            'DTE' => 'Departamento de Teoria e Prática da Educação',
             'DMTE' => 'Departamento de Metodologia e Teoria da Educação',
+            'DTE' => 'Departamento de Teoria e Prática da Educação',
+            'LE' => 'Departamento de Letras',
+            'DL' => 'Departamento de Letras',
+            'PS' => 'Departamento de Psicologia',
+            'DPsi' => 'Departamento de Psicologia',
+            'SO' => 'Departamento de Sociologia',
+            'DSo' => 'Departamento de Sociologia',
+            'TPP' => 'Departamento de Teoria e Prática Pedagógica',
+            'DTPP' => 'Departamento de Teoria e Prática Pedagógica',
             'DEF' => 'Departamento de Educação Física',
             'DAD' => 'Departamento de Administração',
             'DART' => 'Departamento de Artes',
             'DMUS' => 'Departamento de Música',
-            'DCI' => 'Departamento de Ciência da Informação',
             'GEO' => 'Departamento de Geografia',
             'HIS' => 'Departamento de História',
         ];

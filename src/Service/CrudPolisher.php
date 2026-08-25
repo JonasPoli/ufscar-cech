@@ -10,12 +10,22 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\String\UnicodeString;
 
+/**
+ * Serviço utilitário do gerador de código (Maker) para refinar e padronizar CRUDs administrativos.
+ *
+ * Gera automaticamente views Twig com componentes Shoelace, tabelas DataTables
+ * e adiciona o item de menu correspondente na barra lateral administrativa.
+ */
 class CrudPolisher
 {
     private EntityManagerInterface $entityManager;
     private Filesystem $filesystem;
     private string $projectDir;
 
+    /**
+     * @param EntityManagerInterface $entityManager Gerenciador de entidades do Doctrine
+     * @param ParameterBagInterface $params Parâmetros de container do Symfony
+     */
     public function __construct(EntityManagerInterface $entityManager, ParameterBagInterface $params)
     {
         $this->entityManager = $entityManager;

@@ -7,6 +7,13 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Entidade representando uma Produção Bibliográfica, Técnica ou Artística de um docente.
+ *
+ * Suporta múltiplos tipos (ARTIGO, LIVRO, CAPITULO, EVENTO, TEXTO_JORNAL, TRABALHO_TECNICO, SOFTWARE, PATENTE, etc.).
+ * Armazena metadados como título, ano, DOI, ISSN, volume, páginas, editora, periódico,
+ * além do estrato Qualis CAPES resolvido e a lista de coautores vinculados (ProductionAuthor).
+ */
 #[ORM\Entity(repositoryClass: ProductionItemRepository::class)]
 #[ORM\Table(name: 'production_items')]
 #[ORM\Index(columns: ['item_type'], name: 'idx_prod_type')]

@@ -1,3 +1,20 @@
+{#
+    Template: templates/pub/base.html.twig
+    Finalidade: Layout mestre do portal público do CECH/UFSCar.
+    
+    Variáveis Globais Disponíveis:
+    @var site_settings \App\Entity\SiteSetting|null Configurações globais de metadados, títulos SEO e URLs base
+    @var app.user \App\Entity\User|null Usuário logado na sessão atual
+    @var app.request \Symfony\Component\HttpFoundation\Request Objeto da requisição HTTP atual
+    
+    Blocos Principais:
+    - title: Título da página exibido na aba do navegador e no Google
+    - meta_description: Descrição resumida para mecanismos de busca
+    - academic_meta: Metatags específicas para indexação no Google Scholar
+    - schema_json_ld: Dados estruturados Schema.org em formato JSON-LD
+    - content: Conteúdo principal da página
+    - stylesheets / javascripts: Inclusão de assets adicionais
+#}
 <!DOCTYPE html>
 <html lang="pt-BR" class="h-full">
     <head>

@@ -19,19 +19,38 @@ use App\Service\Thesaurus\AuthorThesaurusService;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Service responsible for parsing rendered Lattes HTML pages and comprehensively ingesting
- * Researcher metadata, Educations, Professional Experiences, Projects, Awards, Knowledge Areas,
- * Language Proficiencies, All Productions (articles, books, chapters, events, newspapers, technical, artistic),
- * Orientations, Examination Boards, and Event Participations.
+ * Serviço responsável pelo parsing de currículos Lattes em formato HTML público.
+ *
+ * Utiliza o parser DOMDocument e consultas XPath para extrair:
+ * - Informações biográficas, resumo e citações.
+ * - Formação acadêmica (Education).
+ * - Atuações profissionais (ProfessionalExperience) e Projetos (ResearchProject).
+ * - Produções bibliográficas, técnicas e artísticas (ProductionItem).
+ * - Coautores (ProductionAuthor).
+ * - Orientações (Orientation), Bancas (ExaminationBoard), Prêmios (Award) e Idiomas (LanguageProficiency).
+ *
+ * REGRA FIXA: Todos os dados brutos são preservados sem alterações.
  */
 class LattesHtmlParserService
 {
+    /**
+     * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
+     * @param AuthorThesaurusService $authorThesaurusService Serviço de sincronização do tesauro de autores
+     * @param CurriculumNormalizationService $normalizationService Serviço de normalização e enriquecimento
+     */
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly AuthorThesaurusService $authorThesaurusService,
         private readonly CurriculumNormalizationService $normalizationService
     ) {}
 
+    /**
+     * Trunca uma string de forma segura em UTF-8 para evitar estouro de tamanho de colunas no banco de dados.
+     *
+     * @param string|null $str String de entrada
+     * @param int $length Tamanho máximo permitido
+     * @return string|null String decodificada e truncada
+     */
     private function truncate(?string $str, int $length): ?string
     {
         if ($str === null) return null;
@@ -41,6 +60,14 @@ class LattesHtmlParserService
         return mb_substr($str, 0, $length);
     }
 
+    /**
+     * Realiza o parsing de uma string HTML de currículo Lattes e salva as entidades no banco.
+     *
+     * @param string $html Código HTML completo da página Lattes
+     * @param Researcher|null $existingResearcher Entidade existente opcional para atualização
+     * @param string|null $idLattes ID Lattes de 16 dígitos opcional
+     * @return Researcher Entidade do pesquisador persistida
+     */
     public function parseHtmlAndSave(string $html, ?Researcher $existingResearcher = null, ?string $idLattes = null): Researcher
     {
         @ini_set('memory_limit', '512M');
@@ -752,10 +779,12 @@ class LattesHtmlParserService
 
             // Parse authors
             if ($authorsStr !== '') {
-                $rawAuthors = preg_split('~[;,]\s*~u', $authorsStr);
+                // Split by semicolon (ABNT standard delimiter between authors)
+                $rawAuthors = preg_split('~;\s*~u', $authorsStr);
                 $order = 1;
                 foreach ($rawAuthors as $aName) {
-                    $aName = trim(preg_replace('~\(Org\.?\)~i', '', $aName));
+                    $aName = trim(preg_replace('~\((?:Org|Ed|Coord)\.?\s*\)~iu', '', $aName));
+                    $aName = trim(preg_replace('~^\d+[\.\)]\s*~', '', $aName));
                     if ($aName === '' || mb_strlen($aName) < 2) continue;
 
                     $pAuthor = new ProductionAuthor();

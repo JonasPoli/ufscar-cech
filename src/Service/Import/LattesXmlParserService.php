@@ -20,11 +20,28 @@ use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
- * Service responsible for parsing CNPq Lattes XML curricula and persisting
- * Researchers, Educations, Productions, Orientations, Awards, and Knowledge Areas.
+ * Serviço responsável pelo parsing integral de arquivos XML de Currículos Lattes (padrão CNPq).
+ *
+ * Realiza a leitura e persistência (Upsert) de:
+ * 1. Dados biográficos e identificadores do Pesquisador (Researcher: ID Lattes, nome, resumo, citações, endereço).
+ * 2. Formação Acadêmica e Titulação (Education: Graduação, Especialização, Mestrado, Doutorado, Pós-Doc).
+ * 3. Atuações Profissionais (ProfessionalExperience) e Projetos de Pesquisa (ResearchProject).
+ * 4. Produções Bibliográficas, Técnicas e Artísticas (ProductionItem: Artigos, Livros, Capítulos, Eventos, Softwares, etc.).
+ * 5. Coautores de cada produção (ProductionAuthor), registrando ordem e nomes brutos.
+ * 6. Orientações Concluídas e em Andamento (Orientation).
+ * 7. Bancas Examinadoras / Julgadoras (ExaminationBoard) e Participações em Eventos (EventParticipation).
+ * 8. Prêmios / Títulos (Award), Idiomas (LanguageProficiency) e Áreas de Conhecimento (KnowledgeArea).
+ * 9. Acionamento dos pipelines de sincronização com Tesauro de Autores e Normalização de Índices.
+ *
+ * REGRA FIXA: Todos os dados brutos são preservados sem alterações.
  */
 class LattesXmlParserService
 {
+    /**
+     * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
+     * @param AuthorThesaurusService $authorThesaurusService Serviço de sincronização do tesauro de autores
+     * @param CurriculumNormalizationService $normalizationService Serviço de normalização e enriquecimento
+     */
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly AuthorThesaurusService $authorThesaurusService,
@@ -32,7 +49,11 @@ class LattesXmlParserService
     ) {}
 
     /**
-     * Truncates string safely to UTF-8 length to prevent database truncation errors.
+     * Trunca uma string de forma segura em UTF-8 para evitar estouro de tamanho de colunas no banco de dados.
+     *
+     * @param string|null $str String de entrada
+     * @param int $length Tamanho máximo permitido em caracteres
+     * @return string|null String decodificada de entidades HTML e truncada
      */
     private function truncate(?string $str, int $length): ?string
     {
@@ -44,7 +65,12 @@ class LattesXmlParserService
     }
 
     /**
-     * Parses a single Lattes XML file and upserts the Researcher and all related child entities.
+     * Realiza o parsing de um arquivo XML Lattes completo e persiste/atualiza o Pesquisador e todas as entidades vinculadas.
+     *
+     * @param string $filePath Caminho absoluto para o arquivo XML
+     * @return Researcher Entidade do pesquisador atualizada
+     * @throws \InvalidArgumentException Se o arquivo não existir
+     * @throws \RuntimeException Se o XML for inválido ou não contiver a tag CURRICULO-VITAE
      */
     public function parseAndSave(string $filePath): Researcher
     {

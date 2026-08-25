@@ -13,8 +13,23 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
+/**
+ * Controlador público responsável pela exibição do perfil completo e exportações do currículo de um pesquisador.
+ *
+ * Realiza a agregação em memória de:
+ * - Produções por categoria (artigos, livros, capítulos, eventos, softwares, patentes, artes).
+ * - Orientações concluídas e em andamento por nível acadêmico.
+ * - Séries temporais de produtividade e distribuição de estratos Qualis para gráficos.
+ * - Exportações sob demanda em JSON, CSV e BibTeX.
+ */
 class ProfessorController extends AbstractController
 {
+    /**
+     * @param ResearcherRepository $researcherRepo Repositório de pesquisadores
+     * @param ProductionItemRepository $productionRepo Repositório de produções
+     * @param CurriculumExporterService $exporter Serviço de exportação de currículos
+     * @param \App\Service\Thesaurus\AuthorResolverService $authorResolver Serviço de resolução de autores
+     */
     public function __construct(
         private readonly ResearcherRepository $researcherRepo,
         private readonly ProductionItemRepository $productionRepo,
@@ -22,6 +37,12 @@ class ProfessorController extends AbstractController
         private readonly \App\Service\Thesaurus\AuthorResolverService $authorResolver
     ) {}
 
+    /**
+     * Exibe a página de perfil público completo do pesquisador.
+     *
+     * @param string $slugOrId Slug textual amigável ou ID Lattes de 16 dígitos
+     * @return Response Página HTML renderizada
+     */
     #[Route('/professor/{slugOrId}', name: 'app_pub_professor_show')]
     public function show(string $slugOrId): Response
     {
@@ -260,55 +281,110 @@ class ProfessorController extends AbstractController
             'averagePerYear' => $avgPerYear,
         ];
 
-        // 5. Compute Top Co-authors / Collaborators
-        $coauthorsMap = [];
-        $myNames = array_map('mb_strtolower', array_filter(array_merge(
-            [$researcher->getFullName()],
-            explode(';', (string)$researcher->getCitationNames())
-        )));
+        // 5. Compute Top Co-authors / Collaborators (Ontological & Canonical Resolution)
+        $myId = $researcher->getId();
+        $myLattes = $researcher->getIdLattes();
+        $myNorm = \App\Service\Thesaurus\StringNormalizer::normalizeString((string)$researcher->getFullName(), true);
+
+        $collaboratorsMap = [];
 
         foreach ($researcher->getProductions() as $prod) {
-            foreach ($prod->getAuthors() as $author) {
-                $rawName = trim($author->getCitationName() ?: $author->getAuthorName());
-                if ($rawName === '' || mb_strlen($rawName) < 3) continue;
+            $seenInProd = [];
 
-                $lower = mb_strtolower($rawName);
-                $isSelf = false;
-                foreach ($myNames as $myName) {
-                    if ($myName !== '' && (str_contains($lower, $myName) || str_contains($myName, $lower))) {
-                        $isSelf = true;
-                        break;
+            foreach ($prod->getAuthors() as $author) {
+                // 1. Direct matched researcher self check
+                $matchedR = $author->getMatchedResearcher();
+                if ($matchedR && $matchedR->getId() === $myId) {
+                    continue;
+                }
+
+                // 2. Direct Lattes self check
+                if ($author->getIdLattes() && $myLattes && $author->getIdLattes() === $myLattes) {
+                    continue;
+                }
+
+                $rawName = trim($author->getCitationName() ?: $author->getAuthorName());
+                if ($rawName === '' || mb_strlen($rawName) < 3) {
+                    continue;
+                }
+
+                $authorNorm = \App\Service\Thesaurus\StringNormalizer::normalizeString($rawName, true);
+                if ($authorNorm === $myNorm) {
+                    continue;
+                }
+
+                // 3. Determine canonical identity key, display name and CECH profile data
+                if ($matchedR) {
+                    $key = 'researcher_' . $matchedR->getId();
+                    $name = $matchedR->getFullName();
+                    $resData = [
+                        'slug' => $matchedR->getSlug() ?: $matchedR->getIdLattes(),
+                        'idLattes' => $matchedR->getIdLattes(),
+                        'fullName' => $matchedR->getFullName(),
+                        'department' => $matchedR->getDepartment(),
+                    ];
+                } elseif ($author->getAuthorIdentity()) {
+                    $key = 'identity_' . $author->getAuthorIdentity()->getId();
+                    $name = $author->getAuthorIdentity()->getPreferredName();
+                    $resData = null;
+                } else {
+                    // Fallback to Thesaurus AuthorResolver for unindexed authors
+                    $resolved = $this->authorResolver->resolveAuthorData($rawName)
+                        ?: ($author->getAuthorName() !== '' ? $this->authorResolver->resolveAuthorData($author->getAuthorName()) : null)
+                        ?: ($author->getCitationName() !== '' ? $this->authorResolver->resolveAuthorData($author->getCitationName()) : null);
+
+                    if ($resolved && !empty($resolved['researcher'])) {
+                        if ((int)$resolved['researcher']['id'] === $myId) {
+                            continue;
+                        }
+                        $key = 'researcher_' . $resolved['researcher']['id'];
+                        $name = $resolved['researcher']['fullName'];
+                        $resData = [
+                            'slug' => $resolved['researcher']['slug'],
+                            'idLattes' => $resolved['researcher']['idLattes'],
+                            'fullName' => $resolved['researcher']['fullName'],
+                            'department' => $resolved['researcher']['department'],
+                        ];
+                    } elseif ($resolved && !empty($resolved['identityId'])) {
+                        $key = 'identity_' . $resolved['identityId'];
+                        $name = $resolved['preferredName'];
+                        $resData = null;
+                    } else {
+                        $inv = \App\Service\Thesaurus\AuthorResolverService::invertName($rawName);
+                        $displayName = ($inv && str_contains($rawName, ',')) ? $inv : ($author->getAuthorName() ?: $rawName);
+                        $key = 'name_' . $authorNorm;
+                        $name = $displayName;
+                        $resData = null;
                     }
                 }
-                if ($isSelf) continue;
 
-                if (!isset($coauthorsMap[$rawName])) {
-                    $coauthorsMap[$rawName] = [
-                        'name' => $rawName,
+                // Ensure name is clean and in natural reading order
+                if (str_contains($name, ',')) {
+                    $inv = \App\Service\Thesaurus\AuthorResolverService::invertName($name);
+                    if ($inv) {
+                        $name = $inv;
+                    }
+                }
+
+                // Deduplicate per production
+                if (isset($seenInProd[$key])) {
+                    continue;
+                }
+                $seenInProd[$key] = true;
+
+                if (!isset($collaboratorsMap[$key])) {
+                    $collaboratorsMap[$key] = [
+                        'name' => $name,
                         'count' => 0,
-                        'researcher' => null,
+                        'researcher' => $resData,
                     ];
                 }
-                $coauthorsMap[$rawName]['count']++;
+                $collaboratorsMap[$key]['count']++;
             }
         }
 
-        uasort($coauthorsMap, fn($a, $b) => $b['count'] <=> $a['count']);
-        $topCoauthors = array_slice($coauthorsMap, 0, 12, true);
-
-        // Check if any coauthors match teachers in our database to link their profile (via cached authorResolver)
-        foreach ($topCoauthors as $key => &$coauthorData) {
-            $resolved = $this->authorResolver->resolveAuthorData($coauthorData['name']);
-            if ($resolved && $resolved['researcher'] !== null && $resolved['researcher']['id'] !== $researcher->getId()) {
-                $coauthorData['researcher'] = [
-                    'slug' => $resolved['researcher']['slug'],
-                    'idLattes' => $resolved['researcher']['idLattes'],
-                    'fullName' => $resolved['researcher']['fullName'],
-                    'department' => $resolved['researcher']['department'],
-                ];
-            }
-        }
-        unset($coauthorData);
+        uasort($collaboratorsMap, fn($a, $b) => $b['count'] <=> $a['count']);
+        $topCoauthors = array_slice($collaboratorsMap, 0, 12, true);
 
         // 6. Compute Research Keyword / Topic Cloud
         $stopWords = [

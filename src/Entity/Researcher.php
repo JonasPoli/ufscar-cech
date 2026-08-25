@@ -7,6 +7,18 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Entidade central representando o Pesquisador / Docente do CECH/UFSCar.
+ *
+ * Armazena:
+ * - Dados brutos do Lattes (idLattes, fullName, citationNames, abstractResume, endereço de trabalho, etc.).
+ * - Metadados complementares (departamento, e-mail institucional, admissionYear, leaveYear).
+ * - Colunas de índice e indexação (slug, lastIndexedAt).
+ * - Coleções de entidades filhas: Formações (educations), Produções (productions),
+ *   Orientações (orientations), Atuações profissionais (professionalExperiences),
+ *   Projetos (researchProjects), Bancas (examinationBoards), Eventos (eventParticipations),
+ *   Prêmios (awards), Áreas de conhecimento (knowledgeAreas) e Idiomas (languageProficiencies).
+ */
 #[ORM\Entity(repositoryClass: ResearcherRepository::class)]
 #[ORM\Table(name: 'researchers')]
 #[ORM\Index(columns: ['id_lattes'], name: 'idx_researcher_lattes')]

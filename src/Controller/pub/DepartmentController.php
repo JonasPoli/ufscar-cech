@@ -40,10 +40,7 @@ class DepartmentController extends AbstractController
         $deptName = $researchers[0]->getDepartment() ?: $codeOrSlug;
         $deptCode = $researchers[0]->getDepartmentCode() ?: $codeOrSlug;
 
-        $totalProductions = 0;
-        foreach ($researchers as $r) {
-            $totalProductions += count($r->getProductions());
-        }
+        $totalProductions = $this->productionRepo->countByDepartment($deptCode, $deptName);
 
         return $this->render('pub/department/show.html.twig', [
             'deptName' => $deptName,

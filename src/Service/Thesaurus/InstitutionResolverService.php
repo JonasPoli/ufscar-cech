@@ -8,19 +8,37 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
+/**
+ * Serviço responsável pela resolução, desambiguação e exibição formatada de instituições de ensino e pesquisa.
+ *
+ * Mapeia siglas (ex: 'UFSCar', 'USP', 'UNICAMP'), variações textuais (ex: 'Universidade Federal de São Carlos')
+ * e nomes com traços para a entidade canônica Institution e respectivo país com bandeira emoji.
+ */
 class InstitutionResolverService
 {
+    /** Chave de cache do índice do tesauro institucional */
     public const CACHE_KEY = 'thesaurus_institution_index_v2';
 
-    /** @var array<string, array{id: int, officialName: string, shortName: ?string, acronym: ?string, countryIso: ?string, countryName: ?string}>|null */
+    /**
+     * Índice em memória de instituições indexadas por siglas, nomes oficiais e variações normalizadas.
+     * @var array<string, array{id: int, officialName: string, shortName: ?string, acronym: ?string, countryIso: ?string, countryName: ?string}>|null
+     */
     private ?array $institutionIndex = null;
 
+    /**
+     * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
+     * @param CountryResolverService $countryResolver Serviço de resolução de países e bandeiras
+     * @param CacheInterface|null $cache Serviço opcional de cache do Symfony
+     */
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly CountryResolverService $countryResolver,
         private readonly ?CacheInterface $cache = null
     ) {}
 
+    /**
+     * Invalida o cache em memória e o cache persistido do índice institucional.
+     */
     public function clearCache(): void
     {
         $this->institutionIndex = null;
@@ -29,6 +47,9 @@ class InstitutionResolverService
         }
     }
 
+    /**
+     * Inicializa a estrutura de índice em memória buscando do cache ou reconstruindo do banco.
+     */
     private function initIndex(): void
     {
         if ($this->institutionIndex !== null) {
@@ -47,6 +68,8 @@ class InstitutionResolverService
     }
 
     /**
+     * Constrói o índice associativo mapeando siglas, nomes oficiais e variações textuais para a instituição canônica.
+     *
      * @return array<string, array{id: int, officialName: string, shortName: ?string, acronym: ?string, countryIso: ?string, countryName: ?string}>
      */
     private function buildIndexData(): array
@@ -128,6 +151,9 @@ class InstitutionResolverService
     }
 
     /**
+     * Resolve um termo de busca para os dados da instituição canônica indexada.
+     *
+     * @param string|null $query Nome, sigla ou texto de instituição
      * @return array{id: int, officialName: string, shortName: ?string, acronym: ?string, countryIso: ?string, countryName: ?string}|null
      */
     public function resolveInstitutionData(?string $query): ?array
@@ -145,7 +171,7 @@ class InstitutionResolverService
             return $this->institutionIndex[$norm];
         }
 
-        // Try cleaning punctuation / dashes (e.g. "UFSCar - Universidade Federal de São Carlos")
+        // Tenta limpar separadores (ex: "UFSCar - Universidade Federal de São Carlos")
         if (str_contains($clean, '-')) {
             $parts = explode('-', $clean);
             foreach ($parts as $part) {
@@ -156,7 +182,7 @@ class InstitutionResolverService
             }
         }
 
-        // Substring / partial match fallback
+        // Fallback por correspondência de prefixo se o termo for longo
         if (strlen($norm) > 4) {
             foreach ($this->institutionIndex as $key => $data) {
                 if (strlen($key) > 4 && (str_starts_with($norm, $key) || str_starts_with($key, $norm))) {
@@ -168,6 +194,12 @@ class InstitutionResolverService
         return null;
     }
 
+    /**
+     * Resolve o termo para a entidade canônica Institution do Doctrine.
+     *
+     * @param string|null $query Nome ou sigla
+     * @return Institution|null
+     */
     public function resolveInstitution(?string $query): ?Institution
     {
         $data = $this->resolveInstitutionData($query);
@@ -175,6 +207,12 @@ class InstitutionResolverService
         return $this->em->getRepository(Institution::class)->find($data['id']);
     }
 
+    /**
+     * Retorna o nome formatado de exibição para a instituição (ex: 'UFSCar - Universidade Federal de São Carlos').
+     *
+     * @param string|null $query Texto original
+     * @return string Nome formatado
+     */
     public function getInstitutionDisplayName(?string $query): string
     {
         $data = $this->resolveInstitutionData($query);
@@ -187,6 +225,13 @@ class InstitutionResolverService
         return $query ?: '';
     }
 
+    /**
+     * Renderiza um badge HTML estilizado com o nome da instituição e a bandeira do país de origem.
+     *
+     * @param string|null $query Nome ou sigla da instituição
+     * @param string $extraClasses Classes CSS adicionais do Tailwind
+     * @return string Código HTML seguro do badge
+     */
     public function renderInstitutionBadge(?string $query, string $extraClasses = ''): string
     {
         if ($query === null || trim($query) === '') {

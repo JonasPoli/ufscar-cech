@@ -6,68 +6,121 @@ use App\Entity\AuthorIdentity;
 use App\Entity\ProductionAuthor;
 use App\Entity\ProductionItem;
 use App\Entity\Researcher;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
-
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
+/**
+ * Serviço responsável pela resolução, desambiguação e renderização de autores e coautores.
+ *
+ * Utiliza um índice ultraleve em memória contendo os docentes do CECH (~400 registros)
+ * e resolve autores externos via consultas parametrizadas sob demanda com cache de ciclo de vida.
+ */
 class AuthorResolverService
 {
-    public const CACHE_KEY = 'thesaurus_author_index_v2';
+    /** Chave de cache do índice de docentes CECH */
+    public const CACHE_KEY = 'thesaurus_author_cech_index_v3';
 
-    /** @var array<string, array{identityId: int, preferredName: string, researcher: ?array{id: int, fullName: string, slug: string, idLattes: string, department: ?string}}>|null */
-    private ?array $authorIndex = null;
+    /**
+     * Índice em memória mapeando nomes e variantes normalizadas para dados dos docentes do CECH.
+     * @var array<string, array{id: int, fullName: string, slug: string, idLattes: string, department: ?string, departmentCode: ?string}>|null
+     */
+    private ?array $cechResearchersIndex = null;
 
-    /** @var array<int, array<string>>|null */
-    private ?array $researcherCitationVariants = null;
+    /**
+     * Cache de resoluções de autores durante o ciclo de vida da requisição.
+     * @var array<string, array{identityId: int, preferredName: string, researcher: ?array{id: int, fullName: string, slug: string, idLattes: string, department: ?string, departmentCode: ?string}}|null>
+     */
+    private array $runtimeResolveCache = [];
 
+    /**
+     * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
+     * @param CacheInterface|null $cache Serviço opcional de cache do Symfony
+     */
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly ?CacheInterface $cache = null
     ) {}
 
+    /**
+     * Invalida o cache do índice de autores em memória e no cache do Symfony.
+     */
     public function clearCache(): void
     {
-        $this->authorIndex = null;
-        $this->researcherCitationVariants = null;
+        $this->cechResearchersIndex = null;
+        $this->runtimeResolveCache = [];
         if ($this->cache !== null) {
             $this->cache->delete(self::CACHE_KEY);
         }
     }
 
+    /**
+     * Inicializa a estrutura de índice de docentes do CECH em memória.
+     */
     private function initIndex(): void
     {
-        if ($this->authorIndex !== null) {
+        if ($this->cechResearchersIndex !== null) {
             return;
         }
 
         if ($this->cache !== null) {
-            [$this->authorIndex, $this->researcherCitationVariants] = $this->cache->get(self::CACHE_KEY, function (ItemInterface $item) {
+            $this->cechResearchersIndex = $this->cache->get(self::CACHE_KEY, function (ItemInterface $item) {
                 $item->expiresAfter(86400 * 30);
-                return $this->buildIndexData();
+                return $this->buildCechResearchersIndex();
             });
             return;
         }
 
-        [$this->authorIndex, $this->researcherCitationVariants] = $this->buildIndexData();
+        $this->cechResearchersIndex = $this->buildCechResearchersIndex();
     }
 
     /**
-     * @return array{0: array<string, array{identityId: int, preferredName: string, researcher: ?array{id: int, fullName: string, slug: string, idLattes: string, department: ?string}}>, 1: array<int, array<string>>}
+     * Inverte um nome no padrão ABNT (Sobrenome, Prenome <-> Prenome Sobrenome).
      */
-    private function buildIndexData(): array
+    public static function invertName(string $name): ?string
     {
-        $authorIndex = [];
-        $researcherCitationVariants = [];
+        $name = trim($name);
+        if ($name === '') {
+            return null;
+        }
+
+        if (str_contains($name, ',')) {
+            $parts = explode(',', $name, 2);
+            $surname = trim($parts[0]);
+            $given = trim($parts[1]);
+            if ($surname !== '' && $given !== '') {
+                return $given . ' ' . $surname;
+            }
+        } else {
+            $lastSpace = mb_strrpos($name, ' ');
+            if ($lastSpace !== false) {
+                $given = mb_substr($name, 0, $lastSpace);
+                $surname = mb_substr($name, $lastSpace + 1);
+                if (trim($given) !== '' && trim($surname) !== '') {
+                    return $surname . ', ' . $given;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Constrói o mapa de docentes do CECH em memória (~400 registros, < 200 KB de RAM).
+     *
+     * @return array<string, array{id: int, fullName: string, slug: string, idLattes: string, department: ?string, departmentCode: ?string}>
+     */
+    private function buildCechResearchersIndex(): array
+    {
+        $index = [];
         $conn = $this->em->getConnection();
 
-        // 1. Index all CECH Researchers
         $researchers = $conn->fetchAllAssociative('
             SELECT id, full_name, slug, id_lattes, department, department_code, citation_names
             FROM researchers
         ');
 
-        $researcherByNorm = [];
         foreach ($researchers as $r) {
             $rData = [
                 'id' => (int)$r['id'],
@@ -78,156 +131,179 @@ class AuthorResolverService
                 'departmentCode' => $r['department_code'] ? (string)$r['department_code'] : null,
             ];
 
-            $normFull = StringNormalizer::normalizeString($r['full_name'], false);
-            if ($normFull !== '') {
-                $researcherByNorm[$normFull] = $rData;
-            }
+            $fullName = (string)$r['full_name'];
+            $this->addResearcherVariantsToIndex($index, $fullName, $rData);
 
-            $normFullUpper = StringNormalizer::normalizeString($r['full_name'], true);
-            if ($normFullUpper !== '') {
-                $researcherByNorm[$normFullUpper] = $rData;
-            }
-
-            // Also index citation names for researcher matching
             $citNames = (string)($r['citation_names'] ?? '');
             if ($citNames !== '') {
                 $tokens = array_filter(array_map('trim', explode(';', $citNames)));
                 foreach ($tokens as $tok) {
-                    $normTok = StringNormalizer::normalizeString($tok, false);
-                    if ($normTok !== '') {
-                        $researcherByNorm[$normTok] = $rData;
-                    }
-                    $normTokUpper = StringNormalizer::normalizeString($tok, true);
-                    if ($normTokUpper !== '') {
-                        $researcherByNorm[$normTokUpper] = $rData;
-                    }
+                    $this->addResearcherVariantsToIndex($index, $tok, $rData);
                 }
             }
         }
 
-        // 2. Load Author Identities & Variants from Thesaurus
-        $identitiesStmt = $conn->executeQuery('
-            SELECT id, preferred_name, normalized_name 
-            FROM author_identities 
-            WHERE status = 1
-        ');
-
-        $identityById = [];
-        while ($ident = $identitiesStmt->fetchAssociative()) {
-            $id = (int)$ident['id'];
-            $pref = (string)$ident['preferred_name'];
-            $norm = StringNormalizer::normalizeString($pref, false);
-            $normUpper = StringNormalizer::normalizeString($pref, true);
-
-            $matchedResearcher = $researcherByNorm[$norm] 
-                ?? ($researcherByNorm[$normUpper] 
-                ?? ($researcherByNorm[$ident['normalized_name']] ?? null));
-
-            $identityData = [
-                'identityId' => $id,
-                'preferredName' => $pref,
-                'researcher' => $matchedResearcher,
-            ];
-
-            $identityById[$id] = $identityData;
-            if ($norm !== '') {
-                $authorIndex[$norm] = $identityData;
-            }
-            if ($normUpper !== '') {
-                $authorIndex[$normUpper] = $identityData;
-            }
-        }
-
-        // 3. Load Variants
-        $variantsStmt = $conn->executeQuery('
-            SELECT author_identity_id, original_name, normalized_name, display_name, source
-            FROM author_name_variants
-            WHERE status = 1
-        ');
-
-        while ($v = $variantsStmt->fetchAssociative()) {
-            $identityId = (int)$v['author_identity_id'];
-            if (!isset($identityById[$identityId])) continue;
-
-            $identityData = $identityById[$identityId];
-            $origName = (string)$v['original_name'];
-            $source = (string)($v['source'] ?? '');
-
-            // Store in researcher citation variants if linked to researcher and is a citation variant
-            if ($identityData['researcher'] !== null) {
-                $rId = $identityData['researcher']['id'];
-                if (!isset($researcherCitationVariants[$rId])) {
-                    $researcherCitationVariants[$rId] = [];
-                }
-                if ($source === 'citation' || ($origName !== $identityData['preferredName'] && !in_array($origName, $researcherCitationVariants[$rId], true))) {
-                    $researcherCitationVariants[$rId][] = $origName;
-                }
-            }
-
-            $normOrig = StringNormalizer::normalizeString($origName, false);
-            if ($normOrig !== '') {
-                // If this variant specifically matched a researcher, ensure researcher is attached
-                if (!isset($authorIndex[$normOrig])) {
-                    $authorIndex[$normOrig] = $identityData;
-                } elseif ($identityData['researcher'] !== null && $authorIndex[$normOrig]['researcher'] === null) {
-                    $authorIndex[$normOrig]['researcher'] = $identityData['researcher'];
-                }
-            }
-
-            $normDb = StringNormalizer::normalizeString($v['normalized_name'], false);
-            if ($normDb !== '' && !isset($authorIndex[$normDb])) {
-                $authorIndex[$normDb] = $identityData;
-            }
-        }
-
-        return [$authorIndex, $researcherCitationVariants];
+        return $index;
     }
 
     /**
-     * @return array{identityId: int, preferredName: string, researcher: ?array{id: int, fullName: string, slug: string, idLattes: string, department: ?string}}|null
+     * Auxiliar para registrar variações de nome de docente no índice CECH.
+     *
+     * @param array<string, array{id: int, fullName: string, slug: string, idLattes: string, department: ?string, departmentCode: ?string}> $index
+     * @param array{id: int, fullName: string, slug: string, idLattes: string, department: ?string, departmentCode: ?string} $rData
+     */
+    private function addResearcherVariantsToIndex(array &$index, string $name, array $rData): void
+    {
+        $norm = StringNormalizer::normalizeString($name, false);
+        if ($norm !== '') {
+            $index[$norm] = $rData;
+        }
+
+        $normUpper = StringNormalizer::normalizeString($name, true);
+        if ($normUpper !== '') {
+            $index[$normUpper] = $rData;
+        }
+
+        $clean = preg_replace('/[.,;]/', ' ', $norm);
+        $clean = preg_replace('/\s+/', ' ', trim($clean));
+        if ($clean !== '' && $clean !== $norm) {
+            $index[$clean] = $rData;
+        }
+
+        $inv = self::invertName($name);
+        if ($inv) {
+            $normInv = StringNormalizer::normalizeString($inv, false);
+            if ($normInv !== '') {
+                $index[$normInv] = $rData;
+            }
+            $normInvUpper = StringNormalizer::normalizeString($inv, true);
+            if ($normInvUpper !== '') {
+                $index[$normInvUpper] = $rData;
+            }
+            $cleanInv = preg_replace('/[.,;]/', ' ', $normInv);
+            $cleanInv = preg_replace('/\s+/', ' ', trim($cleanInv));
+            if ($cleanInv !== '' && $cleanInv !== $normInv) {
+                $index[$cleanInv] = $rData;
+            }
+        }
+    }
+
+    /**
+     * Resolve um nome textual de autor para sua entidade no tesauro e, se aplicável, para o docente CECH correspondente.
+     *
+     * @param string|null $name Nome ou variante de citação do autor
+     * @return array{identityId: int, preferredName: string, researcher: ?array{id: int, fullName: string, slug: string, idLattes: string, department: ?string, departmentCode: ?string}}|null
      */
     public function resolveAuthorData(?string $name): ?array
     {
-        if ($name === null || trim($name) === '') {
+        if ($name === null) {
+            return null;
+        }
+
+        $name = trim($name);
+        if ($name === '' || mb_strlen($name) < 2) {
             return null;
         }
 
         $this->initIndex();
 
-        $norm = StringNormalizer::normalizeString(trim($name), false);
-        if (isset($this->authorIndex[$norm])) {
-            return $this->authorIndex[$norm];
+        $norm = StringNormalizer::normalizeString($name, false);
+        if (array_key_exists($norm, $this->runtimeResolveCache)) {
+            return $this->runtimeResolveCache[$norm];
         }
 
-        $normUpper = StringNormalizer::normalizeString(trim($name), true);
-        if (isset($this->authorIndex[$normUpper])) {
-            return $this->authorIndex[$normUpper];
-        }
-
-        // Try format with or without punctuation (e.g. "MARTINEZ, V. C." vs "MARTINEZ VC")
+        $normUpper = StringNormalizer::normalizeString($name, true);
         $clean = preg_replace('/[.,;]/', ' ', $norm);
         $clean = preg_replace('/\s+/', ' ', trim($clean));
-        if (isset($this->authorIndex[$clean])) {
-            return $this->authorIndex[$clean];
+
+        $inv = self::invertName($name);
+        $normInv = $inv ? StringNormalizer::normalizeString($inv, false) : '';
+        $normInvUpper = $inv ? StringNormalizer::normalizeString($inv, true) : '';
+        $cleanInv = $normInv !== '' ? preg_replace('/\s+/', ' ', trim(preg_replace('/[.,;]/', ' ', $normInv))) : '';
+
+        // 1. Verificação imediata em memória contra docentes do CECH (O(1))
+        $matchedResearcher = $this->cechResearchersIndex[$norm]
+            ?? ($this->cechResearchersIndex[$normUpper]
+            ?? ($this->cechResearchersIndex[$clean]
+            ?? ($normInv !== '' ? ($this->cechResearchersIndex[$normInv] ?? null) : null)
+            ?? ($normInvUpper !== '' ? ($this->cechResearchersIndex[$normInvUpper] ?? null) : null)
+            ?? ($cleanInv !== '' ? ($this->cechResearchersIndex[$cleanInv] ?? null) : null)));
+
+        if ($matchedResearcher !== null) {
+            $result = [
+                'identityId' => 0,
+                'preferredName' => $matchedResearcher['fullName'],
+                'researcher' => $matchedResearcher,
+            ];
+            $this->runtimeResolveCache[$norm] = $result;
+            return $result;
         }
 
+        // 2. Consulta direcionada ao banco de dados nas tabelas do Tesauro
+        $candidates = array_values(array_unique(array_filter([
+            $norm,
+            $normUpper,
+            $clean,
+            $normInv !== '' ? $normInv : null,
+            $normInvUpper !== '' ? $normInvUpper : null,
+            $cleanInv !== '' ? $cleanInv : null,
+        ])));
+
+        if (empty($candidates)) {
+            $this->runtimeResolveCache[$norm] = null;
+            return null;
+        }
+
+        $conn = $this->em->getConnection();
+
+        // Busca em author_name_variants com join em author_identities
+        $row = $conn->fetchAssociative('
+            SELECT ai.id as identityId, ai.preferred_name as preferredName
+            FROM author_name_variants anv
+            JOIN author_identities ai ON ai.id = anv.author_identity_id
+            WHERE anv.normalized_name IN (?) AND anv.status = 1 AND ai.status = 1
+            LIMIT 1
+        ', [$candidates], [ArrayParameterType::STRING]);
+
+        if (!$row) {
+            // Busca direta em author_identities
+            $row = $conn->fetchAssociative('
+                SELECT id as identityId, preferred_name as preferredName
+                FROM author_identities
+                WHERE normalized_name IN (?) AND status = 1
+                LIMIT 1
+            ', [$candidates], [ArrayParameterType::STRING]);
+        }
+
+        if ($row) {
+            $pref = (string)$row['preferredName'];
+            $prefNorm = StringNormalizer::normalizeString($pref, false);
+            $prefNormUpper = StringNormalizer::normalizeString($pref, true);
+
+            $matchedR = $this->cechResearchersIndex[$prefNorm]
+                ?? ($this->cechResearchersIndex[$prefNormUpper] ?? null);
+
+            $result = [
+                'identityId' => (int)$row['identityId'],
+                'preferredName' => $pref,
+                'researcher' => $matchedR,
+            ];
+            $this->runtimeResolveCache[$norm] = $result;
+            return $result;
+        }
+
+        $this->runtimeResolveCache[$norm] = null;
         return null;
     }
 
     /**
-     * Returns the array of citation name variants from the Thesaurus for a given Researcher.
-     * @return array<string>
+     * Retorna a lista de todas as variações de nomes de citação cadastradas no tesauro para um determinado pesquisador.
+     *
+     * @param Researcher $researcher Entidade do pesquisador
+     * @return array<string> Lista de nomes de citação
      */
     public function getCitationVariantsForResearcher(Researcher $researcher): array
     {
-        $this->initIndex();
-        $rId = $researcher->getId();
-
-        if ($rId && isset($this->researcherCitationVariants[$rId]) && !empty($this->researcherCitationVariants[$rId])) {
-            return array_values(array_unique($this->researcherCitationVariants[$rId]));
-        }
-
-        // Direct lookup from author thesaurus tables
         $fullName = trim((string)$researcher->getFullName());
         if ($fullName !== '') {
             $norm = StringNormalizer::normalizeString($fullName, true);
@@ -246,7 +322,7 @@ class AuthorResolverService
             }
         }
 
-        // Fallback to researcher citationNames string
+        // Fallback para citationNames da entidade
         $cit = (string)$researcher->getCitationNames();
         if ($cit !== '') {
             return array_values(array_filter(array_map('trim', explode(';', $cit))));
@@ -256,15 +332,22 @@ class AuthorResolverService
     }
 
     /**
-     * Resolves an author and renders rich HTML.
-     * If the author is a CECH researcher, it returns a clickable link to their public profile.
+     * Resolve um autor e gera o snippet HTML formatado para exibição.
+     * Se o autor corresponder a um docente do CECH, gera link clicável para o perfil público com ícone indicador.
+     *
+     * @param string $authorName Nome completo do autor como veio na produção
+     * @param string|null $citationName Nome em citação (se disponível)
+     * @param int|null $currentResearcherId ID do pesquisador dono do currículo sendo visualizado (para aplicar destaque visual)
+     * @return string Código HTML seguro formatado
      */
     public function renderAuthorHtml(string $authorName, ?string $citationName = null, ?int $currentResearcherId = null): string
     {
         $display = trim($citationName ?: $authorName);
-        if ($display === '') return '';
+        if ($display === '') {
+            return '';
+        }
 
-        $resolved = $this->resolveAuthorData($display) 
+        $resolved = $this->resolveAuthorData($display)
             ?: ($authorName !== '' ? $this->resolveAuthorData($authorName) : null)
             ?: ($citationName !== '' ? $this->resolveAuthorData($citationName) : null);
 
@@ -311,7 +394,11 @@ class AuthorResolverService
     }
 
     /**
-     * Renders a full list of production authors, passing each through the Author Thesaurus.
+     * Renderiza a lista completa de coautores de uma produção científica aplicando desambiguação ontológica em cada um.
+     *
+     * @param mixed $productionOrAuthors Objeto ProductionItem ou coleção/array de ProductionAuthor ou strings
+     * @param int|null $currentResearcherId ID do pesquisador atual (para destaque visual)
+     * @return string String HTML com os autores separados por ponto-e-vírgula
      */
     public function renderProductionAuthors(mixed $productionOrAuthors, ?int $currentResearcherId = null): string
     {
@@ -369,3 +456,4 @@ class AuthorResolverService
         return implode('; ', $rendered);
     }
 }
+

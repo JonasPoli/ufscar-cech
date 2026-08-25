@@ -1,3 +1,25 @@
+{#
+    Template: templates/pub/professor/show.html.twig
+    Finalidade: Exibição completa do perfil público do pesquisador, dados biográficos, produções científicas e orientações.
+    
+    Variáveis Recebidas do Controller:
+    @var researcher \App\Entity\Researcher Entidade do pesquisador com relacionamentos carregados
+    @var articles \App\Entity\ProductionItem[] Lista de artigos científicos ordenados por ano decrescente
+    @var books \App\Entity\ProductionItem[] Lista de livros publicados
+    @var chapters \App\Entity\ProductionItem[] Lista de capítulos de livros
+    @var events \App\Entity\ProductionItem[] Trabalhos em eventos e anais de congressos
+    @var newspaperTexts \App\Entity\ProductionItem[] Textos em jornais ou revistas
+    @var techWorks \App\Entity\ProductionItem[] Trabalhos técnicos e relatórios
+    @var software \App\Entity\ProductionItem[] Softwares e programas de computador
+    @var patents \App\Entity\ProductionItem[] Patentes e registros de marcas
+    @var artistic \App\Entity\ProductionItem[] Produções artísticas e culturais
+    @var otherProds \App\Entity\ProductionItem[] Outras produções não categorizadas
+    @var completedOrientations \App\Entity\Orientation[] Orientações concluídas
+    @var ongoingOrientations \App\Entity\Orientation[] Orientações em andamento
+    @var orientationsCount array<string, int> Contagem agregada de orientações por nível acadêmico
+    @var totalWithDoi int Total de produções com identificador DOI cadastrado
+    @var allYears array<int, bool> Mapa de anos com produção ativa
+#}
 {% extends 'pub/base.html.twig' %}
 
 {% block title %}{{ researcher.fullName }} | Currículo Lattes & Produção Científica — CECH UFSCar{% endblock %}

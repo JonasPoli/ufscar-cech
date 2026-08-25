@@ -13,6 +13,15 @@ use Twig\TwigFunction;
  *  {{ enumName.ITEM.value }}
 ******************/
 
+/**
+ * Extensão Twig que permite instanciar e acessar Enums do PHP diretamente nos templates Twig.
+ *
+ * Exemplo de uso em Twig:
+ * ```twig
+ * {% set lang = enum('LanguageEnum') %}
+ * {{ lang.PORTUGUESE.value }}
+ * ```
+ */
 class EnumExtension extends AbstractExtension
 {
     /**

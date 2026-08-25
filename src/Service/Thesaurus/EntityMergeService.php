@@ -11,14 +11,35 @@ use App\Entity\Institution;
 use App\Entity\InstitutionVariation;
 use Doctrine\ORM\EntityManagerInterface;
 
+/**
+ * Serviço de fusão e unificação de entidades duplicadas nos diferentes Tesauros.
+ *
+ * Suporta a mesclagem de:
+ * 1. Instituições (Institution / InstitutionVariation)
+ * 2. Países (Country / CountryVariation)
+ * 3. Identidades de Autores (AuthorIdentity / AuthorNameVariant / AuthorExternalIdentifier)
+ * 4. Periódicos Qualis (QualisJournal / JournalVariation)
+ *
+ * Ao realizar uma mesclagem, as fontes secundárias são excluídas e todos os seus nomes e variações
+ * são convertidos em variantes vinculadas à entidade Master eleita.
+ */
 class EntityMergeService
 {
+    /**
+     * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
+     */
     public function __construct(
         private readonly EntityManagerInterface $em
     ) {}
 
     /**
-     * Merge multiple Institutions into one Master Institution
+     * Mescla múltiplas instituições secundárias em uma Instituição Master canônica.
+     *
+     * @param int $masterId ID da instituição principal
+     * @param array<int> $sourceIds IDs das instituições que serão fundidas e removidas
+     * @param array<string, mixed> $selectedFields Campos opcionais para atualizar a instituição Master
+     * @return Institution Entidade Master atualizada
+     * @throws \InvalidArgumentException Se a instituição Master não for encontrada
      */
     public function mergeInstitutions(int $masterId, array $sourceIds, array $selectedFields = []): Institution
     {
@@ -95,7 +116,13 @@ class EntityMergeService
     }
 
     /**
-     * Merge multiple Countries into Master Country
+     * Mescla múltiplos países em um País Master canônico e preserva todas as variações históricas.
+     *
+     * @param int $masterId ID do país principal
+     * @param array<int> $sourceIds IDs dos países secundários a serem mesclados
+     * @param array<string, mixed> $selectedFields Campos para atualizar no país Master
+     * @return Country
+     * @throws \InvalidArgumentException Se o país Master não for encontrado
      */
     public function mergeCountries(int $masterId, array $sourceIds, array $selectedFields = []): Country
     {
@@ -160,7 +187,14 @@ class EntityMergeService
     }
 
     /**
-     * Merge multiple AuthorIdentities into Master AuthorIdentity
+     * Mescla múltiplas identidades de autor em uma identidade Master, consolidando
+     * variantes de citação e identificadores externos (ORCID, Scopus, etc.).
+     *
+     * @param int $masterId ID da identidade Master
+     * @param array<int> $sourceIds IDs das identidades que serão fundidas
+     * @param array<string, mixed> $selectedFields Campos para atualizar na identidade Master
+     * @return AuthorIdentity
+     * @throws \InvalidArgumentException Se a identidade Master não for encontrada
      */
     public function mergeAuthors(int $masterId, array $sourceIds, array $selectedFields = []): AuthorIdentity
     {
@@ -246,7 +280,13 @@ class EntityMergeService
     }
 
     /**
-     * Merge multiple QualisJournals into Master QualisJournal
+     * Mescla múltiplos periódicos Qualis em um periódico Master e preserva todas as variantes textuais.
+     *
+     * @param int $masterId ID do periódico Qualis Master
+     * @param array<int> $sourceIds IDs dos periódicos que serão mesclados
+     * @param array<string, mixed> $selectedFields Campos para atualizar no periódico Master
+     * @return \App\Entity\QualisJournal
+     * @throws \InvalidArgumentException Se o periódico Master não for encontrado
      */
     public function mergeJournals(int $masterId, array $sourceIds, array $selectedFields = []): \App\Entity\QualisJournal
     {

@@ -10,10 +10,25 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
+/**
+ * Serviço de coleta e download automatizado das fotos de perfil oficiais dos pesquisadores no CNPq Lattes.
+ *
+ * Executa requisições aos servlets públicos do CNPq (wspessoa e buscatextual),
+ * resolvendo o identificador interno 'K-ID' a partir do ID Lattes de 16 dígitos,
+ * validando o MIME-type binário e armazenando as fotos em `public/uploads/photos/`.
+ */
 class LattesPhotoCrawlerService
 {
+    /** Diretório físico de destino das imagens no servidor */
     private string $photosDir;
 
+    /**
+     * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
+     * @param ResearcherRepository $researcherRepo Repositório de pesquisadores
+     * @param StringNormalizer $normalizer Utilitário de normalização de strings
+     * @param LoggerInterface|null $logger Logger do sistema
+     * @param string $photosDir Caminho injetado via autowiring para a pasta de fotos
+     */
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly ResearcherRepository $researcherRepo,
@@ -28,7 +43,10 @@ class LattesPhotoCrawlerService
     }
 
     /**
-     * Crawls photo for a specific researcher from CNPq Lattes servlets.
+     * Tenta baixar e salvar a foto de perfil do pesquisador a partir dos servlets do CNPq.
+     *
+     * @param Researcher $researcher Entidade do pesquisador
+     * @return string|null Caminho relativo da foto salva (ex: 'uploads/photos/123456.jpg') ou null caso não encontrada
      */
     public function crawlPhoto(Researcher $researcher): ?string
     {

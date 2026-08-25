@@ -9,27 +9,50 @@ use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
 /**
- * Service responsible for resolving the Qualis rating and canonical Journal for any given
- * journal name, acronym, variant, or ISSN, leveraging the Thesaurus variation index.
+ * Serviço responsável por resolver a classificação Qualis (A1 a C) e a entidade QualisJournal canônica.
+ *
+ * Utiliza estratégias em cascata com cache:
+ * 1. Resolução exata por ISSN normalizado.
+ * 2. Correspondência exata por título normalizado.
+ * 3. Correspondência sem termos entre parênteses.
+ * 4. Correspondência por palavras-chave relevantes (removendo stop words).
+ * 5. Correspondência por variações cadastradas no tesauro (journal_name_variants).
  */
 class JournalResolverService
 {
+    /** Chave de cache do índice do tesauro de periódicos */
     public const CACHE_KEY = 'thesaurus_journal_index_v2';
 
-    /** @var array<string, string> */
+    /**
+     * Mapeamento de títulos normalizados para estrato Qualis.
+     * @var array<string, string>|null
+     */
     private ?array $titleMap = null;
 
-    /** @var array<string, string> */
+    /**
+     * Mapeamento de palavras-chave limpas para estrato Qualis.
+     * @var array<string, string>|null
+     */
     private ?array $keywordMap = null;
 
-    /** @var array<string, string> */
+    /**
+     * Mapeamento de ISSNs limpos para estrato Qualis.
+     * @var array<string, string>|null
+     */
     private ?array $issnMap = null;
 
+    /**
+     * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
+     * @param CacheInterface|null $cache Serviço opcional de cache do Symfony
+     */
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly ?CacheInterface $cache = null
     ) {}
 
+    /**
+     * Invalida as estruturas em memória e o cache persistido do tesauro de periódicos.
+     */
     public function clearCache(): void
     {
         $this->titleMap = null;
@@ -40,6 +63,13 @@ class JournalResolverService
         }
     }
 
+    /**
+     * Normaliza uma string removendo entidades HTML, acentuação (ASCII translit),
+     * pontuação e caracteres não alfanuméricos em minúsculas.
+     *
+     * @param string|null $str String original do nome do periódico
+     * @return string String normalizada
+     */
     public static function normalizeString(?string $str): string
     {
         if ($str === null || $str === '') return '';
@@ -52,6 +82,13 @@ class JournalResolverService
         return trim(preg_replace('/[^a-z0-9]/', ' ', $str));
     }
 
+    /**
+     * Extrai apenas as palavras-chave relevantes removendo preposições e termos genéricos de periódicos
+     * (ex: 'journal', 'revista', 'cadernos', 'online', 'capes').
+     *
+     * @param string|null $str Título ou variação
+     * @return string String contendo apenas palavras-chave significativas
+     */
     public static function cleanKeywords(?string $str): string
     {
         $norm = self::normalizeString($str);
@@ -146,8 +183,12 @@ class JournalResolverService
     }
 
     /**
-     * Resolves the Qualis rating (e.g. 'A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C')
-     * for a given journal name and/or ISSN.
+     * Resolve a classificação Qualis CAPES (ex: 'A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C')
+     * para um determinado nome de periódico ou ISSN.
+     *
+     * @param string|null $journalName Nome original do periódico no Lattes
+     * @param string|null $issn Código ISSN (com ou sem hífen)
+     * @return string|null Estrato Qualis resolvido ou null caso não localizado
      */
     public function resolveQualis(?string $journalName, ?string $issn = null): ?string
     {
@@ -192,7 +233,11 @@ class JournalResolverService
     }
 
     /**
-     * Resolves the full QualisJournal entity by journal name or ISSN.
+     * Resolve a entidade canônica QualisJournal a partir do nome ou ISSN do periódico.
+     *
+     * @param string|null $journalName Nome do periódico
+     * @param string|null $issn Código ISSN
+     * @return QualisJournal|null Entidade encontrada ou null
      */
     public function resolveJournal(?string $journalName, ?string $issn = null): ?QualisJournal
     {
