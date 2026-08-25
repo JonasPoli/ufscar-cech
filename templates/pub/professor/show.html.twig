@@ -1,0 +1,1633 @@
+{% extends 'pub/base.html.twig' %}
+
+{% block title %}{{ researcher.fullName }} | Currículo Lattes & Produção Científica — CECH UFSCar{% endblock %}
+{% block meta_description %}{{ researcher.abstractResume ? researcher.abstractResume|slice(0, 155) ~ '...' : 'Perfil acadêmico, produções científicas, orientações e trajetória de ' ~ researcher.fullName ~ ' no CECH - UFSCar.' }}{% endblock %}
+{% block meta_keywords %}{{ researcher.fullName }}, {{ researcher.department }}, UFSCar, CECH, currículo lattes, produção científica, {{ researcher.citationNames }}{% endblock %}
+
+{% block og_type %}profile{% endblock %}
+{% block og_title %}{{ researcher.fullName }} — Docente e Pesquisador(a) do CECH UFSCar{% endblock %}
+{% block og_description %}{{ researcher.abstractResume ? researcher.abstractResume|slice(0, 155) ~ '...' : 'Currículo e produção científica de ' ~ researcher.fullName ~ ' no CECH - UFSCar.' }}{% endblock %}
+
+{# ── Academic Google Scholar Meta Tags ── #}
+{% block academic_meta %}
+    {% for a in articles|slice(0, 8) %}
+        <meta name="citation_title" content="{{ a.title|e('html_attr') }}">
+        <meta name="citation_author" content="{{ researcher.fullName|e('html_attr') }}">
+        {% if a.year %}<meta name="citation_publication_date" content="{{ a.year }}">{% endif %}
+        {% if a.journalName %}<meta name="citation_journal_title" content="{{ a.journalName|e('html_attr') }}">{% endif %}
+        {% if a.doi %}<meta name="citation_doi" content="{{ a.doi|e('html_attr') }}">{% endif %}
+        {% if a.issn %}<meta name="citation_issn" content="{{ a.issn|e('html_attr') }}">{% endif %}
+    {% endfor %}
+{% endblock %}
+
+{# ── Schema.org Structured Data (JSON-LD) for Person ── #}
+{% block schema_json_ld %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "@id": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}{{ path('app_pub_professor_show', {'slugOrId': researcher.slug ?: researcher.idLattes}) }}#person",
+    "name": "{{ researcher.fullName|e('js') }}",
+    {% if researcher.citationNames %}"alternateName": {{ researcher.citationNames|split(';')|map(n => n|trim)|json_encode|raw }},{% endif %}
+    "jobTitle": "Docente e Pesquisador(a)",
+    "worksFor": {
+        "@type": "CollegeOrUniversity",
+        "name": "Centro de Educação e Ciências Humanas — UFSCar",
+        "parentOrganization": {
+            "@type": "CollegeOrUniversity",
+            "name": "Universidade Federal de São Carlos",
+            "url": "https://www.ufscar.br"
+        }
+    },
+    {% if researcher.department %}"department": "{{ researcher.department|e('js') }}",{% endif %}
+    {% if researcher.email %}"email": "mailto:{{ researcher.email }}",{% endif %}
+    "sameAs": [
+        "{{ researcher.lattesUrl }}"{% if researcher.orcid %},
+        "{{ researcher.orcidUrl }}"{% endif %}
+    ],
+    {% if researcher.abstractResume %}"description": "{{ researcher.abstractResume|slice(0, 300)|e('js') }}",{% endif %}
+    "alumniOf": [
+        {% for e in researcher.educations %}
+            {
+                "@type": "EducationalOrganization",
+                "name": "{{ e.institutionName|e('js') }}"
+            }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ],
+    "knowsAbout": [
+        {% for ka in researcher.knowledgeAreas %}
+            "{{ ka.area|e('js') }}"{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+}
+</script>
+{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background: #fff !important; color: #000 !important; font-size: 11pt; }
+            .glass-card { background: #fff !important; border: 1px solid #ccc !important; box-shadow: none !important; }
+            sl-tab-group::part(nav) { display: none !important; }
+            sl-tab-panel { display: block !important; opacity: 1 !important; visibility: visible !important; }
+            a { text-decoration: none !important; color: #000 !important; }
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- Breadcrumbs -->
+    <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 no-print" aria-label="Breadcrumb">
+        <a href="{{ path('app_pub_home') }}" class="hover:text-sky-600 dark:hover:text-sky-400">Início</a>
+        <span>/</span>
+        {% if researcher.departmentCode %}
+            <a href="{{ path('app_pub_department_show', {'codeOrSlug': researcher.departmentCode}) }}" class="hover:text-sky-600 dark:hover:text-sky-400">
+                {{ researcher.department }}
+            </a>
+            <span>/</span>
+        {% endif %}
+        <span class="text-slate-900 dark:text-white font-medium truncate" aria-current="page">{{ researcher.fullName }}</span>
+    </nav>
+
+    <!-- Researcher Profile Header Card -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm relative overflow-hidden">
+        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6 flex-1 min-w-0">
+                <!-- Avatar / Photo -->
+                <div class="flex h-28 w-28 sm:h-32 sm:w-32 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-lg shadow-sky-500/20 {% if not researcher.photoUrl %}bg-gradient-to-tr from-sky-600 via-indigo-600 to-purple-600 text-white font-bold text-3xl sm:text-4xl{% endif %}">
+                    {% if researcher.photoUrl %}
+                        <img src="{{ researcher.photoUrl }}" alt="{{ researcher.fullName }}" class="h-full w-full object-cover" onerror="this.onerror=null;this.parentElement.innerHTML='{{ researcher.fullName|slice(0, 2)|upper }}';this.parentElement.className='flex h-28 w-28 sm:h-32 sm:w-32 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-lg bg-gradient-to-tr from-sky-600 via-indigo-600 to-purple-600 text-white font-bold text-3xl sm:text-4xl';">
+                    {% else %}
+                        {{ researcher.fullName|slice(0, 2)|upper }}
+                    {% endif %}
+                </div>
+
+                <!-- Profile Info -->
+                <div class="flex-1 min-w-0 space-y-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                            {{ researcher.fullName }}
+                        </h1>
+                        {% if researcher.departmentCode %}
+                            <span class="rounded-full bg-sky-100 px-3 py-0.5 text-xs font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                                {{ researcher.departmentCode }}
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    {% set citationVariants = author_thesaurus_variants(researcher) %}
+                    {% if citationVariants|length > 0 %}
+                        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                            <strong class="font-medium text-slate-700 dark:text-slate-300">Nomes em Citação:</strong> {{ citationVariants|join('; ') }}
+                        </p>
+                    {% elseif researcher.citationNames %}
+                        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                            <strong class="font-medium text-slate-700 dark:text-slate-300">Nomes em Citação:</strong> {{ researcher.citationNames }}
+                        </p>
+                    {% endif %}
+
+                    <p class="text-sm font-medium text-sky-700 dark:text-sky-400">
+                        {{ researcher.department ?: 'Centro de Educação e Ciências Humanas — UFSCar' }}
+                    </p>
+
+                    <!-- Metadata pills -->
+                    <div class="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-500 dark:text-slate-400">
+                        {% if researcher.birthCountry or researcher.nationality %}
+                            {{ country_badge(researcher.birthCountry ?: researcher.nationality) }}
+                        {% endif %}
+                        {% if researcher.admissionYear or researcher.leaveYear %}
+                            {% if researcher.isActiveInCech %}
+                                <span class="flex items-center gap-1">
+                                    <sl-icon name="calendar-check" class="text-emerald-600 dark:text-emerald-400"></sl-icon> {{ researcher.cechPeriodLabel }}
+                                </span>
+                            {% else %}
+                                <span class="flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-400" title="Docente com vínculo encerrado no CECH">
+                                    <sl-icon name="clock-history"></sl-icon> {{ researcher.cechPeriodLabel }} (Docente Aposentado/Histórico)
+                                </span>
+                            {% endif %}
+                        {% endif %}
+                        {% if researcher.workCity or researcher.workState or researcher.workAgency %}
+                            <span class="flex items-center gap-1">
+                                <sl-icon name="building"></sl-icon>
+                                {{ [researcher.workAgency ?: researcher.unit, researcher.workCity ~ (researcher.workState ? '/' ~ researcher.workState : '')]|filter(v => v is not empty)|join(' • ') }}
+                            </span>
+                        {% endif %}
+                        {% if researcher.lastLattesUpdate %}
+                            <span class="flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
+                                <sl-icon name="clock-history"></sl-icon> Atualização Lattes: {{ researcher.lastLattesUpdate|date('d/m/Y') }}
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    {% if researcher.languageProficiencies|length > 0 %}
+                        <div class="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+                            <span class="text-slate-400 font-medium mr-1 flex items-center gap-1">
+                                <sl-icon name="translate"></sl-icon> Idiomas:
+                            </span>
+                            {% for lang in researcher.languageProficiencies %}
+                                <span class="rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:text-slate-300" title="Compreensão: {{ lang.comprehension ?: '-' }} | Fala: {{ lang.speaking ?: '-' }} | Leitura: {{ lang.reading ?: '-' }} | Escrita: {{ lang.writing ?: '-' }}">
+                                    <strong class="font-semibold text-sky-600 dark:text-sky-400">{{ lang.language }}</strong>
+                                    {% if lang.reading %}<span class="text-slate-400 text-[10px]"> (Lê: {{ lang.reading|lower }})</span>{% endif %}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- External Action Links & Academic Export -->
+            <div class="flex flex-wrap lg:flex-col gap-2 w-full lg:w-auto shrink-0 pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-200/60 dark:border-white/10 no-print">
+                <a href="{{ researcher.lattesUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 dark:bg-sky-600 dark:hover:bg-sky-500 shadow-sm transition-colors flex-1 lg:flex-none" title="Abrir Currículo Lattes oficial no CNPq">
+                    <sl-icon name="box-arrow-up-right"></sl-icon> Currículo Lattes
+                </a>
+
+                {% if researcher.orcid %}
+                    <a href="{{ researcher.orcidUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-50/50 px-4 py-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60 shadow-sm transition-colors flex-1 lg:flex-none" title="Abrir registro ORCID em nova aba">
+                        <span class="h-3.5 w-3.5 rounded-full bg-emerald-500 text-[9px] text-white flex items-center justify-center font-bold">iD</span>
+                        ORCID: {{ researcher.orcid }}
+                    </a>
+                {% endif %}
+
+                {% if researcher.email %}
+                    <a href="mailto:{{ researcher.email }}" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+                        <sl-icon name="envelope"></sl-icon> {{ researcher.email }}
+                    </a>
+                {% endif %}
+
+                <!-- Export Action Dropdown -->
+                <div class="flex items-center gap-1.5 pt-1 w-full justify-start lg:justify-end">
+                    <a href="{{ path('app_pub_professor_export', {'slugOrId': researcher.slug ?: researcher.idLattes, 'format': 'bibtex'}) }}" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300" title="Baixar todas as produções no formato BibTeX">
+                        <sl-icon name="download"></sl-icon> BibTeX
+                    </a>
+                    <a href="{{ path('app_pub_professor_export', {'slugOrId': researcher.slug ?: researcher.idLattes, 'format': 'json'}) }}" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300" title="Baixar currículo completo em JSON">
+                        <sl-icon name="code-slash"></sl-icon> JSON
+                    </a>
+                    <a href="{{ path('app_pub_professor_export', {'slugOrId': researcher.slug ?: researcher.idLattes, 'format': 'csv'}) }}" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300" title="Exportar tabela de produções em CSV">
+                        <sl-icon name="file-earmark-spreadsheet"></sl-icon> CSV
+                    </a>
+                    <button type="button" onclick="window.print()" class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300" title="Imprimir / Salvar em PDF">
+                        <sl-icon name="printer"></sl-icon>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Abstract Resume -->
+        {% if researcher.abstractResume %}
+            <div class="mt-6 pt-6 border-t border-slate-200/60 dark:border-white/10 space-y-2">
+                <h2 class="font-heading text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <sl-icon name="file-text" class="text-sky-500"></sl-icon> Resumo do Currículo Lattes
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed text-justify">
+                    {{ researcher.abstractResume }}
+                </p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- ── KPI Summary Cards (Métricas de Inteligência Acadêmica) ── -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 no-print">
+        <!-- Card 1: Artigos -->
+        <div class="glass-card rounded-2xl p-4 space-y-1 relative overflow-hidden border-sky-500/20">
+            <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Artigos Periódicos</div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-sky-600 dark:text-sky-400 font-heading">
+                {{ kpiStats.articlesCount }}
+            </div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                <span class="inline-block h-2 w-2 rounded-full {% if kpiStats.percentArticlesWithDoi > 50 %}bg-emerald-500{% else %}bg-amber-500{% endif %}"></span>
+                {{ kpiStats.percentArticlesWithDoi }}% com DOI
+            </div>
+        </div>
+
+        <!-- Card 2: Livros & Capítulos -->
+        <div class="glass-card rounded-2xl p-4 space-y-1 relative overflow-hidden border-amber-500/20">
+            <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Livros / Capítulos</div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400 font-heading">
+                {{ kpiStats.booksCount + kpiStats.chaptersCount }}
+            </div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                {{ kpiStats.booksCount }} livros, {{ kpiStats.chaptersCount }} cap.
+            </div>
+        </div>
+
+        <!-- Card 3: Eventos -->
+        <div class="glass-card rounded-2xl p-4 space-y-1 relative overflow-hidden border-purple-500/20">
+            <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Em Congressos</div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-purple-600 dark:text-purple-400 font-heading">
+                {{ kpiStats.eventsCount }}
+            </div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                Trabalhos e Anais
+            </div>
+        </div>
+
+        <!-- Card 4: Produções Técnicas / Inovação -->
+        <div class="glass-card rounded-2xl p-4 space-y-1 relative overflow-hidden border-emerald-500/20">
+            <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Produção Técnica</div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 font-heading">
+                {{ kpiStats.techCount }}
+            </div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                Técnicos, Softwares, Pat.
+            </div>
+        </div>
+
+        <!-- Card 5: Orientações Concluídas -->
+        <div class="glass-card rounded-2xl p-4 space-y-1 relative overflow-hidden border-rose-500/20">
+            <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Orientações Concl.</div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 font-heading">
+                {{ kpiStats.orientationsCompleted }}
+            </div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight truncate" title="{% set allP = [] %}{% if kpiStats.orientationsBreakdown.doutorado_concluido > 0 %}{% set allP = allP|merge([kpiStats.orientationsBreakdown.doutorado_concluido ~ ' Doutorado']) %}{% endif %}{% if kpiStats.orientationsBreakdown.mestrado_concluido > 0 %}{% set allP = allP|merge([kpiStats.orientationsBreakdown.mestrado_concluido ~ ' Mestrado']) %}{% endif %}{% if kpiStats.orientationsBreakdown.pos_doc_concluido > 0 %}{% set allP = allP|merge([kpiStats.orientationsBreakdown.pos_doc_concluido ~ ' Pós-Doc']) %}{% endif %}{% if kpiStats.orientationsBreakdown.tcc_concluido > 0 %}{% set allP = allP|merge([kpiStats.orientationsBreakdown.tcc_concluido ~ ' TCC']) %}{% endif %}{% if kpiStats.orientationsBreakdown.iniciacao_concluido > 0 %}{% set allP = allP|merge([kpiStats.orientationsBreakdown.iniciacao_concluido ~ ' Inic. Científica']) %}{% endif %}{% if kpiStats.orientationsBreakdown.especializacao_concluido > 0 %}{% set allP = allP|merge([kpiStats.orientationsBreakdown.especializacao_concluido ~ ' Especialização']) %}{% endif %}{% if kpiStats.orientationsBreakdown.outras_concluido > 0 %}{% set allP = allP|merge([kpiStats.orientationsBreakdown.outras_concluido ~ ' Outras']) %}{% endif %}{{ allP|join(', ') }}">
+                {% set parts = [] %}
+                {% if kpiStats.orientationsBreakdown.doutorado_concluido > 0 %}
+                    {% set parts = parts|merge([kpiStats.orientationsBreakdown.doutorado_concluido ~ ' Dout']) %}
+                {% endif %}
+                {% if kpiStats.orientationsBreakdown.mestrado_concluido > 0 %}
+                    {% set parts = parts|merge([kpiStats.orientationsBreakdown.mestrado_concluido ~ ' Mest']) %}
+                {% endif %}
+                {% if kpiStats.orientationsBreakdown.pos_doc_concluido > 0 %}
+                    {% set parts = parts|merge([kpiStats.orientationsBreakdown.pos_doc_concluido ~ ' Pós-Doc']) %}
+                {% endif %}
+                {% if kpiStats.orientationsBreakdown.tcc_concluido > 0 %}
+                    {% set parts = parts|merge([kpiStats.orientationsBreakdown.tcc_concluido ~ ' TCC']) %}
+                {% endif %}
+                {% if kpiStats.orientationsBreakdown.iniciacao_concluido > 0 %}
+                    {% set parts = parts|merge([kpiStats.orientationsBreakdown.iniciacao_concluido ~ ' PIBIC']) %}
+                {% endif %}
+                {% if kpiStats.orientationsBreakdown.especializacao_concluido > 0 %}
+                    {% set parts = parts|merge([kpiStats.orientationsBreakdown.especializacao_concluido ~ ' Espec']) %}
+                {% endif %}
+                {% if kpiStats.orientationsBreakdown.outras_concluido > 0 %}
+                    {% set parts = parts|merge([kpiStats.orientationsBreakdown.outras_concluido ~ ' Outras']) %}
+                {% endif %}
+                {{ parts|slice(0, 3)|join(', ') ?: 'Nenhuma concluída' }}
+            </div>
+        </div>
+
+        <!-- Card 6: Total Produções & Média -->
+        <div class="glass-card rounded-2xl p-4 space-y-1 relative overflow-hidden border-indigo-500/20">
+            <div class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Acervo</div>
+            <div class="text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400 font-heading">
+                {{ kpiStats.totalProductions }}
+            </div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                Média: ~{{ kpiStats.averagePerYear }} / ano
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Visual Analytics & Interactive Charts Section (Somos UFMG Inspired) ── -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 no-print">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200/60 dark:border-white/10">
+            <div>
+                <h2 class="font-heading text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <sl-icon name="graph-up-arrow" class="text-sky-500"></sl-icon> Painel de Gráficos e Inteligência de Produção
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Análise cronológica da produção científica, intelectual e formação de recursos humanos ao longo dos anos.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button type="button" id="toggleChartsBtn" onclick="toggleChartsPanel()" class="inline-flex items-center gap-2 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800/60 px-3.5 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-100 transition-colors">
+                    <sl-icon name="arrows-expand" id="toggleIcon"></sl-icon> <span id="toggleText">Recolher Gráficos</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="chartsContainer" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Main Chart: Stacked Production Timeline -->
+            <div class="lg:col-span-8 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Evolução da Produção por Categoria (Histórico Anual)
+                    </h3>
+                    <span class="text-[11px] text-slate-400 font-mono">{{ kpiStats.firstYear }} - {{ kpiStats.lastYear }}</span>
+                </div>
+                <div class="h-72 w-full">
+                    <canvas id="productionTimelineChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Side Chart: Donut Category Distribution -->
+            <div class="lg:col-span-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Distribuição por Categoria
+                    </h3>
+                    <span class="text-[11px] text-slate-400 font-semibold">{{ kpiStats.totalProductions }} itens</span>
+                </div>
+                <div class="h-72 w-full flex items-center justify-center">
+                    <canvas id="categoryDonutChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Orientations Timeline Chart -->
+            {% if completedOrientations|length > 0 %}
+                <div class="lg:col-span-12 pt-4 border-t border-slate-200/60 dark:border-white/10 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                            <sl-icon name="people" class="text-rose-500"></sl-icon> Histórico de Orientações Concluídas por Nível
+                        </h3>
+                        <span class="text-[11px] text-slate-400">{{ kpiStats.orientationsCompleted }} concluídas, {{ kpiStats.orientationsOngoing }} em andamento</span>
+                    </div>
+                    <div class="h-56 w-full">
+                        <canvas id="orientationsTimelineChart"></canvas>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── Topic Keywords Cloud & Top Coauthors / Collaborators ── -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 no-print">
+        <!-- Topic Keywords -->
+        {% if topKeywords|length > 0 %}
+            <div class="glass-card rounded-3xl p-6 shadow-sm space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
+                    <h3 class="font-heading text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                        <sl-icon name="tags" class="text-sky-500"></sl-icon> Temas e Palavras-chave Frequentes
+                    </h3>
+                    <span class="text-[11px] text-slate-400">Mineração de títulos</span>
+                </div>
+                <div class="flex flex-wrap gap-2 pt-1">
+                    {% set maxCount = topKeywords|first %}
+                    {% for word, count in topKeywords %}
+                        {% set weight = ((count / (maxCount ?: 1)) * 100)|round %}
+                        <button type="button" onclick="filterByKeyword('{{ word }}')" class="rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-1 text-xs transition-all hover:border-sky-500 hover:scale-105 {% if weight > 70 %}bg-sky-500 text-white font-bold{% elseif weight > 40 %}bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-semibold{% else %}bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300{% endif %}" title="Filtrar produções contendo '{{ word }}' ({{ count }} ocorrências)">
+                            {{ word|capitalize }} <span class="text-[10px] opacity-75">({{ count }})</span>
+                        </button>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Top Coauthors / Collaborators -->
+        {% if topCoauthors|length > 0 %}
+            <div class="glass-card rounded-3xl p-6 shadow-sm space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
+                    <h3 class="font-heading text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                        <sl-icon name="people" class="text-indigo-500"></sl-icon> Principais Colaboradores e Coautores
+                    </h3>
+                    <span class="text-[11px] text-slate-400">Publicações conjuntas</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 max-h-56 overflow-y-auto pr-1">
+                    {% for coauthor in topCoauthors %}
+                        <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 p-2.5 flex items-center justify-between bg-white/40 dark:bg-slate-900/40 hover:border-slate-300 transition-colors">
+                            <div class="min-w-0 flex-1 mr-2">
+                                {% if coauthor.researcher %}
+                                    <a href="{{ path('app_pub_professor_show', {'slugOrId': coauthor.researcher.slug ?: coauthor.researcher.idLattes}) }}" class="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline truncate block" title="Ver perfil docente no CECH">
+                                        {{ coauthor.name }}
+                                    </a>
+                                    <span class="text-[10px] text-slate-400 truncate block">{{ coauthor.researcher.department ?: 'CECH UFSCar' }}</span>
+                                {% else %}
+                                    <span class="text-xs font-medium text-slate-800 dark:text-slate-200 truncate block" title="{{ coauthor.name }}">
+                                        {{ coauthor.name }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <span class="rounded-lg bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 shrink-0">
+                                {{ coauthor.count }} pub.
+                            </span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- ── Main Content Tabs (Completude de Todas as Seções do Lattes) ── -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm">
+        <sl-tab-group id="mainTabGroup">
+            <sl-tab slot="nav" panel="productions">
+                <sl-icon name="journal-bookmark" class="mr-1"></sl-icon> Produção Científica & Técnica ({{ researcher.productions|length }})
+            </sl-tab>
+            <sl-tab slot="nav" panel="orientations">
+                <sl-icon name="people" class="mr-1"></sl-icon> Orientações ({{ researcher.orientations|length }})
+            </sl-tab>
+            {% if researcher.researchProjects|length > 0 %}
+                <sl-tab slot="nav" panel="projects">
+                    <sl-icon name="kanban" class="mr-1"></sl-icon> Projetos ({{ researcher.researchProjects|length }})
+                </sl-tab>
+            {% endif %}
+            {% if researcher.professionalExperiences|length > 0 %}
+                <sl-tab slot="nav" panel="experience">
+                    <sl-icon name="briefcase" class="mr-1"></sl-icon> Atuação Profissional ({{ researcher.professionalExperiences|length }})
+                </sl-tab>
+            {% endif %}
+            <sl-tab slot="nav" panel="education">
+                <sl-icon name="mortarboard" class="mr-1"></sl-icon> Formação Acadêmica ({{ researcher.educations|filter(e => e.level not in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO'])|length }})
+            </sl-tab>
+            {% if researcher.educations|filter(e => e.level in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO'])|length > 0 %}
+                <sl-tab slot="nav" panel="complementary">
+                    <sl-icon name="award" class="mr-1"></sl-icon> Formação Complementar ({{ researcher.educations|filter(e => e.level in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO'])|length }})
+                </sl-tab>
+            {% endif %}
+            {% if researcher.examinationBoards|length > 0 %}
+                <sl-tab slot="nav" panel="boards">
+                    <sl-icon name="clipboard-check" class="mr-1"></sl-icon> Bancas ({{ researcher.examinationBoards|length }})
+                </sl-tab>
+            {% endif %}
+            {% if researcher.eventParticipations|length > 0 %}
+                <sl-tab slot="nav" panel="events">
+                    <sl-icon name="calendar-event" class="mr-1"></sl-icon> Eventos ({{ researcher.eventParticipations|length }})
+                </sl-tab>
+            {% endif %}
+            {% if researcher.awards|length > 0 %}
+                <sl-tab slot="nav" panel="awards">
+                    <sl-icon name="trophy" class="mr-1"></sl-icon> Prêmios e Títulos ({{ researcher.awards|length }})
+                </sl-tab>
+            {% endif %}
+            {% if researcher.knowledgeAreas|length > 0 %}
+                <sl-tab slot="nav" panel="areas">
+                    <sl-icon name="diagram-2" class="mr-1"></sl-icon> Áreas de Atuação ({{ researcher.knowledgeAreas|length }})
+                </sl-tab>
+            {% endif %}
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 TAB 1: PRODUÇÕES CIENTÍFICAS, TÉCNICAS E ARTÍSTICAS
+            ══════════════════════════════════════════════════════════════ -->
+            <sl-tab-panel name="productions" class="pt-6 space-y-6">
+
+                <!-- Real-time Filter & Search Toolbar -->
+                <div class="rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 bg-slate-50/70 dark:bg-slate-900/60 space-y-3 no-print">
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <div class="relative flex-1">
+                            <input type="text" id="prodSearchInput" oninput="filterProductions()" placeholder="Buscar por título, autor, periódico, evento ou ano..." class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 pl-9 text-xs text-slate-900 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20" />
+                            <sl-icon name="search" class="absolute left-3 top-2.5 text-slate-400 text-xs"></sl-icon>
+                        </div>
+
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button type="button" id="btnOnlyDoi" onclick="toggleOnlyDoi()" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 transition-colors">
+                                <sl-icon name="link-45deg"></sl-icon> Apenas com DOI
+                            </button>
+                            <button type="button" onclick="clearProdFilters()" class="rounded-xl px-3 py-2 text-xs font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+                                Limpar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Category Pills -->
+                    <div class="flex flex-wrap items-center gap-1.5 pt-1">
+                        <button type="button" onclick="setCategoryFilter('all')" class="category-pill active rounded-lg px-2.5 py-1 text-xs font-semibold bg-sky-600 text-white shadow-sm transition-all" data-category="all">
+                            Todas ({{ researcher.productions|length }})
+                        </button>
+                        {% if articles|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('artigo')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="artigo">
+                                Artigos ({{ articles|length }})
+                            </button>
+                        {% endif %}
+                        {% if books|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('livro')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="livro">
+                                Livros ({{ books|length }})
+                            </button>
+                        {% endif %}
+                        {% if chapters|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('capitulo')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="capitulo">
+                                Capítulos ({{ chapters|length }})
+                            </button>
+                        {% endif %}
+                        {% if newspaperTexts|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('jornal')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="jornal">
+                                Jornais/Revistas ({{ newspaperTexts|length }})
+                            </button>
+                        {% endif %}
+                        {% if events|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('evento')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="evento">
+                                Congressos ({{ events|length }})
+                            </button>
+                        {% endif %}
+                        {% if techWorks|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('tecnico')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="tecnico">
+                                Trabalhos Técnicos ({{ techWorks|length }})
+                            </button>
+                        {% endif %}
+                        {% if software|length > 0 or patents|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('inovacao')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="inovacao">
+                                Inovação ({{ software|length + patents|length }})
+                            </button>
+                        {% endif %}
+                        {% if artistic|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('artes')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="artes">
+                                Artes ({{ artistic|length }})
+                            </button>
+                        {% endif %}
+                        {% if otherProds|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('outra')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="outra">
+                                Outras ({{ otherProds|length }})
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 1. Articles in Journals -->
+                {% if articles|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="artigo">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="file-earmark-text" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                            Artigos em Periódicos ({{ articles|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in articles %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 hover:border-sky-300 dark:hover:border-sky-700 transition-colors space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="artigo" data-year="{{ p.year }}">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            {% if p.year %}
+                                                <span class="rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            {% set qBadge = p.journalName ? qualis_badge(p.journalName, p.issn) : '' %}
+                                            {% if qBadge %}
+                                                {{ qBadge|raw }}
+                                            {% elseif p.qualis %}
+                                                <span class="rounded-md px-2 py-0.5 text-[11px] font-bold badge-qualis-{{ p.qualis|lower }}">
+                                                    Qualis {{ p.qualis }}
+                                                </span>
+                                            {% endif %}
+                                            {% if p.nature %}
+                                                <span class="text-[11px] text-slate-400 font-medium">{{ p.nature }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <button type="button" onclick="copyCitation(this, '{{ p.title|e('js') }}', '{{ (p.journalName ?: '')|e('js') }}', '{{ p.year }}', '{{ p.doi ?: '' }}')" class="text-[11px] font-medium text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 flex items-center gap-1 no-print" title="Copiar citação ABNT">
+                                            <sl-icon name="clipboard"></sl-icon> Citar
+                                        </button>
+                                    </div>
+
+                                    <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white leading-snug prod-title">
+                                        {{ p.title }}
+                                    </h4>
+
+                                    <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
+                                        {% if p.journalName %}
+                                            <span class="font-medium italic text-slate-800 dark:text-slate-200">{{ p.journalName }}</span>
+                                        {% endif %}
+                                        {% if p.volume %} v. {{ p.volume }},{% endif %}
+                                        {% if p.issue %} n. {{ p.issue }},{% endif %}
+                                        {% if p.pages %} p. {{ p.pages }},{% endif %}
+                                        {% if p.issn %} ISSN: {{ p.issn }}{% endif %}
+                                    </div>
+
+                                    <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-white/10 text-xs">
+                                        <div class="text-slate-500 dark:text-slate-400 prod-authors">
+                                            {% if p.authors|length > 0 %}
+                                                Autores: {{ render_production_authors(p, researcher.id) }}
+                                            {% endif %}
+                                        </div>
+
+                                        {% if p.doi %}
+                                            <a href="{{ p.doiUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300 hover:underline shrink-0" title="Abrir artigo pelo DOI em nova aba">
+                                                <sl-icon name="box-arrow-up-right" class="text-[11px]"></sl-icon> DOI: {{ p.doi }}
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 2. Books -->
+                {% if books|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="livro">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="book" class="text-amber-600 dark:text-amber-400"></sl-icon>
+                            Livros Publicados ou Organizados ({{ books|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in books %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="livro" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}
+                                                <span class="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase">Livro</span>
+                                        </div>
+                                        <button type="button" onclick="copyCitation(this, '{{ p.title|e('js') }}', '{{ (p.publisher ?: '')|e('js') }}', '{{ p.year }}', '{{ p.doi ?: '' }}')" class="text-[11px] font-medium text-slate-400 hover:text-amber-600 flex items-center gap-1 no-print">
+                                            <sl-icon name="clipboard"></sl-icon> Citar
+                                        </button>
+                                    </div>
+                                    <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+                                    <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
+                                        {% if p.publisher %}Editora: {{ p.publisher }}.{% endif %}
+                                        {% if p.volume %} v. {{ p.volume }}.{% endif %}
+                                        {% if p.pages %} {{ p.pages }}.{% endif %}
+                                        {% if p.isbn %} ISBN: {{ p.isbn }}.{% endif %}
+                                    </div>
+                                    <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-white/10 text-xs">
+                                        <div class="text-slate-500 dark:text-slate-400 prod-authors">
+                                            {% if p.authors|length > 0 %}Autores: {{ render_production_authors(p, researcher.id) }}{% endif %}
+                                        </div>
+                                        {% if p.doi %}
+                                            <a href="{{ p.doiUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:underline shrink-0">
+                                                <sl-icon name="box-arrow-up-right"></sl-icon> DOI
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 3. Book Chapters -->
+                {% if chapters|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="capitulo">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="bookmark" class="text-purple-600 dark:text-purple-400"></sl-icon>
+                            Capítulos de Livros Publicados ({{ chapters|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in chapters %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="capitulo" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}
+                                                 <span class="rounded-md bg-purple-100 px-2 py-0.5 text-[11px] font-semibold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            <span class="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase">Capítulo</span>
+                                        </div>
+                                        <button type="button" onclick="copyCitation(this, '{{ p.title|e('js') }}', 'In: {{ (p.journalName ?: '')|e('js') }}', '{{ p.year }}', '{{ p.doi ?: '' }}')" class="text-[11px] font-medium text-slate-400 hover:text-purple-600 flex items-center gap-1 no-print">
+                                            <sl-icon name="clipboard"></sl-icon> Citar
+                                        </button>
+                                    </div>
+                                    <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+                                    <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
+                                        {% if p.journalName %}In: <span class="italic font-medium">{{ p.journalName }}</span>.{% endif %}
+                                        {% if p.publisher %} Editora: {{ p.publisher }}.{% endif %}
+                                        {% if p.volume %} v. {{ p.volume }}.{% endif %}
+                                        {% if p.pages %} p. {{ p.pages }}.{% endif %}
+                                    </div>
+                                    <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-white/10 text-xs">
+                                        <div class="text-slate-500 dark:text-slate-400 prod-authors">
+                                            {% if p.authors|length > 0 %}Autores: {{ render_production_authors(p, researcher.id) }}{% endif %}
+                                        </div>
+                                        {% if p.doi %}
+                                            <a href="{{ p.doiUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:underline shrink-0">
+                                                <sl-icon name="box-arrow-up-right"></sl-icon> DOI
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 4. Textos em Jornais e Revistas -->
+                {% if newspaperTexts|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="jornal">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="newspaper" class="text-blue-600 dark:text-blue-400"></sl-icon>
+                            Textos em Jornais de Notícias / Revistas ({{ newspaperTexts|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in newspaperTexts %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="jornal" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}
+                                                <span class="rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            <span class="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase">Jornal / Revista</span>
+                                        </div>
+                                    </div>
+                                    <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+                                    <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
+                                        {% if p.journalName %}Veículo: <span class="font-medium">{{ p.journalName }}</span>.{% endif %}
+                                        {% if p.pages %} p. {{ p.pages }}.{% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 5. Event Papers -->
+                {% if events|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="evento">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="calendar-event" class="text-rose-600 dark:text-rose-400"></sl-icon>
+                            Trabalhos em Anais de Congressos & Apresentações ({{ events|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in events %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="evento" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}
+                                                <span class="rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            <span class="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase">
+                                                {{ p.nature ?: 'Congresso' }}
+                                            </span>
+                                        </div>
+                                        <button type="button" onclick="copyCitation(this, '{{ p.title|e('js') }}', 'In: {{ (p.eventName ?: p.journalName ?: '')|e('js') }}', '{{ p.year }}', '{{ p.doi ?: '' }}')" class="text-[11px] font-medium text-slate-400 hover:text-rose-600 flex items-center gap-1 no-print">
+                                            <sl-icon name="clipboard"></sl-icon> Citar
+                                        </button>
+                                    </div>
+                                    <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+                                    <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
+                                        {% if p.eventName or p.journalName %}In: <span class="italic">{{ p.eventName ?: p.journalName }}</span>.{% endif %}
+                                        {% if p.eventCity %} Local: {{ p.eventCity }}.{% endif %}
+                                        {% if p.volume %} v. {{ p.volume }}.{% endif %}
+                                        {% if p.pages %} p. {{ p.pages }}.{% endif %}
+                                    </div>
+                                    <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-white/10 text-xs">
+                                        <div class="text-slate-500 dark:text-slate-400 prod-authors">
+                                            {% if p.authors|length > 0 %}Autores: {{ render_production_authors(p, researcher.id) }}{% endif %}
+                                        </div>
+                                        {% if p.doi %}
+                                            <a href="{{ p.doiUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:underline shrink-0">
+                                                <sl-icon name="box-arrow-up-right"></sl-icon> DOI
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 6. Technical Works & Consultancy -->
+                {% if techWorks|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="tecnico">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="gear" class="text-teal-600 dark:text-teal-400"></sl-icon>
+                            Trabalhos Técnicos, Pareceres e Consultorias ({{ techWorks|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in techWorks %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="tecnico" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}
+                                                <span class="rounded-md bg-teal-100 px-2 py-0.5 text-[11px] font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            <span class="text-[11px] font-bold text-teal-600 dark:text-teal-400 uppercase">{{ p.nature ?: 'Trabalho Técnico' }}</span>
+                                        </div>
+                                    </div>
+                                    <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+                                    {% if p.journalName %}<p class="text-xs text-slate-500 dark:text-slate-400 prod-details">{{ p.journalName }}</p>{% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 7. Innovation: Software & Patents -->
+                {% if software|length > 0 or patents|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="inovacao">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="cpu" class="text-indigo-600 dark:text-indigo-400"></sl-icon>
+                            Inovação Tecnológica: Softwares e Patentes ({{ software|length + patents|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in software|merge(patents) %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="inovacao" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}<span class="rounded-md bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">{{ p.year }}</span>{% endif %}
+                                            <span class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">{{ p.itemType }}</span>
+                                        </div>
+                                    </div>
+                                    <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+                                    {% if p.journalName %}<p class="text-xs text-slate-500 dark:text-slate-400 prod-details">{{ p.journalName }}</p>{% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 8. Artistic & Cultural -->
+                {% if artistic|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="artes">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="palette" class="text-purple-600 dark:text-purple-400"></sl-icon>
+                            Produção Artística e Cultural ({{ artistic|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in artistic %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="artes" data-year="{{ p.year }}">
+                                    <div class="flex items-center gap-2">
+                                        {% if p.year %}<span class="rounded-md bg-purple-100 px-2 py-0.5 text-[11px] font-semibold text-purple-800 dark:bg-purple-950 dark:text-purple-300">{{ p.year }}</span>{% endif %}
+                                        <span class="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase">{{ p.nature ?: 'Artes' }}</span>
+                                    </div>
+                                    <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 9. Outras Produções -->
+                {% if otherProds|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="outra">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="collection" class="text-slate-600 dark:text-slate-400"></sl-icon>
+                            Demais Tipos de Produção ({{ otherProds|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in otherProds %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="outra" data-year="{{ p.year }}">
+                                    <div class="flex items-center gap-2">
+                                        {% if p.year %}<span class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-800 dark:bg-slate-800 dark:text-slate-300">{{ p.year }}</span>{% endif %}
+                                    </div>
+                                    <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </sl-tab-panel>
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 TAB 2: ORIENTAÇÕES E SUPERVISÕES (CONCLUÍDAS E EM ANDAMENTO)
+            ══════════════════════════════════════════════════════════════ -->
+            <sl-tab-panel name="orientations" class="pt-6 space-y-8">
+                <!-- Completed Orientations -->
+                {% if completedOrientations|length > 0 %}
+                    <div class="space-y-4">
+                        <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <span class="flex items-center gap-2">
+                                <sl-icon name="check-circle-fill" class="text-emerald-600 dark:text-emerald-400"></sl-icon>
+                                Orientações Concluídas ({{ completedOrientations|length }})
+                            </span>
+                            <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                                {% set pCount = [] %}
+                                {% if kpiStats.orientationsBreakdown.doutorado_concluido > 0 %}{% set pCount = pCount|merge([kpiStats.orientationsBreakdown.doutorado_concluido ~ ' Doutorado']) %}{% endif %}
+                                {% if kpiStats.orientationsBreakdown.mestrado_concluido > 0 %}{% set pCount = pCount|merge([kpiStats.orientationsBreakdown.mestrado_concluido ~ ' Mestrado']) %}{% endif %}
+                                {% if kpiStats.orientationsBreakdown.pos_doc_concluido > 0 %}{% set pCount = pCount|merge([kpiStats.orientationsBreakdown.pos_doc_concluido ~ ' Pós-Doc']) %}{% endif %}
+                                {% if kpiStats.orientationsBreakdown.tcc_concluido > 0 %}{% set pCount = pCount|merge([kpiStats.orientationsBreakdown.tcc_concluido ~ ' TCC/Graduação']) %}{% endif %}
+                                {% if kpiStats.orientationsBreakdown.iniciacao_concluido > 0 %}{% set pCount = pCount|merge([kpiStats.orientationsBreakdown.iniciacao_concluido ~ ' PIBIC']) %}{% endif %}
+                                {% if kpiStats.orientationsBreakdown.especializacao_concluido > 0 %}{% set pCount = pCount|merge([kpiStats.orientationsBreakdown.especializacao_concluido ~ ' Especialização']) %}{% endif %}
+                                {% if kpiStats.orientationsBreakdown.outras_concluido > 0 %}{% set pCount = pCount|merge([kpiStats.orientationsBreakdown.outras_concluido ~ ' Outras']) %}{% endif %}
+                                {{ pCount|join(' • ') }}
+                            </span>
+                        </h3>
+                        <div class="space-y-3">
+                            {% for o in completedOrientations %}
+                                <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50 hover:border-emerald-300 transition-colors">
+                                    <div class="flex items-center justify-between">
+                                        {% if o.orientationType == 'DOUTORADO' %}
+                                            <span class="rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2 py-0.5 text-[11px] font-bold">Doutorado</span>
+                                        {% elseif o.orientationType == 'MESTRADO' %}
+                                            <span class="rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 text-[11px] font-bold">Mestrado</span>
+                                        {% elseif o.orientationType == 'POS_DOUTORADO' %}
+                                            <span class="rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 text-[11px] font-bold">Pós-Doutorado</span>
+                                        {% elseif o.orientationType == 'TCC_GRADUACAO' %}
+                                            <span class="rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2 py-0.5 text-[11px] font-bold">TCC / Graduação</span>
+                                        {% elseif o.orientationType == 'INICIACAO_CIENTIFICA' %}
+                                            <span class="rounded-md bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300 px-2 py-0.5 text-[11px] font-bold">Iniciação Científica (PIBIC)</span>
+                                        {% elseif o.orientationType == 'ESPECIALIZACAO' %}
+                                            <span class="rounded-md bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300 px-2 py-0.5 text-[11px] font-bold">Especialização</span>
+                                        {% else %}
+                                            <span class="rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 text-[11px] font-bold">Outra Natureza</span>
+                                        {% endif %}
+                                        {% if o.year %}<span class="text-xs text-slate-400 font-semibold font-mono">{{ o.year }}</span>{% endif %}
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ o.studentName }}</p>
+                                    {% if o.title %}
+                                        <p class="text-xs text-slate-600 dark:text-slate-300 italic">"{{ o.title }}"</p>
+                                    {% endif %}
+                                    <div class="text-[11px] text-slate-400">
+                                        {% if o.courseName %}{{ o.courseName }} • {% endif %}
+                                        {{ o.institutionName }}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- Ongoing Orientations -->
+                {% if ongoingOrientations|length > 0 %}
+                    <div class="space-y-4">
+                        <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <span class="flex items-center gap-2">
+                                <sl-icon name="arrow-repeat" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                                Orientações em Andamento ({{ ongoingOrientations|length }})
+                            </span>
+                            <span class="text-xs font-semibold text-sky-600 dark:text-sky-400">
+                                {% set pCountA = [] %}
+                                {% if kpiStats.orientationsBreakdown.doutorado_andamento > 0 %}{% set pCountA = pCountA|merge([kpiStats.orientationsBreakdown.doutorado_andamento ~ ' Doutorado']) %}{% endif %}
+                                {% if kpiStats.orientationsBreakdown.mestrado_andamento > 0 %}{% set pCountA = pCountA|merge([kpiStats.orientationsBreakdown.mestrado_andamento ~ ' Mestrado']) %}{% endif %}
+                                {% if kpiStats.orientationsBreakdown.pos_doc_andamento > 0 %}{% set pCountA = pCountA|merge([kpiStats.orientationsBreakdown.pos_doc_andamento ~ ' Pós-Doc']) %}{% endif %}
+                                {% if kpiStats.orientationsBreakdown.tcc_andamento > 0 %}{% set pCountA = pCountA|merge([kpiStats.orientationsBreakdown.tcc_andamento ~ ' TCC/Graduação']) %}{% endif %}
+                                {% if kpiStats.orientationsBreakdown.iniciacao_andamento > 0 %}{% set pCountA = pCountA|merge([kpiStats.orientationsBreakdown.iniciacao_andamento ~ ' PIBIC']) %}{% endif %}
+                                {% if kpiStats.orientationsBreakdown.especializacao_andamento > 0 %}{% set pCountA = pCountA|merge([kpiStats.orientationsBreakdown.especializacao_andamento ~ ' Especialização']) %}{% endif %}
+                                {% if kpiStats.orientationsBreakdown.outras_andamento > 0 %}{% set pCountA = pCountA|merge([kpiStats.orientationsBreakdown.outras_andamento ~ ' Outras']) %}{% endif %}
+                                {{ pCountA|join(' • ') }}
+                            </span>
+                        </h3>
+                        <div class="space-y-3">
+                            {% for o in ongoingOrientations %}
+                                <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50 hover:border-sky-300 transition-colors">
+                                    <div class="flex items-center justify-between">
+                                        {% if o.orientationType == 'DOUTORADO' %}
+                                            <span class="rounded-md bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 px-2 py-0.5 text-[11px] font-bold">Doutorado</span>
+                                        {% elseif o.orientationType == 'MESTRADO' %}
+                                            <span class="rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2 py-0.5 text-[11px] font-bold">Mestrado</span>
+                                        {% elseif o.orientationType == 'POS_DOUTORADO' %}
+                                            <span class="rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 text-[11px] font-bold">Pós-Doutorado</span>
+                                        {% elseif o.orientationType == 'TCC_GRADUACAO' %}
+                                            <span class="rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 px-2 py-0.5 text-[11px] font-bold">TCC / Graduação</span>
+                                        {% elseif o.orientationType == 'INICIACAO_CIENTIFICA' %}
+                                            <span class="rounded-md bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300 px-2 py-0.5 text-[11px] font-bold">Iniciação Científica (PIBIC)</span>
+                                        {% elseif o.orientationType == 'ESPECIALIZACAO' %}
+                                            <span class="rounded-md bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300 px-2 py-0.5 text-[11px] font-bold">Especialização</span>
+                                        {% else %}
+                                            <span class="rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 px-2 py-0.5 text-[11px] font-bold">Outra Natureza</span>
+                                        {% endif %}
+                                        {% if o.year %}<span class="text-xs text-slate-400 font-medium font-mono">Início: {{ o.year }}</span>{% endif %}
+                                    </div>
+                                    <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ o.studentName }}</p>
+                                    {% if o.title %}
+                                        <p class="text-xs text-slate-600 dark:text-slate-300 italic">"{{ o.title }}"</p>
+                                    {% endif %}
+                                    <div class="text-[11px] text-slate-400">
+                                        {% if o.courseName %}{{ o.courseName }} • {% endif %}
+                                        {{ o.institutionName }}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            </sl-tab-panel>
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 TAB 3: PROJETOS DE PESQUISA, EXTENSÃO E DESENVOLVIMENTO
+            ══════════════════════════════════════════════════════════════ -->
+            {% if researcher.researchProjects|length > 0 %}
+                <sl-tab-panel name="projects" class="pt-6 space-y-4">
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="kanban" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                        Projetos de Pesquisa, Extensão & Desenvolvimento ({{ researcher.researchProjects|length }})
+                    </h3>
+                    <div class="space-y-4">
+                        {% for proj in researcher.researchProjects %}
+                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-2.5 bg-white/50 dark:bg-slate-900/50 hover:border-slate-300 transition-colors">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="rounded-md {% if proj.nature == 'EXTENSAO' %}bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300{% elseif proj.nature == 'DESENVOLVIMENTO' %}bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300{% else %}bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300{% endif %} px-2.5 py-0.5 text-[11px] font-bold">
+                                            {{ proj.nature }}
+                                        </span>
+                                        <span class="rounded-md {% if proj.status == 'EM_ANDAMENTO' %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300{% else %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300{% endif %} px-2 py-0.5 text-[11px] font-semibold">
+                                            {{ proj.status|replace({'_': ' '}) }}
+                                        </span>
+                                        {% if proj.isCoordinator %}
+                                            <span class="rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 text-[10px] font-bold">
+                                                Coordenador
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono">
+                                        {{ proj.startYear ?: '?' }} — {{ proj.endYear ?: 'Atual' }}
+                                    </span>
+                                </div>
+
+                                <h4 class="font-heading text-base font-bold text-slate-900 dark:text-white leading-snug">
+                                    {{ proj.name }}
+                                </h4>
+
+                                {% if proj.description %}
+                                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed pt-1">{{ proj.description }}</p>
+                                {% endif %}
+
+                                {% if proj.agencyFinancier %}
+                                    <div class="flex items-center gap-1.5 pt-1 text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+                                        <sl-icon name="cash-coin"></sl-icon> Financiador(es): {{ proj.agencyFinancier }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </sl-tab-panel>
+            {% endif %}
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 TAB 4: ATUAÇÃO PROFISSIONAL E VÍNCULOS
+            ══════════════════════════════════════════════════════════════ -->
+            {% if researcher.professionalExperiences|length > 0 %}
+                <sl-tab-panel name="experience" class="pt-6 space-y-4">
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="briefcase" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                        Atuação Profissional e Vínculos Institucionais
+                    </h3>
+                    <div class="space-y-4">
+                        {% for exp in researcher.professionalExperiences %}
+                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-2 bg-white/50 dark:bg-slate-900/50">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2">
+                                        {{ institution_badge(exp.institutionName) }}
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        {% if exp.isCurrent %}
+                                            <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                                Atual
+                                            </span>
+                                        {% endif %}
+                                        <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono">
+                                            {{ exp.startYear ?: '?' }} — {{ exp.endYear ?: 'Atual' }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                                    {% if exp.roleName %}
+                                        <p><strong class="font-semibold text-slate-700 dark:text-slate-200">Cargo / Enquadramento:</strong> {{ exp.roleName }}</p>
+                                    {% endif %}
+                                    {% if exp.contractType %}
+                                        <p><strong class="font-semibold text-slate-700 dark:text-slate-200">Vínculo:</strong> {{ exp.contractType }} {% if exp.workloadHours %}({{ exp.workloadHours }}h semanais){% endif %}</p>
+                                    {% endif %}
+                                    {% if exp.otherInfo %}
+                                        <p class="italic text-slate-500 dark:text-slate-400 pt-1">{{ exp.otherInfo }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </sl-tab-panel>
+            {% endif %}
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 TAB 5: FORMAÇÃO ACADÊMICA E TITULAÇÕES
+            ══════════════════════════════════════════════════════════════ -->
+            <sl-tab-panel name="education" class="pt-6 space-y-4">
+                <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                    <sl-icon name="mortarboard" class="text-indigo-600 dark:text-indigo-400"></sl-icon>
+                    Formação Acadêmica / Titulação & Pós-Doutorado
+                </h3>
+
+                <div class="space-y-6 relative border-l-2 border-slate-200 dark:border-slate-800 ml-4 pl-6 pt-2">
+                    {% for e in researcher.educations|filter(e => e.level not in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO']) %}
+                        <div class="relative space-y-1.5">
+                            <div class="absolute -left-[31px] top-1.5 h-3.5 w-3.5 rounded-full bg-sky-600 border-2 border-white dark:border-slate-950"></div>
+                            <div class="flex items-center gap-2">
+                                <span class="rounded-md bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                                    {{ e.level|replace({'_': ' '}) }}
+                                </span>
+                                <span class="text-xs text-slate-400 font-semibold font-mono">
+                                    {{ e.startYear ?: '?' }} — {{ e.endYear ?: 'Atual' }}
+                                </span>
+                            </div>
+                            <h4 class="font-heading text-base font-bold text-slate-900 dark:text-white">
+                                {{ e.courseName ?: e.institutionName }}
+                            </h4>
+                            <div class="text-xs font-medium text-slate-600 dark:text-slate-400">
+                                {{ institution_badge(e.institutionName) }}
+                            </div>
+                            {% if e.monographTitle %}
+                                <p class="text-xs text-slate-600 dark:text-slate-300 italic pt-0.5">
+                                    <strong>Título:</strong> "{{ e.monographTitle }}"
+                                </p>
+                            {% endif %}
+                            {% if e.advisorName %}
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    <strong>Orientador(a):</strong> {{ e.advisorName }}
+                                </p>
+                            {% endif %}
+                            {% if e.grantingAgency %}
+                                <p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                    Bolsa / Fomento: {{ e.grantingAgency }}
+                                </p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </sl-tab-panel>
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 TAB 6: FORMAÇÃO COMPLEMENTAR & EXTENSÃO
+            ══════════════════════════════════════════════════════════════ -->
+            {% if researcher.educations|filter(e => e.level in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO'])|length > 0 %}
+                <sl-tab-panel name="complementary" class="pt-6 space-y-4">
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="award" class="text-amber-500"></sl-icon>
+                        Formação Complementar & Cursos de Extensão
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {% for ce in researcher.educations|filter(e => e.level in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO']) %}
+                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50">
+                                <div class="flex items-center justify-between">
+                                    <span class="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                        {{ ce.level|replace({'_': ' '}) }}
+                                    </span>
+                                    <span class="text-xs text-slate-400 font-medium font-mono">{{ ce.startYear ?: ce.endYear ?: '-' }}</span>
+                                </div>
+                                <h4 class="text-sm font-semibold text-slate-900 dark:text-white">{{ ce.courseName }}</h4>
+                                <div>{{ institution_badge(ce.institutionName) }}</div>
+                                {% if ce.workloadHours %}
+                                    <p class="text-[11px] text-slate-400">Carga horária: {{ ce.workloadHours }}h</p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </sl-tab-panel>
+            {% endif %}
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 TAB 7: BANCAS EXAMINADORAS
+            ══════════════════════════════════════════════════════════════ -->
+            {% if researcher.examinationBoards|length > 0 %}
+                <sl-tab-panel name="boards" class="pt-6 space-y-4">
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="clipboard-check" class="text-indigo-600 dark:text-indigo-400"></sl-icon>
+                        Participação em Bancas Julgadoras e Comissões ({{ researcher.examinationBoards|length }})
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {% for b in researcher.examinationBoards %}
+                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
+                                <div class="flex items-center justify-between">
+                                    <span class="rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 px-2 py-0.5 text-[11px] font-bold">
+                                        {{ b.boardType }}
+                                    </span>
+                                    {% if b.year %}<span class="text-xs text-slate-400 font-semibold font-mono">{{ b.year }}</span>{% endif %}
+                                </div>
+                                {% if b.candidateName %}
+                                    <p class="text-sm font-semibold text-slate-900 dark:text-white">Candidato(a): {{ b.candidateName }}</p>
+                                {% endif %}
+                                {% if b.title %}
+                                    <p class="text-xs text-slate-600 dark:text-slate-300 italic">"{{ b.title }}"</p>
+                                {% endif %}
+                                {% if b.institutionName %}
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400">{{ b.institutionName }}</p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </sl-tab-panel>
+            {% endif %}
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 TAB 8: PARTICIPAÇÃO E ORGANIZAÇÃO DE EVENTOS
+            ══════════════════════════════════════════════════════════════ -->
+            {% if researcher.eventParticipations|length > 0 %}
+                <sl-tab-panel name="events" class="pt-6 space-y-4">
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="calendar-event" class="text-teal-600 dark:text-teal-400"></sl-icon>
+                        Participação em Eventos, Congressos e Exposições ({{ researcher.eventParticipations|length }})
+                    </h3>
+                    <div class="space-y-3">
+                        {% for ev in researcher.eventParticipations %}
+                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 px-2 py-0.5 text-[11px] font-bold">
+                                            {{ ev.eventType ?: 'Evento' }}
+                                        </span>
+                                        {% if ev.participationType %}
+                                            <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                                ({{ ev.participationType }})
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    {% if ev.year %}<span class="text-xs text-slate-400 font-semibold font-mono">{{ ev.year }}</span>{% endif %}
+                                </div>
+                                <h4 class="text-sm font-bold text-slate-900 dark:text-white">{{ ev.eventName }}</h4>
+                                {% if ev.presentationTitle %}
+                                    <p class="text-xs text-slate-600 dark:text-slate-300 italic">Apresentação: "{{ ev.presentationTitle }}"</p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </sl-tab-panel>
+            {% endif %}
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 TAB 9: PRÊMIOS E TÍTULOS
+            ══════════════════════════════════════════════════════════════ -->
+            {% if researcher.awards|length > 0 %}
+                <sl-tab-panel name="awards" class="pt-6 space-y-4">
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="trophy" class="text-amber-500"></sl-icon> Prêmios e Distinções
+                    </h3>
+                    <div class="space-y-3">
+                        {% for a in researcher.awards %}
+                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">{{ a.name }}</h4>
+                                    {% if a.year %}<span class="text-xs font-semibold text-amber-600 dark:text-amber-400 font-mono">{{ a.year }}</span>{% endif %}
+                                </div>
+                                {% if a.promoterEntity %}
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ a.promoterEntity }}</p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </sl-tab-panel>
+            {% endif %}
+
+            <!-- ══════════════════════════════════════════════════════════════
+                 TAB 10: ÁREAS DE ATUAÇÃO E CONHECIMENTO
+            ══════════════════════════════════════════════════════════════ -->
+            {% if researcher.knowledgeAreas|length > 0 %}
+                <sl-tab-panel name="areas" class="pt-6 space-y-4">
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="diagram-2" class="text-sky-600 dark:text-sky-400"></sl-icon> Áreas de Atuação do CNPq
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {% for ka in researcher.knowledgeAreas %}
+                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
+                                <span class="text-[11px] font-bold uppercase text-sky-600 dark:text-sky-400">{{ ka.majorArea }}</span>
+                                <h4 class="text-sm font-semibold text-slate-900 dark:text-white">{{ ka.area }}</h4>
+                                {% if ka.subArea %}<p class="text-xs text-slate-500 dark:text-slate-400">Subárea: {{ ka.subArea }}</p>{% endif %}
+                                {% if ka.specialty %}<p class="text-xs text-slate-500 dark:text-slate-400">Especialidade: {{ ka.specialty }}</p>{% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </sl-tab-panel>
+            {% endif %}
+        </sl-tab-group>
+    </div>
+</div>
+
+<!-- ── Toast Notification for Clipboard Copy Feedback ── -->
+<div id="copyToast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 rounded-2xl bg-slate-900 text-white px-5 py-3 text-xs font-semibold shadow-2xl flex items-center gap-2">
+    <sl-icon name="check2-circle" class="text-emerald-400 text-base"></sl-icon>
+    <span id="copyToastMessage">Citação copiada para a área de transferência!</span>
+</div>
+
+<!-- ── Interactive JavaScript for Visual Analytics, Filtering & Citations ── -->
+<script>
+let currentCategory = 'all';
+let onlyDoi = false;
+let chartsExpanded = true;
+
+function toggleChartsPanel() {
+    const container = document.getElementById('chartsContainer');
+    const toggleIcon = document.getElementById('toggleIcon');
+    const toggleText = document.getElementById('toggleText');
+    if (chartsExpanded) {
+        container.style.display = 'none';
+        toggleIcon.name = 'arrows-collapse';
+        toggleText.textContent = 'Exibir Gráficos';
+        chartsExpanded = false;
+    } else {
+        container.style.display = '';
+        toggleIcon.name = 'arrows-expand';
+        toggleText.textContent = 'Recolher Gráficos';
+        chartsExpanded = true;
+    }
+}
+
+function setCategoryFilter(category) {
+    currentCategory = category;
+    document.querySelectorAll('.category-pill').forEach(btn => {
+        if (btn.getAttribute('data-category') === category) {
+            btn.classList.add('bg-sky-600', 'text-white', 'shadow-sm');
+            btn.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
+        } else {
+            btn.classList.remove('bg-sky-600', 'text-white', 'shadow-sm');
+            btn.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
+        }
+    });
+    filterProductions();
+}
+
+function toggleOnlyDoi() {
+    onlyDoi = !onlyDoi;
+    const btn = document.getElementById('btnOnlyDoi');
+    if (onlyDoi) {
+        btn.classList.add('bg-sky-50', 'border-sky-500', 'text-sky-700', 'dark:bg-sky-950', 'dark:text-sky-300');
+    } else {
+        btn.classList.remove('bg-sky-50', 'border-sky-500', 'text-sky-700', 'dark:bg-sky-950', 'dark:text-sky-300');
+    }
+    filterProductions();
+}
+
+function filterByKeyword(keyword) {
+    const searchInput = document.getElementById('prodSearchInput');
+    searchInput.value = keyword;
+    filterProductions();
+    // switch tab to productions
+    const tabGroup = document.getElementById('mainTabGroup');
+    if (tabGroup) tabGroup.show('productions');
+    searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function clearProdFilters() {
+    document.getElementById('prodSearchInput').value = '';
+    onlyDoi = false;
+    document.getElementById('btnOnlyDoi').classList.remove('bg-sky-50', 'border-sky-500', 'text-sky-700', 'dark:bg-sky-950', 'dark:text-sky-300');
+    setCategoryFilter('all');
+}
+
+function filterProductions() {
+    const term = (document.getElementById('prodSearchInput').value || '').toLowerCase().trim();
+
+    document.querySelectorAll('.prod-section').forEach(sec => {
+        const secCat = sec.getAttribute('data-section-category');
+        let visibleCount = 0;
+
+        sec.querySelectorAll('.prod-item').forEach(item => {
+            const itemCat = item.getAttribute('data-category');
+            const hasDoi = item.getAttribute('data-has-doi') === '1';
+            const text = item.textContent.toLowerCase();
+
+            const matchCat = (currentCategory === 'all') || (currentCategory === itemCat) || (currentCategory === 'inovacao' && (itemCat === 'inovacao' || itemCat === 'software' || itemCat === 'patente'));
+            const matchDoi = !onlyDoi || hasDoi;
+            const matchTerm = term === '' || text.includes(term);
+
+            if (matchCat && matchDoi && matchTerm) {
+                item.style.display = '';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        if (visibleCount === 0) {
+            sec.style.display = 'none';
+        } else {
+            sec.style.display = '';
+        }
+    });
+}
+
+function copyCitation(btn, title, venue, year, doi) {
+    const authorName = "{{ researcher.citationNames ? researcher.citationNames|split(';')|first|trim : researcher.fullName }}";
+    let citation = `${authorName}. ${title}. ${venue ? venue + ', ' : ''}${year}.`;
+    if (doi) citation += ` DOI: https://doi.org/${doi}.`;
+
+    navigator.clipboard.writeText(citation).then(() => {
+        showToast('Citação ABNT copiada para a área de transferência!');
+    });
+}
+
+function showToast(message) {
+    const toast = document.getElementById('copyToast');
+    const toastMsg = document.getElementById('copyToastMessage');
+    toastMsg.textContent = message;
+    toast.classList.remove('translate-y-20', 'opacity-0');
+    setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+    }, 3000);
+}
+
+// ── Chart.js Initialization ──
+document.addEventListener('DOMContentLoaded', () => {
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#94a3b8' : '#475569';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+
+    const timelineYears = {{ timelineYears|json_encode|raw }};
+    const prodTimeline = {{ productionTimeline|json_encode|raw }};
+    const orientTimeline = {{ orientationsTimeline|json_encode|raw }};
+    const catDistribution = {{ categoryDistribution|json_encode|raw }};
+
+    // 1. Stacked Production Timeline Chart
+    const prodCanvas = document.getElementById('productionTimelineChart');
+    if (prodCanvas) {
+        new Chart(prodCanvas, {
+            type: 'bar',
+            data: {
+                labels: timelineYears,
+                datasets: [
+                    {
+                        label: 'Artigos Periódicos',
+                        data: Object.values(prodTimeline.artigos),
+                        backgroundColor: '#0284c7',
+                        stack: 'prod',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Livros & Capítulos',
+                        data: Object.values(prodTimeline.livros_capitulos),
+                        backgroundColor: '#f59e0b',
+                        stack: 'prod',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Jornais / Revistas',
+                        data: Object.values(prodTimeline.jornais_revistas),
+                        backgroundColor: '#3b82f6',
+                        stack: 'prod',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Trabalhos em Congressos',
+                        data: Object.values(prodTimeline.eventos),
+                        backgroundColor: '#ec4899',
+                        stack: 'prod',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Produção Técnica & Inovação',
+                        data: Object.values(prodTimeline.tecnicos_inovacao),
+                        backgroundColor: '#10b981',
+                        stack: 'prod',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Outras',
+                        data: Object.values(prodTimeline.outras),
+                        backgroundColor: '#94a3b8',
+                        stack: 'prod',
+                        borderRadius: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { boxWidth: 12, font: { size: 10 }, color: textColor }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false },
+                        ticks: { color: textColor, font: { size: 10 } }
+                    },
+                    y: {
+                        stacked: true,
+                        grid: { color: gridColor },
+                        ticks: { color: textColor, precision: 0 }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Donut Category Distribution Chart
+    const catCanvas = document.getElementById('categoryDonutChart');
+    if (catCanvas) {
+        new Chart(catCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(catDistribution),
+                datasets: [{
+                    data: Object.values(catDistribution),
+                    backgroundColor: [
+                        '#0284c7', '#f59e0b', '#3b82f6', '#ec4899',
+                        '#10b981', '#6366f1', '#a855f7', '#64748b'
+                    ],
+                    borderWidth: isDark ? 2 : 1,
+                    borderColor: isDark ? '#0f172a' : '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 10, font: { size: 9 }, color: textColor }
+                    }
+                },
+                cutout: '62%'
+            }
+        });
+    }
+
+    // 3. Orientations Timeline Chart
+    const orientCanvas = document.getElementById('orientationsTimelineChart');
+    if (orientCanvas) {
+        new Chart(orientCanvas, {
+            type: 'bar',
+            data: {
+                labels: timelineYears,
+                datasets: [
+                    {
+                        label: 'Doutorado',
+                        data: Object.values(orientTimeline.doutorado || {}),
+                        backgroundColor: '#7c3aed',
+                        stack: 'orient',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Mestrado',
+                        data: Object.values(orientTimeline.mestrado || {}),
+                        backgroundColor: '#059669',
+                        stack: 'orient',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Pós-Doutorado',
+                        data: Object.values(orientTimeline.pos_doutorado || {}),
+                        backgroundColor: '#ea580c',
+                        stack: 'orient',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'TCC / Graduação',
+                        data: Object.values(orientTimeline.tcc_graduacao || {}),
+                        backgroundColor: '#0284c7',
+                        stack: 'orient',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Iniciação Científica (PIBIC)',
+                        data: Object.values(orientTimeline.iniciacao_cientifica || {}),
+                        backgroundColor: '#eab308',
+                        stack: 'orient',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Especialização',
+                        data: Object.values(orientTimeline.especializacao || {}),
+                        backgroundColor: '#ec4899',
+                        stack: 'orient',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Outras Orientações',
+                        data: Object.values(orientTimeline.outras || {}),
+                        backgroundColor: '#64748b',
+                        stack: 'orient',
+                        borderRadius: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { boxWidth: 12, font: { size: 10 }, color: textColor }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false },
+                        ticks: { color: textColor, font: { size: 10 } }
+                    },
+                    y: {
+                        stacked: true,
+                        grid: { color: gridColor },
+                        ticks: { color: textColor, precision: 0 }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

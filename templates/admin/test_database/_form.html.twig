@@ -1,0 +1,22 @@
+{# Form customizado: copie este bloco para outros CRUDs e
+   substitua `form.name` pelos campos da nova entidade.
+   Versão original (controller2/_form.html.twig) usa markup simples. #}
+{{ form_start(form, {'attr': {'class': 'space-y-6'}}) }}
+    <div class="space-y-2">
+        {{ form_label(form.name, 'Nome', {'label_attr': {'class': 'text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400'}}) }}
+        {{ form_widget(form.name, {
+            'attr': {
+                'class': 'w-full rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none dark:border-white/10 dark:bg-slate-900/60 dark:text-white dark:placeholder:text-slate-500',
+                'placeholder': 'Ex: Dataset de homologação'
+            }
+        }) }}
+        {{ form_errors(form.name) }}
+    </div>
+    <div class="flex justify-end gap-2">
+        <sl-button variant="default" outline href="{{ path('app_admin_test_database_index') }}">Cancelar</sl-button>
+        <sl-button variant="primary" type="submit">
+            <sl-icon slot="prefix" name="check2"></sl-icon>
+            {{ button_label|default('Salvar') }}
+        </sl-button>
+    </div>
+{{ form_end(form) }}

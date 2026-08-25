@@ -1,0 +1,502 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}{{ researcher.fullName }} | Admin CECH{% endblock %}
+
+{% block body %}
+<div class="space-y-6">
+    <!-- Top Action Bar -->
+    <div class="flex items-center justify-between">
+        <a href="{{ path('app_admin_curriculum_index') }}" class="text-xs text-sky-600 font-semibold hover:underline flex items-center gap-1">
+            <sl-icon name="arrow-left"></sl-icon> Voltar à lista
+        </a>
+
+        <div class="flex items-center gap-2">
+            <a href="{{ path('app_admin_curriculum_pdf', {'id': researcher.id}) }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 transition-colors">
+                <sl-icon name="file-earmark-pdf"></sl-icon> Baixar PDF
+            </a>
+            <a href="{{ path('app_pub_professor_show', {'slugOrId': researcher.slug ?: researcher.idLattes}) }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-500 shadow-sm transition-colors">
+                <sl-icon name="box-arrow-up-right"></sl-icon> Ver no Portal Público
+            </a>
+        </div>
+    </div>
+
+    <!-- Header / Identification Card -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div class="flex flex-col sm:flex-row items-start gap-6">
+            <!-- Photo & Upload -->
+            <div class="flex flex-col items-center gap-3 shrink-0">
+                <div class="flex h-28 w-28 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-md ring-4 ring-sky-500/10 {% if not researcher.photoUrl %}bg-gradient-to-tr from-sky-600 via-indigo-600 to-purple-600 text-white font-bold text-3xl{% endif %}">
+                    {% if researcher.photoUrl %}
+                        <img src="{{ researcher.photoUrl }}" alt="{{ researcher.fullName }}" class="h-full w-full object-cover">
+                    {% else %}
+                        {{ researcher.fullName|slice(0, 2)|upper }}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Profile Identifiers -->
+            <div class="flex-1 min-w-0 space-y-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="rounded-lg bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                        ID Lattes: {{ researcher.idLattes }}
+                    </span>
+                    {% if researcher.orcid %}
+                        <a href="{{ researcher.orcidUrl }}" target="_blank" class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 border border-emerald-500/30 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 hover:underline">
+                            <span class="h-2.5 w-2.5 rounded-full bg-emerald-500 text-[7px] text-white flex items-center justify-center font-bold">iD</span>
+                            ORCID: {{ researcher.orcid }}
+                        </a>
+                    {% endif %}
+                    {% if researcher.isActiveInCech %}
+                        <span class="inline-flex items-center gap-1 rounded-lg bg-emerald-50 border border-emerald-500/30 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span> Ativo no CECH {{ researcher.admissionYear ? '(desde ' ~ researcher.admissionYear ~ ')' : '' }}
+                        </span>
+                    {% else %}
+                        <span class="inline-flex items-center gap-1 rounded-lg bg-amber-50 border border-amber-500/30 px-2.5 py-1 text-xs font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                            <span class="h-2 w-2 rounded-full bg-amber-500"></span> Vínculo Encerrado / Histórico ({{ researcher.admissionYear ?: '?' }}–{{ researcher.leaveYear ?: 'Saída' }})
+                        </span>
+                    {% endif %}
+                    <span class="text-xs text-slate-400 font-medium ml-auto">
+                        Última Atualização: {{ researcher.lastLattesUpdate ? researcher.lastLattesUpdate|date('d/m/Y') : '-' }}
+                    </span>
+                </div>
+
+                <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                    {{ researcher.fullName }}
+                </h1>
+
+                {% set citationVariants = author_thesaurus_variants(researcher) %}
+                {% if citationVariants|length > 0 %}
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                        <strong class="font-semibold text-slate-700 dark:text-slate-300">Nome em Citações Bibliográficas (Tesauro):</strong> {{ citationVariants|join('; ') }}
+                    </p>
+                {% elseif researcher.citationNames %}
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                        <strong class="font-semibold text-slate-700 dark:text-slate-300">Nome em Citações Bibliográficas:</strong> {{ researcher.citationNames }}
+                    </p>
+                {% endif %}
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 text-xs text-slate-600 dark:text-slate-300">
+                    <div>
+                        <span class="text-slate-400 block font-medium">Departamento / Unidade:</span>
+                        <span class="font-semibold text-slate-800 dark:text-slate-200">{{ researcher.department ?: researcher.unit ?: '-' }}</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block font-medium">Período de Atuação:</span>
+                        <span class="font-semibold text-slate-800 dark:text-slate-200">
+                            {{ researcher.cechPeriodLabel }}
+                        </span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block font-medium">Naturalidade / Nacionalidade:</span>
+                        <div class="pt-0.5">
+                            {{ country_badge(researcher.birthCountry ?: (researcher.nationality ?: 'Brasil')) }}
+                            {% if researcher.birthCity or researcher.birthState %}
+                                <span class="text-slate-500 text-[11px] ml-1">({{ [researcher.birthCity, researcher.birthState]|filter(v => v is not empty)|join('/') }})</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block font-medium">Contato Profissional:</span>
+                        <span class="font-semibold text-slate-800 dark:text-slate-200">
+                            {% if researcher.email %}{{ researcher.email }}{% endif %}
+                            {% if researcher.workPhone %}{% if researcher.email %} • {% endif %}{{ researcher.workPhone }}{% endif %}
+                            {% if not researcher.email and not researcher.workPhone %}-{% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                {% if researcher.languageProficiencies|length > 0 %}
+                    <div class="pt-2 flex flex-wrap items-center gap-1.5 text-xs">
+                        <span class="text-slate-400 font-medium mr-1 flex items-center gap-1">
+                            <sl-icon name="translate"></sl-icon> Idiomas:
+                        </span>
+                        {% for lang in researcher.languageProficiencies %}
+                            <span class="rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-white/10 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:text-slate-300" title="Compreensão: {{ lang.comprehension ?: '-' }} | Fala: {{ lang.speaking ?: '-' }} | Leitura: {{ lang.reading ?: '-' }} | Escrita: {{ lang.writing ?: '-' }}">
+                                <strong class="font-semibold text-sky-600 dark:text-sky-400">{{ lang.language }}</strong>
+                                {% if lang.reading %}<span class="text-slate-400 text-[10px]"> (Lê: {{ lang.reading|lower }})</span>{% endif %}
+                            </span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Endereço Profissional -->
+        {% if researcher.workAgency or researcher.workCity or researcher.workPostalCode %}
+            <div class="pt-4 border-t border-slate-200/60 dark:border-white/10 text-xs">
+                <span class="text-xs font-bold uppercase text-slate-400 block mb-1 flex items-center gap-1">
+                    <sl-icon name="geo-alt"></sl-icon> Endereço Profissional
+                </span>
+                <p class="text-slate-600 dark:text-slate-300">
+                    {{ [researcher.workAgency, researcher.unit, researcher.workCity ~ ' - ' ~ researcher.workState, researcher.workPostalCode ? 'CEP: ' ~ researcher.workPostalCode : null, researcher.workCountry]|filter(v => v is not empty)|join(', ') }}
+                </p>
+            </div>
+        {% endif %}
+
+        <!-- Resumo -->
+        {% if researcher.abstractResume %}
+            <div class="pt-4 border-t border-slate-200/60 dark:border-white/10 space-y-1">
+                <h3 class="text-xs font-bold uppercase text-slate-400">Resumo Biográfico</h3>
+                <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{{ researcher.abstractResume }}</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Main Dossier Tabs -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm">
+        <sl-tab-group>
+            <sl-tab slot="nav" panel="productions">
+                <sl-icon name="journal-bookmark" class="mr-1"></sl-icon> Produções ({{ researcher.productions|length }})
+            </sl-tab>
+            <sl-tab slot="nav" panel="experience">
+                <sl-icon name="briefcase" class="mr-1"></sl-icon> Atuação Profissional ({{ researcher.professionalExperiences|length }})
+            </sl-tab>
+            <sl-tab slot="nav" panel="projects">
+                <sl-icon name="kanban" class="mr-1"></sl-icon> Projetos ({{ researcher.researchProjects|length }})
+            </sl-tab>
+            <sl-tab slot="nav" panel="education">
+                <sl-icon name="mortarboard" class="mr-1"></sl-icon> Formação Acadêmica & Pós-Doc ({{ researcher.educations|filter(e => e.level not in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO'])|length }})
+            </sl-tab>
+            <sl-tab slot="nav" panel="complementary">
+                <sl-icon name="award" class="mr-1"></sl-icon> Formação Complementar ({{ researcher.educations|filter(e => e.level in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO'])|length }})
+            </sl-tab>
+            <sl-tab slot="nav" panel="orientations">
+                <sl-icon name="people" class="mr-1"></sl-icon> Orientações ({{ researcher.orientations|length }})
+            </sl-tab>
+            <sl-tab slot="nav" panel="boards">
+                <sl-icon name="clipboard-check" class="mr-1"></sl-icon> Bancas ({{ researcher.examinationBoards|length }})
+            </sl-tab>
+            <sl-tab slot="nav" panel="events">
+                <sl-icon name="calendar-event" class="mr-1"></sl-icon> Eventos ({{ researcher.eventParticipations|length }})
+            </sl-tab>
+            {% if researcher.awards|length > 0 %}
+                <sl-tab slot="nav" panel="awards">
+                    <sl-icon name="trophy" class="mr-1"></sl-icon> Prêmios & Títulos ({{ researcher.awards|length }})
+                </sl-tab>
+            {% endif %}
+            {% if researcher.knowledgeAreas|length > 0 %}
+                <sl-tab slot="nav" panel="areas">
+                    <sl-icon name="diagram-2" class="mr-1"></sl-icon> Áreas de Atuação ({{ researcher.knowledgeAreas|length }})
+                </sl-tab>
+            {% endif %}
+
+            <!-- Tab 1: Productions -->
+            <sl-tab-panel name="productions" class="pt-6 space-y-4">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs stripe">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-white/10 text-slate-500">
+                                <th class="py-2.5 px-3">Tipo</th>
+                                <th class="py-2.5 px-3">Ano</th>
+                                <th class="py-2.5 px-3">Título</th>
+                                <th class="py-2.5 px-3">Veículo / Editora</th>
+                                <th class="py-2.5 px-3">Qualis</th>
+                                <th class="py-2.5 px-3">DOI</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+                            {% for p in researcher.productions %}
+                                <tr>
+                                    <td class="py-2.5 px-3 font-semibold text-slate-700 dark:text-slate-300">{{ p.itemType }}</td>
+                                    <td class="py-2.5 px-3 text-slate-500">{{ p.year ?: '-' }}</td>
+                                    <td class="py-2.5 px-3">
+                                        <div class="font-medium text-slate-900 dark:text-white">{{ p.title }}</div>
+                                        {% if p.authors|length > 0 %}
+                                            <div class="text-[11px] text-slate-500 dark:text-slate-400 pt-0.5">
+                                                <span class="font-semibold text-slate-600 dark:text-slate-300">Autores:</span> {{ render_production_authors(p, researcher.id) }}
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-2.5 px-3 text-slate-500">{{ p.journalName ?: p.publisher ?: p.eventName ?: '-' }}</td>
+                                    <td class="py-2.5 px-3">
+                                        {% set qBadge = p.journalName ? qualis_badge(p.journalName, p.issn) : '' %}
+                                        {% if qBadge %}
+                                            {{ qBadge|raw }}
+                                        {% elseif p.qualis %}
+                                            <span class="rounded px-1.5 py-0.5 font-bold badge-qualis-{{ p.qualis|lower }}">{{ p.qualis }}</span>
+                                        {% else %}-{% endif %}
+                                    </td>
+                                    <td class="py-2.5 px-3 font-mono">
+                                        {% if p.doi %}
+                                            <a href="{{ p.doiUrl }}" target="_blank" rel="noopener noreferrer" class="text-sky-600 hover:underline">
+                                                {{ p.doi }}
+                                            </a>
+                                        {% else %}-{% endif %}
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="py-6 text-center text-slate-400">Nenhuma produção bibliográfica cadastrada.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </sl-tab-panel>
+
+            <!-- Tab 2: Professional Experience -->
+            <sl-tab-panel name="experience" class="pt-6 space-y-4">
+                <div class="space-y-4">
+                    {% for exp in researcher.professionalExperiences %}
+                        <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-2 bg-white/50 dark:bg-slate-900/50">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    {{ institution_badge(exp.institutionName) }}
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    {% if exp.isCurrent %}
+                                        <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                            Atual
+                                        </span>
+                                    {% endif %}
+                                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                        {{ exp.startYear ?: '?' }} - {{ exp.endYear ?: 'Atual' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                                {% if exp.roleName %}
+                                    <p><strong class="font-semibold text-slate-700 dark:text-slate-200">Cargo / Função:</strong> {{ exp.roleName }}</p>
+                                {% endif %}
+                                {% if exp.contractType %}
+                                    <p><strong class="font-semibold text-slate-700 dark:text-slate-200">Vínculo:</strong> {{ exp.contractType }} {% if exp.workloadHours %}({{ exp.workloadHours }}h semanais){% endif %}</p>
+                                {% endif %}
+                                {% if exp.agencyName or exp.unitName %}
+                                    <p><strong class="font-semibold text-slate-700 dark:text-slate-200">Órgão/Unidade:</strong> {{ [exp.agencyName, exp.unitName]|filter(v => v is not empty)|join(' • ') }}</p>
+                                {% endif %}
+                                {% if exp.otherInfo %}
+                                    <p class="italic text-slate-500 dark:text-slate-400 pt-1">{{ exp.otherInfo }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-xs text-slate-400 py-6 text-center">Nenhuma atuação profissional registrada.</p>
+                    {% endfor %}
+                </div>
+            </sl-tab-panel>
+
+            <!-- Tab 3: Academic Education & Post-Doc -->
+            <sl-tab-panel name="education" class="pt-6 space-y-4">
+                <div class="space-y-4 relative border-l-2 border-slate-200 dark:border-slate-800 ml-4 pl-6">
+                    {% for e in researcher.educations|filter(e => e.level not in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO']) %}
+                        <div class="relative space-y-1">
+                            <div class="absolute -left-[31px] top-1.5 h-3.5 w-3.5 rounded-full bg-sky-600 border-2 border-white dark:border-slate-950"></div>
+                            <div class="flex items-center gap-2">
+                                <span class="rounded-md bg-indigo-100 px-2 py-0.5 text-[11px] font-bold text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                                    {{ e.level|replace({'_': ' '}) }}
+                                </span>
+                                <span class="text-xs text-slate-400 font-medium">
+                                    {{ e.startYear ?: '?' }} - {{ e.endYear ?: 'Atual' }}
+                                </span>
+                            </div>
+                            <h4 class="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                                {{ e.courseName ?: e.institutionName }}
+                            </h4>
+                            <div class="text-xs font-medium text-slate-500 dark:text-slate-400">
+                                {{ institution_badge(e.institutionName) }}
+                            </div>
+                            {% if e.monographTitle %}
+                                <p class="text-xs text-slate-600 dark:text-slate-300 italic pt-1">
+                                    Título: "{{ e.monographTitle }}"
+                                </p>
+                            {% endif %}
+                            {% if e.advisorName %}
+                                <p class="text-xs text-slate-500 dark:text-slate-400">
+                                    Orientador(a) / Supervisor(a): {{ e.advisorName }}
+                                </p>
+                            {% endif %}
+                            {% if e.grantingAgency %}
+                                <p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                    Bolsa / Fomento: {{ e.grantingAgency }}
+                                </p>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <p class="text-xs text-slate-400 py-6 text-center">Nenhuma formação acadêmica registrada.</p>
+                    {% endfor %}
+                </div>
+            </sl-tab-panel>
+
+            <!-- Tab 4: Complementary Education -->
+            <sl-tab-panel name="complementary" class="pt-6 space-y-4">
+                <div class="space-y-3">
+                    {% for ce in researcher.educations|filter(e => e.level in ['CURTA_DURACAO', 'EXTENSAO', 'COMPLEMENTAR', 'APERFEICOAMENTO']) %}
+                        <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50">
+                            <div class="flex items-center justify-between">
+                                <span class="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                    {{ ce.level|replace({'_': ' '}) }}
+                                </span>
+                                <span class="text-xs text-slate-400 font-medium">{{ ce.startYear ?: ce.endYear ?: '-' }}</span>
+                            </div>
+                            <h4 class="text-sm font-semibold text-slate-900 dark:text-white">{{ ce.courseName }}</h4>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">{{ ce.institutionName }}</p>
+                            {% if ce.workloadHours %}
+                                <p class="text-[11px] text-slate-400">Carga horária: {{ ce.workloadHours }} horas</p>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <p class="text-xs text-slate-400 py-6 text-center">Nenhuma formação complementar registrada.</p>
+                    {% endfor %}
+                </div>
+            </sl-tab-panel>
+
+            <!-- Tab: Projects -->
+            <sl-tab-panel name="projects" class="pt-6 space-y-4">
+                <div class="space-y-4">
+                    {% for proj in researcher.researchProjects %}
+                        <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-2 bg-white/50 dark:bg-slate-900/50">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="rounded-md {% if proj.nature == 'EXTENSAO' %}bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300{% else %}bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300{% endif %} px-2 py-0.5 text-[11px] font-bold">
+                                        {{ proj.nature }}
+                                    </span>
+                                    <span class="rounded-md {% if proj.status == 'EM_ANDAMENTO' %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300{% else %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300{% endif %} px-2 py-0.5 text-[11px] font-semibold">
+                                        {{ proj.status|replace({'_': ' '}) }}
+                                    </span>
+                                </div>
+                                <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                    {{ proj.startYear ?: '?' }} - {{ proj.endYear ?: 'Atual' }}
+                                </span>
+                            </div>
+
+                            <h4 class="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                                {{ proj.name }}
+                            </h4>
+
+                            {% if proj.description %}
+                                <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed pt-1">{{ proj.description }}</p>
+                            {% endif %}
+
+                            {% if proj.agencyFinancier %}
+                                <p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold pt-1">
+                                    Financiamento: {{ proj.agencyFinancier }}
+                                </p>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <p class="text-xs text-slate-400 py-6 text-center">Nenhum projeto cadastrado.</p>
+                    {% endfor %}
+                </div>
+            </sl-tab-panel>
+
+            <!-- Tab 5: Orientations -->
+            <sl-tab-panel name="orientations" class="pt-6 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {% for o in researcher.orientations %}
+                        <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50">
+                            <div class="flex items-center justify-between">
+                                <span class="rounded-md {% if o.nature == 'CONCLUIDA' %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300{% else %}bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300{% endif %} px-2 py-0.5 text-[11px] font-semibold">
+                                    {{ o.orientationType }} ({{ o.nature }})
+                                </span>
+                                {% if o.year %}<span class="text-xs text-slate-400 font-medium">{{ o.year }}</span>{% endif %}
+                            </div>
+                            <p class="text-sm font-semibold text-slate-900 dark:text-white">{{ o.studentName }}</p>
+                            {% if o.title %}
+                                <p class="text-xs text-slate-600 dark:text-slate-300 italic">"{{ o.title }}"</p>
+                            {% endif %}
+                            <div class="text-[11px] text-slate-400">
+                                {% if o.courseName %}{{ o.courseName }} • {% endif %}
+                                {{ o.institutionName }}
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-xs text-slate-400 py-6 text-center col-span-2">Nenhuma orientação cadastrada.</p>
+                    {% endfor %}
+                </div>
+            </sl-tab-panel>
+
+            <!-- Tab: Examination Boards -->
+            <sl-tab-panel name="boards" class="pt-6 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {% for b in researcher.examinationBoards %}
+                        <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
+                            <div class="flex items-center justify-between">
+                                <span class="rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 px-2 py-0.5 text-[11px] font-bold">
+                                    {{ b.boardType }}
+                                </span>
+                                {% if b.year %}<span class="text-xs text-slate-400 font-semibold">{{ b.year }}</span>{% endif %}
+                            </div>
+                            {% if b.candidateName %}
+                                <p class="text-sm font-semibold text-slate-900 dark:text-white">Candidato(a): {{ b.candidateName }}</p>
+                            {% endif %}
+                            {% if b.title %}
+                                <p class="text-xs text-slate-600 dark:text-slate-300 italic">"{{ b.title }}"</p>
+                            {% endif %}
+                            {% if b.institutionName %}
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">{{ b.institutionName }}</p>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <p class="text-xs text-slate-400 py-6 text-center col-span-2">Nenhuma participação em banca examinadora cadastrada.</p>
+                    {% endfor %}
+                </div>
+            </sl-tab-panel>
+
+            <!-- Tab: Event Participations -->
+            <sl-tab-panel name="events" class="pt-6 space-y-4">
+                <div class="space-y-3">
+                    {% for ev in researcher.eventParticipations %}
+                        <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 px-2 py-0.5 text-[11px] font-bold">
+                                        {{ ev.eventType ?: 'Evento' }}
+                                    </span>
+                                    {% if ev.participationType %}
+                                        <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                            ({{ ev.participationType }})
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                {% if ev.year %}<span class="text-xs text-slate-400 font-semibold">{{ ev.year }}</span>{% endif %}
+                            </div>
+                            <h4 class="text-sm font-bold text-slate-900 dark:text-white">{{ ev.eventName }}</h4>
+                            {% if ev.presentationTitle %}
+                                <p class="text-xs text-slate-600 dark:text-slate-300 italic">Apresentação: "{{ ev.presentationTitle }}"</p>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <p class="text-xs text-slate-400 py-6 text-center">Nenhuma participação em evento cadastrada.</p>
+                    {% endfor %}
+                </div>
+            </sl-tab-panel>
+
+            <!-- Tab 6: Awards -->
+            {% if researcher.awards|length > 0 %}
+                <sl-tab-panel name="awards" class="pt-6 space-y-4">
+                    <div class="space-y-3">
+                        {% for a in researcher.awards %}
+                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">{{ a.name }}</h4>
+                                    {% if a.year %}<span class="text-xs font-semibold text-amber-600 dark:text-amber-400">{{ a.year }}</span>{% endif %}
+                                </div>
+                                {% if a.promoterEntity %}
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ a.promoterEntity }}</p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </sl-tab-panel>
+            {% endif %}
+
+            <!-- Tab 7: Knowledge Areas -->
+            {% if researcher.knowledgeAreas|length > 0 %}
+                <sl-tab-panel name="areas" class="pt-6 space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {% for ka in researcher.knowledgeAreas %}
+                            <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50">
+                                <span class="text-[11px] font-bold uppercase text-sky-600 dark:text-sky-400">{{ ka.majorArea }}</span>
+                                <h4 class="text-sm font-semibold text-slate-900 dark:text-white">{{ ka.area }}</h4>
+                                {% if ka.subArea %}<p class="text-xs text-slate-500 dark:text-slate-400">Subárea: {{ ka.subArea }}</p>{% endif %}
+                                {% if ka.specialty %}<p class="text-xs text-slate-500 dark:text-slate-400">Especialidade: {{ ka.specialty }}</p>{% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </sl-tab-panel>
+            {% endif %}
+        </sl-tab-group>
+    </div>
+</div>
+{% endblock %}

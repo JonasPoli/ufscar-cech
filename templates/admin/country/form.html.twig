@@ -1,0 +1,280 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}{{ isNew ? 'Novo País' : 'Editar País: ' ~ country.commonName }} | Admin CECH{% endblock %}
+
+{% block body %}
+<div class="mx-auto max-w-5xl space-y-6">
+    <!-- Top Nav -->
+    <div class="flex items-center justify-between">
+        <a href="{{ path('app_admin_country_index') }}" class="text-xs text-sky-600 font-semibold hover:underline flex items-center gap-1">
+            <sl-icon name="arrow-left"></sl-icon> Voltar à lista de países
+        </a>
+    </div>
+
+    <!-- Header Section -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/60 dark:border-white/10 pb-5">
+            <div class="flex items-center gap-3">
+                {% if not isNew and country.isoAlpha2 %}
+                    <img id="headerFlag" src="https://flagcdn.com/32x24/{{ country.isoAlpha2|lower }}.png" width="32" height="24" class="rounded-xs shadow-xs border border-slate-200 dark:border-slate-700" alt="{{ country.isoAlpha2 }}" onerror="this.style.display='none'">
+                {% else %}
+                    <div class="h-10 w-10 rounded-2xl bg-sky-100 dark:bg-sky-950 flex items-center justify-center text-sky-600 dark:text-sky-400">
+                        <sl-icon name="globe-americas" class="text-xl"></sl-icon>
+                    </div>
+                {% endif %}
+                <div>
+                    <h1 class="font-heading text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        {{ isNew ? 'Cadastrar Novo País' : country.commonName }}
+                    </h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                        {{ isNew ? 'Padronização do nome do país, códigos ISO, datas e tesauro.' : 'Edição dos dados cadastrais, datas históricas e sinônimos do país.' }}
+                    </p>
+                </div>
+            </div>
+
+            {% if not isNew %}
+                <div class="flex flex-col sm:items-end text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
+                    <div><strong>Cadastrado em:</strong> {{ country.createdAt ? country.createdAt|date('d/m/Y H:i') : '-' }}</div>
+                    <div><strong>Última alteração:</strong> {{ country.updatedAt ? country.updatedAt|date('d/m/Y H:i') : '-' }}</div>
+                </div>
+            {% endif %}
+        </div>
+
+        <form method="POST" action="" class="space-y-6">
+            <input type="hidden" name="_token" value="{{ csrf_token(isNew ? 'country_new' : 'country_edit') }}">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Nome Comum / Preferido -->
+                <div class="sm:col-span-2 space-y-1">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Nome Comum / Preferido <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" name="commonName" value="{{ country.commonName }}" required placeholder="Ex: Brasil" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-medium">
+                </div>
+
+                <!-- Nome Oficial Completo -->
+                <div class="sm:col-span-2 space-y-1">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Nome Oficial Completo
+                    </label>
+                    <input type="text" name="officialName" value="{{ country.officialName }}" placeholder="Ex: República Federativa do Brasil" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                </div>
+
+                <!-- Código ISO Alpha-2 -->
+                <div class="space-y-1">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            Código ISO Alpha-2
+                        </label>
+                        <span id="flagPreview" class="inline-block">
+                            {% if country.isoAlpha2 %}
+                                <img src="https://flagcdn.com/20x15/{{ country.isoAlpha2|lower }}.png" width="20" height="15" class="rounded-xs border border-slate-200 dark:border-slate-700" alt="{{ country.isoAlpha2 }}" onerror="this.style.display='none'">
+                            {% endif %}
+                        </span>
+                    </div>
+                    <input type="text" id="isoAlpha2Input" name="isoAlpha2" value="{{ country.isoAlpha2 }}" maxlength="2" placeholder="Ex: BR" oninput="updateFlagPreview(this.value)" class="w-full px-3.5 py-2.5 text-xs font-mono uppercase rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                </div>
+
+                <!-- Código ISO Alpha-3 -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Código ISO Alpha-3
+                    </label>
+                    <input type="text" name="isoAlpha3" value="{{ country.isoAlpha3 }}" maxlength="3" placeholder="Ex: BRA" class="w-full px-3.5 py-2.5 text-xs font-mono uppercase rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                </div>
+
+                <!-- Ano de Fundação -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Ano de Fundação <span class="text-slate-400 font-normal">(opcional)</span>
+                    </label>
+                    <input type="number" name="foundationYear" value="{{ country.foundationYear }}" placeholder="Ex: 1822" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                </div>
+
+                <!-- Ano de Extinção -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Ano de Extinção / Fim <span class="text-slate-400 font-normal">(opcional)</span>
+                    </label>
+                    <input type="number" name="extinctionYear" value="{{ country.extinctionYear }}" placeholder="Ex: 1991" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                </div>
+
+                <!-- Status Switch -->
+                <div class="sm:col-span-2 lg:col-span-4 flex items-center gap-3 pt-2">
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="status" value="1" {% if country.isStatus() %}checked{% endif %} class="sr-only peer">
+                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-sky-500 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-600"></div>
+                    </label>
+                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">País Ativo no Sistema</span>
+                </div>
+            </div>
+
+            <!-- Variações do Tesauro (Edição em Massa via Textarea) -->
+            <div class="pt-6 border-t border-slate-200/60 dark:border-white/10 space-y-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-heading text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <sl-icon name="diagram-3" class="text-sky-600"></sl-icon> Edição em Massa das Variações (Tesauro)
+                        </h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Adicione variações de escrita ou nomes em outros idiomas (uma por linha). O sistema sincroniza automaticamente estas variações para vincular produções do Lattes.
+                        </p>
+                    </div>
+                </div>
+
+                <textarea name="variationsText" rows="5" placeholder="Brasil&#10;Brazil&#10;BR&#10;República Federativa do Brasil" class="w-full p-3 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500 leading-relaxed">{{ variationsText }}</textarea>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/60 dark:border-white/10">
+                <a href="{{ path('app_admin_country_index') }}" class="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+                    Cancelar
+                </a>
+                <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 transition-colors">
+                    <sl-icon name="check-lg"></sl-icon> {{ isNew ? 'Cadastrar País' : 'Salvar Alterações' }}
+                </button>
+            </div>
+        </form>
+
+        <!-- Lista Detalhada de Variações Cadastradas com Opção de Remover / Desmembrar -->
+        {% if not isNew and country.variations|length > 0 %}
+            <div class="pt-8 border-t border-slate-200/60 dark:border-white/10 space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-heading text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <sl-icon name="tags" class="text-sky-600"></sl-icon>
+                            Variações Registradas ({{ country.variations|length }})
+                        </h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Gerenciamento individual de variantes: você pode remover qualquer variação incorreta ou desmembrá-la para criar um novo país independente.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <table class="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                        <thead class="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase">
+                            <tr>
+                                <th class="py-2.5 px-4">Nome da Variação</th>
+                                <th class="py-2.5 px-4 w-36">Tipo</th>
+                                <th class="py-2.5 px-4 w-36">Data de Inclusão</th>
+                                <th class="py-2.5 px-4 w-40 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                            {% for v in country.variations %}
+                                <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                                    <td class="py-2.5 px-4 font-mono font-medium text-slate-900 dark:text-white">
+                                        {{ v.variationName }}
+                                    </td>
+                                    <td class="py-2.5 px-4">
+                                        <span class="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                            {{ v.variationType ?: 'alternative' }}
+                                        </span>
+                                    </td>
+                                    <td class="py-2.5 px-4 text-slate-500 text-[11px]">
+                                        {{ v.createdAt ? v.createdAt|date('d/m/Y H:i') : '-' }}
+                                    </td>
+                                    <td class="py-2.5 px-4 text-right">
+                                        <div class="inline-flex items-center gap-1.5">
+                                            <!-- Desmembrar Variação -->
+                                            <button type="button" onclick="openSeparateModal({{ v.id }}, '{{ v.variationName|e('js') }}')" class="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-300 transition-colors" title="Desmembrar e transformar em país independente">
+                                                <sl-icon name="diagram-2"></sl-icon> Desmembrar
+                                            </button>
+
+                                            <!-- Remover Variação -->
+                                            <button type="button" onclick="openDeleteVarModal({{ v.id }}, '{{ v.variationName|e('js') }}')" class="inline-flex items-center gap-1 rounded-lg border border-rose-300 bg-rose-50 px-2 py-1 text-[11px] font-medium text-rose-700 hover:bg-rose-100 dark:border-rose-700/60 dark:bg-rose-950/40 dark:text-rose-300 transition-colors" title="Excluir esta variação">
+                                                <sl-icon name="trash"></sl-icon> Remover
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Remover Variação (HTML Dialog) -->
+<div id="deleteVarModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+        <div class="flex items-center gap-3 text-rose-600">
+            <sl-icon name="exclamation-triangle" class="text-2xl"></sl-icon>
+            <h3 class="font-heading text-base font-bold text-slate-900 dark:text-white">Remover Variação</h3>
+        </div>
+        <p class="text-xs text-slate-600 dark:text-slate-400">
+            Deseja realmente excluir a variação <strong id="deleteVarName" class="text-slate-900 dark:text-white"></strong>?
+        </p>
+        <form id="deleteVarForm" method="POST" class="flex justify-end gap-2 pt-2">
+            <input type="hidden" name="_token" id="deleteVarCsrf" value="">
+            <button type="button" onclick="closeModal('deleteVarModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+            <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-xl">Remover</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Desmembrar Variação (HTML Dialog) -->
+<div id="separateVarModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+        <div class="flex items-center gap-3 text-amber-600">
+            <sl-icon name="diagram-2" class="text-2xl"></sl-icon>
+            <h3 class="font-heading text-base font-bold text-slate-900 dark:text-white">Desmembrar Variação</h3>
+        </div>
+        <p class="text-xs text-slate-600 dark:text-slate-400">
+            Deseja transformar a variação <strong id="separateVarName" class="text-slate-900 dark:text-white"></strong> em um <strong>novo país independente</strong>?
+        </p>
+        <p class="text-[11px] text-slate-400">
+            Ela será removida deste país e um novo registro será criado para que você possa configurá-lo separadamente.
+        </p>
+        <form id="separateVarForm" method="POST" class="flex justify-end gap-2 pt-2">
+            <input type="hidden" name="_token" id="separateVarCsrf" value="">
+            <button type="button" onclick="closeModal('separateVarModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+            <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-500 rounded-xl">Confirmar Desmembramento</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function updateFlagPreview(code) {
+    const preview = document.getElementById('flagPreview');
+    const clean = code.trim().toLowerCase();
+    if (clean.length === 2) {
+        preview.innerHTML = `<img src="https://flagcdn.com/20x15/${clean}.png" width="20" height="15" class="rounded-xs border border-slate-200 dark:border-slate-700" alt="${clean}" onerror="this.style.display='none'">`;
+    } else {
+        preview.innerHTML = '';
+    }
+}
+
+function openModal(id) {
+    document.getElementById(id).classList.remove('hidden');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
+
+function openDeleteVarModal(id, name) {
+    document.getElementById('deleteVarName').textContent = `"${name}"`;
+    const form = document.getElementById('deleteVarForm');
+    form.action = `/admin/countries/variation/${id}/delete`;
+    
+    // Set CSRF token
+    fetch(`/admin/countries/variation/${id}/csrf-token`).catch(() => {});
+    document.getElementById('deleteVarCsrf').value = `{{ csrf_token('delete_var_') }}${id}`;
+    
+    openModal('deleteVarModal');
+}
+
+function openSeparateModal(id, name) {
+    document.getElementById('separateVarName').textContent = `"${name}"`;
+    const form = document.getElementById('separateVarForm');
+    form.action = `/admin/countries/variation/${id}/separate`;
+    document.getElementById('separateVarCsrf').value = `{{ csrf_token('separate_var_') }}${id}`;
+    
+    openModal('separateVarModal');
+}
+</script>
+{% endblock %}

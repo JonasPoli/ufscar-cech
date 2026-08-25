@@ -1,0 +1,65 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Gerenciar Usuários{% endblock %}
+
+{% block body %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                Usuários do Sistema
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Controle de contas e permissões de acesso ao painel administrativo.
+            </p>
+        </div>
+
+        <a href="{{ path('app_admin_user_new') }}" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 transition-colors">
+            <sl-icon name="plus-lg"></sl-icon> Novo Usuário
+        </a>
+    </div>
+
+    <div class="glass-card rounded-2xl p-6 shadow-sm overflow-hidden">
+        <table class="w-full text-left text-xs stripe">
+            <thead>
+                <tr class="border-b border-slate-200 dark:border-white/10 text-slate-500">
+                    <th class="py-3 px-4">Usuário</th>
+                    <th class="py-3 px-4">Permissões (Roles)</th>
+                    <th class="py-3 px-4 text-right">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+                {% for u in users %}
+                    <tr>
+                        <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">
+                            {{ u.username }}
+                            {% if u == app.user %}
+                                <span class="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                    Você
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4">
+                            {% for role in u.roles %}
+                                <span class="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-mono font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300 mr-1">
+                                    {{ role }}
+                                </span>
+                            {% endfor %}
+                        </td>
+                        <td class="py-3 px-4 text-right space-x-1">
+                            <a href="{{ path('app_admin_user_edit', {'id': u.id}) }}" class="inline-flex items-center p-1.5 text-slate-600 hover:text-sky-600 dark:text-slate-400" title="Editar">
+                                <sl-icon name="pencil"></sl-icon>
+                            </a>
+                            {% if u != app.user %}
+                                <button type="button" onclick="confirmDelete('{{ path('app_admin_user_delete', {'id': u.id}) }}', '{{ csrf_token('delete' ~ u.id) }}', 'Deseja excluir o usuário {{ u.username|e('js') }}?')" class="inline-flex items-center p-1.5 text-slate-400 hover:text-rose-600" title="Excluir">
+                                    <sl-icon name="trash"></sl-icon>
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

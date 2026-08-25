@@ -1,0 +1,180 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Currículos Docentes{% endblock %}
+
+{% block body %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                Currículos & Docentes do CECH
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Gerencie o corpo docente, visualize produções e exporte dados em múltiplos formatos.
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- Export Dropdown -->
+            <div class="relative inline-block text-left">
+                <sl-dropdown>
+                    <sl-button slot="trigger" caret variant="default">
+                        <sl-icon slot="prefix" name="download"></sl-icon> Exportar Dados
+                    </sl-button>
+                    <sl-menu>
+                        <sl-menu-item value="csv">
+                            <a href="{{ path('app_admin_curriculum_export', {'format': 'csv', 'dept': selectedDept}) }}" class="flex items-center gap-2 text-xs">
+                                <sl-icon name="filetype-csv"></sl-icon> Exportar para CSV
+                            </a>
+                        </sl-menu-item>
+                        <sl-menu-item value="json">
+                            <a href="{{ path('app_admin_curriculum_export', {'format': 'json', 'dept': selectedDept}) }}" class="flex items-center gap-2 text-xs">
+                                <sl-icon name="filetype-json"></sl-icon> Exportar para JSON
+                            </a>
+                        </sl-menu-item>
+                        <sl-menu-item value="xml">
+                            <a href="{{ path('app_admin_curriculum_export', {'format': 'xml', 'dept': selectedDept}) }}" class="flex items-center gap-2 text-xs">
+                                <sl-icon name="filetype-xml"></sl-icon> Exportar para XML
+                            </a>
+                        </sl-menu-item>
+                    </sl-menu>
+                </sl-dropdown>
+            </div>
+
+            <a href="{{ path('app_admin_curriculum_new') }}" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 transition-colors">
+                <sl-icon name="person-plus"></sl-icon> Adicionar Docente (Lattes)
+            </a>
+
+            <a href="{{ path('app_admin_curriculum_import') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 transition-colors">
+                <sl-icon name="cloud-arrow-up"></sl-icon> Importar XMLs em Lote
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="glass-card rounded-2xl p-4 shadow-sm">
+        <form method="GET" action="{{ path('app_admin_curriculum_index') }}" class="flex flex-wrap items-center gap-4">
+            <div class="flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+                <sl-icon name="funnel"></sl-icon> Filtrar por Departamento:
+            </div>
+            <select name="dept" onchange="this.form.submit()" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <option value="">Todos os Departamentos</option>
+                {% for d in departments %}
+                    <option value="{{ d.code ?: d.name }}" {% if selectedDept == (d.code ?: d.name) %}selected{% endif %}>
+                        {{ d.name }} ({{ d.code }})
+                    </option>
+                {% endfor %}
+            </select>
+            {% if selectedDept %}
+                <a href="{{ path('app_admin_curriculum_index') }}" class="text-xs text-rose-600 hover:underline">
+                    Limpar Filtro
+                </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Table Card -->
+    <div class="glass-card rounded-2xl p-6 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table id="curriculosTable" class="w-full text-left text-xs stripe hover">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400">
+                        <th class="py-3 px-4">Docente</th>
+                        <th class="py-3 px-4">Departamento</th>
+                        <th class="py-3 px-4">ID Lattes</th>
+                        <th class="py-3 px-4">Produções</th>
+                        <th class="py-3 px-4">Orientações</th>
+                        <th class="py-3 px-4 text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+                    {% for r in researchers %}
+                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
+                            <td class="py-3 px-4 text-slate-900 dark:text-white">
+                                <div class="flex items-center gap-3">
+                                    {% if r.photoUrl %}
+                                        <img src="{{ asset(r.photoUrl) }}" alt="{{ r.fullName }}" class="h-9 w-9 rounded-full object-cover ring-2 ring-sky-500/20 shadow-sm shrink-0" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+                                        <div class="h-9 w-9 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-xs hidden items-center justify-center shadow-sm shrink-0">
+                                            {{ r.fullName|slice(0, 2)|upper }}
+                                        </div>
+                                    {% else %}
+                                        <div class="h-9 w-9 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-sm shrink-0">
+                                            {{ r.fullName|slice(0, 2)|upper }}
+                                        </div>
+                                    {% endif %}
+                                    <div>
+                                        <a href="{{ path('app_admin_curriculum_show', {'id': r.id}) }}" class="hover:text-sky-600 dark:hover:text-sky-400 font-semibold text-slate-900 dark:text-white block">
+                                            {{ r.fullName }}
+                                        </a>
+                                        <div class="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                            {% if r.orcid %}
+                                                <span class="inline-flex items-center rounded bg-emerald-50 px-1.5 py-0.2 text-[9px] font-bold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                                                    ORCID: {{ r.orcid }}
+                                                </span>
+                                            {% endif %}
+                                            {% set isActive = (r.status ?? true) and (r.leaveYear is not defined or r.leaveYear is null or r.leaveYear >= date()|date('Y')) %}
+                                            {% if isActive %}
+                                                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-500/20 px-2 py-0.2 text-[9px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" title="Docente em atividade no CECH">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> {{ r.admissionYear ? 'Desde ' ~ r.admissionYear : 'Ativo no CECH' }}
+                                                </span>
+                                            {% else %}
+                                                <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-500/20 px-2 py-0.2 text-[9px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-300" title="Vínculo encerrado / Docente aposentado">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span> {{ r.admissionYear ? r.admissionYear ~ '–' ~ (r.leaveYear ?: 'Saída') : 'Histórico/Aposentado' }}
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3 px-4 text-slate-600 dark:text-slate-300">
+                                {% if r.departmentCode %}
+                                    <span class="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                        {{ r.departmentCode }}
+                                    </span>
+                                {% else %}
+                                    {{ r.department ?: '-' }}
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4 font-mono text-slate-500 dark:text-slate-400">
+                                <a href="http://lattes.cnpq.br/{{ r.idLattes }}" target="_blank" rel="noopener noreferrer" class="hover:underline text-sky-600">
+                                    {{ r.idLattes }}
+                                </a>
+                            </td>
+                            <td class="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">
+                                {{ r.totalProductions }}
+                            </td>
+                            <td class="py-3 px-4 font-semibold text-slate-800 dark:text-slate-200">
+                                {{ r.totalOrientations }}
+                            </td>
+                            <td class="py-3 px-4 text-right space-x-1">
+                                <a href="{{ path('app_admin_curriculum_show', {'id': r.id}) }}" class="inline-flex items-center p-1.5 text-slate-600 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-400" title="Ver Detalhes">
+                                    <sl-icon name="eye"></sl-icon>
+                                </a>
+                                <a href="{{ path('app_admin_curriculum_pdf', {'id': r.id}) }}" class="inline-flex items-center p-1.5 text-slate-600 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400" title="Gerar PDF">
+                                    <sl-icon name="file-earmark-pdf"></sl-icon>
+                                </a>
+                                <button type="button" onclick="confirmDelete('{{ path('app_admin_curriculum_delete', {'id': r.id}) }}', '{{ csrf_token('delete' ~ r.id) }}', 'Deseja realmente remover o currículo de {{ r.fullName|e('js') }}?')" class="inline-flex items-center p-1.5 text-slate-400 hover:text-rose-600" title="Excluir">
+                                    <sl-icon name="trash"></sl-icon>
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#curriculosTable').DataTable({
+        pageLength: 25,
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json'
+        },
+        order: [[0, 'asc']]
+    });
+});
+</script>
+{% endblock %}

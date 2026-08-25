@@ -1,0 +1,121 @@
+{% extends 'pub/base.html.twig' %}
+
+{% block title %}{{ deptName }} ({{ deptCode }}) | Departamentos CECH UFSCar{% endblock %}
+{% block meta_description %}Corpo docente, pesquisadores e produção científica vinculada ao {{ deptName }} ({{ deptCode }}) do Centro de Educação e Ciências Humanas da UFSCar.{% endblock %}
+{% block meta_keywords %}{{ deptName }}, {{ deptCode }}, CECH, UFSCar, departamento, corpo docente, pesquisadores, produção acadêmica{% endblock %}
+
+{% block og_title %}{{ deptName }} ({{ deptCode }}) — CECH UFSCar{% endblock %}
+{% block og_description %}Docentes, pesquisas e produções do {{ deptName }} ({{ deptCode }} / CECH UFSCar).{% endblock %}
+
+{# ── Schema.org Structured Data (JSON-LD) for Department ── #}
+{% block schema_json_ld %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    "@id": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}{{ path('app_pub_department_show', {'codeOrSlug': deptCode}) }}#department",
+    "name": "{{ deptName|e('js') }}",
+    "alternateName": "{{ deptCode|e('js') }}",
+    "parentOrganization": {
+        "@type": "CollegeOrUniversity",
+        "name": "Centro de Educação e Ciências Humanas — UFSCar",
+        "parentOrganization": {
+            "@type": "CollegeOrUniversity",
+            "name": "Universidade Federal de São Carlos",
+            "url": "https://www.ufscar.br"
+        }
+    },
+    "member": [
+        {% for r in researchers %}
+            {
+                "@type": "Person",
+                "name": "{{ r.fullName|e('js') }}",
+                "url": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}{{ path('app_pub_professor_show', {'slugOrId': r.slug ?: r.idLattes}) }}"
+            }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+}
+</script>
+{% endblock %}
+
+{% block body %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <!-- Breadcrumbs -->
+    <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400" aria-label="Breadcrumb">
+        <a href="{{ path('app_pub_home') }}" class="hover:text-sky-600 dark:hover:text-sky-400">Início</a>
+        <span>/</span>
+        <a href="{{ path('app_pub_department_list') }}" class="hover:text-sky-600 dark:hover:text-sky-400">Departamentos</a>
+        <span>/</span>
+        <span class="text-slate-900 dark:text-white font-medium" aria-current="page">{{ deptCode }}</span>
+    </nav>
+
+    <!-- Header Card -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                    <span class="rounded-lg bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                        {{ deptCode }}
+                    </span>
+                    <span class="text-xs text-slate-400">Departamento Acadêmico</span>
+                </div>
+                <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                    {{ deptName }}
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    Centro de Educação e Ciências Humanas — Universidade Federal de São Carlos
+                </p>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 px-4 py-2.5 text-center bg-white/50 dark:bg-slate-900/50">
+                    <div class="font-heading text-xl font-bold text-slate-900 dark:text-white">{{ researchers|length }}</div>
+                    <div class="text-[11px] text-slate-400">Docentes</div>
+                </div>
+                <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 px-4 py-2.5 text-center bg-white/50 dark:bg-slate-900/50">
+                    <div class="font-heading text-xl font-bold text-slate-900 dark:text-white">{{ totalProductions|number_format(0, ',', '.') }}</div>
+                    <div class="text-[11px] text-slate-400">Produções</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Faculty Members Grid -->
+    <div class="space-y-4">
+        <h2 class="font-heading text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <sl-icon name="people" class="text-sky-600 dark:text-sky-400"></sl-icon>
+            Corpo Docente & Pesquisadores ({{ researchers|length }})
+        </h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {% for r in researchers %}
+                <a href="{{ path('app_pub_professor_show', {'slugOrId': r.slug ?: r.idLattes}) }}" class="glass-card rounded-2xl p-4 hover:border-sky-500/50 hover:shadow-md transition-all flex items-center gap-3.5 group">
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-sm group-hover:scale-105 transition-transform {% if not r.photoUrl %}bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-sm{% endif %}">
+                        {% if r.photoUrl %}
+                            <img src="{{ r.photoUrl }}" alt="{{ r.fullName }}" class="h-full w-full object-cover">
+                        {% else %}
+                            {{ r.fullName|slice(0, 2)|upper }}
+                        {% endif %}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-heading text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                            {{ r.fullName }}
+                        </h3>
+                        <div class="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
+                            <span>{{ r.productions|length }} produções</span>
+                            {% if r.admissionYear or r.leaveYear %}
+                                {% if r.isActiveInCech %}
+                                    <span>• Desde {{ r.admissionYear }}</span>
+                                {% else %}
+                                    <span class="text-amber-600 dark:text-amber-400 font-medium">• {{ r.admissionYear ? r.admissionYear ~ '–' ~ (r.leaveYear ?: 'Saída') : 'Histórico' }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                    <sl-icon name="chevron-right" class="text-slate-400 group-hover:translate-x-1 transition-transform"></sl-icon>
+                </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

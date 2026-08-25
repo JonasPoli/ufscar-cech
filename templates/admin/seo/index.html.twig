@@ -1,0 +1,247 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Gerenciador de SEO & Analytics{% endblock %}
+
+{% block body %}
+<div class="mx-auto max-w-4xl space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                SEO, Analytics & Indexação
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Configure meta tags globais, Google Analytics, Schema.org, Open Graph e diretrizes para robôs de busca.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="{{ path('app_pub_sitemap') }}" target="_blank" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 transition-colors">
+                <sl-icon name="diagram-2"></sl-icon> Sitemap.xml
+            </a>
+            <a href="{{ path('app_pub_robots') }}" target="_blank" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 transition-colors">
+                <sl-icon name="robot"></sl-icon> Robots.txt
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Settings Form -->
+    <form method="POST" enctype="multipart/form-data" action="{{ path('app_admin_seo_index') }}" class="space-y-8">
+        <!-- 1. Google Analytics Section -->
+        <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-200/60 pb-3 dark:border-white/10">
+                <div class="flex items-center gap-2.5">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                        <sl-icon name="graph-up-arrow" class="text-lg"></sl-icon>
+                    </div>
+                    <div>
+                        <h2 class="font-heading text-base font-bold text-slate-900 dark:text-white">Google Analytics 4 (GA4)</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Rastreamento de visitas e métricas de tráfego</p>
+                    </div>
+                </div>
+
+                {% if settings.googleAnalyticsId %}
+                    <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex items-center gap-1">
+                        <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span> Analytics Ativo
+                    </span>
+                {% else %}
+                    <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                        Analytics Inativo
+                    </span>
+                {% endif %}
+            </div>
+
+            <div class="space-y-2">
+                <label for="googleAnalyticsId" class="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    ID de Medição do Google Analytics (Measurement ID)
+                </label>
+                <input type="text" id="googleAnalyticsId" name="googleAnalyticsId" value="{{ settings.googleAnalyticsId }}" placeholder="ex: G-XXXXXXXXXX" class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-mono text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                    Localize em: Google Analytics → Administrador → Coleta e modificação de dados → Fluxos de dados → Web → ID da métrica (G-...).
+                </p>
+            </div>
+
+            <!-- Live Code Preview -->
+            <div id="analyticsPreviewBox" class="p-4 rounded-xl bg-slate-950 text-slate-200 font-mono text-xs overflow-x-auto space-y-1" style="{{ settings.googleAnalyticsId ? '' : 'display:none;' }}">
+                <div class="text-slate-400 text-[11px]">// Script inserido automaticamente no &lt;head&gt; do Portal Público:</div>
+                <div class="text-sky-400">&lt;script async src="https://www.googletagmanager.com/gtag/js?id=<span id="analyticsIdPreview">{{ settings.googleAnalyticsId }}</span>"&gt;&lt;/script&gt;</div>
+                <div class="text-slate-300">&lt;script&gt;</div>
+                <div class="pl-4 text-slate-300">window.dataLayer = window.dataLayer || [];</div>
+                <div class="pl-4 text-slate-300">function gtag(){dataLayer.push(arguments);}</div>
+                <div class="pl-4 text-slate-300">gtag('js', new Date());</div>
+                <div class="pl-4 text-emerald-400">gtag('config', '<span id="analyticsIdPreview2">{{ settings.googleAnalyticsId }}</span>');</div>
+                <div class="text-slate-300">&lt;/script&gt;</div>
+            </div>
+        </div>
+
+        <!-- 2. Google Search Console & Meta Tags -->
+        <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
+            <div class="flex items-center gap-2.5 border-b border-slate-200/60 pb-3 dark:border-white/10">
+                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400">
+                    <sl-icon name="search" class="text-lg"></sl-icon>
+                </div>
+                <div>
+                    <h2 class="font-heading text-base font-bold text-slate-900 dark:text-white">Meta Tags Principais & Verificação</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Informações exibidas nos resultados do Google e buscadores</p>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Título Padrão do Site (Meta Title) *</label>
+                    <input type="text" name="seoTitle" value="{{ settings.seoTitle }}" required class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Recomendado: 50 a 60 caracteres.</p>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Descrição Padrão do Site (Meta Description) *</label>
+                    <textarea name="seoDescription" rows="3" required class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 leading-relaxed">{{ settings.seoDescription }}</textarea>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Recomendado: 140 a 160 caracteres com resumo objetivo.</p>
+                </div>
+
+                <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Palavras-Chave Padrão (Meta Keywords)</label>
+                    <input type="text" name="seoKeywords" value="{{ settings.seoKeywords }}" class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">URL Base Canônica (Base URL) *</label>
+                        <input type="url" name="baseUrl" value="{{ settings.baseUrl }}" required class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-mono text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Código Google Search Console (Meta Tag Verification)</label>
+                        <input type="text" name="googleSearchConsoleVerification" value="{{ settings.googleSearchConsoleVerification }}" placeholder="ex: 4z_xyz123abc456..." class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm font-mono text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Open Graph & Social Share -->
+        <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
+            <div class="flex items-center gap-2.5 border-b border-slate-200/60 pb-3 dark:border-white/10">
+                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400">
+                    <sl-icon name="share" class="text-lg"></sl-icon>
+                </div>
+                <div>
+                    <h2 class="font-heading text-base font-bold text-slate-900 dark:text-white">Open Graph & Compartilhamento Social</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Card de pré-visualização ao compartilhar links no WhatsApp, Twitter/X, LinkedIn e Facebook</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+                <div class="space-y-2">
+                    <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Imagem de Destaque (og:image) - Recomendado: 1200x630px</label>
+                    <input type="file" name="ogImageFile" accept="image/*" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 dark:file:bg-sky-950 dark:file:text-sky-300">
+                    {% if settings.ogImage %}
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">Arquivo atual: <code class="font-mono text-sky-600">{{ settings.ogImage }}</code></p>
+                    {% endif %}
+                </div>
+
+                <!-- Preview Card -->
+                <div class="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 space-y-2 bg-slate-50 dark:bg-slate-900/50">
+                    <span class="text-[11px] font-bold uppercase text-slate-400">Pré-visualização do Card Social:</span>
+                    <div class="aspect-video w-full rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800 flex items-center justify-center relative">
+                        {% if settings.ogImage %}
+                            <img src="{{ settings.ogImage }}" alt="Social Share Preview" class="w-full h-full object-cover">
+                        {% else %}
+                            <div class="text-center p-4">
+                                <sl-icon name="image" class="text-3xl text-slate-400 mb-1"></sl-icon>
+                                <p class="text-[11px] text-slate-400">Nenhuma imagem personalizada enviada</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="pt-1">
+                        <div class="text-[11px] text-slate-400 font-mono truncate">{{ settings.baseUrl }}</div>
+                        <div class="text-xs font-bold text-slate-900 dark:text-white truncate">{{ settings.seoTitle }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Robots.txt Content -->
+        <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
+            <div class="flex items-center gap-2.5 border-b border-slate-200/60 pb-3 dark:border-white/10">
+                <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400">
+                    <sl-icon name="robot" class="text-lg"></sl-icon>
+                </div>
+                <div>
+                    <h2 class="font-heading text-base font-bold text-slate-900 dark:text-white">Diretrizes Robots.txt</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Instruções personalizadas para robôs de busca (Googlebot, Bingbot, etc.)</p>
+                </div>
+            </div>
+
+            <div class="space-y-1">
+                <textarea name="robotsTxtContent" rows="4" placeholder="User-agent: *&#10;Disallow: /admin/&#10;Allow: /&#10;Sitemap: {{ settings.baseUrl }}/sitemap.xml" class="w-full font-mono text-xs rounded-xl border border-slate-300 bg-white p-3 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 leading-relaxed">{{ settings.robotsTxtContent }}</textarea>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Deixe em branco para utilizar as diretrizes padrão que liberam todas as páginas públicas e protegem a área <code>/admin/</code>.</p>
+            </div>
+        </div>
+
+        <!-- 5. PageSpeed & Schema.org Checklist -->
+        <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
+            <h2 class="font-heading text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="check2-all" class="text-emerald-600"></sl-icon> Recursos de SEO e PageSpeed Ativos no Portal
+            </h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div class="flex items-start gap-2 p-3 rounded-xl bg-emerald-50/60 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    <sl-icon name="check-circle-fill" class="text-emerald-600 mt-0.5"></sl-icon>
+                    <div>
+                        <strong>Schema.org JSON-LD (Person & ScholarlyArticle):</strong> Dados estruturados para currículos, titulações e artigos.
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-2 p-3 rounded-xl bg-emerald-50/60 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    <sl-icon name="check-circle-fill" class="text-emerald-600 mt-0.5"></sl-icon>
+                    <div>
+                        <strong>Google Scholar Citation Meta Tags:</strong> Indexação acadêmica compatível com o Google Acadêmico.
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-2 p-3 rounded-xl bg-emerald-50/60 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    <sl-icon name="check-circle-fill" class="text-emerald-600 mt-0.5"></sl-icon>
+                    <div>
+                        <strong>Sitemap XML Dinâmico:</strong> Mapeia todos os 414 docentes, departamentos e rotas públicas em <code>/sitemap.xml</code>.
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-2 p-3 rounded-xl bg-emerald-50/60 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    <sl-icon name="check-circle-fill" class="text-emerald-600 mt-0.5"></sl-icon>
+                    <div>
+                        <strong>Google PageSpeed Otimizado:</strong> Pré-conexão de fontes (preconnect), CSS minificado e lazy loading de imagens.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-4">
+            <button type="submit" class="rounded-xl bg-sky-600 px-6 py-3 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 transition-colors flex items-center gap-2">
+                <sl-icon name="check-lg"></sl-icon> Salvar Configurações de SEO & Analytics
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const input = document.getElementById('googleAnalyticsId');
+    const previewBox = document.getElementById('analyticsPreviewBox');
+    const p1 = document.getElementById('analyticsIdPreview');
+    const p2 = document.getElementById('analyticsIdPreview2');
+
+    if (input) {
+        input.addEventListener('input', () => {
+            const val = input.value.trim();
+            if (val) {
+                previewBox.style.display = 'block';
+                p1.textContent = val;
+                p2.textContent = val;
+            } else {
+                previewBox.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

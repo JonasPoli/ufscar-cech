@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Currículo Lattes - {{ researcher.fullName }}</title>
+    <style>
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            color: #1e293b;
+            margin: 25px;
+        }
+        .header {
+            border-bottom: 2px solid #0284c7;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+        .title {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #0f172a;
+            margin: 0 0 4px 0;
+        }
+        .subtitle {
+            font-size: 10pt;
+            color: #64748b;
+            margin: 0;
+        }
+        .section-title {
+            font-size: 12pt;
+            font-weight: bold;
+            color: #0369a1;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 3px;
+            margin-top: 18px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .item {
+            margin-bottom: 8px;
+        }
+        .item-title {
+            font-weight: bold;
+            color: #0f172a;
+        }
+        .item-details {
+            font-size: 9pt;
+            color: #475569;
+        }
+        .badge {
+            display: inline-block;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 8pt;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 30px;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 8px;
+            font-size: 8pt;
+            color: #94a3b8;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 class="title">{{ researcher.fullName }}</h1>
+        <p class="subtitle">
+            {{ researcher.department ?: 'Centro de Educação e Ciências Humanas — UFSCar' }}
+            {% if researcher.departmentCode %}({{ researcher.departmentCode }}){% endif %}
+        </p>
+        <p class="subtitle" style="margin-top: 3px;">
+            ID Lattes: {{ researcher.idLattes }}
+            {% if researcher.orcid %} | ORCID: {{ researcher.orcid }}{% endif %}
+            {% if researcher.email %} | E-mail: {{ researcher.email }}{% endif %}
+        </p>
+    </div>
+
+    {% if researcher.abstractResume %}
+        <div class="section-title">Resumo do Currículo</div>
+        <p style="font-size: 9.5pt; text-align: justify;">{{ researcher.abstractResume }}</p>
+    {% endif %}
+
+    {% if researcher.educations|length > 0 %}
+        <div class="section-title">Formação Acadêmica</div>
+        {% for e in researcher.educations %}
+            <div class="item">
+                <span class="badge">{{ e.level }}</span>
+                <span class="item-title">{{ e.courseName }}</span> ({{ e.startYear ?: '?' }} - {{ e.endYear ?: 'Atual' }})
+                <div class="item-details">{{ e.institutionName }}</div>
+                {% if e.monographTitle %}
+                    <div class="item-details"><em>Título: "{{ e.monographTitle }}"</em></div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if researcher.productions|length > 0 %}
+        <div class="section-title">Produções Científicas e Técnicas ({{ researcher.productions|length }})</div>
+        {% for p in researcher.productions %}
+            <div class="item">
+                <span class="badge">{{ p.itemType }}</span>
+                {% if p.year %}<strong>{{ p.year }}.</strong>{% endif %}
+                <span class="item-title">{{ p.title }}</span>
+                <div class="item-details">
+                    {% if p.journalName %}{{ p.journalName }}.{% endif %}
+                    {% if p.publisher %}Editora: {{ p.publisher }}.{% endif %}
+                    {% if p.qualis %}Qualis: {{ p.qualis }}.{% endif %}
+                    {% if p.doi %}DOI: {{ p.doi }}{% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if researcher.orientations|length > 0 %}
+        <div class="section-title">Orientações ({{ researcher.orientations|length }})</div>
+        {% for o in researcher.orientations %}
+            <div class="item">
+                <span class="badge">{{ o.orientationType }} ({{ o.nature }})</span>
+                <span class="item-title">{{ o.studentName }}</span>
+                {% if o.year %}({{ o.year }}){% endif %}
+                {% if o.title %}<div class="item-details"><em>"{{ o.title }}"</em></div>{% endif %}
+                <div class="item-details">{{ o.institutionName }}</div>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="footer">
+        Gerado pelo Portal de Produção Científica CECH — UFSCar em {{ "now"|date("d/m/Y H:i") }}
+    </div>
+</body>
+</html>

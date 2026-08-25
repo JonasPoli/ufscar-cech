@@ -1,0 +1,103 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}{{ isNew ? 'Novo Periódico' : 'Editar Periódico' }} | Admin CECH{% endblock %}
+
+{% block body %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Top Nav -->
+    <div class="flex items-center justify-between">
+        <a href="{{ path('app_admin_journal_index') }}" class="text-xs text-sky-600 font-semibold hover:underline flex items-center gap-1">
+            <sl-icon name="arrow-left"></sl-icon> Voltar à lista de periódicos
+        </a>
+    </div>
+
+    <!-- Main Card -->
+    <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div>
+            <h1 class="font-heading text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="journal-bookmark" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                {{ isNew ? 'Cadastrar Novo Periódico' : 'Editar Periódico & Sinônimos' }}
+            </h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Configure o título padronizado, ISSN, classificação Qualis CAPES e variações de títulos (tesauro).
+            </p>
+        </div>
+
+        <form method="POST" class="space-y-6">
+            <input type="hidden" name="_token" value="{{ csrf_token(isNew ? 'journal_new' : 'journal_edit') }}">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Título -->
+                <div class="sm:col-span-2 space-y-1">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Título Padronizado do Periódico <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" name="title" value="{{ journal.title }}" required placeholder="Ex: REVISTA BRASILEIRA DE EDUCAÇÃO" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-medium">
+                </div>
+
+                <!-- ISSN -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        ISSN / E-ISSN
+                    </label>
+                    <input type="text" name="issn" value="{{ journal.issn }}" placeholder="Ex: 1413-2478" class="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                </div>
+
+                <!-- Qualis -->
+                <div class="space-y-1">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Estrato Qualis CAPES
+                    </label>
+                    <select name="qualis" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-bold">
+                        <option value="">Sem Qualis / Não Avaliado</option>
+                        <option value="A1" {% if journal.qualis == 'A1' %}selected{% endif %}>A1 (Excelente)</option>
+                        <option value="A2" {% if journal.qualis == 'A2' %}selected{% endif %}>A2 (Excelente)</option>
+                        <option value="A3" {% if journal.qualis == 'A3' %}selected{% endif %}>A3 (Muito Bom)</option>
+                        <option value="A4" {% if journal.qualis == 'A4' %}selected{% endif %}>A4 (Muito Bom)</option>
+                        <option value="B1" {% if journal.qualis == 'B1' %}selected{% endif %}>B1 (Bom)</option>
+                        <option value="B2" {% if journal.qualis == 'B2' %}selected{% endif %}>B2 (Bom)</option>
+                        <option value="B3" {% if journal.qualis == 'B3' %}selected{% endif %}>B3 (Regular)</option>
+                        <option value="B4" {% if journal.qualis == 'B4' %}selected{% endif %}>B4 (Regular)</option>
+                        <option value="C"  {% if journal.qualis == 'C' %}selected{% endif %}>C (Baixo impacto / Outros)</option>
+                        <option value="NP" {% if journal.qualis == 'NP' %}selected{% endif %}>NP (Não Periódico)</option>
+                    </select>
+                </div>
+
+                <!-- Área -->
+                <div class="sm:col-span-2 space-y-1">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                        Área de Avaliação / Conhecimento (Opcional)
+                    </label>
+                    <input type="text" name="area" value="{{ journal.area }}" placeholder="Ex: EDUCAÇÃO / CIÊNCIAS HUMANAS" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                </div>
+            </div>
+
+            <!-- Variações do Tesauro (Aliases) -->
+            <div class="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-2">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-heading text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <sl-icon name="diagram-3" class="text-sky-600"></sl-icon> Variações de Nomes e Sinônimos (Tesauro)
+                        </h3>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Insira um sinônimo ou variação por linha. O sistema usará estas variações para mapear automaticamente produções importadas do Lattes ou bases externas.
+                        </p>
+                    </div>
+                </div>
+
+                <textarea name="variations" rows="6" placeholder="Rev. Bras. Educ.&#10;Revista Brasileira de Educacao&#10;RBE (Rio de Janeiro)&#10;Brazilian Journal of Education" class="w-full p-3 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500 leading-relaxed">{{ variationsText }}</textarea>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <a href="{{ path('app_admin_journal_index') }}" class="px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+                    Cancelar
+                </a>
+                <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 transition-colors">
+                    <sl-icon name="check-lg"></sl-icon> {{ isNew ? 'Cadastrar Periódico' : 'Salvar Alterações' }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

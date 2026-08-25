@@ -1,0 +1,260 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Tesauro de Países | Admin CECH{% endblock %}
+
+{% block body %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="globe-americas" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                Tesauro de Países
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Vocabulário controlado, bandeiras, códigos ISO, datas históricas e padronização de variantes de nomes de países ({{ countries|length }} países cadastrados).
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- Merge Button -->
+            <button type="button" id="btnMergeSelected" disabled onclick="openMergeModal()" class="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 px-3.5 py-2 text-xs font-semibold text-amber-800 dark:text-amber-300 hover:bg-amber-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                <sl-icon name="intersect"></sl-icon> Mesclar Selecionados (<span id="mergeCount">0</span>)
+            </button>
+
+            <!-- Export Dropdown -->
+            <div class="inline-flex rounded-xl shadow-xs border border-slate-300 dark:border-slate-700 overflow-hidden">
+                <a href="{{ path('app_admin_country_export', {'format': 'the'}) }}" class="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-r border-slate-300 dark:border-slate-700" title="Exportar VantagePoint (.the)">
+                    <sl-icon name="diagram-3"></sl-icon> .THE
+                </a>
+                <a href="{{ path('app_admin_country_export', {'format': 'csv'}) }}" class="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-r border-slate-300 dark:border-slate-700" title="Exportar CSV">
+                    <sl-icon name="filetype-csv"></sl-icon> CSV
+                </a>
+                <a href="{{ path('app_admin_country_export', {'format': 'json'}) }}" class="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Exportar JSON">
+                    <sl-icon name="code-slash"></sl-icon> JSON
+                </a>
+            </div>
+
+            <!-- Import Button -->
+            <button type="button" onclick="openModal('importModal')" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+                <sl-icon name="upload"></sl-icon> Importar (.the/.csv)
+            </button>
+
+            <a href="{{ path('app_admin_country_new') }}" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 transition-colors">
+                <sl-icon name="plus-lg"></sl-icon> Novo País
+            </a>
+        </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="glass-card rounded-2xl p-6 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table id="countryTable" class="w-full text-left text-xs stripe hover">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-white/10 text-slate-500">
+                        <th class="py-3 px-3 w-10 text-center"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
+                        <th class="py-3 px-4">País & Bandeira</th>
+                        <th class="py-3 px-4 w-32">Códigos ISO</th>
+                        <th class="py-3 px-4 w-36">Datas Históricas</th>
+                        <th class="py-3 px-4">Variações / Tesauro</th>
+                        <th class="py-3 px-4 w-28 text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+                    {% for c in countries %}
+                        <tr>
+                            <td class="py-3 px-3 text-center">
+                                <input type="checkbox" class="country-checkbox" value="{{ c.id }}" data-name="{{ c.commonName }}" onchange="updateMergeState()">
+                            </td>
+                            <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">
+                                <div class="flex items-center gap-2">
+                                    {% if c.isoAlpha2 %}
+                                        <img src="https://flagcdn.com/20x15/{{ c.isoAlpha2|lower }}.png" width="20" height="15" class="rounded-xs shadow-xs border border-slate-200 dark:border-slate-700 shrink-0 inline-block align-middle" alt="{{ c.isoAlpha2 }}" loading="lazy" onerror="this.style.display='none'">
+                                    {% else %}
+                                        <span class="inline-flex h-[15px] w-[20px] items-center justify-center rounded-xs bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-400">🌐</span>
+                                    {% endif %}
+                                    <div>
+                                        <a href="{{ path('app_admin_country_edit', {'id': c.id}) }}" class="hover:text-sky-600 dark:hover:text-sky-400 underline">
+                                            {{ c.commonName }}
+                                        </a>
+                                        {% if c.officialName and c.officialName != c.commonName %}
+                                            <span class="block text-[11px] font-normal text-slate-400 truncate max-w-xs">{{ c.officialName }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3 px-4 font-mono text-slate-600 dark:text-slate-400">
+                                {% if c.isoAlpha2 or c.isoAlpha3 %}
+                                    <span class="font-bold">{{ c.isoAlpha2 ?: '--' }}</span> <span class="text-slate-400">/</span> {{ c.isoAlpha3 ?: '---' }}
+                                {% else %}
+                                    <span class="text-slate-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4 text-slate-600 dark:text-slate-400 text-[11px]">
+                                {% if c.foundationYear or c.extinctionYear %}
+                                    <span class="font-semibold text-slate-700 dark:text-slate-300">
+                                        {{ c.foundationYear ?: '?' }} - {{ c.extinctionYear ?: 'Atual' }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-slate-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4">
+                                <div class="flex flex-wrap gap-1 max-w-md">
+                                    {% for v in c.variations %}
+                                        <span class="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-600 dark:text-slate-400" title="{{ v.variationName }}">
+                                            {{ v.variationName|slice(0, 25) }}{% if v.variationName|length > 25 %}...{% endif %}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-slate-400 text-[11px] italic">Sem sinônimos</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td class="py-3 px-4 text-right">
+                                <div class="inline-flex items-center gap-1">
+                                    <a href="{{ path('app_admin_country_edit', {'id': c.id}) }}" class="p-1.5 rounded-lg text-slate-600 hover:text-sky-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-sky-400 dark:hover:bg-slate-800 transition-colors" title="Editar">
+                                        <sl-icon name="pencil-square"></sl-icon>
+                                    </a>
+                                    <button type="button" onclick="confirmDeleteCountry({{ c.id }}, '{{ c.commonName|e('js') }}')" class="p-1.5 rounded-lg text-slate-600 hover:text-rose-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-slate-800 transition-colors" title="Excluir">
+                                        <sl-icon name="trash"></sl-icon>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Importar Tesauro (HTML Dialog) -->
+<div id="importModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="diagram-2" class="text-sky-600"></sl-icon> Importar Tesauro de Países
+            </h3>
+            <button type="button" onclick="closeModal('importModal')" class="text-slate-400 hover:text-slate-600">
+                <sl-icon name="x-lg"></sl-icon>
+            </button>
+        </div>
+        <form method="POST" enctype="multipart/form-data" action="{{ path('app_admin_country_import') }}" class="space-y-4">
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Envie um arquivo VantagePoint (.the), CSV ou JSON contendo termos preferidos e suas variantes.
+            </p>
+            <div>
+                <input type="file" name="thesaurus_file" required accept=".the,.csv,.json,.xml" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 dark:file:bg-sky-950 dark:file:text-sky-300">
+            </div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onclick="closeModal('importModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-xl">Importar Arquivo</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Mesclar Países (HTML Dialog) -->
+<div id="mergeModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="intersect" class="text-amber-500"></sl-icon> Mesclar Países Selecionados
+            </h3>
+            <button type="button" onclick="closeModal('mergeModal')" class="text-slate-400 hover:text-slate-600">
+                <sl-icon name="x-lg"></sl-icon>
+            </button>
+        </div>
+        <form method="POST" action="{{ path('app_admin_country_merge') }}" class="space-y-4">
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Selecione qual país será o registro <strong>Principal (Master)</strong>. Todos os outros países selecionados terão suas variações transferidas para ele e serão unificados.
+            </p>
+            <div class="space-y-2">
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Registro Principal:</label>
+                <select name="master_id" id="mergeMasterSelect" required class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"></select>
+            </div>
+            <div id="mergeSourcesContainer"></div>
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+                <button type="button" onclick="closeModal('mergeModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-500 rounded-xl">Confirmar Fusão</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Confirmação de Exclusão (HTML Dialog) -->
+<div id="deleteModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+        <div class="flex items-center gap-3 text-rose-600">
+            <sl-icon name="exclamation-triangle" class="text-2xl"></sl-icon>
+            <h3 class="font-heading text-base font-bold text-slate-900 dark:text-white">Excluir País</h3>
+        </div>
+        <p class="text-xs text-slate-600 dark:text-slate-400">
+            Deseja realmente remover o país <strong id="deleteCountryName" class="text-slate-900 dark:text-white"></strong>? Esta ação não pode ser desfeita.
+        </p>
+        <form id="deleteForm" method="POST" class="flex justify-end gap-2 pt-2">
+            <input type="hidden" name="_token" id="deleteCsrfToken" value="">
+            <button type="button" onclick="closeModal('deleteModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+            <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-xl">Excluir</button>
+        </form>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#countryTable').DataTable({
+        pageLength: 25,
+        language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json' },
+        order: [[1, 'asc']]
+    });
+});
+
+function openModal(id) {
+    document.getElementById(id).classList.remove('hidden');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
+
+function toggleSelectAll(master) {
+    $('.country-checkbox').prop('checked', master.checked);
+    updateMergeState();
+}
+
+function updateMergeState() {
+    const checked = $('.country-checkbox:checked');
+    const count = checked.length;
+    $('#mergeCount').text(count);
+    $('#btnMergeSelected').prop('disabled', count < 2);
+}
+
+function openMergeModal() {
+    const checked = $('.country-checkbox:checked');
+    if (checked.length < 2) return;
+
+    const select = $('#mergeMasterSelect');
+    const sourcesContainer = $('#mergeSourcesContainer');
+    select.empty();
+    sourcesContainer.empty();
+
+    checked.each(function() {
+        const id = $(this).val();
+        const name = $(this).data('name');
+        select.append(new Option(name, id));
+        sourcesContainer.append(`<input type="hidden" name="source_ids[]" value="${id}">`);
+    });
+
+    openModal('mergeModal');
+}
+
+function confirmDeleteCountry(id, name) {
+    document.getElementById('deleteCountryName').textContent = `"${name}"`;
+    const form = document.getElementById('deleteForm');
+    form.action = `/admin/countries/${id}/delete`;
+    document.getElementById('deleteCsrfToken').value = `{{ csrf_token('delete') }}${id}`;
+    
+    openModal('deleteModal');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}{{ isNew ? 'Novo Autor' : 'Editar Autor: ' ~ author.preferredName }}{% endblock %}
+
+{% block body %}
+<div class="mx-auto max-w-3xl space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                {{ isNew ? 'Novo Autor' : 'Editar Autor' }}
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Padronização do nome preferido do autor e cadastro de variantes de citação.
+            </p>
+        </div>
+
+        <a href="{{ path('app_admin_author_index') }}" class="text-xs text-sky-600 font-semibold hover:underline flex items-center gap-1">
+            <sl-icon name="arrow-left"></sl-icon> Voltar à lista
+        </a>
+    </div>
+
+    <div class="glass-card rounded-3xl p-8 shadow-sm">
+        <form method="POST" action="" class="space-y-6">
+            <div class="space-y-1">
+                <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Nome Preferido / Padronizado *</label>
+                <input type="text" name="preferredName" value="{{ author.preferredName }}" required class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+            </div>
+
+            {% if not isNew %}
+                <div class="pt-6 border-t border-slate-200/60 dark:border-white/10 space-y-4">
+                    <h3 class="font-heading text-base font-bold text-slate-900 dark:text-white">
+                        Variantes de Citação Cadastradas ({{ author.variations|length }})
+                    </h3>
+
+                    <div class="flex flex-wrap gap-2">
+                        {% for v in author.variations %}
+                            <span class="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                {{ v.originalName }}
+                            </span>
+                        {% else %}
+                            <p class="text-xs text-slate-400">Nenhuma variante adicional cadastrada.</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="space-y-1 pt-2">
+                        <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Adicionar Nova Variante</label>
+                        <input type="text" name="new_variation" placeholder="Digite uma variante de citação (ex: SILVA, J. A.) e salve..." class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="flex items-center justify-end gap-3 pt-6 border-t border-slate-200/60 dark:border-white/10">
+                <a href="{{ path('app_admin_author_index') }}" class="px-5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 transition-colors">
+                    Cancelar
+                </a>
+                <button type="submit" class="px-6 py-2.5 rounded-xl bg-sky-600 text-xs font-semibold text-white hover:bg-sky-500 shadow-sm transition-colors">
+                    Salvar Autor
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

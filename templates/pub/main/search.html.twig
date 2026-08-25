@@ -1,0 +1,170 @@
+{% extends 'pub/base.html.twig' %}
+
+{% block title %}Busca | Portal CECH{% endblock %}
+
+{% block body %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <!-- Header & Search Box -->
+    <div class="space-y-4">
+        <h1 class="font-heading text-3xl font-bold text-slate-900 dark:text-white">
+            Busca no Catálogo Acadêmico
+        </h1>
+
+        <form action="{{ path('app_pub_search') }}" method="GET" class="glass-card rounded-2xl p-4 shadow-sm space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
+                <div class="md:col-span-6 relative">
+                    <input type="text" name="q" value="{{ q }}" placeholder="Buscar por pesquisador, título, DOI, periódico..." class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 pl-10 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <sl-icon name="search" class="absolute left-3.5 top-3.5 text-slate-400 text-sm"></sl-icon>
+                </div>
+
+                <div class="md:col-span-3">
+                    <select name="dept" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                        <option value="">Todos os Departamentos</option>
+                        {% for d in allDepartments %}
+                            <option value="{{ d.code ?: d.name }}" {% if department == (d.code ?: d.name) %}selected{% endif %}>
+                                {{ d.name }} ({{ d.code }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="md:col-span-3 flex gap-2">
+                    <select name="type" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                        <option value="all" {% if type == 'all' %}selected{% endif %}>Tudo (Docentes & Produções)</option>
+                        <option value="researchers" {% if type == 'researchers' %}selected{% endif %}>Apenas Pesquisadores</option>
+                        <option value="productions" {% if type == 'productions' %}selected{% endif %}>Apenas Produções</option>
+                    </select>
+                    <button type="submit" class="rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-500 shadow-sm transition-colors">
+                        Buscar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Search Summary -->
+    {% if q or department %}
+        <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            Resultados para <strong class="text-slate-900 dark:text-white">"{{ q }}"</strong>
+            {% if department %} no departamento <strong class="text-slate-900 dark:text-white">{{ department }}</strong>{% endif %}:
+            {{ totalResearchers }} pesquisador(es) e {{ totalProductions }} produção(ões) encontrada(s).
+        </div>
+    {% endif %}
+
+    <!-- Researchers Results -->
+    {% if researchers|length > 0 %}
+        <div class="space-y-4">
+            <h2 class="font-heading text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="people" class="text-sky-600 dark:text-sky-400"></sl-icon> Pesquisadores ({{ totalResearchers }})
+            </h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {% for r in researchers %}
+                    <a href="{{ path('app_pub_professor_show', {'slugOrId': r.slug ?: r.idLattes}) }}" class="glass-card rounded-2xl p-4 hover:border-sky-500/50 hover:shadow-md transition-all flex items-center gap-3.5 group">
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-sm group-hover:scale-105 transition-transform {% if not r.photoUrl %}bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-sm{% endif %}">
+                            {% if r.photoUrl %}
+                                <img src="{{ r.photoUrl }}" alt="{{ r.fullName }}" class="h-full w-full object-cover">
+                            {% else %}
+                                {{ r.fullName|slice(0, 2)|upper }}
+                            {% endif %}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-heading text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                                {{ r.fullName }}
+                            </h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                {{ r.department ?: 'CECH / UFSCar' }}
+                            </p>
+                            <div class="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
+                                <span>{{ r.productions|length }} produções</span>
+                                {% if r.admissionYear or r.leaveYear %}
+                                    {% if r.isActiveInCech %}
+                                        <span>• Desde {{ r.admissionYear }}</span>
+                                    {% else %}
+                                        <span class="text-amber-600 dark:text-amber-400 font-medium">• {{ r.admissionYear ? r.admissionYear ~ '–' ~ (r.leaveYear ?: 'Saída') : 'Histórico' }}</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Productions Results -->
+    {% if productions|length > 0 %}
+        <div class="space-y-4">
+            <h2 class="font-heading text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="journal-text" class="text-sky-600 dark:text-sky-400"></sl-icon> Produções Científicas ({{ totalProductions }})
+            </h2>
+
+            <div class="space-y-3">
+                {% for prod in productions %}
+                    <div class="glass-card rounded-2xl p-5 hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                                <span class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                    {{ prod.itemType }}
+                                </span>
+                                {% if prod.year %}
+                                    <span class="rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                                        {{ prod.year }}
+                                    </span>
+                                {% endif %}
+                                {% if prod.qualis %}
+                                    <span class="rounded-md px-2 py-0.5 text-[11px] font-bold badge-qualis-{{ prod.qualis|lower }}">
+                                        Qualis {{ prod.qualis }}
+                                    </span>
+                                {% endif %}
+                            </div>
+
+                            <h3 class="font-heading text-base font-semibold text-slate-900 dark:text-white leading-snug">
+                                {{ prod.title }}
+                            </h3>
+
+                            <div class="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                                {% if prod.journalName %}
+                                    <span class="font-medium text-slate-700 dark:text-slate-300 italic">{{ prod.journalName }}</span>
+                                    {% if prod.issn %} • ISSN: {{ prod.issn }}{% endif %}
+                                {% elseif prod.publisher %}
+                                    <span>Editora: {{ prod.publisher }}</span>
+                                    {% if prod.isbn %} • ISBN: {{ prod.isbn }}{% endif %}
+                                {% elseif prod.eventName %}
+                                    <span>Evento: {{ prod.eventName }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-t border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <div class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
+                                <sl-icon name="person" class="text-slate-400"></sl-icon>
+                                <a href="{{ path('app_pub_professor_show', {'slugOrId': prod.researcher.slug ?: prod.researcher.idLattes}) }}" class="font-medium hover:text-sky-600 dark:hover:text-sky-400 underline">
+                                    {{ prod.researcher.fullName }}
+                                </a>
+                                {% if prod.researcher.departmentCode %}
+                                    <span class="text-[11px] text-slate-400">({{ prod.researcher.departmentCode }})</span>
+                                {% endif %}
+                            </div>
+
+                            {% if prod.doi %}
+                                <a href="{{ prod.doiUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300 hover:underline">
+                                    <sl-icon name="box-arrow-up-right" class="text-[11px]"></sl-icon> DOI: {{ prod.doi }}
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if (q or department) and researchers|length == 0 and productions|length == 0 %}
+        <div class="glass-card rounded-2xl p-12 text-center text-slate-500 dark:text-slate-400">
+            <sl-icon name="search" class="text-4xl text-slate-400 mb-3"></sl-icon>
+            <p class="text-base font-medium">Nenhum resultado encontrado para sua busca.</p>
+            <p class="text-xs mt-1">Tente pesquisar por outros termos, grafias alternativas ou remova os filtros.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

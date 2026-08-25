@@ -1,0 +1,98 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Relatórios Institucionais{% endblock %}
+
+{% block body %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                Relatórios Institucionais do CECH
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Relatórios consolidados gerados a partir do cruzamento dos dados de Lattes e planilhas institucionais.
+            </p>
+        </div>
+    </div>
+
+    <!-- Report 1: Department Statistics -->
+    <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200/60 pb-4 dark:border-white/10">
+            <div>
+                <h2 class="font-heading text-lg font-bold text-slate-900 dark:text-white">
+                    1. Produção Científica & Corpo Docente por Departamento
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Total de professores vinculados e volume global de produções cadastradas</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="{{ path('app_admin_report_dept_export', {'format': 'csv'}) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 transition-colors">
+                    <sl-icon name="filetype-csv"></sl-icon> Exportar CSV
+                </a>
+                <a href="{{ path('app_admin_report_dept_export', {'format': 'json'}) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 transition-colors">
+                    <sl-icon name="filetype-json"></sl-icon> Exportar JSON
+                </a>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs stripe">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-white/10 text-slate-500">
+                        <th class="py-2.5 px-3">Código</th>
+                        <th class="py-2.5 px-3">Nome do Departamento</th>
+                        <th class="py-2.5 px-3 text-right">Docentes</th>
+                        <th class="py-2.5 px-3 text-right">Total Produções</th>
+                        <th class="py-2.5 px-3 text-right">Média Prod./Docente</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+                    {% for d in topDepartments %}
+                        <tr>
+                            <td class="py-2.5 px-3 font-bold text-sky-600">{{ d.departmentCode }}</td>
+                            <td class="py-2.5 px-3 font-semibold text-slate-900 dark:text-white">{{ d.department }}</td>
+                            <td class="py-2.5 px-3 text-right font-medium text-slate-700 dark:text-slate-300">{{ d.totalFaculty }}</td>
+                            <td class="py-2.5 px-3 text-right font-medium text-slate-700 dark:text-slate-300">{{ d.totalProductions|number_format(0, ',', '.') }}</td>
+                            <td class="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white">
+                                {{ (d.totalProductions / (d.totalFaculty ?: 1))|number_format(1, ',', '.') }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Report 2: Qualis Distribution -->
+    <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200/60 pb-4 dark:border-white/10">
+            <div>
+                <h2 class="font-heading text-lg font-bold text-slate-900 dark:text-white">
+                    2. Distribuição de Artigos por Estrato Qualis (CAPES)
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Classificação de excelência da produção bibliográfica do corpo docente</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="{{ path('app_admin_report_qualis_export', {'format': 'csv'}) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 transition-colors">
+                    <sl-icon name="filetype-csv"></sl-icon> Exportar CSV
+                </a>
+                <a href="{{ path('app_admin_report_qualis_export', {'format': 'json'}) }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 transition-colors">
+                    <sl-icon name="filetype-json"></sl-icon> Exportar JSON
+                </a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+            {% for q in qualisStats %}
+                <div class="rounded-xl border border-slate-200/80 dark:border-white/10 p-4 text-center bg-white/50 dark:bg-slate-900/50">
+                    <span class="inline-block rounded px-2 py-0.5 text-xs font-bold badge-qualis-{{ q.qualisStr|lower }} mb-1">
+                        {{ q.qualisStr }}
+                    </span>
+                    <div class="font-heading text-xl font-bold text-slate-900 dark:text-white">{{ q.total|number_format(0, ',', '.') }}</div>
+                    <div class="text-[10px] text-slate-400">artigos</div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

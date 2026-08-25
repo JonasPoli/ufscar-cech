@@ -1,0 +1,67 @@
+{% extends 'pub/base.html.twig' %}
+
+{% block title %}Acesso Restrito | Painel Administrativo CECH{% endblock %}
+
+{% block body %}
+<div class="min-h-[70vh] flex items-center justify-center px-4 py-12">
+    <div class="w-full max-w-md">
+        <div class="glass-card rounded-3xl p-8 sm:p-10 shadow-xl space-y-6">
+            <!-- Brand Logo Header -->
+            <div class="text-center space-y-3">
+                <div class="inline-flex h-16 w-auto px-4 py-2 items-center justify-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 shadow-sm">
+                    <img src="{{ asset('images/logo-colorido.svg') }}" alt="Logo CECH UFSCar" class="h-10 w-auto dark:hidden">
+                    <img src="{{ asset('images/logo-colorido-dark.svg') }}" alt="Logo CECH UFSCar" class="h-10 w-auto hidden dark:block">
+                </div>
+                <h1 class="font-heading text-2xl font-bold text-slate-900 dark:text-white">
+                    Painel Administrativo
+                </h1>
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                    Acesso exclusivo para docentes e gestores do CECH
+                </p>
+            </div>
+
+            {% if error %}
+                <div class="rounded-2xl bg-rose-50 border border-rose-200 dark:bg-rose-950/60 dark:border-rose-800/60 p-4 text-xs font-semibold text-rose-800 dark:text-rose-300 flex items-center gap-2">
+                    <sl-icon name="exclamation-octagon" class="text-base shrink-0"></sl-icon>
+                    <span>{{ error.messageKey|trans(error.messageData, 'security') }}</span>
+                </div>
+            {% endif %}
+
+            {% if app.user %}
+                <div class="rounded-2xl bg-sky-50 border border-sky-200 dark:bg-sky-950/60 dark:border-sky-800/60 p-4 text-xs font-medium text-sky-800 dark:text-sky-300 flex items-center justify-between">
+                    <span>Logado como <strong>{{ app.user.userIdentifier }}</strong></span>
+                    <a href="{{ path('app_logout') }}" class="font-bold underline hover:text-sky-900">Sair</a>
+                </div>
+            {% endif %}
+
+            <form method="post" class="space-y-4">
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300" for="username">
+                        Usuário / E-mail
+                    </label>
+                    <input type="text" value="{{ last_username }}" name="_username" id="username" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:border-cech-blue focus:outline-none focus:ring-2 focus:ring-cech-blue/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white" placeholder="Seu usuário ou e-mail institucional" autocomplete="username" required autofocus>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300" for="password">
+                        Senha
+                    </label>
+                    <input type="password" name="_password" id="password" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:border-cech-blue focus:outline-none focus:ring-2 focus:ring-cech-blue/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white" placeholder="••••••••" autocomplete="current-password" required>
+                </div>
+
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                <button class="w-full rounded-xl bg-cech-blue py-3 px-4 text-xs font-bold text-white shadow-md hover:bg-cech-blue-dark transition-all transform active:scale-[0.99]" type="submit">
+                    Acessar Painel
+                </button>
+            </form>
+
+            <div class="text-center pt-2">
+                <a href="{{ path('app_pub_home') }}" class="text-xs font-semibold text-slate-500 hover:text-cech-blue dark:hover:text-cech-teal transition-colors">
+                    ← Voltar ao Portal Público
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

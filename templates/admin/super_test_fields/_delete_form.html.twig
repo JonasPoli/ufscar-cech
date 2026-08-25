@@ -1,0 +1,7 @@
+<form method="post" action="{{ path('app_admin_super_test_fields_delete', {'id': form.vars.data.id}) }}" onsubmit="return confirm('Are you sure you want to delete this item?');">
+    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ form.vars.data.id) }}">
+    <sl-button type="submit" variant="danger" outline>
+        <sl-icon slot="prefix" name="trash"></sl-icon>
+        Delete
+    </sl-button>
+</form>

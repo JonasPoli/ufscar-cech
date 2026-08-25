@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Novo contato</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f8;
+            font-family: 'Inter', Arial, sans-serif;
+        }
+        .wrapper {
+            width: 100%;
+            padding: 40px 12px;
+            background: linear-gradient(135deg, #111827, #0f172a);
+        }
+        .card {
+            max-width: 640px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 25px 60px rgba(15, 23, 42, 0.25);
+            overflow: hidden;
+        }
+        .hero {
+            padding: 40px;
+            background: radial-gradient(circle at top, rgba(56, 189, 248, 0.2), transparent 55%),
+                        radial-gradient(circle at right, rgba(129, 140, 248, 0.25), transparent 50%),
+                        #0f172a;
+            color: #ffffff;
+            text-align: center;
+        }
+        .hero h1 {
+            margin: 0;
+            font-size: 26px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .hero p {
+            margin-top: 12px;
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.75);
+            line-height: 1.5;
+        }
+        .content {
+            padding: 32px 40px 40px;
+            color: #0f172a;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+        .info-card {
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            border-radius: 18px;
+            padding: 18px 20px;
+            background-color: #f8fafc;
+        }
+        .info-card span {
+            display: block;
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+        .info-card strong {
+            display: block;
+            margin-top: 8px;
+            font-size: 16px;
+            color: #0f172a;
+            word-wrap: break-word;
+        }
+        .message-block {
+            border-radius: 22px;
+            background: linear-gradient(135deg, #e0f2fe, #e0e7ff);
+            padding: 28px;
+        }
+        .message-block span {
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 1.5px;
+            color: #0369a1;
+        }
+        .message-block p {
+            margin-top: 14px;
+            font-size: 15px;
+            line-height: 1.7;
+            color: #0f172a;
+        }
+        .footer {
+            text-align: center;
+            padding: 28px 30px 36px;
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        @media (max-width: 600px) {
+            .hero, .content {
+                padding: 28px;
+            }
+            .card {
+                border-radius: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="card">
+            <div class="hero">
+                <h1>Mensagem Recebida</h1>
+                <p>Um novo contato foi enviado pelo site. Confira os detalhes abaixo.</p>
+            </div>
+            <div class="content">
+                <div class="info-grid">
+                    <div class="info-card">
+                        <span>Nome</span>
+                        <strong>{{ name }}</strong>
+                    </div>
+                    <div class="info-card">
+                        <span>E-mail</span>
+                        <strong>{{ sender_email }}</strong>
+                    </div>
+                    <div class="info-card">
+                        <span>Telefone</span>
+                        <strong>{{ phone }}</strong>
+                    </div>
+                    <div class="info-card">
+                        <span>Enviado em</span>
+                        <strong>{{ submitted_at|date('d/m/Y H:i') }}</strong>
+                    </div>
+                </div>
+                <div class="message-block">
+                    <span>Mensagem</span>
+                    <p>{{ message|nl2br }}</p>
+                </div>
+            </div>
+            <div class="footer">
+                Você recebeu este e-mail porque o formulário de contato do site foi utilizado. Responda diretamente ao remetente para continuar a conversa.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

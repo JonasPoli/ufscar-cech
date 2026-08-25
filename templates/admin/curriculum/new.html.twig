@@ -1,0 +1,429 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Adicionar Docente por ID Lattes | CECH{% endblock %}
+
+{% block body %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider mb-1">
+                <a href="{{ path('app_admin_curriculum_index') }}" class="hover:underline">Currículos</a>
+                <span>/</span>
+                <span>Adicionar Docente</span>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="person-plus" class="text-sky-500"></sl-icon> Adicionar / Sincronizar Docente
+            </h1>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                Cadastre docentes via formulário manual, importe XML ou utilize a <b>sincronização instantânea via navegador</b> com foto em alta resolução.
+            </p>
+        </div>
+
+        <a href="{{ path('app_admin_curriculum_index') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+            <sl-icon name="arrow-left"></sl-icon> Voltar à Listagem
+        </a>
+    </div>
+
+    <!-- Main Grid: Form & Info -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Form Card -->
+        <div class="lg:col-span-2">
+            <sl-card class="w-full">
+                <div slot="header" class="flex items-center justify-between font-semibold text-slate-900 dark:text-white text-sm">
+                    <span class="flex items-center gap-2">
+                        <sl-icon name="cloud-arrow-down" class="text-sky-500"></sl-icon> Importação Manual / Upload de XML
+                    </span>
+                    <span class="text-xs font-normal text-slate-500">Cadastro Direto</span>
+                </div>
+
+                <form method="POST" action="{{ path('app_admin_curriculum_new') }}" enctype="multipart/form-data" class="space-y-5">
+                    <!-- ID Lattes / URL -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5" for="lattesInput">
+                            ID Lattes (16 dígitos) ou Link do Currículo <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" id="lattesInput" name="lattes_id" required placeholder="Ex: 3389666977978800 ou http://lattes.cnpq.br/3389666977978800" class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 font-mono" />
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                            Você pode colar a URL completa do Lattes ou apenas os 16 dígitos numéricos.
+                        </p>
+                    </div>
+
+                    <!-- Departamento -->
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5" for="deptSelect">
+                            Departamento do CECH / UFSCar <span class="text-rose-500">*</span>
+                        </label>
+                        <select id="deptSelect" name="department" required class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20">
+                            <option value="">Selecione o departamento...</option>
+                            <option value="DCI|Departamento de Ciência da Informação">DCI - Departamento de Ciência da Informação</option>
+                            <option value="DEn|Departamento de Educação">DEn - Departamento de Educação</option>
+                            <option value="DFil|Departamento de Filosofia">DFil - Departamento de Filosofia</option>
+                            <option value="DCSo|Departamento de Ciências Sociais">DCSo - Departamento de Ciências Sociais</option>
+                            <option value="DPsi|Departamento de Psicologia">DPsi - Departamento de Psicologia</option>
+                            <option value="DL|Departamento de Letras">DL - Departamento de Letras</option>
+                            <option value="DFis|Departamento de Educação Física e Motricidade Humana">DFis - Depto. de Educação Física e Motricidade Humana</option>
+                            <option value="DGeo|Departamento de Metodologia de Ensino">DGeo / DMTE - Depto. de Metodologia de Ensino</option>
+                        </select>
+                    </div>
+
+                    <!-- XML File or HTML Content (Optional Import Sources) -->
+                    <div class="space-y-4">
+                        <div class="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-4 bg-slate-50/50 dark:bg-slate-900/50">
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1" for="xmlFileInput">
+                                Opção 1: Arquivo XML do Currículo Lattes
+                            </label>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
+                                Se possuir o arquivo <code>.xml</code> exportado da Plataforma Lattes, anexe-o aqui para importar todas as produções e orientações instantaneamente.
+                            </p>
+                            <input type="file" id="xmlFileInput" name="xml_file" accept=".xml" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 dark:file:bg-slate-800 dark:file:text-sky-400 cursor-pointer" />
+                        </div>
+
+                        <div class="rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-white dark:bg-slate-900/30">
+                            <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1" for="htmlContentInput">
+                                Opção 2: Colar Código-Fonte / HTML do Lattes
+                            </label>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
+                                Abra a página do currículo no Lattes, pressione <b>Ctrl+U</b> (ou <b>Cmd+Option+U</b>), copie todo o código e cole aqui:
+                            </p>
+                            <textarea id="htmlContentInput" name="html_content" rows="3" placeholder="Cole o código HTML da página do Lattes aqui..." class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 font-mono"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Fetch Photo Checkbox -->
+                    <div class="flex items-center gap-3 pt-2">
+                        <input type="checkbox" id="fetchPhotoCheck" name="fetch_photo" value="1" checked class="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900" />
+                        <label for="fetchPhotoCheck" class="text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+                            Buscar e vincular a <b>foto oficial em alta resolução</b> do CNPq automaticamente
+                        </label>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+                        <a href="{{ path('app_admin_curriculum_index') }}" class="rounded-xl px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+                            Cancelar
+                        </a>
+                        <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 transition-colors">
+                            <sl-icon name="cloud-arrow-down"></sl-icon> Importar e Salvar Docente
+                        </button>
+                    </div>
+                </form>
+            </sl-card>
+        </div>
+
+        <!-- Help / Info Card -->
+        <div class="space-y-6">
+            <sl-card class="w-full">
+                <div slot="header" class="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                    <sl-icon name="info-circle" class="text-sky-500"></sl-icon> Como funciona a importação?
+                </div>
+                <div class="text-xs text-slate-600 dark:text-slate-400 space-y-3 leading-relaxed">
+                    <p>
+                        <b>1. Resolução do K-ID do CNPq:</b><br />
+                        O sistema consulta o endereço do Lattes e resolve o identificador curricular do docente de forma instantânea.
+                    </p>
+                    <p>
+                        <b>2. Captura da Foto Oficial:</b><br />
+                        A foto é baixada diretamente do servidor de imagens do CNPq (<code>servicosweb.cnpq.br/wspessoa</code>) e salva em <code>public/uploads/photos/{idLattes}.jpg</code>.
+                    </p>
+                    <p>
+                        <b>3. Produções e Orientações:</b><br />
+                        Se você anexar o XML ou usar o script sincronizador do navegador, todos os artigos, livros, capítulos, eventos, patentes e orientações serão calculados e indexados automaticamente!
+                    </p>
+                </div>
+            </sl-card>
+
+            <sl-card class="w-full">
+                <div slot="header" class="font-semibold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                    <sl-icon name="bookmark-star" class="text-amber-500"></sl-icon> Bookmarklet Rápido (1-Clique)
+                </div>
+                <div class="space-y-3 text-xs text-slate-600 dark:text-slate-400">
+                    <p class="leading-relaxed">
+                        Arraste o botão abaixo para a sua <b>Barra de Favoritos</b> do navegador:
+                    </p>
+                    <div class="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-center">
+                        <a href="javascript:(async function(){const m=document.documentElement.innerHTML.match(/lattes\.cnpq\.br\/(\d{16})/i),p=new URLSearchParams(location.search),i=document.querySelector('input[name=&quot;id&quot;]'),id=(m?m[1]:null)||p.get('id')||(i?i.value:'')||location.pathname.split('/').pop()||'';const old=document.getElementById('cech-sync-toast');if(old)old.remove();const t=document.createElement('div');t.id='cech-sync-toast';t.style.position='fixed';t.style.top='20px';t.style.right='20px';t.style.zIndex='9999999';t.style.background='#0284c7';t.style.color='#fff';t.style.padding='16px 20px';t.style.borderRadius='14px';t.style.boxShadow='0 12px 30px rgba(0,0,0,0.35)';t.style.fontFamily='system-ui,sans-serif';t.style.fontSize='13px';t.style.maxWidth='380px';t.style.lineHeight='1.4';t.style.cursor='pointer';t.textContent='⏳ Sincronizando com CECH... Enviando dados...';document.body.appendChild(t);try{const r=await fetch('https://127.0.0.1:8000/api/curriculum/import-html',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idLattes:id,html:document.documentElement.outerHTML})});const d=await r.json();if(d.success){t.style.background='#15803d';t.innerHTML='<b>🎉 Sincronizado com Sucesso!</b><br><br><b>Docente:</b> '+(d.researcher.fullName||'')+'<br><b>ID Lattes:</b> '+(d.researcher.idLattes||'')+'<br><b>Produções:</b> '+(d.researcher.productionsCount||0)+'<br><b>Orientações:</b> '+(d.researcher.orientationsCount||0);setTimeout(()=>t.remove(),8000);}else{t.style.background='#b91c1c';t.innerHTML='<b>⚠️ Erro:</b> '+(d.message||'Erro');t.onclick=()=>t.remove();}}catch(e){t.style.background='#b91c1c';t.innerHTML='<b>❌ Erro:</b> Verifique se https://127.0.0.1:8000 está acessível.';t.onclick=()=>t.remove();}})();" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md transition-transform active:scale-95 cursor-grab">
+                            <sl-icon name="cloud-arrow-down"></sl-icon> 📥 Sincronizar com CECH
+                        </a>
+                        <p class="text-[10px] text-amber-700 dark:text-amber-300 mt-2">
+                            Basta abrir qualquer página do Lattes e clicar no favorito!
+                        </p>
+                    </div>
+                </div>
+            </sl-card>
+        </div>
+    </div>
+
+    <!-- In-Browser Synchronizer Documentation & Interactive Toolkit -->
+    <div class="rounded-2xl border border-sky-200 dark:border-sky-900/60 bg-gradient-to-br from-sky-50/50 via-white to-sky-50/20 dark:from-sky-950/20 dark:via-slate-900 dark:to-slate-900 p-6 sm:p-8 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-6 border-b border-sky-100 dark:border-slate-800">
+            <div>
+                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300 text-xs font-semibold uppercase tracking-wider mb-2">
+                    <sl-icon name="lightning-charge"></sl-icon> Ferramenta Oficial de Sincronização
+                </div>
+                <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    Sincronizador In-Browser Lattes (Versão Atualizada 2.0)
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-3xl">
+                    Importa instantaneamente todo o currículo aberto no navegador (nome, resumo, ORCID, artigos, livros, capítulos, eventos, orientações e foto oficial do CNPq) diretamente para o banco de dados do CECH, sem necessidade de baixar arquivos XML.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button type="button" id="btnCopyScript" onclick="copyCrawlerScript()" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 active:scale-95 transition-all">
+                    <sl-icon name="clipboard" id="copyIcon"></sl-icon>
+                    <span id="copyText">Copiar Script do Console</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Methods & Steps -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
+            <div class="rounded-xl bg-white dark:bg-slate-800/80 p-5 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2">
+                <div class="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900/60 text-sky-600 dark:text-sky-300 text-xs">1</span>
+                    Abra o Currículo
+                </div>
+                <p class="text-xs text-slate-600 dark:text-slate-400">
+                    Acesse qualquer currículo na Plataforma Lattes pelo link direto (ex: <code>http://lattes.cnpq.br/3389666977978800</code>).
+                </p>
+            </div>
+
+            <div class="rounded-xl bg-white dark:bg-slate-800/80 p-5 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2">
+                <div class="flex items-center gap-2 text-xs font-bold text-sky-600 dark:text-sky-400">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900/60 text-sky-600 dark:text-sky-300 text-xs">2</span>
+                    Execute o Script
+                </div>
+                <p class="text-xs text-slate-600 dark:text-slate-400">
+                    Pressione <b>F12</b> &rarr; aba <b>Console</b>, cole o código abaixo e aperte <b>Enter</b> (ou use o Bookmarklet nos favoritos).
+                </p>
+            </div>
+
+            <div class="rounded-xl bg-white dark:bg-slate-800/80 p-5 border border-slate-200 dark:border-slate-700 shadow-sm space-y-2">
+                <div class="flex items-center gap-2 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300 text-xs">3</span>
+                    Pronto! Ingestão Completa
+                </div>
+                <p class="text-xs text-slate-600 dark:text-slate-400">
+                    Um toast verde aparecerá com os contadores de artigos e orientações salvos, e a foto oficial será vinculada automaticamente.
+                </p>
+            </div>
+        </div>
+
+        <!-- Hidden Textarea with raw script for perfect clipboard copying -->
+        <textarea id="rawScriptContent" class="hidden">/**
+ * CECH - In-Browser Full Lattes Data & Photo Importer (Versão 2.0)
+ * Sincroniza qualquer currículo Lattes aberto no navegador diretamente com o CECH.
+ */
+(async function importFullLattesToCech() {
+    console.log('%c🚀 [CECH] INICIANDO SINCRONIZAÇÃO DO CURRÍCULO LATTES...', 'color: #0284c7; font-size: 14px; font-weight: bold;');
+
+    // 1. Identificar ID Lattes (16 dígitos no texto, query string ou campo oculto)
+    const textMatch = document.documentElement.innerHTML.match(/lattes\.cnpq\.br\/(\d{16})/i);
+    const urlParams = new URLSearchParams(window.location.search);
+    const idInput = document.querySelector('input[name="id"]');
+    const idVal = idInput ? idInput.value : '';
+    const idLattes = (textMatch ? textMatch[1] : null) || urlParams.get('id') || idVal || window.location.pathname.split('/').pop() || '';
+
+    // 2. Feedback visual flutuante na página do Lattes
+    const toastId = 'cech-sync-toast';
+    const oldToast = document.getElementById(toastId);
+    if (oldToast) oldToast.remove();
+
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.style.position = 'fixed';
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999999';
+    toast.style.background = '#0284c7';
+    toast.style.color = '#ffffff';
+    toast.style.padding = '16px 22px';
+    toast.style.borderRadius = '14px';
+    toast.style.boxShadow = '0 12px 30px rgba(0,0,0,0.35)';
+    toast.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    toast.style.fontSize = '13px';
+    toast.style.maxWidth = '380px';
+    toast.style.lineHeight = '1.5';
+    toast.style.cursor = 'pointer';
+    toast.style.border = '1px solid rgba(255,255,255,0.2)';
+    toast.textContent = '⏳ Sincronizando com CECH... Enviando dados para o servidor local...';
+    document.body.appendChild(toast);
+
+    try {
+        const resp = await fetch('https://127.0.0.1:8000/api/curriculum/import-html', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                idLattes: idLattes,
+                html: document.documentElement.outerHTML
+            })
+        });
+
+        const data = await resp.json();
+
+        if (data.success) {
+            console.log('✅ [CECH] Currículo sincronizado:', data.researcher);
+            toast.style.background = '#15803d';
+            toast.innerHTML = '<b>🎉 Sincronizado com Sucesso!</b><br><br>'
+                + '<b>Docente:</b> ' + (data.researcher.fullName || '') + '<br>'
+                + '<b>ID Lattes:</b> ' + (data.researcher.idLattes || '') + '<br>'
+                + '<b>Produções Importadas:</b> ' + (data.researcher.productionsCount ?? 0) + '<br>'
+                + '<b>Orientações Importadas:</b> ' + (data.researcher.orientationsCount ?? 0) + '<br><br>'
+                + '<small style="opacity:0.85">Clique para fechar esta notificação</small>';
+            toast.onclick = () => toast.remove();
+            setTimeout(() => { if (toast.parentNode) toast.remove(); }, 8000);
+        } else {
+            console.error('❌ [CECH] Erro retornado pela API:', data.message);
+            toast.style.background = '#b91c1c';
+            toast.innerHTML = '<b>⚠️ Erro na Importação:</b><br>' + (data.message || 'Erro desconhecido') + '<br><br><small>Clique para fechar</small>';
+            toast.onclick = () => toast.remove();
+        }
+    } catch (e) {
+        console.error('❌ [CECH] Erro de conexão:', e);
+        toast.style.background = '#b91c1c';
+        toast.innerHTML = '<b>❌ Erro de Conexão:</b><br>'
+            + 'Não foi possível conectar com https://127.0.0.1:8000.<br>'
+            + 'Certifique-se de que o servidor Symfony local está rodando e a aba local está acessível.<br><br>'
+            + '<small>Clique para fechar</small>';
+        toast.onclick = () => toast.remove();
+    }
+})();</textarea>
+
+        <!-- Code Box -->
+        <div class="space-y-2">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <sl-icon name="code-slash" class="text-sky-500"></sl-icon> Código JavaScript Atualizado (Console F12 / Bookmarklet)
+                </span>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">scripts/browser_lattes_crawler.js</span>
+            </div>
+
+            <div class="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 text-slate-100 shadow-inner">
+                <pre class="p-4 text-[12px] font-mono leading-relaxed overflow-x-auto selection:bg-sky-500 selection:text-white" id="scriptCodeBlock"><code>/**
+ * CECH - In-Browser Full Lattes Data &amp; Photo Importer (Versão 2.0)
+ * Sincroniza qualquer currículo Lattes aberto no navegador diretamente com o CECH.
+ */
+(async function importFullLattesToCech() {
+    console.log('%c🚀 [CECH] INICIANDO SINCRONIZAÇÃO DO CURRÍCULO LATTES...', 'color: #0284c7; font-size: 14px; font-weight: bold;');
+
+    // 1. Identificar ID Lattes (16 dígitos no texto, query string ou campo oculto)
+    const textMatch = document.documentElement.innerHTML.match(/lattes\.cnpq\.br\/(\d{16})/i);
+    const urlParams = new URLSearchParams(window.location.search);
+    const idInput = document.querySelector('input[name="id"]');
+    const idVal = idInput ? idInput.value : '';
+    const idLattes = (textMatch ? textMatch[1] : null) || urlParams.get('id') || idVal || window.location.pathname.split('/').pop() || '';
+
+    // 2. Feedback visual flutuante na página do Lattes
+    const toastId = 'cech-sync-toast';
+    const oldToast = document.getElementById(toastId);
+    if (oldToast) oldToast.remove();
+
+    const toast = document.createElement('div');
+    toast.id = toastId;
+    toast.style.position = 'fixed';
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999999';
+    toast.style.background = '#0284c7';
+    toast.style.color = '#ffffff';
+    toast.style.padding = '16px 22px';
+    toast.style.borderRadius = '14px';
+    toast.style.boxShadow = '0 12px 30px rgba(0,0,0,0.35)';
+    toast.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    toast.style.fontSize = '13px';
+    toast.style.maxWidth = '380px';
+    toast.style.lineHeight = '1.5';
+    toast.style.cursor = 'pointer';
+    toast.style.border = '1px solid rgba(255,255,255,0.2)';
+    toast.textContent = '⏳ Sincronizando com CECH... Enviando dados para o servidor local...';
+    document.body.appendChild(toast);
+
+    try {
+        const resp = await fetch('https://127.0.0.1:8000/api/curriculum/import-html', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                idLattes: idLattes,
+                html: document.documentElement.outerHTML
+            })
+        });
+
+        const data = await resp.json();
+
+        if (data.success) {
+            console.log('✅ [CECH] Currículo sincronizado:', data.researcher);
+            toast.style.background = '#15803d';
+            toast.innerHTML = '&lt;b&gt;🎉 Sincronizado com Sucesso!&lt;/b&gt;&lt;br&gt;&lt;br&gt;'
+                + '&lt;b&gt;Docente:&lt;/b&gt; ' + (data.researcher.fullName || '') + '&lt;br&gt;'
+                + '&lt;b&gt;ID Lattes:&lt;/b&gt; ' + (data.researcher.idLattes || '') + '&lt;br&gt;'
+                + '&lt;b&gt;Produções Importadas:&lt;/b&gt; ' + (data.researcher.productionsCount ?? 0) + '&lt;br&gt;'
+                + '&lt;b&gt;Orientações Importadas:&lt;/b&gt; ' + (data.researcher.orientationsCount ?? 0) + '&lt;br&gt;&lt;br&gt;'
+                + '&lt;small style="opacity:0.85"&gt;Clique para fechar esta notificação&lt;/small&gt;';
+            toast.onclick = () => toast.remove();
+            setTimeout(() => { if (toast.parentNode) toast.remove(); }, 8000);
+        } else {
+            console.error('❌ [CECH] Erro retornado pela API:', data.message);
+            toast.style.background = '#b91c1c';
+            toast.innerHTML = '&lt;b&gt;⚠️ Erro na Importação:&lt;/b&gt;&lt;br&gt;' + (data.message || 'Erro desconhecido') + '&lt;br&gt;&lt;br&gt;&lt;small&gt;Clique para fechar&lt;/small&gt;';
+            toast.onclick = () => toast.remove();
+        }
+    } catch (e) {
+        console.error('❌ [CECH] Erro de conexão:', e);
+        toast.style.background = '#b91c1c';
+        toast.innerHTML = '&lt;b&gt;❌ Erro de Conexão:&lt;/b&gt;&lt;br&gt;'
+            + 'Não foi possível conectar com https://127.0.0.1:8000.&lt;br&gt;'
+            + 'Certifique-se de que o servidor Symfony local está rodando e a aba local está acessível.&lt;br&gt;&lt;br&gt;'
+            + '&lt;small&gt;Clique para fechar&lt;/small&gt;';
+        toast.onclick = () => toast.remove();
+    }
+})();</code></pre>
+            </div>
+        </div>
+
+        <!-- Technical Flow Details -->
+        <div class="mt-6 pt-6 border-t border-sky-100 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600 dark:text-slate-400">
+            <div class="flex items-start gap-2.5">
+                <sl-icon name="shield-check" class="text-sky-500 text-base mt-0.5"></sl-icon>
+                <div>
+                    <b class="text-slate-800 dark:text-slate-200">Endpoint Local Seguro com CORS:</b>
+                    <p class="mt-0.5">O endpoint <code>POST /api/curriculum/import-html</code> aceita requisições diretas de abas do navegador autorizadas com preflight <code>OPTIONS</code> e respostas padronizadas em JSON.</p>
+                </div>
+            </div>
+            <div class="flex items-start gap-2.5">
+                <sl-icon name="image" class="text-sky-500 text-base mt-0.5"></sl-icon>
+                <div>
+                    <b class="text-slate-800 dark:text-slate-200">Download Automático de Foto Oficial:</b>
+                    <p class="mt-0.5">Ao receber o currículo, o serviço <code>LattesPhotoCrawlerService</code> resolve o K-ID no CNPq e armazena a fotografia em <code>public/uploads/photos/{idLattes}.jpg</code>.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyCrawlerScript() {
+    const rawCode = document.getElementById('rawScriptContent').value;
+    navigator.clipboard.writeText(rawCode).then(() => {
+        const btn = document.getElementById('btnCopyScript');
+        const icon = document.getElementById('copyIcon');
+        const text = document.getElementById('copyText');
+        
+        icon.setAttribute('name', 'check-lg');
+        text.innerText = 'Copiado com Sucesso!';
+        btn.classList.remove('bg-sky-600', 'hover:bg-sky-500');
+        btn.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+
+        setTimeout(() => {
+            icon.setAttribute('name', 'clipboard');
+            text.innerText = 'Copiar Script do Console';
+            btn.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+            btn.classList.add('bg-sky-600', 'hover:bg-sky-500');
+        }, 3000);
+    }).catch(err => {
+        alert('Não foi possível copiar automaticamente. Selecione o código e copie manualmente.');
+    });
+}
+</script>
+{% endblock %}
+

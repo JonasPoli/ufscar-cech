@@ -1,0 +1,48 @@
+{% extends 'admin/base.html.twig' %}
+
+{# Página de detalhes customizada. Use-a como blueprint para
+   outros CRUDs (compare com test_database_controller2/show.html.twig). #}
+{% block body %}
+<div class="space-y-8">
+    <section class="flex flex-wrap items-center justify-between gap-4 rounded-[32px] bg-white/80 p-6 shadow-xl shadow-slate-900/5 ring-1 ring-white/70 backdrop-blur dark:bg-slate-900/70 dark:ring-white/10">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">Detalhes</p>
+            <h1 class="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">{{ test_database.name }}</h1>
+            <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">ID interno #{{ test_database.id }}</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+            <sl-button variant="default" outline href="{{ path('app_admin_test_database_edit', {'id': test_database.id}) }}">
+                <sl-icon slot="prefix" name="pencil-square"></sl-icon>
+                Editar
+            </sl-button>
+            <sl-button variant="default" outline href="{{ path('app_admin_test_database_index') }}">
+                <sl-icon slot="prefix" name="arrow-left"></sl-icon>
+                Voltar
+            </sl-button>
+        </div>
+    </section>
+
+    <sl-card class="border-none bg-white/85 shadow-lg shadow-slate-900/5 ring-1 ring-white/70 backdrop-blur dark:bg-slate-900/70 dark:ring-white/10">
+        <div class="grid gap-6 sm:grid-cols-2">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">Nome</p>
+                <p class="mt-2 text-lg font-semibold text-slate-900 dark:text-white">{{ test_database.name }}</p>
+            </div>
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">Identificador</p>
+                <p class="mt-2 font-mono text-sm text-slate-600 dark:text-slate-300">#{{ test_database.id }}</p>
+            </div>
+        </div>
+        <div class="mt-8 flex flex-wrap gap-3">
+            <sl-button variant="danger" outline onclick="document.getElementById('delete-form').requestSubmit()">
+                <sl-icon slot="prefix" name="trash"></sl-icon>
+                Remover
+            </sl-button>
+        </div>
+    </sl-card>
+
+    <form id="delete-form" method="post" action="{{ path('app_admin_test_database_delete', {'id': test_database.id}) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ test_database.id) }}">
+    </form>
+</div>
+{% endblock %}

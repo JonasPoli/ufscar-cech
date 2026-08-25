@@ -1,0 +1,106 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Super Test Field{% endblock %}
+
+{% block body %}
+<div class="space-y-8">
+    <section class="flex flex-wrap items-center justify-between gap-4 rounded-[32px] bg-white/80 p-6 shadow-xl shadow-slate-900/5 ring-1 ring-white/70 backdrop-blur dark:bg-slate-900/70 dark:ring-white/10">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">Detalhes</p>
+            <h1 class="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">
+                Super Test Field #{{ super_test_field.id }}
+            </h1>
+            <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Visualize os dados cadastrados ou atualize conforme necessário.</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+            <sl-button variant="default" outline href="{{ path('app_admin_super_test_fields_index') }}">
+                <sl-icon slot="prefix" name="arrow-left"></sl-icon>
+                Voltar
+            </sl-button>
+            <sl-button variant="primary" href="{{ path('app_admin_super_test_fields_edit', {'id': super_test_field.id}) }}">
+                <sl-icon slot="prefix" name="pencil-square"></sl-icon>
+                Editar
+            </sl-button>
+            <sl-button variant="danger" outline onclick="document.getElementById('delete-super-test-field-form').requestSubmit()">
+                <sl-icon slot="prefix" name="trash"></sl-icon>
+                Remover
+            </sl-button>
+        </div>
+    </section>
+
+    <sl-card class="border-none bg-white/85 shadow-lg shadow-slate-900/5 ring-1 ring-white/70 backdrop-blur dark:bg-slate-900/70 dark:ring-white/10">
+        <table class="table-auto w-full">
+            <tbody>
+                <tr>
+                    <th class="text-left p-2">Simple input text</th>
+                    <td class="p-2">{{ super_test_field.SimpleInputText }}</td>
+                </tr>
+                <tr>
+                    <th class="text-left p-2">Edit text with editor</th>
+                    <td class="p-2">{{ super_test_field.EditTextWithEditor|raw }}</td>
+                </tr>
+                <tr>
+                    <th class="text-left p-2">Date field</th>
+                    <td class="p-2">{{ super_test_field.DateField ? super_test_field.DateField|date('Y-m-d') : '' }}</td>
+                </tr>
+                <tr>
+                    <th class="text-left p-2">Date and time field</th>
+                    <td class="p-2">{{ super_test_field.DateAndTimeField ? super_test_field.DateAndTimeField|date('Y-m-d H:i:s') : '' }}</td>
+                </tr>
+                <tr>
+                    <th class="text-left p-2">Choice type from list</th>
+                    <td class="p-2">{{ super_test_field.ChoiceTypeFromList }}</td>
+                </tr>
+                <tr>
+                    <th class="text-left p-2">Choice type from entity</th>
+                    <td class="p-2">{{ super_test_field.ChoiceTypeFromEntity }}</td>
+                </tr>
+                <tr>
+                    <th class="text-left p-2">Sin nao int</th>
+                    <td class="p-2">
+                        {% if super_test_field.SinNaoInt == 1 %}
+                            <sl-badge variant="success" pill>Sim</sl-badge>
+                        {% else %}
+                            <sl-badge variant="danger" pill>Não</sl-badge>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-left p-2">Boolean true false</th>
+                    <td class="p-2">
+                        {% if super_test_field.BooleanTrueFalse %}
+                            <sl-badge variant="success" pill>Sim</sl-badge>
+                        {% else %}
+                            <sl-badge variant="danger" pill>Não</sl-badge>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-left p-2">Image file</th>
+                    <td class="p-2">
+                        {% if super_test_field.image %}
+                            <img src="{{ vich_uploader_asset(super_test_field, 'imageFile') | imagine_filter('admin_thumb') }}" alt="">
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <th class="text-left p-2">Select enum</th>
+                    <td class="p-2">{{ super_test_field.SelectEnum }}</td>
+                </tr>
+                <tr>
+                    <th class="text-left p-2">Email field</th>
+                    <td class="p-2">{{ super_test_field.emailField }}</td>
+                </tr>
+                <tr>
+                    <th class="text-left p-2">Numero simples</th>
+                    <td class="p-2">{{ super_test_field.numeroSimples }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </sl-card>
+
+    <form id="delete-super-test-field-form" method="post" action="{{ path('app_admin_super_test_fields_delete', {'id': super_test_field.id}) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ super_test_field.id) }}">
+    </form>
+</div>
+{% endblock %}

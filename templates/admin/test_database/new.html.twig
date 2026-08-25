@@ -1,0 +1,24 @@
+{% extends 'admin/base.html.twig' %}
+
+{# Layout Shoelace para "novo registro".
+   Compare com templates/admin/test_database_controller2/new.html.twig
+   (markup gerado pelo maker) e copie este bloco para novos CRUDs #}
+{% block body %}
+<div class="space-y-8">
+    <section class="flex flex-wrap items-center justify-between gap-4 rounded-[32px] bg-white/80 p-6 shadow-xl shadow-slate-900/5 ring-1 ring-white/70 backdrop-blur dark:bg-slate-900/70 dark:ring-white/10">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500 dark:text-slate-400">Novo registro</p>
+            <h1 class="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">Adicionar Test Database</h1>
+            <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Forneça um nome amigável para identificar o dataset.</p>
+        </div>
+        <sl-button variant="default" outline href="{{ path('app_admin_test_database_index') }}">
+            <sl-icon slot="prefix" name="arrow-left"></sl-icon>
+            Voltar para lista
+        </sl-button>
+    </section>
+
+    <sl-card class="border-none bg-white/85 shadow-lg shadow-slate-900/5 ring-1 ring-white/70 backdrop-blur dark:bg-slate-900/70 dark:ring-white/10">
+        {% include 'admin/test_database/_form.html.twig' with {'button_label': 'Criar'} %}
+    </sl-card>
+</div>
+{% endblock %}

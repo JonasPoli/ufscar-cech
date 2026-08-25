@@ -1,0 +1,52 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Importar Currículos Lattes XML{% endblock %}
+
+{% block body %}
+<div class="mx-auto max-w-4xl space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                Importador de Currículos Lattes XML
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Faça upload de um ou múltiplos arquivos XML exportados da Plataforma Lattes.
+            </p>
+        </div>
+
+        <a href="{{ path('app_admin_curriculum_index') }}" class="text-xs text-sky-600 font-semibold hover:underline flex items-center gap-1">
+            <sl-icon name="arrow-left"></sl-icon> Voltar à lista
+        </a>
+    </div>
+
+    <div class="glass-card rounded-3xl p-8 shadow-sm">
+        <form method="POST" enctype="multipart/form-data" action="{{ path('app_admin_curriculum_import') }}" class="space-y-6">
+            <div class="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 text-center space-y-4 hover:border-sky-500 transition-colors bg-white/50 dark:bg-slate-900/50">
+                <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 dark:bg-sky-950 dark:text-sky-400">
+                    <sl-icon name="cloud-arrow-up" class="text-3xl"></sl-icon>
+                </div>
+
+                <div class="space-y-1">
+                    <label for="xml_files" class="text-sm font-semibold text-slate-900 dark:text-white cursor-pointer hover:underline">
+                        Selecione ou arraste arquivos XML aqui
+                    </label>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                        Formatos aceitos: .xml (Padrão CNPq Lattes)
+                    </p>
+                </div>
+
+                <input type="file" id="xml_files" name="xml_files[]" multiple accept=".xml" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 dark:file:bg-sky-950 dark:file:text-sky-300 cursor-pointer">
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/60 dark:border-white/10">
+                <a href="{{ path('app_admin_curriculum_index') }}" class="px-5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 transition-colors">
+                    Cancelar
+                </a>
+                <button type="submit" class="px-6 py-2.5 rounded-xl bg-sky-600 text-xs font-semibold text-white hover:bg-sky-500 shadow-sm transition-colors flex items-center gap-2">
+                    <sl-icon name="cloud-arrow-up"></sl-icon> Iniciar Importação
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

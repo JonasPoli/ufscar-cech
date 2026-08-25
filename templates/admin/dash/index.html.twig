@@ -1,0 +1,125 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block body %}
+<div class="space-y-8">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                Painel Administrativo CECH
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Visão geral e controle do catálogo acadêmico, importações e tesauros controlados.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="{{ path('app_admin_curriculum_import') }}" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 transition-colors">
+                <sl-icon name="cloud-arrow-up"></sl-icon> Importar XML
+            </a>
+            <a href="{{ path('app_admin_report_index') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900 transition-colors">
+                <sl-icon name="file-earmark-bar-graph"></sl-icon> Relatórios
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="glass-card rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-sky-600 dark:text-sky-400 mb-2">
+                <sl-icon name="people" class="text-2xl"></sl-icon>
+            </div>
+            <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                {{ stats.researchers|number_format(0, ',', '.') }}
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Docentes</p>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-indigo-600 dark:text-indigo-400 mb-2">
+                <sl-icon name="journal-bookmark" class="text-2xl"></sl-icon>
+            </div>
+            <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                {{ stats.productions|number_format(0, ',', '.') }}
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Produções</p>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-emerald-600 dark:text-emerald-400 mb-2">
+                <sl-icon name="building" class="text-2xl"></sl-icon>
+            </div>
+            <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                {{ stats.institutions|number_format(0, ',', '.') }}
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Instituições</p>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-amber-600 dark:text-amber-400 mb-2">
+                <sl-icon name="globe-americas" class="text-2xl"></sl-icon>
+            </div>
+            <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                {{ stats.countries|number_format(0, ',', '.') }}
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Países</p>
+        </div>
+
+        <div class="glass-card rounded-2xl p-5 shadow-sm">
+            <div class="flex items-center justify-between text-purple-600 dark:text-purple-400 mb-2">
+                <sl-icon name="person-badge" class="text-2xl"></sl-icon>
+            </div>
+            <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                {{ stats.authors|number_format(0, ',', '.') }}
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Autores</p>
+        </div>
+    </div>
+
+    <!-- Quick Sections -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Top Departments -->
+        <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white">Departamentos</h3>
+                <a href="{{ path('app_admin_report_index') }}" class="text-xs text-sky-600 hover:underline">Ver relatórios</a>
+            </div>
+            <div class="space-y-3">
+                {% for dept in topDepartments %}
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 text-xs">
+                        <div class="font-semibold text-slate-800 dark:text-slate-200">
+                            {{ dept.department }} <span class="text-sky-600 dark:text-sky-400">({{ dept.departmentCode }})</span>
+                        </div>
+                        <div class="text-slate-500 dark:text-slate-400 font-medium">
+                            {{ dept.totalFaculty }} docentes • {{ dept.totalProductions|number_format(0, ',', '.') }} produções
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Recent Faculty Members -->
+        <div class="glass-card rounded-2xl p-6 shadow-sm space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white">Docentes Cadastrados</h3>
+                <a href="{{ path('app_admin_curriculum_index') }}" class="text-xs text-sky-600 hover:underline">Ver todos</a>
+            </div>
+            <div class="space-y-3">
+                {% for r in recentResearchers %}
+                    <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 text-xs">
+                        <div>
+                            <p class="font-semibold text-slate-800 dark:text-slate-200">{{ r.fullName }}</p>
+                            <p class="text-[11px] text-slate-400">{{ r.department ?: 'CECH' }}</p>
+                        </div>
+                        <a href="{{ path('app_admin_curriculum_show', {'id': r.id}) }}" class="text-sky-600 font-semibold hover:underline">
+                            Detalhes
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,172 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Tesauro de Instituições{% endblock %}
+
+{% block body %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                Tesauro de Instituições
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Padronização de universidades, institutos de pesquisa e variações de grafia.
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- Merge Button -->
+            <sl-button variant="warning" id="btnMergeSelected" disabled onclick="openMergeModal()">
+                <sl-icon slot="prefix" name="bezier2"></sl-icon> Mesclar Selecionadas (<span id="mergeCount">0</span>)
+            </sl-button>
+
+            <!-- Export Dropdown -->
+            <sl-dropdown>
+                <sl-button slot="trigger" caret variant="default">
+                    <sl-icon slot="prefix" name="download"></sl-icon> Exportar Tesauro
+                </sl-button>
+                <sl-menu>
+                    <sl-menu-item value="the"><a href="{{ path('app_admin_institution_export', {'format': 'the'}) }}" class="text-xs">VantagePoint (.the)</a></sl-menu-item>
+                    <sl-menu-item value="csv"><a href="{{ path('app_admin_institution_export', {'format': 'csv'}) }}" class="text-xs">CSV (.csv)</a></sl-menu-item>
+                    <sl-menu-item value="json"><a href="{{ path('app_admin_institution_export', {'format': 'json'}) }}" class="text-xs">JSON (.json)</a></sl-menu-item>
+                    <sl-menu-item value="xml"><a href="{{ path('app_admin_institution_export', {'format': 'xml'}) }}" class="text-xs">XML (.xml)</a></sl-menu-item>
+                </sl-menu>
+            </sl-dropdown>
+
+            <!-- Import Button -->
+            <sl-button variant="default" onclick="document.getElementById('importModal').show()">
+                <sl-icon slot="prefix" name="cloud-arrow-up"></sl-icon> Importar (.the/.csv)
+            </sl-button>
+
+            <a href="{{ path('app_admin_institution_new') }}" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 transition-colors">
+                <sl-icon name="plus-lg"></sl-icon> Nova Instituição
+            </a>
+        </div>
+    </div>
+
+    <!-- Table Card -->
+    <div class="glass-card rounded-2xl p-6 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table id="institutionTable" class="w-full text-left text-xs stripe hover">
+                <thead>
+                    <tr class="border-b border-slate-200 dark:border-white/10 text-slate-500">
+                        <th class="py-3 px-3 w-10 text-center"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
+                        <th class="py-3 px-4">Nome Oficial / Padronizado</th>
+                        <th class="py-3 px-4">Sigla</th>
+                        <th class="py-3 px-4">Tipo / Natureza</th>
+                        <th class="py-3 px-4">Variações</th>
+                        <th class="py-3 px-4 text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+                    {% for inst in institutions %}
+                        <tr>
+                            <td class="py-3 px-3 text-center">
+                                <input type="checkbox" class="inst-checkbox" value="{{ inst.id }}" data-name="{{ inst.officialName }}" onchange="updateMergeState()">
+                            </td>
+                            <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">
+                                <a href="{{ path('app_admin_institution_edit', {'id': inst.id}) }}" class="hover:text-sky-600 dark:hover:text-sky-400 underline">
+                                    {{ inst.officialName }}
+                                </a>
+                            </td>
+                            <td class="py-3 px-4 font-bold text-sky-600">
+                                {{ inst.acronym ?: '-' }}
+                            </td>
+                            <td class="py-3 px-4 text-slate-500">
+                                {{ inst.institutionType ?: inst.legalNature ?: '-' }}
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="rounded-full bg-slate-100 px-2.5 py-0.5 font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                                    {{ inst.variations|length }} variante(s)
+                                </span>
+                            </td>
+                            <td class="py-3 px-4 text-right space-x-1">
+                                <a href="{{ path('app_admin_institution_edit', {'id': inst.id}) }}" class="inline-flex items-center p-1.5 text-slate-600 hover:text-sky-600 dark:text-slate-400" title="Editar">
+                                    <sl-icon name="pencil"></sl-icon>
+                                </a>
+                                <button type="button" onclick="confirmDelete('{{ path('app_admin_institution_delete', {'id': inst.id}) }}', '{{ csrf_token('delete' ~ inst.id) }}', 'Deseja excluir a instituição {{ inst.officialName|e('js') }}?')" class="inline-flex items-center p-1.5 text-slate-400 hover:text-rose-600" title="Excluir">
+                                    <sl-icon name="trash"></sl-icon>
+                                </button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Import Modal Dialog (Shoelace) -->
+<sl-dialog id="importModal" label="Importar Tesauro de Instituições">
+    <form method="POST" enctype="multipart/form-data" action="{{ path('app_admin_institution_import') }}" class="space-y-4">
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+            Envie um arquivo VantagePoint (.the), CSV ou JSON contendo instituições padronizadas e sinônimos.
+        </p>
+        <input type="file" name="thesaurus_file" required accept=".the,.csv,.json,.xml" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 dark:file:bg-sky-950 dark:file:text-sky-300">
+        <div slot="footer" class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-white/10">
+            <sl-button variant="default" onclick="document.getElementById('importModal').hide()">Cancelar</sl-button>
+            <sl-button variant="primary" type="submit">Importar Arquivo</sl-button>
+        </div>
+    </form>
+</sl-dialog>
+
+<!-- Merge Modal Dialog (Shoelace) -->
+<sl-dialog id="mergeModal" label="Mesclar Instituições">
+    <form method="POST" action="{{ path('app_admin_institution_merge') }}" class="space-y-4">
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+            Selecione qual instituição será o registro <strong>Principal (Master)</strong>. Todas as outras instituições selecionadas terão suas variações transferidas para ela e serão consolidadas.
+        </p>
+        <div class="space-y-2">
+            <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Registro Principal:</label>
+            <select name="master_id" id="mergeMasterSelect" required class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"></select>
+        </div>
+        <div id="mergeSourcesContainer"></div>
+        <div slot="footer" class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-white/10">
+            <sl-button variant="default" onclick="document.getElementById('mergeModal').hide()">Cancelar</sl-button>
+            <sl-button variant="warning" type="submit">Confirmar Fusão</sl-button>
+        </div>
+    </form>
+</sl-dialog>
+
+<script>
+$(document).ready(function() {
+    $('#institutionTable').DataTable({
+        pageLength: 25,
+        language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json' },
+        order: [[1, 'asc']]
+    });
+});
+
+function toggleSelectAll(master) {
+    $('.inst-checkbox').prop('checked', master.checked);
+    updateMergeState();
+}
+
+function updateMergeState() {
+    const checked = $('.inst-checkbox:checked');
+    const count = checked.length;
+    $('#mergeCount').text(count);
+    $('#btnMergeSelected').prop('disabled', count < 2);
+}
+
+function openMergeModal() {
+    const checked = $('.inst-checkbox:checked');
+    if (checked.length < 2) return;
+
+    const select = $('#mergeMasterSelect');
+    const sourcesContainer = $('#mergeSourcesContainer');
+    select.empty();
+    sourcesContainer.empty();
+
+    checked.each(function() {
+        const id = $(this).val();
+        const name = $(this).data('name');
+        select.append(new Option(name, id));
+        sourcesContainer.append(`<input type="hidden" name="source_ids[]" value="${id}">`);
+    });
+
+    document.getElementById('mergeModal').show();
+}
+</script>
+{% endblock %}

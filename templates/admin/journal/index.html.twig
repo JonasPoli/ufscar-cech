@@ -1,0 +1,359 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Periódicos & Qualis | Admin CECH{% endblock %}
+
+{% block body %}
+<div class="space-y-6">
+    <!-- Header Section -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="font-heading text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="journal-bookmark" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                Periódicos & Qualis CAPES
+            </h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Gerenciamento de revistas científicas, estratos Qualis e tesauro de variações de títulos ({{ totalItems|number_format(0, ',', '.') }} periódicos cadastrados).
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ path('app_admin_journal_new') }}" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 transition-colors">
+                <sl-icon name="plus-lg"></sl-icon> Novo Periódico
+            </a>
+
+            <div class="inline-flex rounded-xl shadow-xs border border-slate-300 dark:border-slate-700 overflow-hidden">
+                <a href="{{ path('app_admin_journal_export_csv') }}" class="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-r border-slate-300 dark:border-slate-700" title="Exportar para CSV">
+                    <sl-icon name="filetype-csv"></sl-icon> CSV
+                </a>
+                <a href="{{ path('app_admin_journal_export_thesaurus') }}" class="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Exportar Tesauro (.the)">
+                    <sl-icon name="diagram-3"></sl-icon> .THE
+                </a>
+            </div>
+
+            <button type="button" onclick="openModal('importCsvModal')" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+                <sl-icon name="upload"></sl-icon> Importar CSV
+            </button>
+
+            <button type="button" onclick="openModal('importThesaurusModal')" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
+                <sl-icon name="diagram-2"></sl-icon> Importar Tesauro
+            </button>
+
+            <button type="button" onclick="openMergeModal()" class="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-300 hover:bg-amber-100 transition-colors">
+                <sl-icon name="intersect"></sl-icon> Mesclar Selecionados
+            </button>
+        </div>
+    </div>
+
+    <!-- Qualis Stats Badges -->
+    <div class="flex flex-wrap gap-2 pt-1">
+        <a href="{{ path('app_admin_journal_index', {'search': search, 'qualis': 'all'}) }}" class="px-3 py-1 rounded-xl text-xs font-bold transition-all {% if qualisFilter == 'all' or qualisFilter == '' %}bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300{% endif %}">
+            Todos ({{ totalItems }})
+        </a>
+        {% for s in stats %}
+            {% set grade = s.grade %}
+            {% set count = s.count %}
+            {% if grade != 'N/A' %}
+                <a href="{{ path('app_admin_journal_index', {'search': search, 'qualis': grade}) }}" class="px-2.5 py-1 rounded-xl text-xs font-bold border transition-all {% if qualisFilter == grade %}ring-2 ring-sky-500 scale-105{% endif %} {% if grade == 'A1' %}bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300{% elseif grade == 'A2' %}bg-green-50 text-green-800 border-green-300 dark:bg-green-950/60 dark:text-green-300{% elseif grade == 'A3' %}bg-teal-50 text-teal-800 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300{% elseif grade == 'A4' %}bg-cyan-50 text-cyan-800 border-cyan-300 dark:bg-cyan-950/60 dark:text-cyan-300{% elseif grade == 'B1' %}bg-blue-50 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300{% elseif grade == 'B2' %}bg-indigo-50 text-indigo-800 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300{% elseif grade == 'B3' %}bg-violet-50 text-violet-800 border-violet-300 dark:bg-violet-950/60 dark:text-violet-300{% elseif grade == 'B4' %}bg-purple-50 text-purple-800 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300{% elseif grade == 'C' %}bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300{% else %}bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300{% endif %}">
+                    {{ grade }}: {{ count|number_format(0, ',', '.') }}
+                </a>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="glass-card rounded-2xl p-4 shadow-sm">
+        <form method="GET" action="{{ path('app_admin_journal_index') }}" class="flex flex-col sm:flex-row gap-3">
+            <div class="flex-1 relative">
+                <sl-icon name="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></sl-icon>
+                <input type="text" name="search" value="{{ search }}" placeholder="Buscar por título do periódico, ISSN, estrato Qualis ou variação do tesauro..." class="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+            </div>
+
+            <div class="w-full sm:w-48">
+                <select name="qualis" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                    <option value="all" {% if qualisFilter == 'all' %}selected{% endif %}>Todos os Estratos</option>
+                    <option value="A1" {% if qualisFilter == 'A1' %}selected{% endif %}>Qualis A1</option>
+                    <option value="A2" {% if qualisFilter == 'A2' %}selected{% endif %}>Qualis A2</option>
+                    <option value="A3" {% if qualisFilter == 'A3' %}selected{% endif %}>Qualis A3</option>
+                    <option value="A4" {% if qualisFilter == 'A4' %}selected{% endif %}>Qualis A4</option>
+                    <option value="B1" {% if qualisFilter == 'B1' %}selected{% endif %}>Qualis B1</option>
+                    <option value="B2" {% if qualisFilter == 'B2' %}selected{% endif %}>Qualis B2</option>
+                    <option value="B3" {% if qualisFilter == 'B3' %}selected{% endif %}>Qualis B3</option>
+                    <option value="B4" {% if qualisFilter == 'B4' %}selected{% endif %}>Qualis B4</option>
+                    <option value="C" {% if qualisFilter == 'C' %}selected{% endif %}>Qualis C</option>
+                    <option value="EMPTY" {% if qualisFilter == 'EMPTY' %}selected{% endif %}>Sem Qualis Definido</option>
+                </select>
+            </div>
+
+            <button type="submit" class="rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 text-xs font-semibold hover:opacity-90 transition-opacity">
+                Filtrar
+            </button>
+
+            {% if search or (qualisFilter != 'all' and qualisFilter != '') %}
+                <a href="{{ path('app_admin_journal_index') }}" class="rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center">
+                    Limpar
+                </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Data Table -->
+    <div class="glass-card rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                <thead class="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="py-3 px-4 w-8">
+                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" class="rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                        </th>
+                        <th class="py-3 px-4">Título do Periódico</th>
+                        <th class="py-3 px-4 w-32">ISSN</th>
+                        <th class="py-3 px-4 w-28 text-center">Qualis</th>
+                        <th class="py-3 px-4">Variações / Tesauro</th>
+                        <th class="py-3 px-4 w-28 text-right">Ações</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800 font-normal">
+                    {% for journal in journals %}
+                        <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                            <td class="py-3 px-4">
+                                <input type="checkbox" name="selected_journal" value="{{ journal.id }}" data-title="{{ journal.title }}" class="journal-checkbox rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                            </td>
+                            <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">
+                                {{ journal.title }}
+                                {% if journal.area %}
+                                    <span class="block text-[11px] font-normal text-slate-400">{{ journal.area }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                                {{ journal.issn ?: '-' }}
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                {% if journal.qualis %}
+                                    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-bold uppercase border {% if journal.qualis == 'A1' %}bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300{% elseif journal.qualis == 'A2' %}bg-green-100 text-green-800 border-green-300 dark:bg-green-950 dark:text-green-300{% elseif journal.qualis == 'A3' %}bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950 dark:text-teal-300{% elseif journal.qualis == 'A4' %}bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-950 dark:text-cyan-300{% elseif journal.qualis == 'B1' %}bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950 dark:text-blue-300{% elseif journal.qualis == 'B2' %}bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-300{% elseif journal.qualis == 'B3' %}bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-950 dark:text-violet-300{% elseif journal.qualis == 'B4' %}bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950 dark:text-purple-300{% elseif journal.qualis == 'C' %}bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300{% else %}bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300{% endif %}">
+                                        {{ journal.qualis }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-slate-400">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4">
+                                <div class="flex flex-wrap gap-1 max-w-md">
+                                    {% for v in journal.variations %}
+                                        <span class="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-600 dark:text-slate-400" title="{{ v.variationName }}">
+                                            {{ v.variationName|slice(0, 30) }}{% if v.variationName|length > 30 %}...{% endif %}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-slate-400 text-[11px] italic">Sem sinônimos cadastrados</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td class="py-3 px-4 text-right">
+                                <div class="inline-flex items-center gap-1">
+                                    <a href="{{ path('app_admin_journal_edit', {'id': journal.id}) }}" class="p-1.5 rounded-lg text-slate-600 hover:text-sky-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-sky-400 dark:hover:bg-slate-800 transition-colors" title="Editar">
+                                        <sl-icon name="pencil-square"></sl-icon>
+                                    </a>
+                                    <button type="button" onclick="confirmDelete({{ journal.id }}, '{{ journal.title|e('js') }}')" class="p-1.5 rounded-lg text-slate-600 hover:text-rose-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-slate-800 transition-colors" title="Excluir">
+                                        <sl-icon name="trash"></sl-icon>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-slate-400">
+                                Nenhum periódico encontrado para os filtros informados.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if totalPages > 1 %}
+            <div class="px-4 py-3 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <span class="text-xs text-slate-500">
+                    Página {{ currentPage }} de {{ totalPages }} ({{ totalItems|number_format(0, ',', '.') }} resultados)
+                </span>
+                <div class="flex items-center gap-1">
+                    {% if currentPage > 1 %}
+                        <a href="{{ path('app_admin_journal_index', {'page': 1, 'search': search, 'qualis': qualisFilter}) }}" class="px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">« Primeira</a>
+                        <a href="{{ path('app_admin_journal_index', {'page': currentPage - 1, 'search': search, 'qualis': qualisFilter}) }}" class="px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">‹ Anterior</a>
+                    {% endif %}
+
+                    {% set startPage = max(1, currentPage - 2) %}
+                    {% set endPage = min(totalPages, currentPage + 2) %}
+                    {% for p in startPage..endPage %}
+                        <a href="{{ path('app_admin_journal_index', {'page': p, 'search': search, 'qualis': qualisFilter}) }}" class="px-2.5 py-1 text-xs rounded-lg border {% if p == currentPage %}bg-sky-600 text-white border-sky-600 font-bold{% else %}border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %}">
+                            {{ p }}
+                        </a>
+                    {% endfor %}
+
+                    {% if currentPage < totalPages %}
+                        <a href="{{ path('app_admin_journal_index', {'page': currentPage + 1, 'search': search, 'qualis': qualisFilter}) }}" class="px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Próxima ›</a>
+                        <a href="{{ path('app_admin_journal_index', {'page': totalPages, 'search': search, 'qualis': qualisFilter}) }}" class="px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Última »</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal Importar CSV -->
+<div id="importCsvModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="filetype-csv" class="text-sky-600"></sl-icon> Importar Periódicos (CSV)
+            </h3>
+            <button type="button" onclick="closeModal('importCsvModal')" class="text-slate-400 hover:text-slate-600">
+                <sl-icon name="x-lg"></sl-icon>
+            </button>
+        </div>
+        <form action="{{ path('app_admin_journal_import_csv') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <input type="hidden" name="_token" value="{{ csrf_token('import_journal_csv') }}">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Arquivo CSV</label>
+                <input type="file" name="csv_file" accept=".csv" required class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100">
+                <p class="text-[11px] text-slate-400 mt-1">Colunas aceitas: title, issn, qualis, area</p>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeModal('importCsvModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-xl">Importar CSV</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Importar Tesauro -->
+<div id="importThesaurusModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="diagram-2" class="text-sky-600"></sl-icon> Importar Tesauro (.the / .csv)
+            </h3>
+            <button type="button" onclick="closeModal('importThesaurusModal')" class="text-slate-400 hover:text-slate-600">
+                <sl-icon name="x-lg"></sl-icon>
+            </button>
+        </div>
+        <form action="{{ path('app_admin_journal_import_thesaurus') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <input type="hidden" name="_token" value="{{ csrf_token('import_journal_thesaurus') }}">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Arquivo de Tesauro</label>
+                <input type="file" name="thesaurus_file" accept=".the,.csv" required class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100">
+                <p class="text-[11px] text-slate-400 mt-1">Formatos suportados: .the (BiblioMap) e .csv (header / variation)</p>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeModal('importThesaurusModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-xl">Importar Tesauro</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Mesclar Periódicos -->
+<div id="mergeModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="intersect" class="text-amber-500"></sl-icon> Mesclar Periódicos Selecionados
+            </h3>
+            <button type="button" onclick="closeModal('mergeModal')" class="text-slate-400 hover:text-slate-600">
+                <sl-icon name="x-lg"></sl-icon>
+            </button>
+        </div>
+        <form action="{{ path('app_admin_journal_merge') }}" method="POST" class="space-y-4">
+            <input type="hidden" name="_token" value="{{ csrf_token('merge_journals') }}">
+            <div id="mergeSourcesContainer"></div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Selecione o Periódico Principal (Destino)</label>
+                <select name="master_id" id="masterSelect" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white">
+                </select>
+                <p class="text-[11px] text-slate-400 mt-1">Os títulos dos outros periódicos serão migrados como sinônimos (tesauro) do periódico principal.</p>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeModal('mergeModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-500 rounded-xl">Confirmar Mesclagem</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Confirmação de Exclusão -->
+<div id="deleteModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+        <div class="flex items-center gap-3 text-rose-600">
+            <sl-icon name="exclamation-triangle" class="text-2xl"></sl-icon>
+            <h3 class="font-heading text-base font-bold text-slate-900 dark:text-white">Excluir Periódico</h3>
+        </div>
+        <p class="text-xs text-slate-600 dark:text-slate-400">
+            Deseja realmente remover o periódico <strong id="deleteJournalTitle" class="text-slate-900 dark:text-white"></strong>? Esta ação não pode ser desfeita.
+        </p>
+        <form id="deleteForm" method="POST" class="flex justify-end gap-2 pt-2">
+            <input type="hidden" name="_token" id="deleteCsrfToken" value="">
+            <button type="button" onclick="closeModal('deleteModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+            <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-xl">Excluir</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function openModal(id) {
+    document.getElementById(id).classList.remove('hidden');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
+
+function toggleSelectAll(master) {
+    document.querySelectorAll('.journal-checkbox').forEach(cb => cb.checked = master.checked);
+}
+
+function openMergeModal() {
+    const selected = Array.from(document.querySelectorAll('.journal-checkbox:checked'));
+    if (selected.length < 2) {
+        alert('Selecione ao menos 2 periódicos para mesclar.');
+        return;
+    }
+
+    const select = document.getElementById('masterSelect');
+    const container = document.getElementById('mergeSourcesContainer');
+    select.innerHTML = '';
+    container.innerHTML = '';
+
+    selected.forEach(cb => {
+        const id = cb.value;
+        const title = cb.dataset.title;
+
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = `${title} (#${id})`;
+        select.appendChild(opt);
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'source_ids[]';
+        input.value = id;
+        container.appendChild(input);
+    });
+
+    openModal('mergeModal');
+}
+
+function confirmDelete(id, title) {
+    document.getElementById('deleteJournalTitle').textContent = `"${title}"`;
+    const form = document.getElementById('deleteForm');
+    form.action = `/admin/journals/${id}/delete`;
+    
+    // Create or set CSRF token
+    fetch(`/admin/journals/${id}/edit`).then(() => {
+        // use form action
+    });
+    
+    openModal('deleteModal');
+}
+</script>
+{% endblock %}

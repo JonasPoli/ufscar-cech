@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="h-full">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{% block title %}Painel Administrativo{% endblock %} | CECH UFSCar</title>
+        <link rel="icon" type="image/svg+xml" href="{{ asset('images/logo-colorido.svg') }}">
+        <link rel="alternate icon" href="{{ asset('images/logo-colorido.svg') }}">
+        
+        <!-- Google Fonts -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+        <!-- Shoelace Web Components -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/light.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/dark.css" />
+        <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/shoelace-autoloader.js"></script>
+        
+        <!-- DataTables CSS & JS -->
+        <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+        <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+
+        {% block stylesheets %}
+            <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
+            <style>
+                body { font-family: 'Inter', sans-serif; }
+                h1, h2, h3, h4, .font-heading { font-family: 'Outfit', sans-serif; }
+                .glass-card {
+                    background: rgba(255, 255, 255, 0.9);
+                    backdrop-filter: blur(12px);
+                    border: 1px solid rgba(226, 232, 240, 0.8);
+                }
+                .dark .glass-card {
+                    background: rgba(15, 23, 42, 0.9);
+                    backdrop-filter: blur(12px);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                }
+            </style>
+        {% endblock %}
+
+        <script>
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.add('sl-theme-dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.remove('sl-theme-dark');
+            }
+
+            function setDarkMode(isDark) {
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.add('sl-theme-dark');
+                    localStorage.theme = 'dark';
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.classList.remove('sl-theme-dark');
+                    localStorage.theme = 'light';
+                }
+            }
+        </script>
+    </head>
+    <body class="min-h-screen bg-slate-100 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100 flex flex-col">
+        <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr] min-h-screen">
+            <!-- Sidebar -->
+            <aside class="sticky top-0 h-screen flex flex-col justify-between border-r border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-white/10 dark:bg-slate-950/90 px-4 py-6 overflow-y-auto">
+                <div class="space-y-6">
+                    <!-- Brand -->
+                    <a href="{{ path('app_admin_dashboard') }}" class="flex items-center gap-3 px-2">
+                        <div class="h-10 px-2 py-1 flex items-center justify-center rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 shadow-sm">
+                            <img src="{{ asset('images/logo-colorido.svg') }}" alt="Logo CECH UFSCar" class="h-7 w-auto dark:hidden">
+                            <img src="{{ asset('images/logo-colorido-dark.svg') }}" alt="Logo CECH UFSCar" class="h-7 w-auto hidden dark:block">
+                        </div>
+                        <div>
+                            <span class="font-heading text-base font-bold text-slate-900 dark:text-white">Admin CECH</span>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">Gestão & Catálogo</p>
+                        </div>
+                    </a>
+
+                    <!-- Nav Links -->
+                    <nav class="space-y-1 text-sm font-medium">
+                        {% set current = app.current_route %}
+                        <a href="{{ path('app_admin_dashboard') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current == 'app_admin_dashboard' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                            <sl-icon name="speedometer2"></sl-icon> Dashboard
+                        </a>
+
+                        <div class="pt-3 pb-1 px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                            Currículos & Produção
+                        </div>
+
+                        <a href="{{ path('app_admin_curriculum_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current starts with 'app_admin_curriculum_' and current != 'app_admin_curriculum_import' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                            <sl-icon name="people"></sl-icon> Currículos Docentes
+                        </a>
+
+                        <a href="{{ path('app_admin_curriculum_import') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current == 'app_admin_curriculum_import' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                            <sl-icon name="cloud-arrow-up"></sl-icon> Importar Lattes XML
+                        </a>
+
+                        <a href="{{ path('app_admin_indexing_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current starts with 'app_admin_indexing' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                            <sl-icon name="cpu"></sl-icon> Indexação de Dados
+                        </a>
+
+                        <a href="{{ path('app_admin_report_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current starts with 'app_admin_report' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                            <sl-icon name="file-earmark-bar-graph"></sl-icon> Relatórios
+                        </a>
+
+                        <div class="pt-3 pb-1 px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                            Tesauros & Autoridades
+                        </div>
+
+                        <a href="{{ path('app_admin_journal_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current starts with 'app_admin_journal' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                            <sl-icon name="journal-bookmark"></sl-icon> Periódicos & Qualis
+                        </a>
+
+                        <a href="{{ path('app_admin_institution_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current starts with 'app_admin_institution' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                            <sl-icon name="building"></sl-icon> Instituições
+                        </a>
+
+                        <a href="{{ path('app_admin_country_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current starts with 'app_admin_country' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                            <sl-icon name="globe-americas"></sl-icon> Países
+                        </a>
+
+                        <a href="{{ path('app_admin_author_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current starts with 'app_admin_author' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                            <sl-icon name="person-badge"></sl-icon> Autores
+                        </a>
+
+                        <div class="pt-3 pb-1 px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                            Sistema & Configurações
+                        </div>
+
+                        <a href="{{ path('app_admin_seo_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current starts with 'app_admin_seo' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                            <sl-icon name="graph-up-arrow"></sl-icon> SEO & Analytics
+                        </a>
+
+                        <a href="{{ path('app_admin_user_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current starts with 'app_admin_user' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                            <sl-icon name="shield-lock"></sl-icon> Usuários
+                        </a>
+
+                        <a href="{{ path('app_pub_home') }}" target="_blank" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900 transition-colors">
+                            <sl-icon name="box-arrow-up-right"></sl-icon> Ver Portal Público
+                        </a>
+                    </nav>
+                </div>
+
+                <!-- User Profile & Theme Toggle in Sidebar Footer -->
+                <div class="pt-4 border-t border-slate-200/80 dark:border-white/10 flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-xs">
+                        <div class="h-8 w-8 rounded-full bg-cech-blue text-white flex items-center justify-center font-bold">
+                            {{ app.user ? app.user.userIdentifier|slice(0, 2)|upper : 'AD' }}
+                        </div>
+                        <div class="truncate max-w-[100px]">
+                            <p class="font-semibold text-slate-800 dark:text-slate-200 truncate">{{ app.user ? app.user.userIdentifier : 'Admin' }}</p>
+                            <a href="{{ path('app_logout') }}" class="text-[11px] text-cech-red hover:underline font-semibold">Sair</a>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center rounded-full border border-slate-200 p-1 dark:border-slate-800 bg-slate-100 dark:bg-slate-900">
+                        <button type="button" onclick="setDarkMode(false)" title="Modo Claro" class="rounded-full p-1 text-slate-500 hover:text-amber-500 dark:text-slate-400 dark:hover:text-amber-400 transition-colors">
+                            <sl-icon name="sun-fill" class="text-xs"></sl-icon>
+                        </button>
+                        <button type="button" onclick="setDarkMode(true)" title="Modo Escuro" class="rounded-full p-1 text-slate-500 hover:text-cech-teal dark:text-slate-400 dark:hover:text-cech-teal transition-colors">
+                            <sl-icon name="moon-stars-fill" class="text-xs"></sl-icon>
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Admin Content Area -->
+            <main class="p-6 sm:p-8 lg:p-10 max-w-7xl w-full mx-auto space-y-6">
+                <!-- Flash Messages -->
+                {% for label, messages in app.flashes %}
+                    {% for message in messages %}
+                        <div class="rounded-2xl p-4 text-xs font-semibold flex items-center justify-between shadow-sm {% if label == 'error' %}bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60{% elseif label == 'success' %}bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60{% else %}bg-sky-100 text-sky-800 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/60{% endif %}">
+                            <div class="flex items-center gap-2">
+                                <sl-icon name="{% if label == 'error' %}exclamation-octagon{% elseif label == 'success' %}check2-circle{% else %}info-circle{% endif %}"></sl-icon>
+                                <span>{{ message }}</span>
+                            </div>
+                            <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+                                <sl-icon name="x-lg"></sl-icon>
+                            </button>
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+
+                {% block body %}{% endblock %}
+            </main>
+        </div>
+
+        {% block javascripts %}{% endblock %}
+    </body>
+</html>
