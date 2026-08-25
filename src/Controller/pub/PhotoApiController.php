@@ -88,6 +88,9 @@ class PhotoApiController extends AbstractController
         \App\Service\Crawler\LattesPhotoCrawlerService $photoCrawler,
         ResearcherRepository $researcherRepo
     ): Response {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(300);
+
         if ($request->isMethod('OPTIONS')) {
             $response = new Response();
             $response->headers->set('Access-Control-Allow-Origin', '*');

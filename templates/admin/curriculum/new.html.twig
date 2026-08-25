@@ -142,7 +142,7 @@
                         Arraste o botão abaixo para a sua <b>Barra de Favoritos</b> do navegador:
                     </p>
                     <div class="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-center">
-                        <a href="javascript:(async function(){const m=document.documentElement.innerHTML.match(/lattes\.cnpq\.br\/(\d{16})/i),p=new URLSearchParams(location.search),i=document.querySelector('input[name=&quot;id&quot;]'),id=(m?m[1]:null)||p.get('id')||(i?i.value:'')||location.pathname.split('/').pop()||'';const old=document.getElementById('cech-sync-toast');if(old)old.remove();const t=document.createElement('div');t.id='cech-sync-toast';t.style.position='fixed';t.style.top='20px';t.style.right='20px';t.style.zIndex='9999999';t.style.background='#0284c7';t.style.color='#fff';t.style.padding='16px 20px';t.style.borderRadius='14px';t.style.boxShadow='0 12px 30px rgba(0,0,0,0.35)';t.style.fontFamily='system-ui,sans-serif';t.style.fontSize='13px';t.style.maxWidth='380px';t.style.lineHeight='1.4';t.style.cursor='pointer';t.textContent='⏳ Sincronizando com CECH... Enviando dados...';document.body.appendChild(t);try{const r=await fetch('https://127.0.0.1:8000/api/curriculum/import-html',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idLattes:id,html:document.documentElement.outerHTML})});const d=await r.json();if(d.success){t.style.background='#15803d';t.innerHTML='<b>🎉 Sincronizado com Sucesso!</b><br><br><b>Docente:</b> '+(d.researcher.fullName||'')+'<br><b>ID Lattes:</b> '+(d.researcher.idLattes||'')+'<br><b>Produções:</b> '+(d.researcher.productionsCount||0)+'<br><b>Orientações:</b> '+(d.researcher.orientationsCount||0);setTimeout(()=>t.remove(),8000);}else{t.style.background='#b91c1c';t.innerHTML='<b>⚠️ Erro:</b> '+(d.message||'Erro');t.onclick=()=>t.remove();}}catch(e){t.style.background='#b91c1c';t.innerHTML='<b>❌ Erro:</b> Verifique se https://127.0.0.1:8000 está acessível.';t.onclick=()=>t.remove();}})();" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md transition-transform active:scale-95 cursor-grab">
+                        <a href="javascript:(async function(){const m=document.documentElement.innerHTML.match(/lattes\.cnpq\.br\/(\d{16})/i),p=new URLSearchParams(location.search),i=document.querySelector('input[name=&quot;id&quot;]'),id=(m?m[1]:null)||p.get('id')||(i?i.value:'')||location.pathname.split('/').pop()||'';const old=document.getElementById('cech-sync-toast');if(old)old.remove();const t=document.createElement('div');t.id='cech-sync-toast';t.style.position='fixed';t.style.top='20px';t.style.right='20px';t.style.zIndex='9999999';t.style.background='#0284c7';t.style.color='#fff';t.style.padding='16px 20px';t.style.borderRadius='14px';t.style.boxShadow='0 12px 30px rgba(0,0,0,0.35)';t.style.fontFamily='system-ui,sans-serif';t.style.fontSize='13px';t.style.maxWidth='400px';t.style.lineHeight='1.4';t.style.cursor='pointer';t.textContent='⏳ Sincronizando com CECH...';document.body.appendChild(t);const eps=['https://127.0.0.1:8000/api/curriculum/import-html','https://localhost:8000/api/curriculum/import-html','http://127.0.0.1:8000/api/curriculum/import-html','http://localhost:8000/api/curriculum/import-html'];let ok=false;for(const ep of eps){try{const r=await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({idLattes:id,html:document.documentElement.outerHTML})});if(!r.ok&&r.status>=500)throw new Error('HTTP '+r.status);const d=await r.json();if(d.success){t.style.background='#15803d';t.innerHTML='<b>🎉 Sincronizado com Sucesso!</b><br><br><b>Docente:</b> '+(d.researcher.fullName||'')+'<br><b>ID Lattes:</b> '+(d.researcher.idLattes||'')+'<br><b>Produções:</b> '+(d.researcher.productionsCount||0)+'<br><b>Orientações:</b> '+(d.researcher.orientationsCount||0);setTimeout(()=>t.remove(),8000);ok=true;break;}}catch(e){}}if(!ok){t.style.background='#b91c1c';t.innerHTML='<b>❌ Erro:</b> Certifique-se de que o servidor local está rodando (<code>symfony serve</code>).';t.onclick=()=>t.remove();}})();" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md transition-transform active:scale-95 cursor-grab">
                             <sl-icon name="cloud-arrow-down"></sl-icon> 📥 Sincronizar com CECH
                         </a>
                         <p class="text-[10px] text-amber-700 dark:text-amber-300 mt-2">
@@ -162,7 +162,7 @@
                     <sl-icon name="lightning-charge"></sl-icon> Ferramenta Oficial de Sincronização
                 </div>
                 <h2 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    Sincronizador In-Browser Lattes (Versão Atualizada 2.0)
+                    Sincronizador In-Browser Lattes (Versão Atualizada 2.1)
                 </h2>
                 <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-1 max-w-3xl">
                     Importa instantaneamente todo o currículo aberto no navegador (nome, resumo, ORCID, artigos, livros, capítulos, eventos, orientações e foto oficial do CNPq) diretamente para o banco de dados do CECH, sem necessidade de baixar arquivos XML.
@@ -212,20 +212,18 @@
 
         <!-- Hidden Textarea with raw script for perfect clipboard copying -->
         <textarea id="rawScriptContent" class="hidden">/**
- * CECH - In-Browser Full Lattes Data & Photo Importer (Versão 2.0)
+ * CECH - In-Browser Full Lattes Data & Photo Importer (Versão 2.1)
  * Sincroniza qualquer currículo Lattes aberto no navegador diretamente com o CECH.
  */
 (async function importFullLattesToCech() {
     console.log('%c🚀 [CECH] INICIANDO SINCRONIZAÇÃO DO CURRÍCULO LATTES...', 'color: #0284c7; font-size: 14px; font-weight: bold;');
 
-    // 1. Identificar ID Lattes (16 dígitos no texto, query string ou campo oculto)
     const textMatch = document.documentElement.innerHTML.match(/lattes\.cnpq\.br\/(\d{16})/i);
     const urlParams = new URLSearchParams(window.location.search);
     const idInput = document.querySelector('input[name="id"]');
     const idVal = idInput ? idInput.value : '';
     const idLattes = (textMatch ? textMatch[1] : null) || urlParams.get('id') || idVal || window.location.pathname.split('/').pop() || '';
 
-    // 2. Feedback visual flutuante na página do Lattes
     const toastId = 'cech-sync-toast';
     const oldToast = document.getElementById(toastId);
     if (oldToast) oldToast.remove();
@@ -243,48 +241,71 @@
     toast.style.boxShadow = '0 12px 30px rgba(0,0,0,0.35)';
     toast.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     toast.style.fontSize = '13px';
-    toast.style.maxWidth = '380px';
+    toast.style.maxWidth = '400px';
     toast.style.lineHeight = '1.5';
     toast.style.cursor = 'pointer';
     toast.style.border = '1px solid rgba(255,255,255,0.2)';
-    toast.textContent = '⏳ Sincronizando com CECH... Enviando dados para o servidor local...';
+    toast.textContent = '⏳ Sincronizando com CECH... Tentando conectar ao servidor local...';
     document.body.appendChild(toast);
 
-    try {
-        const resp = await fetch('https://127.0.0.1:8000/api/curriculum/import-html', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                idLattes: idLattes,
-                html: document.documentElement.outerHTML
-            })
-        });
+    const endpoints = [
+        'https://127.0.0.1:8000/api/curriculum/import-html',
+        'https://localhost:8000/api/curriculum/import-html',
+        'http://127.0.0.1:8000/api/curriculum/import-html',
+        'http://localhost:8000/api/curriculum/import-html'
+    ];
 
-        const data = await resp.json();
+    let success = false;
+    let lastError = null;
 
-        if (data.success) {
-            console.log('✅ [CECH] Currículo sincronizado:', data.researcher);
-            toast.style.background = '#15803d';
-            toast.innerHTML = '<b>🎉 Sincronizado com Sucesso!</b><br><br>'
-                + '<b>Docente:</b> ' + (data.researcher.fullName || '') + '<br>'
-                + '<b>ID Lattes:</b> ' + (data.researcher.idLattes || '') + '<br>'
-                + '<b>Produções Importadas:</b> ' + (data.researcher.productionsCount ?? 0) + '<br>'
-                + '<b>Orientações Importadas:</b> ' + (data.researcher.orientationsCount ?? 0) + '<br><br>'
-                + '<small style="opacity:0.85">Clique para fechar esta notificação</small>';
-            toast.onclick = () => toast.remove();
-            setTimeout(() => { if (toast.parentNode) toast.remove(); }, 8000);
-        } else {
-            console.error('❌ [CECH] Erro retornado pela API:', data.message);
-            toast.style.background = '#b91c1c';
-            toast.innerHTML = '<b>⚠️ Erro na Importação:</b><br>' + (data.message || 'Erro desconhecido') + '<br><br><small>Clique para fechar</small>';
-            toast.onclick = () => toast.remove();
+    for (const endpoint of endpoints) {
+        try {
+            console.log(`📡 [CECH] Tentando envio para: ${endpoint}...`);
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    idLattes: idLattes,
+                    html: document.documentElement.outerHTML
+                })
+            });
+
+            if (!resp.ok && resp.status >= 500) {
+                const errData = await resp.json().catch(() => ({ message: `HTTP ${resp.status}` }));
+                throw new Error(errData.message || `HTTP ${resp.status}`);
+            }
+
+            const data = await resp.json();
+
+            if (data.success) {
+                console.log('✅ [CECH] Currículo sincronizado:', data.researcher);
+                toast.style.background = '#15803d';
+                toast.innerHTML = '<b>🎉 Sincronizado com Sucesso!</b><br><br>'
+                    + '<b>Docente:</b> ' + (data.researcher.fullName || '') + '<br>'
+                    + '<b>ID Lattes:</b> ' + (data.researcher.idLattes || '') + '<br>'
+                    + '<b>Produções Importadas:</b> ' + (data.researcher.productionsCount ?? 0) + '<br>'
+                    + '<b>Orientações Importadas:</b> ' + (data.researcher.orientationsCount ?? 0) + '<br><br>'
+                    + '<small style="opacity:0.85">Clique para fechar esta notificação</small>';
+                toast.onclick = () => toast.remove();
+                setTimeout(() => { if (toast.parentNode) toast.remove(); }, 8000);
+                success = true;
+                break;
+            } else {
+                throw new Error(data.message || 'Erro desconhecido retornado pela API');
+            }
+        } catch (e) {
+            console.warn(`⚠️ [CECH] Falha no endpoint ${endpoint}:`, e.message);
+            lastError = e;
         }
-    } catch (e) {
-        console.error('❌ [CECH] Erro de conexão:', e);
+    }
+
+    if (!success) {
+        console.error('❌ [CECH] Todas as tentativas falharam:', lastError);
         toast.style.background = '#b91c1c';
-        toast.innerHTML = '<b>❌ Erro de Conexão:</b><br>'
-            + 'Não foi possível conectar com https://127.0.0.1:8000.<br>'
-            + 'Certifique-se de que o servidor Symfony local está rodando e a aba local está acessível.<br><br>'
+        toast.innerHTML = '<b>❌ Não foi possível conectar ao servidor local:</b><br><br>'
+            + '1. Verifique se o servidor está rodando: <code>symfony serve</code><br>'
+            + '2. Se o Lattes estiver em <b>HTTPS</b>, certifique-se de que o certificado TLS está ativo (<code>symfony server:ca:install</code>) ou abra o Lattes em <b>HTTP</b>.<br>'
+            + '3. Alternativamente, cole o código-fonte em <b>/admin/curriculum/new</b>.<br><br>'
             + '<small>Clique para fechar</small>';
         toast.onclick = () => toast.remove();
     }
@@ -301,20 +322,18 @@
 
             <div class="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 text-slate-100 shadow-inner">
                 <pre class="p-4 text-[12px] font-mono leading-relaxed overflow-x-auto selection:bg-sky-500 selection:text-white" id="scriptCodeBlock"><code>/**
- * CECH - In-Browser Full Lattes Data &amp; Photo Importer (Versão 2.0)
+ * CECH - In-Browser Full Lattes Data &amp; Photo Importer (Versão 2.1)
  * Sincroniza qualquer currículo Lattes aberto no navegador diretamente com o CECH.
  */
 (async function importFullLattesToCech() {
     console.log('%c🚀 [CECH] INICIANDO SINCRONIZAÇÃO DO CURRÍCULO LATTES...', 'color: #0284c7; font-size: 14px; font-weight: bold;');
 
-    // 1. Identificar ID Lattes (16 dígitos no texto, query string ou campo oculto)
     const textMatch = document.documentElement.innerHTML.match(/lattes\.cnpq\.br\/(\d{16})/i);
     const urlParams = new URLSearchParams(window.location.search);
     const idInput = document.querySelector('input[name="id"]');
     const idVal = idInput ? idInput.value : '';
     const idLattes = (textMatch ? textMatch[1] : null) || urlParams.get('id') || idVal || window.location.pathname.split('/').pop() || '';
 
-    // 2. Feedback visual flutuante na página do Lattes
     const toastId = 'cech-sync-toast';
     const oldToast = document.getElementById(toastId);
     if (oldToast) oldToast.remove();
@@ -332,49 +351,72 @@
     toast.style.boxShadow = '0 12px 30px rgba(0,0,0,0.35)';
     toast.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     toast.style.fontSize = '13px';
-    toast.style.maxWidth = '380px';
+    toast.style.maxWidth = '400px';
     toast.style.lineHeight = '1.5';
     toast.style.cursor = 'pointer';
     toast.style.border = '1px solid rgba(255,255,255,0.2)';
-    toast.textContent = '⏳ Sincronizando com CECH... Enviando dados para o servidor local...';
+    toast.textContent = '⏳ Sincronizando com CECH... Tentando conectar ao servidor local...';
     document.body.appendChild(toast);
 
-    try {
-        const resp = await fetch('https://127.0.0.1:8000/api/curriculum/import-html', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                idLattes: idLattes,
-                html: document.documentElement.outerHTML
-            })
-        });
+    const endpoints = [
+        'https://127.0.0.1:8000/api/curriculum/import-html',
+        'https://localhost:8000/api/curriculum/import-html',
+        'http://127.0.0.1:8000/api/curriculum/import-html',
+        'http://localhost:8000/api/curriculum/import-html'
+    ];
 
-        const data = await resp.json();
+    let success = false;
+    let lastError = null;
 
-        if (data.success) {
-            console.log('✅ [CECH] Currículo sincronizado:', data.researcher);
-            toast.style.background = '#15803d';
-            toast.innerHTML = '&lt;b&gt;🎉 Sincronizado com Sucesso!&lt;/b&gt;&lt;br&gt;&lt;br&gt;'
-                + '&lt;b&gt;Docente:&lt;/b&gt; ' + (data.researcher.fullName || '') + '&lt;br&gt;'
-                + '&lt;b&gt;ID Lattes:&lt;/b&gt; ' + (data.researcher.idLattes || '') + '&lt;br&gt;'
-                + '&lt;b&gt;Produções Importadas:&lt;/b&gt; ' + (data.researcher.productionsCount ?? 0) + '&lt;br&gt;'
-                + '&lt;b&gt;Orientações Importadas:&lt;/b&gt; ' + (data.researcher.orientationsCount ?? 0) + '&lt;br&gt;&lt;br&gt;'
-                + '&lt;small style="opacity:0.85"&gt;Clique para fechar esta notificação&lt;/small&gt;';
-            toast.onclick = () => toast.remove();
-            setTimeout(() => { if (toast.parentNode) toast.remove(); }, 8000);
-        } else {
-            console.error('❌ [CECH] Erro retornado pela API:', data.message);
-            toast.style.background = '#b91c1c';
-            toast.innerHTML = '&lt;b&gt;⚠️ Erro na Importação:&lt;/b&gt;&lt;br&gt;' + (data.message || 'Erro desconhecido') + '&lt;br&gt;&lt;br&gt;&lt;small&gt;Clique para fechar&lt;/small&gt;';
-            toast.onclick = () => toast.remove();
+    for (const endpoint of endpoints) {
+        try {
+            console.log(`📡 [CECH] Tentando envio para: ${endpoint}...`);
+            const resp = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    idLattes: idLattes,
+                    html: document.documentElement.outerHTML
+                })
+            });
+
+            if (!resp.ok && resp.status >= 500) {
+                const errData = await resp.json().catch(() => ({ message: `HTTP ${resp.status}` }));
+                throw new Error(errData.message || `HTTP ${resp.status}`);
+            }
+
+            const data = await resp.json();
+
+            if (data.success) {
+                console.log('✅ [CECH] Currículo sincronizado:', data.researcher);
+                toast.style.background = '#15803d';
+                toast.innerHTML = '<b>🎉 Sincronizado com Sucesso!</b><br><br>'
+                    + '<b>Docente:</b> ' + (data.researcher.fullName || '') + '<br>'
+                    + '<b>ID Lattes:</b> ' + (data.researcher.idLattes || '') + '<br>'
+                    + '<b>Produções Importadas:</b> ' + (data.researcher.productionsCount ?? 0) + '<br>'
+                    + '<b>Orientações Importadas:</b> ' + (data.researcher.orientationsCount ?? 0) + '<br><br>'
+                    + '<small style="opacity:0.85">Clique para fechar esta notificação</small>';
+                toast.onclick = () => toast.remove();
+                setTimeout(() => { if (toast.parentNode) toast.remove(); }, 8000);
+                success = true;
+                break;
+            } else {
+                throw new Error(data.message || 'Erro desconhecido retornado pela API');
+            }
+        } catch (e) {
+            console.warn(`⚠️ [CECH] Falha no endpoint ${endpoint}:`, e.message);
+            lastError = e;
         }
-    } catch (e) {
-        console.error('❌ [CECH] Erro de conexão:', e);
+    }
+
+    if (!success) {
+        console.error('❌ [CECH] Todas as tentativas falharam:', lastError);
         toast.style.background = '#b91c1c';
-        toast.innerHTML = '&lt;b&gt;❌ Erro de Conexão:&lt;/b&gt;&lt;br&gt;'
-            + 'Não foi possível conectar com https://127.0.0.1:8000.&lt;br&gt;'
-            + 'Certifique-se de que o servidor Symfony local está rodando e a aba local está acessível.&lt;br&gt;&lt;br&gt;'
-            + '&lt;small&gt;Clique para fechar&lt;/small&gt;';
+        toast.innerHTML = '<b>❌ Não foi possível conectar ao servidor local:</b><br><br>'
+            + '1. Verifique se o servidor está rodando: <code>symfony serve</code><br>'
+            + '2. Se o Lattes estiver em <b>HTTPS</b>, certifique-se de que o certificado TLS está ativo (<code>symfony server:ca:install</code>) ou abra o Lattes em <b>HTTP</b>.<br>'
+            + '3. Alternativamente, cole o código-fonte em <b>/admin/curriculum/new</b>.<br><br>'
+            + '<small>Clique para fechar</small>';
         toast.onclick = () => toast.remove();
     }
 })();</code></pre>

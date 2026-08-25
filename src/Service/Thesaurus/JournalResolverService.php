@@ -93,9 +93,9 @@ class JournalResolverService
 
         $conn = $this->em->getConnection();
 
-        // 1. Load canonical journals
-        $rows = $conn->executeQuery('SELECT title, normalized_issn, qualis FROM qualis_journals WHERE qualis IS NOT NULL AND qualis != ""')->fetchAllAssociative();
-        foreach ($rows as $r) {
+        // 1. Load canonical journals using streaming cursor
+        $stmt = $conn->executeQuery('SELECT title, normalized_issn, qualis FROM qualis_journals WHERE qualis IS NOT NULL AND qualis != ""');
+        while ($r = $stmt->fetchAssociative()) {
             $qualis = strtoupper(trim($r['qualis']));
             if ($qualis === '') continue;
 
@@ -127,8 +127,8 @@ class JournalResolverService
         }
 
         // 2. Load thesaurus variations / aliases
-        $varRows = $conn->executeQuery('SELECT v.normalized_name, q.qualis FROM journal_name_variants v JOIN qualis_journals q ON v.journal_id = q.id WHERE q.qualis IS NOT NULL AND q.qualis != ""')->fetchAllAssociative();
-        foreach ($varRows as $vr) {
+        $varStmt = $conn->executeQuery('SELECT v.normalized_name, q.qualis FROM journal_name_variants v JOIN qualis_journals q ON v.journal_id = q.id WHERE q.qualis IS NOT NULL AND q.qualis != ""');
+        while ($vr = $varStmt->fetchAssociative()) {
             $qualis = strtoupper(trim($vr['qualis']));
             if ($qualis === '') continue;
 
