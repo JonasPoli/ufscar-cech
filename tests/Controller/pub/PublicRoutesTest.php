@@ -101,7 +101,8 @@ class PublicRoutesTest extends WebTestCase
             $client->request('GET', '/professor/' . $roniberto->getSlug());
             $this->assertResponseIsSuccessful();
             $content = (string)$client->getResponse()->getContent();
-            $this->assertStringContainsString('Inteligência competitiva', $content);
+            $this->assertStringContainsString('Palavras-chave dos Trabalhos', $content);
+            $this->assertStringContainsString('Temas e Termos Frequentes', $content);
             $this->assertStringContainsString('id="globalFilterBar"', $content);
             $this->assertStringContainsString('id="btnClearFiltersMain"', $content);
             $this->assertStringContainsString('id="tabCount-productions"', $content);

@@ -407,57 +407,94 @@
     </div>
 
     <!-- ── Topic Keywords Cloud & Top Coauthors / Collaborators ── -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 no-print">
-        <!-- Topic Keywords -->
-        {% if topKeywords|length > 0 %}
-            <div class="glass-card rounded-3xl p-6 shadow-sm space-y-4">
-                <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
-                    <h3 class="font-heading text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                        <sl-icon name="tags" class="text-sky-500"></sl-icon> Temas e Palavras-chave Frequentes
-                    </h3>
-                    <span class="text-[11px] text-slate-400">Mineração de títulos</span>
+    <!-- ── Author Declared Keywords, Title Topics & Top Coauthors / Collaborators ── -->
+    <div class="grid grid-cols-1 md:grid-cols-2 {% if authorKeywords|length > 0 and topKeywords|length > 0 and topCoauthors|length > 0 %}lg:grid-cols-3{% endif %} gap-6 no-print">
+        <!-- 1. Author-Declared Keywords (Lattes) -->
+        {% if authorKeywords|length > 0 %}
+            <div class="glass-card rounded-3xl p-6 shadow-sm space-y-4 border-l-4 border-emerald-500 flex flex-col justify-between">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
+                        <h3 class="font-heading text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <sl-icon name="tags-fill" class="text-emerald-500"></sl-icon> Palavras-chave dos Trabalhos
+                        </h3>
+                        <span class="rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-bold">Lattes</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 pt-1 max-h-56 overflow-y-auto pr-1">
+                        {% set maxAuthCount = authorKeywords|first %}
+                        {% for kw, count in authorKeywords %}
+                            {% set weight = ((count / (maxAuthCount ?: 1)) * 100)|round %}
+                            <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-xl border border-emerald-200/80 dark:border-emerald-900/60 px-2.5 py-1 text-xs transition-all hover:border-emerald-500 hover:scale-105 {% if weight > 70 %}bg-emerald-600 text-white font-bold shadow-sm{% elseif weight > 40 %}bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold{% else %}bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200{% endif %}" title="Filtrar produções com palavra-chave '{{ kw }}' ({{ count }} ocorrências)">
+                                {{ kw }} <span class="text-[10px] opacity-75">({{ count }})</span>
+                            </button>
+                        {% endfor %}
+                    </div>
                 </div>
-                <div class="flex flex-wrap gap-2 pt-1">
-                    {% set maxCount = topKeywords|first %}
-                    {% for word, count in topKeywords %}
-                        {% set weight = ((count / (maxCount ?: 1)) * 100)|round %}
-                        <button type="button" onclick="filterByKeyword('{{ word }}')" class="rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-1 text-xs transition-all hover:border-sky-500 hover:scale-105 {% if weight > 70 %}bg-sky-500 text-white font-bold{% elseif weight > 40 %}bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-semibold{% else %}bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300{% endif %}" title="Filtrar produções contendo '{{ word }}' ({{ count }} ocorrências)">
-                            {{ word|capitalize }} <span class="text-[10px] opacity-75">({{ count }})</span>
-                        </button>
-                    {% endfor %}
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-800/60 text-[11px] text-slate-400">
+                    Cadastradas pelo autor nos artigos e produções
                 </div>
             </div>
         {% endif %}
 
-        <!-- Top Coauthors / Collaborators -->
-        {% if topCoauthors|length > 0 %}
-            <div class="glass-card rounded-3xl p-6 shadow-sm space-y-4">
-                <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
-                    <h3 class="font-heading text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                        <sl-icon name="people" class="text-indigo-500"></sl-icon> Principais Colaboradores e Coautores
-                    </h3>
-                    <span class="text-[11px] text-slate-400">Publicações conjuntas</span>
+        <!-- 2. Topic Keywords (Title Mining) -->
+        {% if topKeywords|length > 0 %}
+            <div class="glass-card rounded-3xl p-6 shadow-sm space-y-4 border-l-4 border-sky-500 flex flex-col justify-between">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
+                        <h3 class="font-heading text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <sl-icon name="diagram-3" class="text-sky-500"></sl-icon> Temas e Termos Frequentes
+                        </h3>
+                        <span class="rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 px-2 py-0.5 text-[10px] font-bold">Mineração</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 pt-1 max-h-56 overflow-y-auto pr-1">
+                        {% set maxCount = topKeywords|first %}
+                        {% for word, count in topKeywords %}
+                            {% set weight = ((count / (maxCount ?: 1)) * 100)|round %}
+                            <button type="button" onclick="filterByKeyword('{{ word|e('js') }}')" class="rounded-xl border border-slate-200/80 dark:border-slate-800 px-2.5 py-1 text-xs transition-all hover:border-sky-500 hover:scale-105 {% if weight > 70 %}bg-sky-500 text-white font-bold shadow-sm{% elseif weight > 40 %}bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-semibold{% else %}bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300{% endif %}" title="Filtrar produções contendo '{{ word }}' ({{ count }} ocorrências)">
+                                {{ word|capitalize }} <span class="text-[10px] opacity-75">({{ count }})</span>
+                            </button>
+                        {% endfor %}
+                    </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 max-h-56 overflow-y-auto pr-1">
-                    {% for coauthor in topCoauthors %}
-                        <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 p-2.5 flex items-center justify-between bg-white/40 dark:bg-slate-900/40 hover:border-slate-300 transition-colors">
-                            <div class="min-w-0 flex-1 mr-2">
-                                {% if coauthor.researcher %}
-                                    <a href="{{ path('app_pub_professor_show', {'slugOrId': coauthor.researcher.slug ?: coauthor.researcher.idLattes}) }}" class="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline truncate block" title="Ver perfil docente no CECH">
-                                        {{ coauthor.name }}
-                                    </a>
-                                    <span class="text-[10px] text-slate-400 truncate block">{{ coauthor.researcher.department ?: 'CECH UFSCar' }}</span>
-                                {% else %}
-                                    <span class="text-xs font-medium text-slate-800 dark:text-slate-200 truncate block" title="{{ coauthor.name }}">
-                                        {{ coauthor.name }}
-                                    </span>
-                                {% endif %}
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-800/60 text-[11px] text-slate-400">
+                    Sintagmas e termos mais recorrentes nos títulos
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- 3. Top Coauthors / Collaborators -->
+        {% if topCoauthors|length > 0 %}
+            <div class="glass-card rounded-3xl p-6 shadow-sm space-y-4 border-l-4 border-indigo-500 flex flex-col justify-between">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
+                        <h3 class="font-heading text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <sl-icon name="people" class="text-indigo-500"></sl-icon> Principais Colaboradores
+                        </h3>
+                        <span class="rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-2 py-0.5 text-[10px] font-bold">Coautores</span>
+                    </div>
+                    <div class="grid grid-cols-1 {% if not (authorKeywords|length > 0 and topKeywords|length > 0) %}sm:grid-cols-2{% endif %} gap-2.5 pt-1 max-h-56 overflow-y-auto pr-1">
+                        {% for coauthor in topCoauthors %}
+                            <div class="rounded-xl border border-slate-200/70 dark:border-slate-800 p-2.5 flex items-center justify-between bg-white/40 dark:bg-slate-900/40 hover:border-slate-300 transition-colors">
+                                <div class="min-w-0 flex-1 mr-2">
+                                    {% if coauthor.researcher %}
+                                        <a href="{{ path('app_pub_professor_show', {'slugOrId': coauthor.researcher.slug ?: coauthor.researcher.idLattes}) }}" class="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline truncate block" title="Ver perfil docente no CECH">
+                                            {{ coauthor.name }}
+                                        </a>
+                                        <span class="text-[10px] text-slate-400 truncate block">{{ coauthor.researcher.department ?: 'CECH UFSCar' }}</span>
+                                    {% else %}
+                                        <span class="text-xs font-medium text-slate-800 dark:text-slate-200 truncate block" title="{{ coauthor.name }}">
+                                            {{ coauthor.name }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <span class="rounded-lg bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 shrink-0">
+                                    {{ coauthor.count }} pub.
+                                </span>
                             </div>
-                            <span class="rounded-lg bg-indigo-50 dark:bg-indigo-950 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 shrink-0">
-                                {{ coauthor.count }} pub.
-                            </span>
-                        </div>
-                    {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-800/60 text-[11px] text-slate-400">
+                    Docentes e pesquisadores com mais publicações conjuntas
                 </div>
             </div>
         {% endif %}
@@ -653,6 +690,19 @@
                                         {{ p.title }}
                                     </h4>
 
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
                                     <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
                                         {% if p.journalName %}
                                             <span class="font-medium italic text-slate-800 dark:text-slate-200">{{ p.journalName }}</span>
@@ -706,12 +756,27 @@
                                         </button>
                                     </div>
                                     <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
                                     <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
                                         {% if p.publisher %}Editora: {{ p.publisher }}.{% endif %}
                                         {% if p.volume %} v. {{ p.volume }}.{% endif %}
                                         {% if p.pages %} {{ p.pages }}.{% endif %}
                                         {% if p.isbn %} ISBN: {{ p.isbn }}.{% endif %}
                                     </div>
+
                                     <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-white/10 text-xs">
                                         <div class="text-slate-500 dark:text-slate-400 prod-authors">
                                             {% if p.authors|length > 0 %}Autores: {{ render_production_authors(p, researcher.id) }}{% endif %}
@@ -752,12 +817,27 @@
                                         </button>
                                     </div>
                                     <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
                                     <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
                                         {% if p.journalName %}In: <span class="italic font-medium">{{ p.journalName }}</span>.{% endif %}
                                         {% if p.publisher %} Editora: {{ p.publisher }}.{% endif %}
                                         {% if p.volume %} v. {{ p.volume }}.{% endif %}
                                         {% if p.pages %} p. {{ p.pages }}.{% endif %}
                                     </div>
+
                                     <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-white/10 text-xs">
                                         <div class="text-slate-500 dark:text-slate-400 prod-authors">
                                             {% if p.authors|length > 0 %}Autores: {{ render_production_authors(p, researcher.id) }}{% endif %}
@@ -795,6 +875,20 @@
                                         </div>
                                     </div>
                                     <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
                                     <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
                                         {% if p.journalName %}Veículo: <span class="font-medium">{{ p.journalName }}</span>.{% endif %}
                                         {% if p.pages %} p. {{ p.pages }}.{% endif %}
@@ -831,12 +925,27 @@
                                         </button>
                                     </div>
                                     <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
                                     <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
                                         {% if p.eventName or p.journalName %}In: <span class="italic">{{ p.eventName ?: p.journalName }}</span>.{% endif %}
                                         {% if p.eventCity %} Local: {{ p.eventCity }}.{% endif %}
                                         {% if p.volume %} v. {{ p.volume }}.{% endif %}
                                         {% if p.pages %} p. {{ p.pages }}.{% endif %}
                                     </div>
+
                                     <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-white/10 text-xs">
                                         <div class="text-slate-500 dark:text-slate-400 prod-authors">
                                             {% if p.authors|length > 0 %}Autores: {{ render_production_authors(p, researcher.id) }}{% endif %}
@@ -874,6 +983,20 @@
                                         </div>
                                     </div>
                                     <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
                                     {% if p.journalName %}<p class="text-xs text-slate-500 dark:text-slate-400 prod-details">{{ p.journalName }}</p>{% endif %}
                                 </div>
                             {% endfor %}
@@ -898,6 +1021,20 @@
                                         </div>
                                     </div>
                                     <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
                                     {% if p.journalName %}<p class="text-xs text-slate-500 dark:text-slate-400 prod-details">{{ p.journalName }}</p>{% endif %}
                                 </div>
                             {% endfor %}
@@ -920,6 +1057,19 @@
                                         <span class="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase">{{ p.nature ?: 'Artes' }}</span>
                                     </div>
                                     <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
                                 </div>
                             {% endfor %}
                         </div>
@@ -940,6 +1090,19 @@
                                         {% if p.year %}<span class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-800 dark:bg-slate-800 dark:text-slate-300">{{ p.year }}</span>{% endif %}
                                     </div>
                                     <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
                                 </div>
                             {% endfor %}
                         </div>

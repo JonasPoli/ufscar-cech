@@ -377,11 +377,44 @@ class ProfessorController extends AbstractController
                         'name' => $name,
                         'count' => 0,
                         'researcher' => $resData,
+                        'years' => [],
+                        'types' => [],
+                        'sampleWorks' => [],
                     ];
                 }
                 $collaboratorsMap[$key]['count']++;
+                if ($prod->getYear()) {
+                    $collaboratorsMap[$key]['years'][] = (int)$prod->getYear();
+                }
+                $itemType = (string)$prod->getItemType();
+                if ($itemType !== '') {
+                    $collaboratorsMap[$key]['types'][$itemType] = ($collaboratorsMap[$key]['types'][$itemType] ?? 0) + 1;
+                }
+                if (count($collaboratorsMap[$key]['sampleWorks']) < 2) {
+                    $collaboratorsMap[$key]['sampleWorks'][] = [
+                        'title' => $prod->getTitle(),
+                        'year' => $prod->getYear(),
+                        'type' => $prod->getItemType(),
+                    ];
+                }
             }
         }
+
+        foreach ($collaboratorsMap as &$collab) {
+            if (!empty($collab['years'])) {
+                $minYear = min($collab['years']);
+                $maxYear = max($collab['years']);
+                $collab['period'] = ($minYear === $maxYear) ? (string)$minYear : ($minYear . '–' . $maxYear);
+                $collab['lastYear'] = $maxYear;
+            } else {
+                $collab['period'] = '';
+                $collab['lastYear'] = null;
+            }
+            if (!empty($collab['types'])) {
+                arsort($collab['types']);
+            }
+        }
+        unset($collab);
 
         uasort($collaboratorsMap, fn($a, $b) => $b['count'] <=> $a['count']);
         $topCoauthors = array_slice($collaboratorsMap, 0, 12, true);
@@ -484,6 +517,32 @@ class ProfessorController extends AbstractController
         arsort($finalKeywords);
         $topKeywords = array_slice($finalKeywords, 0, 24, true);
 
+        // 7. Compute Author-Declared Keywords (Palavras-chave cadastradas no Lattes)
+        $rawAuthorKeywords = [];
+        $canonFormMap = [];
+
+        foreach ($researcher->getProductions() as $prod) {
+            $kws = $prod->getKeywords();
+            foreach ($kws as $kw) {
+                $trimmed = trim($kw);
+                $cleaned = trim($trimmed, " \t\n\r\0\x0B.,;:-");
+                if (mb_strlen($cleaned) < 2) continue;
+
+                $lower = mb_strtolower($cleaned, 'UTF-8');
+                if (!isset($canonFormMap[$lower])) {
+                    $canonFormMap[$lower] = mb_convert_case($cleaned, MB_CASE_TITLE, 'UTF-8');
+                }
+
+                $rawAuthorKeywords[$lower] = ($rawAuthorKeywords[$lower] ?? 0) + 1;
+            }
+        }
+
+        arsort($rawAuthorKeywords);
+        $authorKeywords = [];
+        foreach (array_slice($rawAuthorKeywords, 0, 24, true) as $lower => $count) {
+            $authorKeywords[$canonFormMap[$lower]] = $count;
+        }
+
         return $this->render('pub/professor/show.html.twig', [
             'researcher' => $researcher,
             'articles' => $articles,
@@ -506,6 +565,7 @@ class ProfessorController extends AbstractController
             'kpiStats' => $kpiStats,
             'topCoauthors' => $topCoauthors,
             'topKeywords' => $topKeywords,
+            'authorKeywords' => $authorKeywords,
         ]);
     }
 
