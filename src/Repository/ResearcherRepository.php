@@ -179,7 +179,7 @@ class ResearcherRepository extends ServiceEntityRepository
                 COUNT(p.id) AS totalProductions
             FROM researchers r
             LEFT JOIN production_items p ON p.researcher_id = r.id
-            WHERE (r.department IS NOT NULL AND r.department != '') OR (r.department_code IS NOT NULL AND r.department_code != '')
+            WHERE r.status = 1 AND ((r.department IS NOT NULL AND r.department != '') OR (r.department_code IS NOT NULL AND r.department_code != ''))
             GROUP BY departmentCode, r.department";
 
         $rows = $conn->fetchAllAssociative($sql);
@@ -266,7 +266,7 @@ class ResearcherRepository extends ServiceEntityRepository
     {
         $rows = $this->createQueryBuilder('r')
             ->select('r.departmentCode as code, r.department as name, COUNT(r.id) as facultyCount')
-            ->where('(r.department IS NOT NULL AND r.department != \'\') OR (r.departmentCode IS NOT NULL AND r.departmentCode != \'\')')
+            ->where('r.status = 1 AND ((r.department IS NOT NULL AND r.department != \'\') OR (r.departmentCode IS NOT NULL AND r.departmentCode != \'\'))')
             ->groupBy('r.departmentCode, r.department')
             ->getQuery()
             ->getResult();

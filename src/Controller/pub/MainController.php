@@ -23,13 +23,23 @@ class MainController extends AbstractController
     #[Route('/', name: 'app_pub_home')]
     public function index(): Response
     {
+        $summary = $this->statisticsService->getGlobalSummary();
+
         $stats = [
-            'researchers' => $this->researcherRepo->count([]),
-            'productions' => $this->productionRepo->count([]),
-            'articles' => $this->productionRepo->count(['itemType' => ProductionItem::TYPE_ARTIGO]),
-            'books' => $this->productionRepo->count(['itemType' => ProductionItem::TYPE_LIVRO]),
-            'chapters' => $this->productionRepo->count(['itemType' => ProductionItem::TYPE_CAPITULO]),
-            'events' => $this->productionRepo->count(['itemType' => ProductionItem::TYPE_EVENTO]),
+            'researchers' => $summary['totalResearchers'],
+            'allResearchers' => $summary['allResearchers'] ?? $this->researcherRepo->count([]),
+            'productions' => $summary['totalProductions'],
+            'uniqueProductions' => $summary['uniqueProductions'],
+            'articles' => $summary['totalArticles'] ?? $this->productionRepo->count(['itemType' => ProductionItem::TYPE_ARTIGO]),
+            'uniqueArticles' => $summary['uniqueArticles'] ?? $summary['uniqueArticlesQualis'],
+            'articlesQualis' => $summary['totalArticlesQualis'],
+            'uniqueArticlesQualis' => $summary['uniqueArticlesQualis'],
+            'books' => $summary['totalBooks'] ?? $this->productionRepo->count(['itemType' => ProductionItem::TYPE_LIVRO]),
+            'chapters' => $summary['totalChapters'] ?? $this->productionRepo->count(['itemType' => ProductionItem::TYPE_CAPITULO]),
+            'booksAndChapters' => $summary['totalBooksAndChapters'],
+            'uniqueBooksAndChapters' => $summary['uniqueBooksAndChapters'],
+            'orientations' => $summary['totalOrientations'],
+            'events' => $summary['totalEvents'] ?? $this->productionRepo->count(['itemType' => ProductionItem::TYPE_EVENTO]),
         ];
 
         $recentProductions = $this->productionRepo->findBy([], ['year' => 'DESC', 'id' => 'DESC'], 10);
@@ -39,6 +49,7 @@ class MainController extends AbstractController
 
         return $this->render('pub/main/home.html.twig', [
             'stats' => $stats,
+            'summary' => $summary,
             'recentProductions' => $recentProductions,
             'topDepartments' => $topDepartments,
             'featuredResearchers' => $featuredResearchers,

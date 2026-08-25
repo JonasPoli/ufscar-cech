@@ -13,6 +13,9 @@ class PublicRoutesTest extends WebTestCase
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Mapeamento da Produção Científica & Acadêmica');
+        $this->assertStringContainsString('Docentes Ativos', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Produções Únicas', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Orientações', $client->getResponse()->getContent());
     }
 
     public function testIndicadoresPageIsSuccessful(): void

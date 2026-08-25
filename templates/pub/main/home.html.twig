@@ -58,70 +58,76 @@
     <!-- Key Metrics Grid -->
     <section class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <!-- Metric 1 -->
-            <div class="glass-card rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow">
+            <!-- Metric 1: Docentes Ativos -->
+            <div class="glass-card rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                 <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-400 mb-2">
                     <sl-icon name="people" class="text-xl"></sl-icon>
                 </div>
                 <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
                     {{ stats.researchers|number_format(0, ',', '.') }}
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Pesquisadores</p>
+                <p class="text-xs text-slate-700 dark:text-slate-200 mt-1 font-semibold">Docentes Ativos</p>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5" title="Docentes ativos vinculados ao CECH">Cadastrados no CECH</p>
             </div>
 
-            <!-- Metric 2 -->
-            <div class="glass-card rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400 mb-2">
+            <!-- Metric 2: Total Produções -->
+            <div class="glass-card rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 mb-2">
                     <sl-icon name="journal-bookmark" class="text-xl"></sl-icon>
                 </div>
                 <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-                    {{ stats.productions|number_format(0, ',', '.') }}
+                    {{ stats.uniqueProductions|number_format(0, ',', '.') }}
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Total Produções</p>
+                <p class="text-xs text-slate-700 dark:text-slate-200 mt-1 font-semibold">Produções Únicas</p>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5" title="Soma direta nos Lattes individuais">{{ stats.productions|number_format(0, ',', '.') }} nos Lattes</p>
             </div>
 
-            <!-- Metric 3 -->
-            <div class="glass-card rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400 mb-2">
+            <!-- Metric 3: Artigos Qualis -->
+            <div class="glass-card rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-400 mb-2">
                     <sl-icon name="file-earmark-text" class="text-xl"></sl-icon>
                 </div>
-                <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-                    {{ stats.articles|number_format(0, ',', '.') }}
+                <div class="font-heading text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">
+                    {{ stats.uniqueArticlesQualis|number_format(0, ',', '.') }}
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Artigos em Periódicos</p>
+                <p class="text-xs text-slate-700 dark:text-slate-200 mt-1 font-semibold">Artigos Qualis</p>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5" title="Total de artigos em periódicos cadastrados">{{ stats.articles|number_format(0, ',', '.') }} artigos totais</p>
             </div>
 
-            <!-- Metric 4 -->
-            <div class="glass-card rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400 mb-2">
+            <!-- Metric 4: Livros & Capítulos -->
+            <div class="glass-card rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400 mb-2">
                     <sl-icon name="book" class="text-xl"></sl-icon>
                 </div>
                 <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-                    {{ stats.books|number_format(0, ',', '.') }}
+                    {{ stats.uniqueBooksAndChapters|number_format(0, ',', '.') }}
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Livros Publicados</p>
+                <p class="text-xs text-slate-700 dark:text-slate-200 mt-1 font-semibold">Livros & Capítulos</p>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{{ stats.books|number_format(0, ',', '.') }} livros • {{ stats.chapters|number_format(0, ',', '.') }} caps</p>
             </div>
 
-            <!-- Metric 5 -->
-            <div class="glass-card rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow">
-                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-400 mb-2">
-                    <sl-icon name="bookmark" class="text-xl"></sl-icon>
+            <!-- Metric 5: Orientações Concluídas -->
+            <div class="glass-card rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400 mb-2">
+                    <sl-icon name="mortarboard" class="text-xl"></sl-icon>
                 </div>
                 <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
-                    {{ stats.chapters|number_format(0, ',', '.') }}
+                    {{ stats.orientations|number_format(0, ',', '.') }}
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Capítulos de Livros</p>
+                <p class="text-xs text-slate-700 dark:text-slate-200 mt-1 font-semibold">Orientações</p>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Titulações concluídas</p>
             </div>
 
-            <!-- Metric 6 -->
-            <div class="glass-card rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow">
+            <!-- Metric 6: Trabalhos em Eventos -->
+            <div class="glass-card rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                 <div class="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-400 mb-2">
                     <sl-icon name="calendar-event" class="text-xl"></sl-icon>
                 </div>
                 <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
                     {{ stats.events|number_format(0, ',', '.') }}
                 </div>
-                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Trabalhos em Eventos</p>
+                <p class="text-xs text-slate-700 dark:text-slate-200 mt-1 font-semibold">Trabalhos em Eventos</p>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">Anais e congressos</p>
             </div>
         </div>
     </section>

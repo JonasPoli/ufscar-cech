@@ -236,10 +236,15 @@ class StatisticsService
         $conn = $this->em->getConnection();
 
         $researchersCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM researchers WHERE status = 1");
+        $allResearchersCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM researchers");
         $productionsCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items");
+        $articlesCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'ARTIGO'");
         $articlesQualisCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'ARTIGO' AND qualis IS NOT NULL AND qualis != ''");
         $orientationsCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM orientations WHERE nature = 'CONCLUIDA'");
-        $booksCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type IN ('LIVRO', 'CAPITULO')");
+        $booksCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'LIVRO'");
+        $chaptersCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'CAPITULO'");
+        $booksAndChaptersCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type IN ('LIVRO', 'CAPITULO')");
+        $eventsCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'EVENTO'");
 
         // Unique deduplicated counts (Institutional CECH View)
         $uniqueProductionsCount = (int)$conn->fetchOne("
@@ -285,13 +290,18 @@ class StatisticsService
 
         return [
             'totalResearchers' => $researchersCount,
+            'allResearchers' => $allResearchersCount,
             'totalProductions' => $productionsCount,
             'uniqueProductions' => $uniqueProductionsCount,
+            'totalArticles' => $articlesCount,
             'totalArticlesQualis' => $articlesQualisCount,
             'uniqueArticlesQualis' => $uniqueArticlesQualisCount,
-            'totalOrientations' => $orientationsCount,
-            'totalBooksAndChapters' => $booksCount,
+            'totalBooks' => $booksCount,
+            'totalChapters' => $chaptersCount,
+            'totalBooksAndChapters' => $booksAndChaptersCount,
             'uniqueBooksAndChapters' => $uniqueBooksCount,
+            'totalOrientations' => $orientationsCount,
+            'totalEvents' => $eventsCount,
         ];
     }
 
