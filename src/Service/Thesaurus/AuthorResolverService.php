@@ -106,14 +106,14 @@ class AuthorResolverService
         }
 
         // 2. Load Author Identities & Variants from Thesaurus
-        $identities = $conn->fetchAllAssociative('
+        $identitiesStmt = $conn->executeQuery('
             SELECT id, preferred_name, normalized_name 
             FROM author_identities 
             WHERE status = 1
         ');
 
         $identityById = [];
-        foreach ($identities as $ident) {
+        while ($ident = $identitiesStmt->fetchAssociative()) {
             $id = (int)$ident['id'];
             $pref = (string)$ident['preferred_name'];
             $norm = StringNormalizer::normalizeString($pref, false);
@@ -139,13 +139,13 @@ class AuthorResolverService
         }
 
         // 3. Load Variants
-        $variants = $conn->fetchAllAssociative('
+        $variantsStmt = $conn->executeQuery('
             SELECT author_identity_id, original_name, normalized_name, display_name, source
             FROM author_name_variants
             WHERE status = 1
         ');
 
-        foreach ($variants as $v) {
+        while ($v = $variantsStmt->fetchAssociative()) {
             $identityId = (int)$v['author_identity_id'];
             if (!isset($identityById[$identityId])) continue;
 
