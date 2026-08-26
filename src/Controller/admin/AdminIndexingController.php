@@ -100,4 +100,15 @@ class AdminIndexingController extends AbstractController
             'elapsedMs' => $elapsedMs,
         ]);
     }
+
+    #[Route('/journals-batch', name: 'app_admin_indexing_journals_batch', methods: ['POST'])]
+    public function indexJournalsBatch(): JsonResponse
+    {
+        $stats = $this->normalizationService->indexAllProductionsJournalAndDatabases();
+
+        return $this->json([
+            'success' => true,
+            'stats' => $stats,
+        ]);
+    }
 }

@@ -21,17 +21,22 @@
                 <sl-icon name="plus-lg"></sl-icon> Novo Periódico
             </a>
 
+            <!-- Export Dropdown -->
             <div class="inline-flex rounded-xl shadow-xs border border-slate-300 dark:border-slate-700 overflow-hidden">
-                <a href="{{ path('app_admin_journal_export_csv') }}" class="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-r border-slate-300 dark:border-slate-700" title="Exportar para CSV">
+                <a href="{{ path('app_admin_journal_export_full', {'format': 'csv', 'qualis': qualisFilter, 'database': databaseFilter}) }}" class="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-r border-slate-300 dark:border-slate-700" title="Exportar Catálogo Completo com Tesauro e Bases (CSV)">
                     <sl-icon name="filetype-csv"></sl-icon> CSV
+                </a>
+                <a href="{{ path('app_admin_journal_export_full', {'format': 'json', 'qualis': qualisFilter, 'database': databaseFilter}) }}" class="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-r border-slate-300 dark:border-slate-700" title="Exportar Catálogo Completo (JSON)">
+                    <sl-icon name="code-slash"></sl-icon> JSON
                 </a>
                 <a href="{{ path('app_admin_journal_export_thesaurus') }}" class="px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Exportar Tesauro (.the)">
                     <sl-icon name="diagram-3"></sl-icon> .THE
                 </a>
             </div>
 
-            <button type="button" onclick="openModal('importCsvModal')" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
-                <sl-icon name="upload"></sl-icon> Importar CSV
+            <!-- Import Base Button -->
+            <button type="button" onclick="openModal('importDatabaseModal')" class="inline-flex items-center gap-1.5 rounded-xl border border-sky-300 dark:border-sky-800/60 bg-sky-50 dark:bg-sky-950/40 px-3 py-2 text-xs font-semibold text-sky-800 dark:text-sky-300 hover:bg-sky-100 transition-colors">
+                <sl-icon name="cloud-arrow-up"></sl-icon> Importar Base (Scopus/WoS)
             </button>
 
             <button type="button" onclick="openModal('importThesaurusModal')" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 transition-colors">
@@ -46,14 +51,14 @@
 
     <!-- Qualis Stats Badges -->
     <div class="flex flex-wrap gap-2 pt-1">
-        <a href="{{ path('app_admin_journal_index', {'search': search, 'qualis': 'all'}) }}" class="px-3 py-1 rounded-xl text-xs font-bold transition-all {% if qualisFilter == 'all' or qualisFilter == '' %}bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300{% endif %}">
-            Todos ({{ totalItems }})
+        <a href="{{ path('app_admin_journal_index', {'search': search, 'qualis': 'all', 'database': databaseFilter}) }}" class="px-3 py-1 rounded-xl text-xs font-bold transition-all {% if qualisFilter == 'all' or qualisFilter == '' %}bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300{% endif %}">
+            Todos ({{ totalItems|number_format(0, ',', '.') }})
         </a>
         {% for s in stats %}
             {% set grade = s.grade %}
             {% set count = s.count %}
             {% if grade != 'N/A' %}
-                <a href="{{ path('app_admin_journal_index', {'search': search, 'qualis': grade}) }}" class="px-2.5 py-1 rounded-xl text-xs font-bold border transition-all {% if qualisFilter == grade %}ring-2 ring-sky-500 scale-105{% endif %} {% if grade == 'A1' %}bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300{% elseif grade == 'A2' %}bg-green-50 text-green-800 border-green-300 dark:bg-green-950/60 dark:text-green-300{% elseif grade == 'A3' %}bg-teal-50 text-teal-800 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300{% elseif grade == 'A4' %}bg-cyan-50 text-cyan-800 border-cyan-300 dark:bg-cyan-950/60 dark:text-cyan-300{% elseif grade == 'B1' %}bg-blue-50 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300{% elseif grade == 'B2' %}bg-indigo-50 text-indigo-800 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300{% elseif grade == 'B3' %}bg-violet-50 text-violet-800 border-violet-300 dark:bg-violet-950/60 dark:text-violet-300{% elseif grade == 'B4' %}bg-purple-50 text-purple-800 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300{% elseif grade == 'C' %}bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300{% else %}bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300{% endif %}">
+                <a href="{{ path('app_admin_journal_index', {'search': search, 'qualis': grade, 'database': databaseFilter}) }}" class="px-2.5 py-1 rounded-xl text-xs font-bold border transition-all {% if qualisFilter == grade %}ring-2 ring-sky-500 scale-105{% endif %} {% if grade == 'A1' %}bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300{% elseif grade == 'A2' %}bg-green-50 text-green-800 border-green-300 dark:bg-green-950/60 dark:text-green-300{% elseif grade == 'A3' %}bg-teal-50 text-teal-800 border-teal-300 dark:bg-teal-950/60 dark:text-teal-300{% elseif grade == 'A4' %}bg-cyan-50 text-cyan-800 border-cyan-300 dark:bg-cyan-950/60 dark:text-cyan-300{% elseif grade == 'B1' %}bg-blue-50 text-blue-800 border-blue-300 dark:bg-blue-950/60 dark:text-blue-300{% elseif grade == 'B2' %}bg-indigo-50 text-indigo-800 border-indigo-300 dark:bg-indigo-950/60 dark:text-indigo-300{% elseif grade == 'B3' %}bg-violet-50 text-violet-800 border-violet-300 dark:bg-violet-950/60 dark:text-violet-300{% elseif grade == 'B4' %}bg-purple-50 text-purple-800 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300{% elseif grade == 'C' %}bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300{% else %}bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300{% endif %}">
                     {{ grade }}: {{ count|number_format(0, ',', '.') }}
                 </a>
             {% endif %}
@@ -68,9 +73,10 @@
                 <input type="text" name="search" value="{{ search }}" placeholder="Buscar por título do periódico, ISSN, estrato Qualis ou variação do tesauro..." class="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
             </div>
 
-            <div class="w-full sm:w-48">
-                <select name="qualis" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
-                    <option value="all" {% if qualisFilter == 'all' %}selected{% endif %}>Todos os Estratos</option>
+            <!-- Qualis Filter -->
+            <div class="w-full sm:w-44">
+                <select name="qualis" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-medium">
+                    <option value="all" {% if qualisFilter == 'all' %}selected{% endif %}>Todos os Qualis</option>
                     <option value="A1" {% if qualisFilter == 'A1' %}selected{% endif %}>Qualis A1</option>
                     <option value="A2" {% if qualisFilter == 'A2' %}selected{% endif %}>Qualis A2</option>
                     <option value="A3" {% if qualisFilter == 'A3' %}selected{% endif %}>Qualis A3</option>
@@ -80,7 +86,17 @@
                     <option value="B3" {% if qualisFilter == 'B3' %}selected{% endif %}>Qualis B3</option>
                     <option value="B4" {% if qualisFilter == 'B4' %}selected{% endif %}>Qualis B4</option>
                     <option value="C" {% if qualisFilter == 'C' %}selected{% endif %}>Qualis C</option>
-                    <option value="EMPTY" {% if qualisFilter == 'EMPTY' %}selected{% endif %}>Sem Qualis Definido</option>
+                    <option value="EMPTY" {% if qualisFilter == 'EMPTY' %}selected{% endif %}>Sem Qualis</option>
+                </select>
+            </div>
+
+            <!-- Database Filter -->
+            <div class="w-full sm:w-48">
+                <select name="database" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-medium">
+                    <option value="all" {% if databaseFilter == 'all' or databaseFilter == '' %}selected{% endif %}>Todas as Bases</option>
+                    {% for db in databases %}
+                        <option value="{{ db.acronym }}" {% if databaseFilter == db.acronym %}selected{% endif %}>{{ db.name }}</option>
+                    {% endfor %}
                 </select>
             </div>
 
@@ -88,7 +104,7 @@
                 Filtrar
             </button>
 
-            {% if search or (qualisFilter != 'all' and qualisFilter != '') %}
+            {% if search or (qualisFilter != 'all' and qualisFilter != '') or (databaseFilter != 'all' and databaseFilter != '') %}
                 <a href="{{ path('app_admin_journal_index') }}" class="rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center">
                     Limpar
                 </a>
@@ -108,6 +124,7 @@
                         <th class="py-3 px-4">Título do Periódico</th>
                         <th class="py-3 px-4 w-32">ISSN</th>
                         <th class="py-3 px-4 w-28 text-center">Qualis</th>
+                        <th class="py-3 px-4 w-44">Bases Indexadoras</th>
                         <th class="py-3 px-4">Variações / Tesauro</th>
                         <th class="py-3 px-4 w-28 text-right">Ações</th>
                     </tr>
@@ -124,8 +141,28 @@
                                     <span class="block text-[11px] font-normal text-slate-400">{{ journal.area }}</span>
                                 {% endif %}
                             </td>
-                            <td class="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400">
-                                {{ journal.issn ?: '-' }}
+                            <td class="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400 space-y-0.5">
+                                {% if journal.issnImp %}
+                                    <div class="flex items-center gap-1" title="ISSN Impresso (Print)">
+                                        <span class="text-[9px] px-1 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 font-sans font-bold">Imp</span>
+                                        <span>{{ journal.issnImp }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if journal.issnE %}
+                                    <div class="flex items-center gap-1" title="ISSN Eletrônico (Online)">
+                                        <span class="text-[9px] px-1 py-0.2 rounded bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 font-sans font-bold">E</span>
+                                        <span>{{ journal.issnE }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if journal.issnL and journal.issnL != journal.issnImp and journal.issnL != journal.issnE %}
+                                    <div class="flex items-center gap-1" title="ISSN Linking (ISSN-L)">
+                                        <span class="text-[9px] px-1 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-sans font-bold">L</span>
+                                        <span>{{ journal.issnL }}</span>
+                                    </div>
+                                {% endif %}
+                                {% if not journal.issnImp and not journal.issnE and not journal.issnL %}
+                                    <span>{{ journal.issn ?: '-' }}</span>
+                                {% endif %}
                             </td>
                             <td class="py-3 px-4 text-center">
                                 {% if journal.qualis %}
@@ -137,13 +174,27 @@
                                 {% endif %}
                             </td>
                             <td class="py-3 px-4">
-                                <div class="flex flex-wrap gap-1 max-w-md">
-                                    {% for v in journal.variations %}
-                                        <span class="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-600 dark:text-slate-400" title="{{ v.variationName }}">
-                                            {{ v.variationName|slice(0, 30) }}{% if v.variationName|length > 30 %}...{% endif %}
+                                <div class="flex flex-wrap gap-1">
+                                    {% for ad in journal.academicDatabases %}
+                                        <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border shadow-2xs {% if ad.acronym == 'scopus' %}bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800{% elseif ad.acronym == 'wos' %}bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800{% elseif ad.acronym == 'scielo' %}bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800{% elseif ad.acronym == 'pubmed' %}bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800{% else %}bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700{% endif %}" title="{{ ad.name }}">
+                                            {% if ad.logo %}
+                                                <img src="{{ ad.logo }}" alt="" class="h-3 w-3 object-contain inline-block">
+                                            {% endif %}
+                                            {{ ad.acronym|upper }}
                                         </span>
                                     {% else %}
-                                        <span class="text-slate-400 text-[11px] italic">Sem sinônimos cadastrados</span>
+                                        <span class="text-slate-400 text-[11px]">-</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td class="py-3 px-4">
+                                <div class="flex flex-wrap gap-1 max-w-xs">
+                                    {% for v in journal.variations %}
+                                        <span class="inline-flex items-center rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-600 dark:text-slate-400" title="{{ v.variationName }}">
+                                            {{ v.variationName|slice(0, 25) }}{% if v.variationName|length > 25 %}...{% endif %}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-slate-400 text-[11px] italic">Sem sinônimos</span>
                                     {% endfor %}
                                 </div>
                             </td>
@@ -220,6 +271,52 @@
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" onclick="closeModal('importCsvModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
                 <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-xl">Importar CSV</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Importar Base de Indexação (Scopus, WoS, etc.) -->
+<div id="importDatabaseModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="glass-card rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="cloud-arrow-up" class="text-sky-600"></sl-icon> Importar Lista de Base de Indexação
+            </h3>
+            <button type="button" onclick="closeModal('importDatabaseModal')" class="text-slate-400 hover:text-slate-600">
+                <sl-icon name="x-lg"></sl-icon>
+            </button>
+        </div>
+        <form action="{{ path('app_admin_journal_import_database') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <input type="hidden" name="_token" value="{{ csrf_token('import_journal_database') }}">
+            
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Base de Indexação</label>
+                <select name="base_acronym" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium">
+                    <option value="">Auto-detectar automaticamente pelo arquivo</option>
+                    {% for db in databases %}
+                        <option value="{{ db.acronym }}">{{ db.name }} ({{ db.acronym|upper }})</option>
+                    {% endfor %}
+                </select>
+                <p class="text-[11px] text-slate-400 mt-1">Selecione uma base ou deixe no modo auto-detecção.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Arquivo de Periódicos (.csv ou .xlsx)</label>
+                <input type="file" name="database_file" accept=".csv,.xlsx,.xls" required class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100">
+                <p class="text-[11px] text-slate-400 mt-1">Compatível com listas do Scopus, Web of Science, SciELO, DOAJ, PubMed, etc.</p>
+            </div>
+
+            <div class="rounded-xl bg-sky-50 dark:bg-sky-950/40 p-3 text-[11px] text-sky-800 dark:text-sky-300 space-y-1">
+                <p class="font-semibold flex items-center gap-1"><sl-icon name="info-circle"></sl-icon> Lógica de UPSERT e Vinculação:</p>
+                <p>O sistema localiza revistas por ISSN ou título normalizado. Se já existirem, atualiza metadados e adiciona o vínculo; se não existirem, cria novos registros.</p>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="closeModal('importDatabaseModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>
+                <button type="submit" class="px-4 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-xl flex items-center gap-1.5">
+                    <sl-icon name="upload"></sl-icon> Iniciar Importação
+                </button>
             </div>
         </form>
     </div>

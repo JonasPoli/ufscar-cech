@@ -847,6 +847,144 @@ class StatisticsService
     }
 
     /**
+     * Fig. 15 & 16: Produção Científica Indexada por Base de Dados Internacional (Scopus, Web of Science, PubMed, SciELO, etc.).
+     *
+     * Cruza os artigos dos docentes com a revista em que foram publicados e as bases de indexação científicas vinculadas.
+     *
+     * @param int $startYear Ano inicial
+     * @param int $endYear Ano final
+     * @return array{
+     *     years: list<int>,
+     *     ranking: list<array{name: string, acronym: string, logo: ?string, color: string, total: int, percentage: float, indexedPercentage: float}>,
+     *     timelineSeries: list<array{name: string, acronym: string, color: string, data: list<int>}>,
+     *     totalArticles: int,
+     *     totalIndexedArticles: int,
+     *     indexedPercentage: float,
+     *     indexedByYear: list<int>,
+     *     nonIndexedByYear: list<int>
+     * }
+     */
+    public function getFigAcademicDatabases(int $startYear = 2010, int $endYear = 2026): array
+    {
+        $conn = $this->em->getConnection();
+        $years = range($startYear, $endYear);
+
+        // Paleta de cores temática das bases
+        $colorMap = [
+            'scopus' => '#ea580c',        // Laranja Scopus
+            'wos' => '#7c3aed',           // Violeta Clarivate / Web of Science
+            'latindex' => '#0d9488',      // Teal / Catálogo Latindex
+            'scielo' => '#e11d48',        // Rosa/Vermelho SciELO
+            'pubmed' => '#2563eb',        // Azul PubMed
+            'doaj' => '#d97706',          // Âmbar DOAJ
+            'openalex' => '#6366f1',      // Índigo OpenAlex
+            'lens' => '#059669',          // Verde Lens.org
+            'crossref' => '#0284c7',      // Azul Crossref
+        ];
+
+        $totalArticles = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'ARTIGO'");
+        
+        $totalIndexedArticles = (int)$conn->fetchOne("
+            SELECT COUNT(DISTINCT pi.id)
+            FROM production_items pi
+            JOIN qualis_journal_academic_database qb ON qb.qualis_journal_id = pi.qualis_journal_id
+            WHERE pi.item_type = 'ARTIGO'
+        ");
+
+        // 1. Ranking por base
+        $rankingRows = $conn->fetchAllAssociative("
+            SELECT 
+                ad.id,
+                ad.name,
+                ad.acronym,
+                ad.logo,
+                COUNT(DISTINCT pi.id) AS total
+            FROM production_items pi
+            JOIN qualis_journal_academic_database qb ON qb.qualis_journal_id = pi.qualis_journal_id
+            JOIN academic_database ad ON ad.id = qb.academic_database_id
+            WHERE pi.item_type = 'ARTIGO'
+            GROUP BY ad.id, ad.name, ad.acronym, ad.logo
+            ORDER BY total DESC
+        ");
+
+        $ranking = [];
+        $totalsByDb = [];
+        $dbMeta = [];
+
+        foreach ($rankingRows as $r) {
+            $name = $r['name'];
+            $acronym = strtolower((string)($r['acronym'] ?: $name));
+            $count = (int)$r['total'];
+            $totalsByDb[$name] = $count;
+            $dbMeta[$name] = [
+                'name' => $name,
+                'acronym' => $acronym,
+                'logo' => $r['logo'],
+                'color' => $colorMap[$acronym] ?? '#64748b',
+            ];
+
+            $ranking[] = [
+                'name' => $name,
+                'acronym' => $acronym,
+                'logo' => $r['logo'],
+                'color' => $colorMap[$acronym] ?? '#64748b',
+                'total' => $count,
+                'percentage' => $totalArticles > 0 ? round(($count / $totalArticles) * 100, 1) : 0.0,
+                'indexedPercentage' => $totalIndexedArticles > 0 ? round(($count / $totalIndexedArticles) * 100, 1) : 0.0,
+            ];
+        }
+
+        // 2. Linha do tempo por base
+        $timelineRows = $conn->fetchAllAssociative("
+            SELECT 
+                ad.name,
+                pi.year,
+                COUNT(DISTINCT pi.id) AS total_year
+            FROM production_items pi
+            JOIN qualis_journal_academic_database qb ON qb.qualis_journal_id = pi.qualis_journal_id
+            JOIN academic_database ad ON ad.id = qb.academic_database_id
+            WHERE pi.item_type = 'ARTIGO' AND pi.year >= :startYear AND pi.year <= :endYear
+            GROUP BY ad.name, pi.year
+            ORDER BY ad.name, pi.year ASC
+        ", [
+            'startYear' => $startYear,
+            'endYear' => $endYear,
+        ]);
+
+        $timelineByDb = [];
+        foreach (array_keys($totalsByDb) as $dbName) {
+            $timelineByDb[$dbName] = array_fill_keys($years, 0);
+        }
+
+        foreach ($timelineRows as $tr) {
+            $name = $tr['name'];
+            $y = (int)$tr['year'];
+            if (isset($timelineByDb[$name][$y])) {
+                $timelineByDb[$name][$y] = (int)$tr['total_year'];
+            }
+        }
+
+        $timelineSeries = [];
+        foreach (array_keys($totalsByDb) as $name) {
+            $timelineSeries[] = [
+                'name' => $name,
+                'acronym' => $dbMeta[$name]['acronym'],
+                'color' => $dbMeta[$name]['color'],
+                'data' => array_values($timelineByDb[$name]),
+            ];
+        }
+
+        return [
+            'years' => $years,
+            'ranking' => $ranking,
+            'timelineSeries' => $timelineSeries,
+            'totalArticles' => $totalArticles,
+            'totalIndexedArticles' => $totalIndexedArticles,
+            'indexedPercentage' => $totalArticles > 0 ? round(($totalIndexedArticles / $totalArticles) * 100, 1) : 0.0,
+        ];
+    }
+
+    /**
      * Fig. 13: Rede de Coautoria e Colaboração Docente (Obras Únicas Conjuntas Deduplicadas via DOI/Título).
      */
     public function getFig13CoauthorshipNetwork(int $limit = 10): array

@@ -30,9 +30,14 @@ class PublicRoutesTest extends WebTestCase
         $this->assertStringNotContainsString('D3.js Sankey Observable', $client->getResponse()->getContent());
         $this->assertStringNotContainsString('D3.js Sankey & Mobilidade', $client->getResponse()->getContent());
 
-        for ($i = 1; $i <= 17; $i++) {
+        for ($i = 1; $i <= 19; $i++) {
             $this->assertStringContainsString("Figura {$i}", $client->getResponse()->getContent());
         }
+
+        $this->assertStringContainsString('Bases Científicas Internacionais', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Trabalhos dos Docentes por Base de Indexação', $client->getResponse()->getContent());
+        $this->assertStringContainsString('chartFigAcademicDatabases', $client->getResponse()->getContent());
+        $this->assertStringContainsString('chartFigAcademicDatabasesTimeline', $client->getResponse()->getContent());
     }
 
     public function testSearchPageIsSuccessful(): void
@@ -118,11 +123,15 @@ class PublicRoutesTest extends WebTestCase
             ?: $em->getRepository(\App\Entity\Researcher::class)->findOneBy([]);
 
         if ($researcher) {
+            $memBefore = memory_get_usage(false);
             $identifier = $researcher->getSlug() ?: $researcher->getIdLattes();
             $client->request('GET', '/professor/' . $identifier);
 
             $this->assertResponseIsSuccessful();
             $this->assertSelectorTextContains('h1', $researcher->getFullName());
+            
+            $memUsedMb = (memory_get_usage(false) - $memBefore) / 1024 / 1024;
+            $this->assertLessThan(20, $memUsedMb, "O consumo de memória desta requisição não deve exceder 20MB (atual: {$memUsedMb}MB)");
         }
     }
 

@@ -1,0 +1,127 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}{{ isNew ? 'Nova Base de Indexação' : 'Editar Base: ' ~ database.name }} | Admin CECH{% endblock %}
+
+{% block body %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Breadcrumb -->
+    <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+        <a href="{{ path('app_admin_academic_database_index') }}" class="hover:text-sky-600 dark:hover:text-sky-400 flex items-center gap-1">
+            <sl-icon name="database-check"></sl-icon> Bases de Indexação
+        </a>
+        <sl-icon name="chevron-right" class="text-[10px]"></sl-icon>
+        <span class="text-slate-900 dark:text-white font-medium">{{ isNew ? 'Nova Base' : database.name }}</span>
+    </div>
+
+    <!-- Form Card -->
+    <div class="glass-card rounded-2xl p-6 sm:p-8 shadow-sm">
+        <div class="flex items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5 mb-6">
+            <div>
+                <h1 class="font-heading text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                    {{ isNew ? 'Cadastrar Nova Base de Indexação' : 'Editar Base: ' ~ database.name }}
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    Configure as informações cadastrais, sigla, logo, formatos de arquivos e colunas de assinatura para auto-detecção.
+                </p>
+            </div>
+            {% if not isNew and database.logo %}
+                <div class="h-14 w-14 rounded-2xl bg-slate-100 dark:bg-slate-800 p-2 flex items-center justify-center border border-slate-200 dark:border-slate-700 shadow-xs">
+                    <img src="{{ database.logo }}" alt="{{ database.name }}" class="max-h-full max-w-full object-contain">
+                </div>
+            {% endif %}
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Nome -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        Nome da Base <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" name="name" value="{{ database.name }}" required placeholder="Ex: Scopus, Web of Science, SciELO" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-hidden">
+                </div>
+
+                <!-- Sigla / Acronym -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        Sigla / Identificador <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" name="acronym" value="{{ database.acronym }}" required placeholder="Ex: scopus, wos, scielo, pubmed" class="w-full px-3.5 py-2.5 text-xs font-mono lowercase rounded-xl border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-hidden">
+                    <span class="text-[11px] text-slate-400 mt-1 block">Utilizado como identificador interno em filtros e comandos CLI.</span>
+                </div>
+
+                <!-- URL Oficial -->
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        URL do Portal Oficial
+                    </label>
+                    <input type="url" name="url" value="{{ database.url }}" placeholder="https://www.scopus.com" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-hidden">
+                </div>
+
+                <!-- Upload de Logo -->
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        Logo da Base (SVG, PNG)
+                    </label>
+                    <div class="flex items-center gap-4">
+                        <input type="file" name="logo_file" accept=".svg,.png,.webp,.jpg" class="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 dark:file:bg-sky-950/60 dark:file:text-sky-300 hover:file:bg-sky-100">
+                        {% if database.logo %}
+                            <span class="text-xs text-slate-400 font-mono">{{ database.logo }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Formatos de Arquivo Suportados -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        Formatos de Arquivo (separados por vírgula)
+                    </label>
+                    <input type="text" name="file_formats" value="{{ database.fileFormats ? database.fileFormats|join(', ') : 'csv, xlsx' }}" placeholder="csv, xlsx, txt" class="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-hidden">
+                </div>
+
+                <!-- Colunas de Assinatura para Auto-Detecção -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        Colunas de Assinatura (separadas por vírgula)
+                    </label>
+                    <input type="text" name="signature_columns" value="{{ database.signatureColumns ? database.signatureColumns|join(', ') : '' }}" placeholder="Sourcerecord ID, ASJC Classification Codes" class="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-hidden">
+                    <span class="text-[11px] text-slate-400 mt-1 block">Colunas presentes no cabeçalho do arquivo que identificam esta base automaticamente.</span>
+                </div>
+
+                <!-- Descrição -->
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        Descrição / Observações
+                    </label>
+                    <textarea name="description" rows="3" placeholder="Informações adicionais sobre o escopo, abrangência ou critérios da base..." class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-hidden">{{ database.description }}</textarea>
+                </div>
+            </div>
+
+            <div class="pt-6 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                    {% if not isNew %}
+                        <button type="button" onclick="if(confirm('Tem certeza que deseja excluir esta base? As associações com periódicos serão removidas.')) { document.getElementById('deleteForm').submit(); }" class="px-4 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors">
+                            <sl-icon name="trash"></sl-icon> Excluir Base
+                        </button>
+                    {% endif %}
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <a href="{{ path('app_admin_academic_database_index') }}" class="px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                        Cancelar
+                    </a>
+                    <button type="submit" class="px-5 py-2 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-500 rounded-xl shadow-sm transition-colors flex items-center gap-2">
+                        <sl-icon name="check-lg"></sl-icon> {{ isNew ? 'Cadastrar Base' : 'Salvar Alterações' }}
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        {% if not isNew %}
+            <form id="deleteForm" method="POST" action="{{ path('app_admin_academic_database_delete', {'id': database.id}) }}" class="hidden">
+                <input type="hidden" name="_token" value="{{ csrf_token('delete_database_' ~ database.id) }}">
+            </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

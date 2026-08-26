@@ -77,6 +77,9 @@ class ProductionItem
     #[ORM\JoinColumn(name: 'qualis_journal_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
     private ?QualisJournal $qualisJournal = null;
 
+    #[ORM\Column(name: 'indexed_databases', type: 'json', nullable: true)]
+    private ?array $indexedDatabases = null;
+
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $publisher = null;
 
@@ -186,6 +189,9 @@ class ProductionItem
 
     public function getQualisJournal(): ?QualisJournal { return $this->qualisJournal; }
     public function setQualisJournal(?QualisJournal $qj): static { $this->qualisJournal = $qj; return $this; }
+
+    public function getIndexedDatabases(): ?array { return $this->indexedDatabases; }
+    public function setIndexedDatabases(?array $dbs): static { $this->indexedDatabases = $dbs; return $this; }
 
     public function getPublisher(): ?string { return $this->publisher; }
     public function setPublisher(?string $v): static { $this->publisher = $v; return $this; }

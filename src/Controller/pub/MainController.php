@@ -75,6 +75,7 @@ class MainController extends AbstractController
         $fig10Heatmap = $this->statisticsService->getFig10ProductionHeatmapMatrix(2010, (int)date('Y'));
         $fig11QualisTimeline = $this->statisticsService->getFig11QualisVsNonQualisTimeline(2010, (int)date('Y'));
         $fig12QualisStrata = $this->statisticsService->getFig12QualisStratumTimeline(2010, (int)date('Y'));
+        $figAcademicDatabases = $this->statisticsService->getFigAcademicDatabases(2010, (int)date('Y'));
         $fig13Coauthors = $this->statisticsService->getFig13CoauthorshipNetwork(8);
         $fig14National = $this->statisticsService->getFig14NationalPartners(10);
         $fig15International = $this->statisticsService->getFig15InternationalPartners(10);
@@ -95,6 +96,7 @@ class MainController extends AbstractController
             'fig10Heatmap' => $fig10Heatmap,
             'fig11QualisTimeline' => $fig11QualisTimeline,
             'fig12QualisStrata' => $fig12QualisStrata,
+            'figAcademicDatabases' => $figAcademicDatabases,
             'fig13Coauthors' => $fig13Coauthors,
             'fig14National' => $fig14National,
             'fig15International' => $fig15International,

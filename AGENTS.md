@@ -34,3 +34,7 @@
 ## Regra Fixa de Preservação de Dados Lattes
 - **Nunca alterar, formatar, apagar ou adulterar o dado que veio do Lattes**. Todos os dados brutos recebidos da plataforma Lattes (como `author_name`, `citation_name`, `title`, `journal_name`, `institution_name`, etc.) permanecem estritamente intactos.
 - Qualquer processo de normatização, enriquecimento, indexação ou resolução deve ser gravado exclusivamente em **colunas novas/adicionais** no banco de dados (ex: `matched_researcher_id`, `author_identity_id`, `qualis_journal_id`, `institution_id`, `is_cech_researcher`, `is_indexed`).
+
+## Regra Estrita de Banco de Dados: Uso Exclusivo de Migrations
+- **Nunca use `doctrine:schema:update`**. Todas as alterações de estrutura e esquema de banco de dados devem ser feitas exclusivamente através de Migrations versionadas (`php bin/console make:migration` ou `php bin/console doctrine:migrations:diff`).
+- A aplicação das alterações no banco deve ser executada sempre via `php bin/console doctrine:migrations:migrate` (tanto no ambiente de desenvolvimento quanto em `APP_ENV=test`).

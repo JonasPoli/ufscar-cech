@@ -195,7 +195,10 @@
                                             {{ prod.year }}
                                         </span>
                                     {% endif %}
-                                    {% if prod.qualis %}
+                                    {% set jBadges = prod.journalName ? journal_badges(prod, prod.issn, prod.qualis) : '' %}
+                                    {% if jBadges %}
+                                        {{ jBadges|raw }}
+                                    {% elseif prod.qualis %}
                                         <span class="rounded-md px-2 py-0.5 text-[11px] font-bold badge-qualis-{{ prod.qualis|lower }}">
                                             Qualis {{ prod.qualis }}
                                         </span>

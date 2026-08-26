@@ -160,6 +160,11 @@
                 <sl-icon name="stop-fill" class="text-base"></sl-icon>
                 <span>Cancelar</span>
             </button>
+
+            <button type="button" id="btn-index-journals" class="inline-flex items-center gap-2 rounded-2xl border border-indigo-300 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300 px-5 py-3 text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer ml-auto" title="Indexa todos os periódicos e bases internacionais (Scopus, WoS, etc.) diretamente na tabela de produções">
+                <sl-icon name="database-check" class="text-base"></sl-icon>
+                <span>Indexar Periódicos & Bases ({{ overview.totalArticles|default(13469)|number_format }} artigos)</span>
+            </button>
         </div>
 
         <!-- Real-Time Progress Box (Hidden until started) -->
@@ -455,6 +460,46 @@ document.addEventListener('DOMContentLoaded', function() {
             progressStatusText.textContent = 'Execução interrompida.';
         }
     }
+
+    // Indexação direta de periódicos e bases em lote
+    const btnIndexJournals = document.getElementById('btn-index-journals');
+    btnIndexJournals?.addEventListener('click', async () => {
+        if (!confirm('Deseja iniciar a indexação rápida de periódicos e bases científicas para todos os 13.469 artigos?')) {
+            return;
+        }
+
+        btnIndexJournals.disabled = true;
+        btnIndexJournals.classList.add('opacity-50', 'cursor-not-allowed');
+
+        progressContainer.classList.remove('hidden');
+        progressBarFill.style.width = '50%';
+        progressPercentText.textContent = '...';
+        progressStatusText.textContent = 'Indexando periódicos e bases científicas...';
+        log('🚀 Iniciando indexação em lote de periódicos e bases científicas internacionais...', 'info');
+
+        try {
+            const resp = await fetch('{{ path("app_admin_indexing_journals_batch") }}', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            const res = await resp.json();
+            if (res.success) {
+                const s = res.stats;
+                progressBarFill.style.width = '100%';
+                progressPercentText.textContent = '100%';
+                progressStatusText.textContent = 'Periódicos e bases indexados!';
+                log(`✓ Concluído em ${s.durationSec}s! ${s.totalProcessed} artigos processados, ${s.journalsMatched} periódicos vinculados, ${s.qualisResolved} Qualis atribuídos, ${s.databasesLinked} com bases científicas.`, 'success');
+            } else {
+                log('✗ Erro ao indexar periódicos: ' + (res.message || 'Erro'), 'error');
+            }
+        } catch (err) {
+            log('✗ Falha na requisição: ' + err.message, 'error');
+        } finally {
+            btnIndexJournals.disabled = false;
+            btnIndexJournals.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    });
 });
 </script>
 {% endblock %}

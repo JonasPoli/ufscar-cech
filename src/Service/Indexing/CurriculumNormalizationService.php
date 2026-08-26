@@ -84,13 +84,26 @@ class CurriculumNormalizationService
 
             // Qualis & Journal resolution
             $journalName = $prod->getJournalName();
-
             $issn = $prod->getIssn();
             if ($journalName || $issn) {
-                $qualis = $this->journalResolver->resolveQualis($journalName, $issn);
-                if ($qualis) {
-                    $prod->setQualis($qualis);
-                    $stats['qualisResolved']++;
+                $res = $this->journalResolver->resolveJournalIdAndQualis($journalName, $issn);
+                if ($res) {
+                    if ($res['qualis']) {
+                        $prod->setQualis($res['qualis']);
+                        $stats['qualisResolved']++;
+                    }
+                    /** @var QualisJournal $journalRef */
+                    $journalRef = $this->em->getReference(QualisJournal::class, $res['id']);
+                    $prod->setQualisJournal($journalRef);
+
+                    $dbs = $this->journalResolver->resolveDatabasesForJournalId($res['id']);
+                    $prod->setIndexedDatabases(!empty($dbs) ? $dbs : null);
+                } else {
+                    $qualis = $this->journalResolver->resolveQualis($journalName, $issn);
+                    if ($qualis) {
+                        $prod->setQualis($qualis);
+                        $stats['qualisResolved']++;
+                    }
                 }
             }
 
@@ -272,6 +285,11 @@ class CurriculumNormalizationService
         );
 
         $totalProductions = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items");
+        $totalArticles = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'ARTIGO'");
+        $articlesWithQualis = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'ARTIGO' AND qualis IS NOT NULL");
+        $articlesWithJournal = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'ARTIGO' AND qualis_journal_id IS NOT NULL");
+        $articlesWithDatabases = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'ARTIGO' AND indexed_databases IS NOT NULL");
+
         $totalAuthors = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_authors");
         $indexedAuthors = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_authors WHERE is_indexed = 1");
         $cechMatchedAuthors = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_authors WHERE is_cech_researcher = 1");
@@ -285,10 +303,109 @@ class CurriculumNormalizationService
             'activeResearchers' => $activeResearchers,
             'retiredResearchers' => $retiredResearchers,
             'totalProductions' => $totalProductions,
+            'totalArticles' => $totalArticles,
+            'articlesWithQualis' => $articlesWithQualis,
+            'articlesWithJournal' => $articlesWithJournal,
+            'articlesWithDatabases' => $articlesWithDatabases,
             'totalAuthors' => $totalAuthors,
             'indexedAuthors' => $indexedAuthors,
             'cechMatchedAuthors' => $cechMatchedAuthors,
             'percentage' => $percentage,
         ];
+    }
+
+    /**
+     * Executa a indexação em lote ultra-rápida de todos os artigos científicos, vinculando
+     * qualis_journal_id, qualis e indexed_databases diretamente em production_items.
+     *
+     * @param callable|null $progressCallback Callback opcional de progresso
+     * @return array{totalProcessed: int, qualisResolved: int, journalsMatched: int, databasesLinked: int, durationSec: float}
+     */
+    public function indexAllProductionsJournalAndDatabases(?callable $progressCallback = null): array
+    {
+        $startTime = microtime(true);
+        $this->journalResolver->loadFullMaps();
+        $conn = $this->em->getConnection();
+
+        $articles = $conn->fetchAllAssociative("SELECT id, journal_name, issn FROM production_items WHERE item_type = 'ARTIGO' ORDER BY id ASC");
+        $totalArticles = count($articles);
+
+        $stats = [
+            'totalProcessed' => 0,
+            'qualisResolved' => 0,
+            'journalsMatched' => 0,
+            'databasesLinked' => 0,
+        ];
+
+        $batchSize = 250;
+        $batch = [];
+
+        foreach ($articles as $index => $art) {
+            $artId = (int)$art['id'];
+            $journalName = $art['journal_name'];
+            $issn = $art['issn'];
+
+            $journalId = null;
+            $qualis = null;
+            $dbsJson = null;
+
+            if ($journalName || $issn) {
+                $res = $this->journalResolver->resolveJournalIdAndQualis($journalName, $issn);
+                if ($res) {
+                    $journalId = $res['id'];
+                    $qualis = $res['qualis'];
+                    $stats['journalsMatched']++;
+                    if ($qualis) {
+                        $stats['qualisResolved']++;
+                    }
+
+                    $dbs = $this->journalResolver->resolveDatabasesForJournalId($journalId);
+                    if (!empty($dbs)) {
+                        $dbsJson = json_encode($dbs, JSON_UNESCAPED_UNICODE);
+                        $stats['databasesLinked']++;
+                    }
+                } else {
+                    $qualis = $this->journalResolver->resolveQualis($journalName, $issn);
+                    if ($qualis) {
+                        $stats['qualisResolved']++;
+                    }
+                }
+            }
+
+            $batch[] = [
+                'id' => $artId,
+                'jid' => $journalId,
+                'q' => $qualis,
+                'dbs' => $dbsJson,
+            ];
+
+            $stats['totalProcessed']++;
+
+            if (count($batch) >= $batchSize || $index === $totalArticles - 1) {
+                // Execute updates
+                foreach ($batch as $row) {
+                    $conn->executeStatement(
+                        'UPDATE production_items SET qualis = :q, qualis_journal_id = :jid, indexed_databases = :dbs WHERE id = :id',
+                        [
+                            'q' => $row['q'],
+                            'jid' => $row['jid'],
+                            'dbs' => $row['dbs'],
+                            'id' => $row['id'],
+                        ]
+                    );
+                }
+                $batch = [];
+
+                if ($progressCallback) {
+                    $percent = (int)round((($index + 1) / $totalArticles) * 100);
+                    $progressCallback($index + 1, $totalArticles, $percent, $stats);
+                }
+            }
+        }
+
+        $duration = round(microtime(true) - $startTime, 2);
+        $stats['durationSec'] = $duration;
+
+        return $stats;
     }
 }

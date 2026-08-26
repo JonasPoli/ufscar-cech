@@ -1,0 +1,354 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Backup & Exportação da Base de Dados - Painel Administrativo{% endblock %}
+
+{% block body %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white flex items-center gap-3">
+                <span class="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                    <sl-icon name="database-down" class="text-2xl"></sl-icon>
+                </span>
+                Backup & Superdump do Sistema
+            </h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Exportação completa e compactada da base de dados MySQL para migração, segurança ou replicação em outros servidores.
+            </p>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="p-4 rounded-xl border {% if label == 'success' %}bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800{% else %}bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800{% endif %} flex items-center gap-3 text-sm font-medium shadow-sm">
+                <sl-icon name="{% if label == 'success' %}check-circle-fill{% else %}exclamation-triangle-fill{% endif %}" class="text-lg"></sl-icon>
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <!-- KPI Stats Grid -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/70 dark:bg-slate-900/70 p-5 backdrop-blur shadow-sm space-y-1">
+            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Banco de Dados</div>
+            <div class="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white truncate" title="{{ overview.database }}">
+                {{ overview.database }}
+            </div>
+            <div class="text-[11px] text-slate-500 font-mono">{{ overview.serverVersion }}</div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/70 dark:bg-slate-900/70 p-5 backdrop-blur shadow-sm space-y-1">
+            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total de Tabelas</div>
+            <div class="text-xl sm:text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">
+                {{ overview.tableCount }}
+            </div>
+            <div class="text-[11px] text-slate-500">Todas tabelas do sistema</div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/70 dark:bg-slate-900/70 p-5 backdrop-blur shadow-sm space-y-1">
+            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total de Linhas</div>
+            <div class="text-xl sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                {{ overview.totalRows|number_format(0, ',', '.') }}
+            </div>
+            <div class="text-[11px] text-slate-500">Registros em disco</div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/70 dark:bg-slate-900/70 p-5 backdrop-blur shadow-sm space-y-1">
+            <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tamanho Total</div>
+            <div class="text-xl sm:text-2xl font-extrabold text-amber-600 dark:text-amber-400">
+                {{ overview.totalSizeFormatted }}
+            </div>
+            <div class="text-[11px] text-slate-500">Dados: {{ overview.dataSizeFormatted }} • Índices: {{ overview.indexSizeFormatted }}</div>
+        </div>
+    </div>
+
+    <!-- Main Export Engine Card -->
+    <div class="rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/60 dark:border-white/10 pb-6">
+            <div class="space-y-1">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <sl-icon name="cloud-arrow-down" class="text-indigo-500 text-xl"></sl-icon>
+                    Gerador de Superdump em Tempo Real
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    O superdump inclui o esquema DDL (<code class="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">CREATE TABLE</code>), chaves estrangeiras, todos os dados brutos Lattes e tabelas normalizadas.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button id="btnStartExport" type="button" class="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all cursor-pointer">
+                    <sl-icon name="play-fill" class="text-base"></sl-icon>
+                    <span>Iniciar Exportação (.sql.zip)</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Live Progress Container (Hidden by default) -->
+        <div id="progressContainer" class="hidden rounded-2xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-indigo-950/20 p-6 space-y-5">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="relative flex h-3 w-3">
+                        <span id="progressPing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                        <span id="progressDot" class="relative inline-flex rounded-full h-3 w-3 bg-indigo-500"></span>
+                    </div>
+                    <div>
+                        <h3 id="progressTitle" class="text-sm font-bold text-slate-900 dark:text-white">Exportando banco de dados...</h3>
+                        <p id="progressSubtitle" class="text-xs text-slate-500 dark:text-slate-400">Iniciando processo de superdump...</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span id="progressPercent" class="text-2xl font-black font-mono text-indigo-600 dark:text-indigo-400">0%</span>
+                </div>
+            </div>
+
+            <!-- Animated Shoelace Progress Bar -->
+            <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-4 overflow-hidden p-0.5 border border-slate-300 dark:border-slate-700">
+                <div id="progressBarFill" class="bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600 h-full rounded-full transition-all duration-300 w-0"></div>
+            </div>
+
+            <!-- Terminal Log Box -->
+            <div class="rounded-xl bg-slate-950 text-slate-300 p-4 font-mono text-xs max-h-48 overflow-y-auto space-y-1 shadow-inner border border-slate-800" id="terminalLogs">
+                <div class="text-slate-500">// Aguardando stream de eventos...</div>
+            </div>
+
+            <!-- Completion Alert & Download Button -->
+            <div id="completionBox" class="hidden p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-900 dark:text-emerald-300 space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <sl-icon name="check-circle-fill" class="text-2xl text-emerald-500 shrink-0"></sl-icon>
+                        <div>
+                            <div class="font-bold text-base">Superdump concluído com sucesso!</div>
+                            <div id="completionSummary" class="text-xs opacity-90"></div>
+                        </div>
+                    </div>
+                    <a id="btnDownloadNow" href="{{ path('app_admin_database_backup_download_latest') }}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider shadow-md transition-all shrink-0">
+                        <sl-icon name="download" class="text-base"></sl-icon>
+                        <span>Baixar Arquivo ZIP</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Existing Backups List -->
+        <div class="space-y-4">
+            <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center justify-between">
+                <span class="flex items-center gap-2">
+                    <sl-icon name="archive" class="text-slate-400"></sl-icon>
+                    Backups Disponíveis para Download ({{ backups|length }})
+                </span>
+                <span class="text-xs font-normal text-slate-400">Armazenados em <code class="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">var/backups</code></span>
+            </h3>
+
+            {% if backups|length > 0 %}
+                <div class="overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-white/10">
+                    <table class="w-full text-left text-xs text-slate-600 dark:text-slate-300">
+                        <thead class="bg-slate-50 dark:bg-slate-800/50 text-[11px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-200/60 dark:border-white/10">
+                            <tr>
+                                <th class="px-4 py-3">Arquivo</th>
+                                <th class="px-4 py-3">Formato</th>
+                                <th class="px-4 py-3">Tamanho</th>
+                                <th class="px-4 py-3">Data de Criação</th>
+                                <th class="px-4 py-3 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200/60 dark:divide-white/10 bg-white/40 dark:bg-slate-900/40">
+                            {% for b in backups %}
+                                <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                                    <td class="px-4 py-3 font-mono font-medium text-slate-900 dark:text-white flex items-center gap-2">
+                                        <sl-icon name="file-earmark-zip" class="text-indigo-500 text-base"></sl-icon>
+                                        <span>{{ b.filename }}</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="px-2 py-0.5 rounded text-[10px] font-bold {% if b.isZip %}bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300{% else %}bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300{% endif %}">
+                                            {% if b.isZip %}ZIP COMPACTADO{% else %}SQL TEXTO{% endif %}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 font-semibold text-slate-700 dark:text-slate-200">
+                                        {{ b.sizeFormatted }}
+                                    </td>
+                                    <td class="px-4 py-3 text-slate-500">
+                                        {{ b.createdAt|date('d/m/Y H:i:s') }}
+                                    </td>
+                                    <td class="px-4 py-3 text-right">
+                                        <div class="flex items-center justify-end gap-2">
+                                            <a href="{{ path('app_admin_database_backup_download', {filename: b.filename}) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 dark:text-indigo-300 transition">
+                                                <sl-icon name="download"></sl-icon> Baixar
+                                            </a>
+
+                                            <form action="{{ path('app_admin_database_backup_delete', {filename: b.filename}) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir o arquivo {{ b.filename }}?');" class="inline">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('delete_backup_' ~ b.filename) }}">
+                                                <button type="submit" class="inline-flex items-center p-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer" title="Excluir Backup">
+                                                    <sl-icon name="trash"></sl-icon>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-400 text-xs">
+                    Nenhum arquivo de backup gerado ainda. Clique em "Iniciar Exportação" acima para gerar o primeiro superdump.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Instructions & CLI Command Accordion -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Terminal Command -->
+        <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/70 dark:bg-slate-900/70 p-5 space-y-3">
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="terminal" class="text-indigo-500"></sl-icon>
+                Comando no Terminal (CLI)
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Você também pode executar o dump diretamente via linha de comando ou agendar em cron:
+            </p>
+            <div class="bg-slate-950 text-emerald-400 font-mono text-xs p-3.5 rounded-xl overflow-x-auto select-all shadow-inner border border-slate-800">
+                php bin/console app:database:dump
+            </div>
+            <p class="text-[11px] text-slate-400">Opções: <code class="text-xs">--no-zip</code> (gera apenas .sql) ou <code class="text-xs">--filename=meu_backup</code></p>
+        </div>
+
+        <!-- Restore Instructions -->
+        <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white/70 dark:bg-slate-900/70 p-5 space-y-3">
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="arrow-clockwise" class="text-indigo-500"></sl-icon>
+                Como Restaurar em Outra Máquina
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Para carregar a base de dados completa em outro computador:
+            </p>
+            <div class="bg-slate-950 text-slate-300 font-mono text-xs p-3.5 rounded-xl space-y-1 overflow-x-auto select-all shadow-inner border border-slate-800">
+                <div><span class="text-slate-500"># 1. Descompactar o arquivo .zip:</span></div>
+                <div class="text-emerald-400">unzip backup_cech_*.sql.zip</div>
+                <div><span class="text-slate-500"># 2. Importar no MySQL:</span></div>
+                <div class="text-emerald-400">mysql -u root -p cech &lt; backup_cech_*.sql</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const btnStartExport = document.getElementById('btnStartExport');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBarFill = document.getElementById('progressBarFill');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressTitle = document.getElementById('progressTitle');
+    const progressSubtitle = document.getElementById('progressSubtitle');
+    const progressPing = document.getElementById('progressPing');
+    const progressDot = document.getElementById('progressDot');
+    const terminalLogs = document.getElementById('terminalLogs');
+    const completionBox = document.getElementById('completionBox');
+    const completionSummary = document.getElementById('completionSummary');
+    const btnDownloadNow = document.getElementById('btnDownloadNow');
+
+    function addLog(msg, type = 'info') {
+        const line = document.createElement('div');
+        const time = new Date().toLocaleTimeString('pt-BR');
+        let colorClass = 'text-slate-300';
+        if (type === 'success') colorClass = 'text-emerald-400 font-semibold';
+        if (type === 'warning') colorClass = 'text-amber-400';
+        if (type === 'error') colorClass = 'text-rose-400 font-bold';
+
+        line.className = colorClass;
+        line.innerHTML = `<span class="text-slate-600">[${time}]</span> ${msg}`;
+        terminalLogs.appendChild(line);
+        terminalLogs.scrollTop = terminalLogs.scrollHeight;
+    }
+
+    btnStartExport?.addEventListener('click', () => {
+        btnStartExport.disabled = true;
+        btnStartExport.classList.add('opacity-50', 'cursor-not-allowed');
+
+        progressContainer.classList.remove('hidden');
+        completionBox.classList.add('hidden');
+        progressBarFill.style.width = '0%';
+        progressPercent.textContent = '0%';
+        terminalLogs.innerHTML = '';
+
+        addLog('Iniciando conexão de streaming com o servidor...', 'info');
+
+        const eventSource = new EventSource('{{ path("app_admin_database_backup_stream") }}?zip=1');
+
+        eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+
+                if (data.status === 'starting') {
+                    progressTitle.textContent = 'Iniciando Superdump...';
+                    progressSubtitle.textContent = `Preparando exportação de ${data.totalTables} tabelas...`;
+                    addLog(`Preparando dump de ${data.totalTables} tabelas (~${data.totalRows?.toLocaleString('pt-BR')} registros estimados)...`);
+                } else if (data.status === 'dumping_table') {
+                    const pct = data.percent || 0;
+                    progressBarFill.style.width = pct + '%';
+                    progressPercent.textContent = pct + '%';
+                    progressTitle.textContent = `Exportando Tabela (${data.currentTable}/${data.totalTables})`;
+                    progressSubtitle.textContent = `Tabela: ${data.table} (${data.processedRows?.toLocaleString('pt-BR')} linhas acumuladas)`;
+                    addLog(`Exportando estrutura e dados da tabela: <span class="text-cyan-300 font-mono">${data.table}</span> (${data.currentTable}/${data.totalTables})`);
+                } else if (data.status === 'compressing') {
+                    progressBarFill.style.width = '95%';
+                    progressPercent.textContent = '95%';
+                    progressTitle.textContent = 'Comprimindo arquivo SQL...';
+                    progressSubtitle.textContent = 'Gerando pacote ZIP otimizado...';
+                    addLog('Compactando arquivo SQL em arquivo .zip...', 'warning');
+                } else if (data.status === 'completed') {
+                    eventSource.close();
+                    progressBarFill.style.width = '100%';
+                    progressPercent.textContent = '100%';
+                    progressTitle.textContent = 'Exportação Concluída!';
+                    progressSubtitle.textContent = `Arquivo gerado: ${data.filename} (${data.fileSizeFormatted})`;
+
+                    progressPing.classList.remove('animate-ping', 'bg-indigo-400');
+                    progressPing.classList.add('bg-emerald-400');
+                    progressDot.classList.remove('bg-indigo-500');
+                    progressDot.classList.add('bg-emerald-500');
+
+                    addLog(`✓ Superdump finalizado com sucesso em ${data.durationSec} segundos!`, 'success');
+                    addLog(`Arquivo gerado: ${data.filename} [Tamanho: ${data.fileSizeFormatted} / SQL Original: ${data.sqlSizeFormatted}]`, 'success');
+                    addLog(`Total: ${data.tableCount} tabelas e ${data.rowCount?.toLocaleString('pt-BR')} linhas exportadas.`, 'info');
+
+                    completionSummary.textContent = `Arquivo: ${data.filename} • Tamanho: ${data.fileSizeFormatted} • Duração: ${data.durationSec}s`;
+                    const downloadTarget = data.downloadUrl || ('{{ path("app_admin_database_backup_download_latest") }}/' + encodeURIComponent(data.filename || ''));
+                    btnDownloadNow.href = downloadTarget;
+                    if (data.filename) {
+                        btnDownloadNow.setAttribute('download', data.filename);
+                    }
+                    completionBox.classList.remove('hidden');
+
+                    btnStartExport.disabled = false;
+                    btnStartExport.classList.remove('opacity-50', 'cursor-not-allowed');
+
+                    // Auto refresh table after 3 seconds or on button click
+                    setTimeout(() => {
+                        // Optional page reload or table update
+                    }, 3000);
+                } else if (data.status === 'error') {
+                    eventSource.close();
+                    progressTitle.textContent = 'Erro na Exportação';
+                    progressSubtitle.textContent = data.message;
+                    addLog(`ERRO: ${data.message}`, 'error');
+                    btnStartExport.disabled = false;
+                    btnStartExport.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            } catch (err) {
+                console.error('Erro ao processar evento:', err);
+            }
+        };
+
+        eventSource.onerror = (err) => {
+            console.error('EventSource error:', err);
+            eventSource.close();
+            btnStartExport.disabled = false;
+            btnStartExport.classList.remove('opacity-50', 'cursor-not-allowed');
+        };
+    });
+});
+</script>
+{% endblock %}

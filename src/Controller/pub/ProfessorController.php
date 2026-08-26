@@ -545,6 +545,87 @@ class ProfessorController extends AbstractController
             $authorKeywords[$canonFormMap[$lower]] = $count;
         }
 
+        // 8. Academic Databases Indexing Stats & Timeline
+        $totalsByDb = [];
+        $timelineByDb = [];
+        $dbMeta = [];
+        $totalArticlesCount = count($articles);
+        $totalIndexedArticlesCount = 0;
+        $dbYearsRange = !empty($continuousYears) ? $continuousYears : range(2010, (int)date('Y'));
+
+        $colorMap = [
+            'scopus' => '#ea580c',
+            'wos' => '#7c3aed',
+            'web of science' => '#7c3aed',
+            'latindex' => '#0d9488',
+            'scielo' => '#e11d48',
+            'pubmed' => '#2563eb',
+            'doaj' => '#d97706',
+            'openalex' => '#6366f1',
+            'lens' => '#059669',
+            'crossref' => '#0284c7',
+        ];
+
+        foreach ($articles as $art) {
+            $y = $art->getYear() ? (int)$art->getYear() : null;
+            $dbs = $art->getIndexedDatabases();
+            if ($dbs !== null && !empty($dbs)) {
+                $totalIndexedArticlesCount++;
+                foreach ($dbs as $db) {
+                    $name = $db['name'];
+                    $acronym = strtolower((string)($db['acronym'] ?? $name));
+                    if (!isset($totalsByDb[$name])) {
+                        $totalsByDb[$name] = 0;
+                        $timelineByDb[$name] = array_fill_keys($dbYearsRange, 0);
+                        $dbMeta[$name] = [
+                            'name' => $name,
+                            'acronym' => $acronym,
+                            'logo' => $db['logo'] ?? null,
+                            'color' => $colorMap[$acronym] ?? $colorMap[$name] ?? ($db['color'] ?? '#64748b'),
+                        ];
+                    }
+                    $totalsByDb[$name]++;
+                    if ($y && isset($timelineByDb[$name][$y])) {
+                        $timelineByDb[$name][$y]++;
+                    }
+                }
+            }
+        }
+
+        arsort($totalsByDb);
+
+        $dbRanking = [];
+        foreach ($totalsByDb as $name => $count) {
+            $dbRanking[] = [
+                'name' => $name,
+                'acronym' => $dbMeta[$name]['acronym'],
+                'logo' => $dbMeta[$name]['logo'],
+                'color' => $dbMeta[$name]['color'],
+                'total' => $count,
+                'percentage' => $totalArticlesCount > 0 ? round(($count / $totalArticlesCount) * 100, 1) : 0.0,
+                'indexedPercentage' => $totalIndexedArticlesCount > 0 ? round(($count / $totalIndexedArticlesCount) * 100, 1) : 0.0,
+            ];
+        }
+
+        $dbTimelineSeries = [];
+        foreach (array_keys($totalsByDb) as $name) {
+            $dbTimelineSeries[] = [
+                'name' => $name,
+                'acronym' => $dbMeta[$name]['acronym'],
+                'color' => $dbMeta[$name]['color'],
+                'data' => array_values($timelineByDb[$name]),
+            ];
+        }
+
+        $academicDatabasesStats = [
+            'totalArticles' => $totalArticlesCount,
+            'totalIndexedArticles' => $totalIndexedArticlesCount,
+            'indexedPercentage' => $totalArticlesCount > 0 ? round(($totalIndexedArticlesCount / $totalArticlesCount) * 100, 1) : 0.0,
+            'ranking' => $dbRanking,
+            'years' => $dbYearsRange,
+            'timelineSeries' => $dbTimelineSeries,
+        ];
+
         return $this->render('pub/professor/show.html.twig', [
             'researcher' => $researcher,
             'articles' => $articles,
@@ -568,6 +649,7 @@ class ProfessorController extends AbstractController
             'topCoauthors' => $topCoauthors,
             'topKeywords' => $topKeywords,
             'authorKeywords' => $authorKeywords,
+            'academicDatabases' => $academicDatabasesStats,
         ]);
     }
 

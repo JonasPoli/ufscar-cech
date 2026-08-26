@@ -26,7 +26,9 @@ class AdminJournalController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly QualisJournalRepository $journalRepo,
         private readonly ThesaurusFileService $fileService,
-        private readonly EntityMergeService $mergeService
+        private readonly EntityMergeService $mergeService,
+        private readonly \App\Service\Thesaurus\JournalDatabaseImporterService $databaseImporter,
+        private readonly \App\Service\Thesaurus\JournalDatabaseExporterService $databaseExporter
     ) {}
 
     #[Route('/', name: 'app_admin_journal_index', methods: ['GET'])]
@@ -34,18 +36,21 @@ class AdminJournalController extends AbstractController
     {
         $search = trim((string)$request->query->get('search', ''));
         $qualisFilter = trim((string)$request->query->get('qualis', 'all'));
+        $databaseFilter = trim((string)$request->query->get('database', 'all'));
         $page = max(1, $request->query->getInt('page', 1));
         $limit = 50;
         $offset = ($page - 1) * $limit;
 
         $qb = $this->em->createQueryBuilder()
             ->select('j')
-            ->from(QualisJournal::class, 'j');
+            ->from(QualisJournal::class, 'j')
+            ->leftJoin('j.academicDatabases', 'db')
+            ->addSelect('db');
 
         if ($search !== '') {
             $norm = StringNormalizer::normalizeString($search, true);
             $qb->leftJoin('j.variations', 'v')
-               ->andWhere('j.title LIKE :search OR j.issn LIKE :search OR j.qualis LIKE :search OR v.variationName LIKE :search OR v.normalizedName LIKE :norm')
+               ->andWhere('j.title LIKE :search OR j.issn LIKE :search OR j.issnImp LIKE :search OR j.issnE LIKE :search OR j.issnL LIKE :search OR j.qualis LIKE :search OR v.variationName LIKE :search OR v.normalizedName LIKE :norm')
                ->setParameter('search', '%' . $search . '%')
                ->setParameter('norm', '%' . $norm . '%')
                ->distinct();
@@ -58,6 +63,11 @@ class AdminJournalController extends AbstractController
                 $qb->andWhere('j.qualis = :qf')
                    ->setParameter('qf', $qualisFilter);
             }
+        }
+
+        if ($databaseFilter !== 'all' && $databaseFilter !== '') {
+            $qb->andWhere('db.acronym = :dbFilter')
+               ->setParameter('dbFilter', $databaseFilter);
         }
 
         $countQb = clone $qb;
@@ -80,10 +90,14 @@ class AdminJournalController extends AbstractController
             ORDER BY count DESC
         ')->fetchAllAssociative();
 
+        $allDatabases = $this->em->getRepository(\App\Entity\AcademicDatabase::class)->findBy([], ['name' => 'ASC']);
+
         return $this->render('admin/journal/index.html.twig', [
             'journals' => $journals,
             'search' => $search,
             'qualisFilter' => $qualisFilter,
+            'databaseFilter' => $databaseFilter,
+            'databases' => $allDatabases,
             'currentPage' => $page,
             'totalPages' => $totalPages,
             'totalItems' => $totalItems,
@@ -95,18 +109,31 @@ class AdminJournalController extends AbstractController
     public function new(Request $request): Response
     {
         $journal = new QualisJournal();
+        $allDatabases = $this->em->getRepository(\App\Entity\AcademicDatabase::class)->findBy([], ['name' => 'ASC']);
 
         if ($request->isMethod('POST')) {
             $title = trim((string)$request->request->get('title'));
-            $issn = trim((string)$request->request->get('issn')) ?: null;
+            $issnImp = trim((string)$request->request->get('issn_imp')) ?: null;
+            $issnE = trim((string)$request->request->get('issn_e')) ?: null;
+            $issnL = trim((string)$request->request->get('issn_l')) ?: null;
             $qualis = trim((string)$request->request->get('qualis')) ?: null;
             $area = trim((string)$request->request->get('area')) ?: null;
 
             if ($title !== '') {
                 $journal->setTitle($title);
-                $journal->setIssn($issn);
+                $journal->setIssnImp($issnImp);
+                $journal->setIssnE($issnE);
+                $journal->setIssnL($issnL);
                 $journal->setQualis($qualis);
                 $journal->setArea($area);
+
+                // Sync academic databases
+                $selectedDbIds = $request->request->all()['academic_databases'] ?? [];
+                foreach ($allDatabases as $db) {
+                    if (in_array((string)$db->getId(), $selectedDbIds, true)) {
+                        $journal->addAcademicDatabase($db);
+                    }
+                }
 
                 // Initial variations textarea
                 $variationsText = trim((string)$request->request->get('variations', ''));
@@ -133,6 +160,7 @@ class AdminJournalController extends AbstractController
 
         return $this->render('admin/journal/form.html.twig', [
             'journal' => $journal,
+            'databases' => $allDatabases,
             'isNew' => true,
             'variationsText' => '',
         ]);
@@ -141,17 +169,33 @@ class AdminJournalController extends AbstractController
     #[Route('/{id}/edit', name: 'app_admin_journal_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     public function edit(Request $request, QualisJournal $journal): Response
     {
+        $allDatabases = $this->em->getRepository(\App\Entity\AcademicDatabase::class)->findBy([], ['name' => 'ASC']);
+
         if ($request->isMethod('POST')) {
             $title = trim((string)$request->request->get('title'));
-            $issn = trim((string)$request->request->get('issn')) ?: null;
+            $issnImp = trim((string)$request->request->get('issn_imp')) ?: null;
+            $issnE = trim((string)$request->request->get('issn_e')) ?: null;
+            $issnL = trim((string)$request->request->get('issn_l')) ?: null;
             $qualis = trim((string)$request->request->get('qualis')) ?: null;
             $area = trim((string)$request->request->get('area')) ?: null;
 
             if ($title !== '') {
                 $journal->setTitle($title);
-                $journal->setIssn($issn);
+                $journal->setIssnImp($issnImp);
+                $journal->setIssnE($issnE);
+                $journal->setIssnL($issnL);
                 $journal->setQualis($qualis);
                 $journal->setArea($area);
+
+                // Sync academic databases
+                $selectedDbIds = $request->request->all()['academic_databases'] ?? [];
+                foreach ($allDatabases as $db) {
+                    if (in_array((string)$db->getId(), $selectedDbIds, true)) {
+                        $journal->addAcademicDatabase($db);
+                    } else {
+                        $journal->removeAcademicDatabase($db);
+                    }
+                }
 
                 // Sync variations text
                 $variationsText = trim((string)$request->request->get('variations', ''));
@@ -185,32 +229,42 @@ class AdminJournalController extends AbstractController
                 // Single new variation shortcut input
                 $newVariation = trim((string)$request->request->get('new_variation', ''));
                 if ($newVariation !== '') {
-                    $norm = StringNormalizer::normalizeString($newVariation, true);
-                    if ($norm !== '') {
-                        $var = new JournalVariation();
-                        $var->setJournal($journal);
-                        $var->setVariationName($newVariation);
-                        $var->setNormalizedName($norm);
-                        $journal->addVariation($var);
+                    $normNew = StringNormalizer::normalizeString($newVariation, true);
+                    if ($normNew !== '') {
+                        $exists = false;
+                        foreach ($journal->getVariations() as $v) {
+                            if ($v->getNormalizedName() === $normNew) {
+                                $exists = true;
+                                break;
+                            }
+                        }
+                        if (!$exists) {
+                            $var = new JournalVariation();
+                            $var->setJournal($journal);
+                            $var->setVariationName($newVariation);
+                            $var->setNormalizedName($normNew);
+                            $journal->addVariation($var);
+                        }
                     }
                 }
 
                 $this->em->flush();
 
-                $this->addFlash('success', "Periódico atualizado com sucesso.");
+                $this->addFlash('success', "Periódico \"{$journal->getTitle()}\" atualizado com sucesso.");
                 return $this->redirectToRoute('app_admin_journal_index');
             }
         }
 
-        $variationsLines = [];
+        $lines = [];
         foreach ($journal->getVariations() as $v) {
-            $variationsLines[] = $v->getVariationName();
+            $lines[] = $v->getVariationName();
         }
 
         return $this->render('admin/journal/form.html.twig', [
             'journal' => $journal,
+            'databases' => $allDatabases,
             'isNew' => false,
-            'variationsText' => implode("\n", $variationsLines),
+            'variationsText' => implode("\n", $lines),
         ]);
     }
 
@@ -446,6 +500,73 @@ class AdminJournalController extends AbstractController
         }
 
         return $this->redirectToRoute('app_admin_journal_index');
+    }
+
+    #[Route('/import-database', name: 'app_admin_journal_import_database', methods: ['POST'])]
+    public function importDatabase(Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('import_journal_database', (string)$request->request->get('_token'))) {
+            $this->addFlash('danger', 'Token CSRF inválido.');
+            return $this->redirectToRoute('app_admin_journal_index');
+        }
+
+        /** @var UploadedFile|null $file */
+        $file = $request->files->get('database_file');
+        if (!$file) {
+            $this->addFlash('danger', 'Por favor envie um arquivo de lista de periódicos (.csv ou .xlsx).');
+            return $this->redirectToRoute('app_admin_journal_index');
+        }
+
+        $baseAcronym = trim((string)$request->request->get('base_acronym', ''));
+        $targetDb = $baseAcronym !== '' ? $baseAcronym : null;
+
+        try {
+            @ini_set('memory_limit', '1024M');
+            set_time_limit(600);
+
+            $result = $this->databaseImporter->import($file->getRealPath(), $targetDb);
+
+            if ($result['success']) {
+                $this->addFlash('success', sprintf(
+                    'Importação da base %s concluída! %d registros lidos (%d novos inseridos, %d atualizados, %d vínculos criados).',
+                    $result['databaseName'] ?? $result['database'],
+                    $result['totalRead'],
+                    $result['inserted'],
+                    $result['updated'],
+                    $result['linksCreated']
+                ));
+            } else {
+                $err = implode(' ', $result['errors']);
+                $this->addFlash('danger', 'Erro na importação: ' . $err);
+            }
+        } catch (\Throwable $e) {
+            $this->addFlash('danger', 'Erro durante o processamento do arquivo: ' . $e->getMessage());
+        }
+
+        return $this->redirectToRoute('app_admin_journal_index');
+    }
+
+    #[Route('/export-full', name: 'app_admin_journal_export_full', methods: ['GET'])]
+    public function exportFull(Request $request): Response
+    {
+        $format = strtolower((string)$request->query->get('format', 'csv'));
+        $qualis = $request->query->get('qualis');
+        $database = $request->query->get('database');
+
+        if (!in_array($format, ['csv', 'json'], true)) {
+            $format = 'csv';
+        }
+
+        $res = $this->databaseExporter->export($qualis, $database, $format);
+
+        $filename = sprintf('catalogo_periodicos_thesaurus_%s.%s', date('Ymd_His'), $format);
+        $contentType = $format === 'json' ? 'application/json; charset=utf-8' : 'text/csv; charset=utf-8';
+
+        $response = new Response($res['content']);
+        $response->headers->set('Content-Type', $contentType);
+        $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
+
+        return $response;
     }
 
     private function batchInsertJournals(\Doctrine\DBAL\Connection $conn, array $batch): void
