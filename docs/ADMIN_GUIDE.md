@@ -1,6 +1,6 @@
 # Guia do Painel Administrativo — CECH / UFSCar
 
-Manual de operações, rotinas de gerenciamento e administração do Portal de Produção Científica do CECH.
+Manual de operações, rotinas de gerenciamento, indexação cienciométrica e administração do Portal de Produção Científica do CECH.
 
 ---
 
@@ -11,7 +11,7 @@ Manual de operações, rotinas de gerenciamento e administração do Portal de P
   - Usuário: `admin`
   - Senha: `wab12345678`
 
-### Criação de Novos Administradores via Console
+### Criação e Gerenciamento de Administradores via Console
 Para criar ou redefinir a senha de um administrador diretamente pelo terminal:
 ```bash
 php bin/console app:admin-user <nome_usuario> <senha>
@@ -32,7 +32,6 @@ Na seção **Currículos Docentes**, você pode:
     # ou com arquivo comprimido ZIP:
     php bin/console app:import:photos --zip=/caminho/fotos.zip
     ```
-    *O comando mapeia as imagens automaticamente por ID Lattes (`1012351287140134.jpg`), slug ou nome do docente.*
   - **Crawler em Lote via CLI**:
     ```bash
     php bin/console app:crawl:lattes-photos --limit=50
@@ -42,67 +41,84 @@ Na seção **Currículos Docentes**, você pode:
   - **JSON**: Estrutura detalhada para interoperabilidade de dados.
   - **XML**: Formato compatível com bancos de dados acadêmicos.
   - **PDF Individual Formatado (Dompdf)**: Relatório curricular com layout oficial para impressão em formato PDF (A4).
-- **Excluir Registro**: Um diálogo modal em HTML (`<sl-dialog>`) confirma a exclusão sem uso de alertas nativos do navegador.
 
 ---
 
-## ☁️ 3. Importação Web de Arquivos Lattes XML (`/admin/curriculum/import`)
+## ⚡ 3. Indexação & Normatização de Dados (`/admin/indexing`)
 
-1. Acesse o menu **"Importar Lattes XML"**.
-2. Arraste ou selecione um ou mais arquivos `.xml` exportados da Plataforma Lattes.
-3. Clique em **"Iniciar Importação"**.
-4. O sistema processará automaticamente os currículos, aplicando a regra de *upsert* (inserindo novos e atualizando os existentes).
+O painel de indexação coordena a inteligência de dados e a resolução de entidades em lote.
 
----
+### 3.1. Resolução e Vinculação de Entidades
+- **Coautoria CECH**: Identifica quando um coautor citado em uma produção é também um docente cadastrado no CECH (`is_cech_researcher = true`, `matched_researcher_id`).
+- **Identidade de Autores**: Vincula variantes de citação ao tesauro de autoridades (`author_identity_id`).
+- **Instituições**: Normaliza afiliações institucionais de orientações e formações acadêmicas (`institution_id`).
 
-## 🏛️ 4. Tesauros e Vocabulários Controlados (BiblioMap)
-
-### 🌍 Tesauro de Países (`/admin/countries`)
-- Permite cadastrar nomes preferidos de países e códigos ISO Alpha-2 e Alpha-3.
-- Permite vincular dezenas de variantes de grafia (ex: `Brasil`, `Brazil`, `Republica Federativa do Brasil`).
-- **Fusão de Países**: Selecione dois ou mais países com caixas de seleção, clique em **"Mesclar Selecionados"** e escolha o país principal na caixa modal.
-- **Importação/Exportação**: Suporta VantagePoint (`.the`), CSV, JSON e XML.
-
-### 🏢 Tesauro de Instituições (`/admin/institutions`)
-- Padronização de universidades, centros de pesquisa e institutos.
-- Cadastro de siglas (ex: `UFSCar`), tipos de instituição e natureza jurídica.
-- **Fusão de Instituições**: Unifica duplicatas e consolida todas as variantes históricas no registro principal.
-- **Importação/Exportação**: Suporta VantagePoint (`.the`), CSV, JSON e XML.
-
-### ✍️ Tesauro de Autores (`/admin/authors`)
-- Autoridades de nomes de autores para desambiguação bibliográfica.
-- Vínculo de variantes de citação (ex: `SILVA, C. A.`, `SILVA, Carlos Alberto`).
-- **Fusão de Autores**: Unificação de registros duplicados de autores.
+### 3.2. Indexação de Periódicos & Bases Internacionais
+- **Botão "Indexar Periódicos & Bases Internacionais"**:
+  - Cruza todos os 13.469 artigos científicos com a tabela canônica de periódicos (`qualis_journal_id`).
+  - Mapeia ISSNs eletrônicos (`issn_e`), impressos (`issn_imp`) e de ligação (`issn_l`).
+  - Preenche a coluna `indexed_databases` de cada artigo com os metadados JSON das bases internacionais em que a revista está indexada (Scopus, Web of Science, PubMed, Latindex, SciELO, DOAJ, OpenAlex).
+  - Execução ultra-rápida via CLI:
+    ```bash
+    php bin/console app:index:journals
+    ```
 
 ---
 
-## 📊 5. Relatórios Institucionais (`/admin/reports`)
+## 📚 4. Gestão de Bases de Indexação Internacional (`/admin/academic-databases`)
 
-Relatórios estratégicos consolidados para gestão acadêmica e avaliação institucional:
-1. **Produção Científica & Corpo Docente por Departamento**:
-   - Tabela com total de docentes, volume de produções e média de produções por docente.
-   - Botões para **Exportar CSV** e **Exportar JSON**.
-2. **Distribuição de Artigos por Estrato Qualis (CAPES)**:
-   - Contagem de artigos por estrato (`A1`, `A2`, `A3`, `A4`, `B1`, `B2`, `B3`, `B4`, `C`).
-   - Botões para **Exportar CSV** e **Exportar JSON**.
+Módulo para cadastrar e gerenciar bases de dados científicas e importar listas de periódicos indexados:
+- **Cadastro de Bases**: Nome, sigla, logotipo oficial, cor temática e URL institucional.
+- **Importação de Periódicos por Base**:
+  - Permite importar arquivos CSV, TXT ou VantagePoint contendo as listas oficiais de periódicos indexados na base (como Scopus, Web of Science, DOAJ, Latindex).
+  - O sistema associa automaticamente o periódico à base no banco de dados.
 
 ---
 
-## 🔍 6. Gerenciamento de SEO, Analytics & Indexação (`/admin/seo`)
+## 💾 5. Backup & Superdump do Sistema (`/admin/database/backup`)
 
-Painel dedicado para controle completo da presença nos mecanismos de busca:
-- **Google Analytics 4 (GA4)**: Insira o ID de medição (`G-XXXXXXXXXX`) para ativar o rastreamento em tempo real com anonimização de IP.
-- **Google Search Console**: Configuração direta da meta tag de verificação do site.
-- **Meta Tags Globais**: Personalização do Título Padrão, Meta Description e Meta Keywords.
-- **Open Graph & Redes Sociais**: Upload da imagem de destaque para compartilhamento no WhatsApp, Twitter/X, LinkedIn e Facebook com pré-visualização ao vivo.
-- **Diretrizes Robots.txt**: Editor das regras do arquivo `robots.txt` para robôs de busca.
-- **Sitemap XML Dinâmico**: Visualização e link direto para o mapa do site gerado dinamicamente em `/sitemap.xml`.
+Ferramenta para exportação completa, migração e segurança do banco de dados MySQL:
+- **Superdump em Tempo Real**:
+  - Executa o dump via streaming SSE (*Server-Sent Events*), exibindo terminal ao vivo e barra de progresso.
+  - Gera arquivo `.sql` completo com esquema (`CREATE TABLE`), dados brutos Lattes e tabelas normalizadas.
+  - Compacta automaticamente em arquivo `.sql.zip` de alta taxa de compressão.
+- **Download Seguro**:
+  - Botão de download direto do arquivo gerado.
+  - Rota de download automático do backup mais recente: `/admin/database/backup/download`.
+- **Execução via Console (CLI)**:
+  ```bash
+  php bin/console app:database:dump
+  # Opções: --no-zip ou --filename=meu_backup
+  ```
+- **Restauração em Outro Servidor / Máquina Nova**:
+  ```bash
+  unzip backup_cech_*.sql.zip
+  mysql -u root -p cech < backup_cech_*.sql
+  php bin/console app:admin-user admin 12345678
+  ./build.sh
+  ```
 
 ---
 
-## 🛡️ 7. Gestão de Usuários (`/admin/users`)
+## 🏛️ 6. Tesauros e Vocabulários Controlados (BiblioMap)
 
-- Adicione novos operadores com papéis:
-  - `ROLE_ADMIN`: Acesso completo ao painel administrativo.
-  - `ROLE_USER`: Acesso a consultas e operações básicas.
-- Alteração segura de senhas com algoritmo Bcrypt/Argon2i.
+- **Tesauro de Países (`/admin/countries`)**: Padronização ISO Alpha-2/3, sinônimos, fusão de duplicatas e importação/exportação.
+- **Tesauro de Instituições (`/admin/institutions`)**: Siglas, naturezas jurídicas, variantes de grafia e fusão.
+- **Tesauro de Autores (`/admin/authors`)**: Autoridades de nomes de autores, identificadores externos (ORCID, Lattes ID) e variantes de citação.
+- **Tesauro de Periódicos (`/admin/journals`)**: 63.122 periódicos com estratos Qualis e ISSNs triplos.
+
+---
+
+## 📊 7. Relatórios Institucionais (`/admin/reports`)
+
+- **Produção Científica por Departamento**: Total de docentes, volume de produções e média por docente com exportação CSV/JSON.
+- **Distribuição de Artigos por Estrato Qualis (CAPES)**: Estratos A1 a C com exportação CSV/JSON.
+
+---
+
+## 🔍 8. Gerenciamento de SEO & Analytics (`/admin/seo`)
+
+- **Google Analytics 4 (GA4)**: Configuração do Measurement ID.
+- **Google Search Console**: Verificação de propriedade do domínio.
+- **Meta Tags & Open Graph**: Personalização de títulos, descrições e imagem de compartilhamento social.
+- **Sitemap XML & Robots.txt**: Controle de indexação pelos motores de busca.
