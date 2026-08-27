@@ -24,7 +24,7 @@
 /assets/vendor/
 ###< symfony/asset-mapper ###
 
-composer.phar
+#composer.phar
 ###> php-cs-fixer/shim ###
 /.php-cs-fixer.php
 /.php-cs-fixer.cache
