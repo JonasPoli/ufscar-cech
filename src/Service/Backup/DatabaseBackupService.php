@@ -54,22 +54,52 @@ class DatabaseBackupService
                     table_collation AS `collation`,
                     table_comment AS `comment`
                 FROM information_schema.tables 
-                WHERE table_schema = :dbName 
+                WHERE LOWER(table_schema) = LOWER(:dbName) 
                 ORDER BY (data_length + index_length) DESC";
 
-        $tables = $this->connection->fetchAllAssociative($sql, ['dbName' => $dbName]);
+        try {
+            $tables = $this->connection->fetchAllAssociative($sql, ['dbName' => $dbName]);
+        } catch (\Throwable $e) {
+            $tables = [];
+        }
+
+        if (empty($tables)) {
+            // Fallback: list tables directly from database
+            try {
+                $rawTables = $this->connection->fetchFirstColumn("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'");
+                $tables = [];
+                foreach ($rawTables as $tableName) {
+                    $count = (int)$this->connection->fetchOne("SELECT COUNT(*) FROM `{$tableName}`");
+                    $tables[] = [
+                        'name' => $tableName,
+                        'engine' => 'InnoDB',
+                        'rows' => $count,
+                        'data_bytes' => 0,
+                        'index_bytes' => 0,
+                        'total_bytes' => 0,
+                        'collation' => 'utf8mb4_unicode_ci',
+                        'comment' => '',
+                    ];
+                }
+            } catch (\Throwable $e) {
+                $tables = [];
+            }
+        }
 
         $totalDataBytes = 0;
         $totalIndexBytes = 0;
         $totalRows = 0;
 
         foreach ($tables as $t) {
-            $totalDataBytes += (int)$t['data_bytes'];
-            $totalIndexBytes += (int)$t['index_bytes'];
-            $totalRows += (int)$t['rows'];
+            $totalDataBytes += (int)($t['data_bytes'] ?? 0);
+            $totalIndexBytes += (int)($t['index_bytes'] ?? 0);
+            $totalRows += (int)($t['rows'] ?? 0);
         }
 
-        $serverVersion = $this->connection->fetchOne("SELECT VERSION()") ?: 'MySQL';
+        $serverVersion = 'MySQL';
+        try {
+            $serverVersion = (string)($this->connection->fetchOne("SELECT VERSION()") ?: 'MySQL');
+        } catch (\Throwable $e) {}
 
         return [
             'database' => $dbName,
@@ -83,11 +113,11 @@ class DatabaseBackupService
             'indexSizeFormatted' => $this->formatBytes($totalIndexBytes),
             'totalSizeFormatted' => $this->formatBytes($totalDataBytes + $totalIndexBytes),
             'tables' => array_map(function($t) {
-                $bytes = (int)$t['total_bytes'];
+                $bytes = (int)($t['total_bytes'] ?? 0);
                 return [
                     'name' => $t['name'],
-                    'engine' => $t['engine'] ?: 'InnoDB',
-                    'rows' => (int)$t['rows'],
+                    'engine' => $t['engine'] ?? 'InnoDB',
+                    'rows' => (int)($t['rows'] ?? 0),
                     'totalBytes' => $bytes,
                     'sizeFormatted' => $this->formatBytes($bytes),
                 ];
@@ -168,6 +198,9 @@ class DatabaseBackupService
         ?callable $progressCallback = null,
         ?string $customFilename = null
     ): array {
+        @set_time_limit(0);
+        @ini_set('memory_limit', '512M');
+
         $startTime = microtime(true);
         $this->ensureBackupDirExists();
 
@@ -232,51 +265,43 @@ class DatabaseBackupService
                 continue;
             }
 
-            // Dump data in chunks of 500
-            $chunkSize = 500;
-            $offset = 0;
-
             // Get column names
             $columnsStmt = $this->connection->fetchAllAssociative("SHOW COLUMNS FROM `{$tableName}`");
             $columnNames = array_map(fn($col) => '`' . $col['Field'] . '`', $columnsStmt);
             $columnsSql = implode(', ', $columnNames);
 
-            while (true) {
-                $rows = $this->connection->fetchAllAssociative(
-                    "SELECT * FROM `{$tableName}` LIMIT {$chunkSize} OFFSET {$offset}"
-                );
+            // Stream rows using cursor and batch inserts
+            $stmt = $this->connection->executeQuery("SELECT * FROM `{$tableName}`");
+            $insertLines = [];
+            $batchSize = 500;
+            $batchCount = 0;
 
-                if (empty($rows)) {
-                    break;
-                }
-
-                $insertLines = [];
-                foreach ($rows as $row) {
-                    $values = [];
-                    foreach ($row as $val) {
-                        if ($val === null) {
-                            $values[] = 'NULL';
-                        } elseif (is_int($val) || is_float($val)) {
-                            $values[] = (string)$val;
-                        } else {
-                            $values[] = $this->connection->quote((string)$val);
-                        }
+            while (($row = $stmt->fetchAssociative()) !== false) {
+                $values = [];
+                foreach ($row as $val) {
+                    if ($val === null) {
+                        $values[] = 'NULL';
+                    } elseif (is_int($val) || is_float($val)) {
+                        $values[] = (string)$val;
+                    } else {
+                        $values[] = $this->connection->quote((string)$val);
                     }
-                    $insertLines[] = '(' . implode(', ', $values) . ')';
                 }
+                $insertLines[] = '(' . implode(', ', $values) . ')';
+                $batchCount++;
+                $processedRowsAccum++;
 
-                if (!empty($insertLines)) {
+                if ($batchCount >= $batchSize) {
                     fwrite($handle, "INSERT INTO `{$tableName}` ({$columnsSql}) VALUES\n");
-                    fwrite($handle, implode(",\n", $insertLines) . ";\n");
+                    fwrite($handle, implode(",\n", $insertLines) . ";\n\n");
+                    $insertLines = [];
+                    $batchCount = 0;
                 }
+            }
 
-                $count = count($rows);
-                $offset += $count;
-                $processedRowsAccum += $count;
-
-                if ($count < $chunkSize) {
-                    break;
-                }
+            if (!empty($insertLines)) {
+                fwrite($handle, "INSERT INTO `{$tableName}` ({$columnsSql}) VALUES\n");
+                fwrite($handle, implode(",\n", $insertLines) . ";\n\n");
             }
 
             fwrite($handle, "\n");
