@@ -59,4 +59,19 @@ class DatabaseBackupServiceTest extends KernelTestCase
         $this->assertTrue($deleted);
         $this->assertFileDoesNotExist($result['filePath']);
     }
+
+    public function testImportDatabase(): void
+    {
+        $customName = 'test_import_backup_' . uniqid();
+        $exportResult = $this->backupService->exportDatabase(true, null, $customName);
+        $this->assertTrue($exportResult['success']);
+
+        $importResult = $this->backupService->importDatabase($exportResult['filePath']);
+        $this->assertTrue($importResult['success']);
+        $this->assertGreaterThan(0, $importResult['durationSec']);
+
+        // Cleanup
+        $this->backupService->deleteBackup($exportResult['filename']);
+    }
 }
+

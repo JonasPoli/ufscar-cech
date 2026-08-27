@@ -4,7 +4,9 @@ namespace App\Controller\admin;
 
 use App\Service\Backup\DatabaseBackupService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,7 +19,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class AdminDatabaseBackupController extends AbstractController
 {
     public function __construct(
-        private readonly DatabaseBackupService $backupService
+        private readonly DatabaseBackupService $backupService,
+        private readonly Security $security
     ) {}
 
     #[Route('/admin/database', name: 'app_admin_database_root', methods: ['GET'])]
@@ -180,4 +183,69 @@ class AdminDatabaseBackupController extends AbstractController
 
         return $this->redirectToRoute('app_admin_database_backup_index');
     }
+
+    #[Route('/admin/database/backup/upload-restore', name: 'app_admin_database_backup_upload_restore', methods: ['POST'])]
+    public function uploadRestore(Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('upload_restore_backup', (string)$request->request->get('_token'))) {
+            $this->addFlash('error', 'Token de segurança CSRF inválido.');
+            return $this->redirectToRoute('app_admin_database_backup_index');
+        }
+
+        /** @var UploadedFile|null $uploadedFile */
+        $uploadedFile = $request->files->get('backup_file');
+
+        if (!$uploadedFile || !$uploadedFile->isValid()) {
+            $this->addFlash('error', 'Por favor, selecione um arquivo de backup válido (.sql, .zip ou .gz).');
+            return $this->redirectToRoute('app_admin_database_backup_index');
+        }
+
+        $extension = strtolower($uploadedFile->getClientOriginalExtension());
+        if (!in_array($extension, ['sql', 'zip', 'gz'], true)) {
+            $this->addFlash('error', 'Formato de arquivo inválido. Apenas arquivos .sql, .zip ou .gz são permitidos.');
+            return $this->redirectToRoute('app_admin_database_backup_index');
+        }
+
+        try {
+            $result = $this->backupService->importDatabase($uploadedFile->getRealPath());
+
+            // Invalidate session and logout because user table has been updated
+            $request->getSession()->invalidate();
+            $this->security->logout(false);
+
+            return $this->redirectToRoute('app_login', ['restored' => 1]);
+        } catch (\Throwable $e) {
+            $this->addFlash('error', 'Erro ao restaurar banco de dados: ' . $e->getMessage());
+            return $this->redirectToRoute('app_admin_database_backup_index');
+        }
+    }
+
+    #[Route('/admin/database/backup/restore/{filename}', name: 'app_admin_database_backup_restore', methods: ['POST'])]
+    public function restore(string $filename, Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('restore_backup_' . $filename, (string)$request->request->get('_token'))) {
+            $this->addFlash('error', 'Token de segurança CSRF inválido.');
+            return $this->redirectToRoute('app_admin_database_backup_index');
+        }
+
+        $file = $this->backupService->getBackupFile($filename);
+        if (!$file) {
+            $this->addFlash('error', "Arquivo de backup '{$filename}' não encontrado.");
+            return $this->redirectToRoute('app_admin_database_backup_index');
+        }
+
+        try {
+            $result = $this->backupService->importDatabase($file->getRealPath());
+
+            // Invalidate session and logout because user table has been updated
+            $request->getSession()->invalidate();
+            $this->security->logout(false);
+
+            return $this->redirectToRoute('app_login', ['restored' => 1]);
+        } catch (\Throwable $e) {
+            $this->addFlash('error', 'Erro ao restaurar banco de dados: ' . $e->getMessage());
+            return $this->redirectToRoute('app_admin_database_backup_index');
+        }
+    }
 }
+

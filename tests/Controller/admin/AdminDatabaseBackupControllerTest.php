@@ -66,4 +66,31 @@ class AdminDatabaseBackupControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Backup & Superdump do Sistema');
     }
+
+    public function testAdminDatabaseBackupRestoreExisting(): void
+    {
+        $backupService = static::getContainer()->get(\App\Service\Backup\DatabaseBackupService::class);
+        $customName = 'test_ctrl_restore_' . uniqid();
+        $exportResult = $backupService->exportDatabase(true, null, $customName);
+        $this->assertTrue($exportResult['success']);
+
+        // Get token from crawler
+        $crawler = $this->client->request('GET', '/admin/database/backup');
+        $tokenInput = $crawler->filter('form[action*="' . $exportResult['filename'] . '"] input[name="_token"]');
+        $token = $tokenInput->attr('value');
+
+        $this->client->request('POST', '/admin/database/backup/restore/' . $exportResult['filename'], [
+            '_token' => $token,
+        ]);
+
+        // Expect redirect to login with ?restored=1
+        $this->assertResponseRedirects('/login?restored=1');
+        $this->client->followRedirect();
+        $this->assertResponseIsSuccessful();
+        $this->assertStringContainsString('Base de dados restaurada com sucesso!', $this->client->getResponse()->getContent());
+
+        // Cleanup
+        $backupService->deleteBackup($exportResult['filename']);
+    }
 }
+

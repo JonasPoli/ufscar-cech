@@ -20,6 +20,27 @@
                 </p>
             </div>
 
+            {% if app.request.query.get('restored') == '1' %}
+                <div class="rounded-2xl bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/60 dark:border-emerald-800/60 p-4 text-xs font-semibold text-emerald-800 dark:text-emerald-300 space-y-1">
+                    <div class="flex items-center gap-2">
+                        <sl-icon name="check-circle-fill" class="text-base shrink-0 text-emerald-500"></sl-icon>
+                        <span class="font-bold">Base de dados restaurada com sucesso!</span>
+                    </div>
+                    <p class="text-[11px] opacity-90 font-normal">
+                        Como a base foi atualizada, sua sessão anterior foi finalizada. Faça login com as credenciais do novo banco importado.
+                    </p>
+                </div>
+            {% endif %}
+
+            {% for label, messages in app.flashes %}
+                {% for message in messages %}
+                    <div class="rounded-2xl {% if label == 'success' %}bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-800/60 dark:text-emerald-300{% elseif label == 'error' %}bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-950/60 dark:border-rose-800/60 dark:text-rose-300{% else %}bg-sky-50 border-sky-200 text-sky-800 dark:bg-sky-950/60 dark:border-sky-800/60 dark:text-sky-300{% endif %} border p-4 text-xs font-semibold flex items-center gap-2">
+                        <sl-icon name="{% if label == 'success' %}check-circle-fill{% elseif label == 'error' %}exclamation-octagon{% else %}info-circle-fill{% endif %}" class="text-base shrink-0"></sl-icon>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endfor %}
+
             {% if error %}
                 <div class="rounded-2xl bg-rose-50 border border-rose-200 dark:bg-rose-950/60 dark:border-rose-800/60 p-4 text-xs font-semibold text-rose-800 dark:text-rose-300 flex items-center gap-2">
                     <sl-icon name="exclamation-octagon" class="text-base shrink-0"></sl-icon>

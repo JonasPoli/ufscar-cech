@@ -338,6 +338,199 @@ class DatabaseBackupService
         ];
     }
 
+    /**
+     * Imports/restores a database dump from a .sql, .zip, or .gz file.
+     *
+     * @param string $sourceFilePath Path to the .sql, .zip, or .gz file.
+     * @param callable|null $progressCallback fn(string $status, string $message, int $percent)
+     * @return array Metadata about the restore.
+     */
+    public function importDatabase(
+        string $sourceFilePath,
+        ?callable $progressCallback = null
+    ): array {
+        $startTime = microtime(true);
+
+        if (!file_exists($sourceFilePath) || !is_readable($sourceFilePath)) {
+            throw new \InvalidArgumentException("Arquivo de backup não encontrado ou ilegível: {$sourceFilePath}");
+        }
+
+        $extension = strtolower(pathinfo($sourceFilePath, PATHINFO_EXTENSION));
+        $tempExtractPath = null;
+        $sqlPath = $sourceFilePath;
+
+        if ($progressCallback) {
+            $progressCallback('preparing', 'Processando arquivo de backup...', 5);
+        }
+
+        // Handle ZIP files
+        if ($extension === 'zip') {
+            $zip = new \ZipArchive();
+            if ($zip->open($sourceFilePath) !== true) {
+                throw new \RuntimeException("Não foi possível abrir o arquivo ZIP: {$sourceFilePath}");
+            }
+
+            $sqlEntryName = null;
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $entryName = $zip->getNameIndex($i);
+                if (str_ends_with(strtolower($entryName), '.sql')) {
+                    $sqlEntryName = $entryName;
+                    break;
+                }
+            }
+
+            if (!$sqlEntryName) {
+                $zip->close();
+                throw new \RuntimeException("Nenhum arquivo .sql encontrado dentro do pacote ZIP.");
+            }
+
+            $tempExtractPath = $this->backupDir . '/tmp_import_' . uniqid('', true) . '.sql';
+            $extractedContent = $zip->getFromName($sqlEntryName);
+            $zip->close();
+
+            if ($extractedContent === false || file_put_contents($tempExtractPath, $extractedContent) === false) {
+                throw new \RuntimeException("Falha ao extrair o arquivo .sql temporário do ZIP.");
+            }
+
+            $sqlPath = $tempExtractPath;
+        } elseif ($extension === 'gz') {
+            $tempExtractPath = $this->backupDir . '/tmp_import_' . uniqid('', true) . '.sql';
+            $gz = gzopen($sourceFilePath, 'rb');
+            if (!$gz) {
+                throw new \RuntimeException("Não foi possível abrir o arquivo .gz.");
+            }
+            $out = fopen($tempExtractPath, 'wb');
+            while (!gzeof($gz)) {
+                fwrite($out, gzread($gz, 524288)); // 512KB chunks
+            }
+            gzclose($gz);
+            fclose($out);
+
+            $sqlPath = $tempExtractPath;
+        }
+
+        try {
+            if ($progressCallback) {
+                $progressCallback('importing', 'Executando script SQL no banco de dados...', 20);
+            }
+
+            $params = $this->connection->getParams();
+            $dbName = $this->connection->getDatabase();
+            $host = $params['host'] ?? '127.0.0.1';
+            $port = (int)($params['port'] ?? 3306);
+            $user = $params['user'] ?? 'root';
+            $password = $params['password'] ?? '';
+
+            // Try fast native mysql client if available
+            $nativeExecuted = false;
+            if (function_exists('proc_open') && !in_array('proc_open', explode(',', (string)ini_get('disable_functions')))) {
+                $mysqlBin = 'mysql';
+                $descriptors = [
+                    0 => ['file', $sqlPath, 'r'],
+                    1 => ['pipe', 'w'],
+                    2 => ['pipe', 'w']
+                ];
+
+                $cmd = sprintf(
+                    '%s -h %s -P %d -u %s %s %s',
+                    escapeshellcmd($mysqlBin),
+                    escapeshellarg($host),
+                    $port,
+                    escapeshellarg($user),
+                    $password !== '' ? '-p' . escapeshellarg($password) : '',
+                    escapeshellarg($dbName)
+                );
+
+                $process = @proc_open($cmd, $descriptors, $pipes, null, $_ENV);
+                if (is_resource($process)) {
+                    $stdout = stream_get_contents($pipes[1]);
+                    $stderr = stream_get_contents($pipes[2]);
+                    fclose($pipes[1]);
+                    fclose($pipes[2]);
+                    $returnCode = proc_close($process);
+
+                    if ($returnCode === 0) {
+                        $nativeExecuted = true;
+                    }
+                }
+            }
+
+            $statementsCount = 0;
+            if (!$nativeExecuted) {
+                // Fallback: Streaming PHP SQL statement execution
+                $handle = fopen($sqlPath, 'r');
+                if (!$handle) {
+                    throw new \RuntimeException("Não foi possível ler o arquivo SQL: {$sqlPath}");
+                }
+
+                $this->connection->executeStatement("SET FOREIGN_KEY_CHECKS = 0;");
+                $this->connection->executeStatement("SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';");
+                $this->connection->executeStatement("SET NAMES utf8mb4;");
+
+                $currentQuery = '';
+                $totalBytes = filesize($sqlPath) ?: 1;
+                $bytesRead = 0;
+
+                while (($line = fgets($handle)) !== false) {
+                    $bytesRead += strlen($line);
+                    $trimmed = trim($line);
+
+                    if ($trimmed === '' || str_starts_with($trimmed, '--') || str_starts_with($trimmed, '#')) {
+                        continue;
+                    }
+
+                    if (str_starts_with($trimmed, '/*') && str_ends_with($trimmed, '*/;')) {
+                        continue;
+                    }
+
+                    $currentQuery .= $line;
+
+                    if (str_ends_with($trimmed, ';')) {
+                        try {
+                            $this->connection->executeStatement($currentQuery);
+                            $statementsCount++;
+                        } catch (\Throwable $e) {
+                            // Continue on non-fatal statement errors
+                        }
+                        $currentQuery = '';
+
+                        if ($progressCallback && $statementsCount % 50 === 0) {
+                            $pct = min(90, (int)round(20 + (($bytesRead / $totalBytes) * 70)));
+                            $progressCallback('importing', "Executados {$statementsCount} blocos SQL...", $pct);
+                        }
+                    }
+                }
+
+                if (trim($currentQuery) !== '') {
+                    try {
+                        $this->connection->executeStatement($currentQuery);
+                        $statementsCount++;
+                    } catch (\Throwable $e) {}
+                }
+
+                fclose($handle);
+                $this->connection->executeStatement("SET FOREIGN_KEY_CHECKS = 1;");
+            }
+
+            if ($progressCallback) {
+                $progressCallback('completed', 'Importação concluída com sucesso!', 100);
+            }
+
+            $duration = round(microtime(true) - $startTime, 2);
+
+            return [
+                'success' => true,
+                'durationSec' => $duration,
+                'nativeExecuted' => $nativeExecuted,
+                'statementsCount' => $statementsCount,
+            ];
+        } finally {
+            if ($tempExtractPath && file_exists($tempExtractPath)) {
+                @unlink($tempExtractPath);
+            }
+        }
+    }
+
     private function formatBytes(int $bytes, int $precision = 2): string
     {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -349,3 +542,4 @@ class DatabaseBackupService
         return round($bytes, $precision) . ' ' . $units[$pow];
     }
 }
+

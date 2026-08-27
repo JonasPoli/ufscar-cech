@@ -177,6 +177,13 @@
                                                 <sl-icon name="download"></sl-icon> Baixar
                                             </a>
 
+                                            <form action="{{ path('app_admin_database_backup_restore', {filename: b.filename}) }}" method="POST" onsubmit="return confirm('⚠️ ATENÇÃO: Restaurar o arquivo {{ b.filename }} substituirá todos os dados do banco atual.\n\nSua sessão será encerrada imediatamente após a importação e você deverá logar com o usuário do banco restaurado.\n\nDeseja realmente continuar?');" class="inline">
+                                                <input type="hidden" name="_token" value="{{ csrf_token('restore_backup_' ~ b.filename) }}">
+                                                <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 dark:text-amber-300 transition cursor-pointer" title="Restaurar este backup no banco">
+                                                    <sl-icon name="arrow-clockwise"></sl-icon> Restaurar
+                                                </button>
+                                            </form>
+
                                             <form action="{{ path('app_admin_database_backup_delete', {filename: b.filename}) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir o arquivo {{ b.filename }}?');" class="inline">
                                                 <input type="hidden" name="_token" value="{{ csrf_token('delete_backup_' ~ b.filename) }}">
                                                 <button type="submit" class="inline-flex items-center p-1.5 rounded-lg text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer" title="Excluir Backup">
@@ -197,6 +204,62 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Import & Restore Card -->
+    <div class="rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/60 dark:border-white/10 pb-6">
+            <div class="space-y-1">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <sl-icon name="cloud-arrow-up" class="text-amber-500 text-xl"></sl-icon>
+                    Importar & Restaurar Base de Dados
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                    Envie um arquivo de backup (<code class="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">.sql</code>, <code class="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">.zip</code> ou <code class="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">.gz</code>) para restaurar completamente o banco de dados.
+                </p>
+            </div>
+        </div>
+
+        <!-- Warning Alert -->
+        <div class="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-300 text-xs sm:text-sm space-y-2">
+            <div class="flex items-center gap-2 font-bold text-amber-800 dark:text-amber-200">
+                <sl-icon name="exclamation-triangle-fill" class="text-lg shrink-0 text-amber-500"></sl-icon>
+                <span>Aviso Importante sobre Usuários e Sessão</span>
+            </div>
+            <ul class="list-disc list-inside space-y-1 text-xs opacity-95">
+                <li>A restauração irá <strong>substituir todas as tabelas</strong> do banco atual pelas do arquivo importado.</li>
+                <li>Ao término da importação, sua sessão atual será <strong>encerrada automaticamente</strong>.</li>
+                <li>Você deverá fazer login novamente utilizando as credenciais de administrador contidas no <strong>novo banco restaurado</strong>.</li>
+            </ul>
+        </div>
+
+        <!-- Upload Form -->
+        <form id="uploadRestoreForm" action="{{ path('app_admin_database_backup_upload_restore') }}" method="POST" enctype="multipart/form-data" class="space-y-4" onsubmit="return confirmRestore(event);">
+            <input type="hidden" name="_token" value="{{ csrf_token('upload_restore_backup') }}">
+            
+            <div class="space-y-2">
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300" for="backup_file">
+                    Selecionar Arquivo de Backup (.sql, .zip, .gz)
+                </label>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <input type="file" name="backup_file" id="backup_file" accept=".sql,.zip,.gz" required class="block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-950/60 dark:file:text-indigo-300 file:cursor-pointer border border-slate-300 dark:border-slate-700 rounded-2xl p-2 bg-slate-50/50 dark:bg-slate-800/50 focus:outline-none">
+                    
+                    <button type="submit" id="btnUploadRestore" class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-amber-500/20 hover:shadow-amber-500/30 transition-all cursor-pointer shrink-0">
+                        <sl-icon name="upload" class="text-base"></sl-icon>
+                        <span id="btnUploadRestoreText">Restaurar Banco</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="restoreLoadingAlert" class="hidden p-4 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-indigo-800 dark:text-indigo-200 text-xs flex items-center gap-3">
+                <sl-spinner class="text-lg"></sl-spinner>
+                <div>
+                    <div class="font-bold">Restaurando base de dados...</div>
+                    <div class="text-[11px] opacity-80">Processando tabelas e registros. Por favor, não feche ou recarregue esta página.</div>
+                </div>
+            </div>
+        </form>
+    </div>
+
 
     <!-- Instructions & CLI Command Accordion -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -350,5 +413,44 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     });
 });
+
+function confirmRestore(event) {
+    const fileInput = document.getElementById('backup_file');
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        alert('Por favor, selecione um arquivo de backup antes de continuar.');
+        event.preventDefault();
+        return false;
+    }
+
+    const fileName = fileInput.files[0].name;
+    const msg = "⚠️ ATENÇÃO: Confirmação de Restauração de Banco de Dados\n\n" +
+                "1. Todos os dados atuais do banco serão SUBSTITUÍDOS pelo arquivo '" + fileName + "'.\n" +
+                "2. Sua sessão será ENCERRADA imediatamente após a restauração.\n" +
+                "3. Você precisará fazer login com os dados de acesso contidos no novo banco.\n\n" +
+                "Deseja realmente prosseguir com a restauração?";
+
+    if (!confirm(msg)) {
+        event.preventDefault();
+        return false;
+    }
+
+    const btn = document.getElementById('btnUploadRestore');
+    const btnText = document.getElementById('btnUploadRestoreText');
+    const loadingAlert = document.getElementById('restoreLoadingAlert');
+
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+    if (btnText) {
+        btnText.textContent = 'Restaurando...';
+    }
+    if (loadingAlert) {
+        loadingAlert.classList.remove('hidden');
+    }
+
+    return true;
+}
 </script>
+
 {% endblock %}
