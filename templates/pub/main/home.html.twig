@@ -247,7 +247,7 @@
                 <div class="flex items-center justify-between mb-2">
                     <div>
                         <h2 class="font-heading text-2xl font-bold text-slate-900 dark:text-white">Pesquisadores</h2>
-                        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Destaques do corpo docente</p>
+                        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Docentes com Maior Volume de Publicações em Estratos Qualis A1</p>
                     </div>
                 </div>
 
@@ -262,10 +262,17 @@
                                 {% endif %}
                             </div>
                             <div class="flex-1 min-w-0">
-                                <h4 class="font-heading text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                                    {{ r.fullName }}
-                                </h4>
-                                <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                <div class="flex items-center justify-between gap-2">
+                                    <h4 class="font-heading text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                                        {{ r.fullName }}
+                                    </h4>
+                                    {% if r.a1Count > 0 %}
+                                        <span class="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2 py-0.5 text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0" title="{{ r.a1Count }} artigo(s) Qualis A1 publicado(s)">
+                                            <sl-icon name="award" class="text-xs"></sl-icon> {{ r.a1Count }} A1
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
                                     {{ r.department ?: 'CECH / UFSCar' }}
                                     {% if r.admissionYear or r.leaveYear %}
                                         • {{ r.isActiveInCech ? ('Desde ' ~ r.admissionYear) : (r.admissionYear ? r.admissionYear ~ '–' ~ (r.leaveYear ?: 'Saída') : 'Histórico') }}

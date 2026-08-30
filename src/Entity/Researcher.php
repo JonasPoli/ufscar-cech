@@ -429,5 +429,8 @@ class Researcher
         return sprintf('No CECH de %d a %d', $this->admissionYear, $endYear);
     }
 
+    /** Campo virtual/dinâmico de contagem de publicações Qualis A1 */
+    public int $a1Count = 0;
+
     public function __toString(): string { return $this->fullName; }
 }

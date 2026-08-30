@@ -245,14 +245,24 @@ class ResearcherRepository extends ServiceEntityRepository
      */
     public function findFeaturedResearchers(int $limit = 8): array
     {
-        return $this->createQueryBuilder('r')
-            ->leftJoin('r.productions', 'p')
-            ->addSelect('COUNT(p.id) AS HIDDEN prodCount')
+        $rows = $this->createQueryBuilder('r')
+            ->select('r AS researcher', 'COUNT(DISTINCT p.id) AS a1Count')
+            ->leftJoin('r.productions', 'p', 'WITH', 'p.itemType = :artigoType AND p.qualis = :qualisA1')
+            ->leftJoin('r.productions', 'pAll')
+            ->setParameter('artigoType', ProductionItem::TYPE_ARTIGO)
+            ->setParameter('qualisA1', 'A1')
             ->groupBy('r.id')
-            ->orderBy('prodCount', 'DESC')
+            ->orderBy('a1Count', 'DESC')
+            ->addOrderBy('COUNT(DISTINCT pAll.id)', 'DESC')
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+
+        return array_map(function ($row) {
+            $researcher = $row['researcher'];
+            $researcher->a1Count = (int)$row['a1Count'];
+            return $researcher;
+        }, $rows);
     }
 
     /**
