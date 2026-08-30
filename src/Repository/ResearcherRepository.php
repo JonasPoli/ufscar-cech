@@ -144,6 +144,14 @@ class ResearcherRepository extends ServiceEntityRepository
      */
     public function findResearchersWithCounts(?string $department = null): array
     {
+        return $this->searchResearchersWithCounts(null, $department, 1, 10000);
+    }
+
+    /**
+     * Efficiently retrieves researchers with counts, query filtering and pagination.
+     */
+    public function searchResearchersWithCounts(?string $query = null, ?string $department = null, int $page = 1, int $limit = 20): array
+    {
         $qb = $this->createQueryBuilder('r')
             ->select('r.id', 'r.idLattes', 'r.fullName', 'r.slug', 'r.orcid', 'r.department', 'r.departmentCode', 'r.photoUrl', 'r.admissionYear', 'r.leaveYear', 'r.status')
             ->addSelect('COUNT(DISTINCT p.id) AS totalProductions')
@@ -153,11 +161,19 @@ class ResearcherRepository extends ServiceEntityRepository
             ->groupBy('r.id')
             ->orderBy('r.fullName', 'ASC');
 
+        if ($query !== null && $query !== '') {
+            $qb->andWhere('r.fullName LIKE :query OR r.citationNames LIKE :query OR r.idLattes LIKE :query OR r.orcid LIKE :query')
+               ->setParameter('query', '%' . $query . '%');
+        }
+
         if ($department !== null && $department !== '' && $department !== 'all') {
             $depts = self::getDepartmentFilterValues($department);
             $qb->andWhere('r.department IN (:depts) OR r.departmentCode IN (:depts)')
                ->setParameter('depts', $depts);
         }
+
+        $qb->setFirstResult(($page - 1) * $limit)
+           ->setMaxResults($limit);
 
         return $qb->getQuery()->getArrayResult();
     }

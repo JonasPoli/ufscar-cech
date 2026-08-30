@@ -31,9 +31,13 @@ class AdminCurriculumController extends AbstractController
     public function index(Request $request): Response
     {
         $dept = $request->query->get('dept');
-        $search = $request->query->get('search');
+        $search = trim((string) $request->query->get('q', ''));
+        $page = max(1, $request->query->getInt('page', 1));
+        $limit = 20;
 
-        $researchers = $this->researcherRepo->findResearchersWithCounts($dept);
+        $researchers = $this->researcherRepo->searchResearchersWithCounts($search !== '' ? $search : null, $dept, $page, $limit);
+        $totalResearchers = $this->researcherRepo->countSearchResearchers($search !== '' ? $search : null, $dept);
+        $totalPages = (int) ceil($totalResearchers / $limit);
         $departments = $this->researcherRepo->findAllDistinctDepartments();
 
         return $this->render('admin/curriculum/index.html.twig', [
@@ -41,6 +45,10 @@ class AdminCurriculumController extends AbstractController
             'departments' => $departments,
             'selectedDept' => $dept,
             'search' => $search,
+            'currentPage' => $page,
+            'totalPages' => max(1, $totalPages),
+            'totalResearchers' => $totalResearchers,
+            'limit' => $limit,
         ]);
     }
 
