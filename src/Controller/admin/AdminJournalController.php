@@ -444,7 +444,7 @@ class AdminJournalController extends AbstractController
         }
 
         try {
-            set_time_limit(600);
+            @\set_time_limit(600);
             $ext = strtolower($file->getClientOriginalExtension());
             $entries = $this->fileService->parseFile($file->getRealPath(), $ext);
 
