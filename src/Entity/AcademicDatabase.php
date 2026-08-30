@@ -25,6 +25,9 @@ class AcademicDatabase
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $url = null;
 
+    #[ORM\Column(name: 'list_download_url', length: 500, nullable: true)]
+    private ?string $listDownloadUrl = null;
+
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $logo = null;
 
@@ -84,6 +87,17 @@ class AcademicDatabase
     public function setUrl(?string $url): self
     {
         $this->url = $url;
+        return $this;
+    }
+
+    public function getListDownloadUrl(): ?string
+    {
+        return $this->listDownloadUrl;
+    }
+
+    public function setListDownloadUrl(?string $listDownloadUrl): self
+    {
+        $this->listDownloadUrl = $listDownloadUrl;
         return $this;
     }
 

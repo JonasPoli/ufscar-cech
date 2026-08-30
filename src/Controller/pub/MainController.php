@@ -75,8 +75,11 @@ class MainController extends AbstractController
         $fig10Heatmap = $this->statisticsService->getFig10ProductionHeatmapMatrix(2010, (int)date('Y'));
         $fig11QualisTimeline = $this->statisticsService->getFig11QualisVsNonQualisTimeline(2010, (int)date('Y'));
         $fig12QualisStrata = $this->statisticsService->getFig12QualisStratumTimeline(2010, (int)date('Y'));
+        $figQualisResearchers = $this->statisticsService->getFigQualisResearchersRanking();
         $figAcademicDatabases = $this->statisticsService->getFigAcademicDatabases(2010, (int)date('Y'));
         $fig13Coauthors = $this->statisticsService->getFig13CoauthorshipNetwork(8);
+        $fig13CoauthorsFull = $this->statisticsService->getFig13CoauthorshipNetwork(0);
+        $fig13MatrixPayload = $this->statisticsService->getCoauthorshipMatrixPayload();
         $fig14National = $this->statisticsService->getFig14NationalPartners(10);
         $fig15International = $this->statisticsService->getFig15InternationalPartners(10);
         $fig16Sankey = $this->statisticsService->getFig16AcademicTrajectoriesSankey();
@@ -96,8 +99,11 @@ class MainController extends AbstractController
             'fig10Heatmap' => $fig10Heatmap,
             'fig11QualisTimeline' => $fig11QualisTimeline,
             'fig12QualisStrata' => $fig12QualisStrata,
+            'figQualisResearchers' => $figQualisResearchers,
             'figAcademicDatabases' => $figAcademicDatabases,
             'fig13Coauthors' => $fig13Coauthors,
+            'fig13CoauthorsFull' => $fig13CoauthorsFull,
+            'fig13MatrixPayload' => $fig13MatrixPayload,
             'fig14National' => $fig14National,
             'fig15International' => $fig15International,
             'fig16Sankey' => $fig16Sankey,

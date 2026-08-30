@@ -116,16 +116,15 @@ class JournalDatabaseImporterService
         $rows = [];
         foreach ($filesToProcess as $fileItem) {
             $ext = strtolower(pathinfo($fileItem, PATHINFO_EXTENSION));
-            if ($ext === 'csv') {
-                $subRows = $this->extractFromCsv($fileItem);
-            } elseif ($ext === 'xlsx' || $ext === 'xls') {
+            if ($ext === 'xlsx' || $ext === 'xls') {
                 $subRows = $this->extractFromExcel($fileItem);
             } elseif ($ext === 'txt') {
                 $subRows = $this->extractFromText($fileItem);
             } elseif ($ext === 'json') {
                 $subRows = $this->extractFromJson($fileItem);
             } else {
-                continue;
+                // Default fallback to CSV parser (for .csv or temp files without extension)
+                $subRows = $this->extractFromCsv($fileItem);
             }
             foreach ($subRows as $sr) {
                 $rows[] = $sr;
@@ -229,8 +228,15 @@ class JournalDatabaseImporterService
                 }
             }
 
-            if (!$journalId && $normTitle !== '' && isset($titleToId[$normTitle])) {
-                $journalId = $titleToId[$normTitle];
+            if (!$journalId && $normTitle !== '') {
+                if (isset($titleToId[$normTitle])) {
+                    $journalId = $titleToId[$normTitle];
+                } else {
+                    $cleanTitleNorm = StringNormalizer::normalizeString(preg_replace('/\([^)]+\)/', '', $title));
+                    if ($cleanTitleNorm !== '' && isset($titleToId[$cleanTitleNorm])) {
+                        $journalId = $titleToId[$cleanTitleNorm];
+                    }
+                }
             }
 
             if ($journalId) {

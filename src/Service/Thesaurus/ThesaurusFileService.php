@@ -19,6 +19,26 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ThesaurusFileService
 {
     /**
+     * Normaliza a codificação do conteúdo para UTF-8 sem BOM.
+     */
+    public function normalizeEncoding(string $content): string
+    {
+        if (str_starts_with($content, "\xFF\xFE")) {
+            $content = mb_convert_encoding($content, 'UTF-8', 'UTF-16LE');
+        } elseif (str_starts_with($content, "\xFE\xFF")) {
+            $content = mb_convert_encoding($content, 'UTF-8', 'UTF-16BE');
+        } elseif (mb_detect_encoding($content, 'UTF-16LE', true) && str_contains($content, "\x00")) {
+            $content = mb_convert_encoding($content, 'UTF-8', 'UTF-16LE');
+        } elseif (mb_detect_encoding($content, 'UTF-16BE', true) && str_contains($content, "\x00")) {
+            $content = mb_convert_encoding($content, 'UTF-8', 'UTF-16BE');
+        } elseif (!mb_detect_encoding($content, 'UTF-8', true)) {
+            $content = mb_convert_encoding($content, 'UTF-8', 'ISO-8859-1');
+        }
+
+        return preg_replace('/^\x{FEFF}/u', '', $content);
+    }
+
+    /**
      * Realiza o parsing de um arquivo de tesauro identificando o formato pela extensão ou parâmetro.
      *
      * @param string $filePath Caminho absoluto ou relativo do arquivo no disco
@@ -31,7 +51,8 @@ class ThesaurusFileService
             $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
         }
 
-        $content = file_get_contents($filePath);
+        $raw = file_get_contents($filePath);
+        $content = $this->normalizeEncoding($raw);
 
         return match ($extension) {
             'csv' => $this->parseCsvContent($content),
@@ -49,33 +70,38 @@ class ThesaurusFileService
      */
     public function parseTheContent(string $content): array
     {
-        if (!mb_detect_encoding($content, 'UTF-8', true)) {
-            $content = mb_convert_encoding($content, 'UTF-8', 'ISO-8859-1');
-        }
+        $content = $this->normalizeEncoding($content);
 
-        $lines = explode("\n", $content);
+        $lines = explode("\n", str_replace("\r", "", $content));
         $currentHeader = null;
         $currentVars = [];
         $entries = [];
+        $hasAsteriskHeaders = str_contains($content, "\n**") || str_starts_with($content, "**");
 
         foreach ($lines as $line) {
             $line = trim($line);
             if ($line === '') continue;
 
-            if (str_starts_with($line, '**') || str_starts_with($line, ';') === false && !str_starts_with($line, '100')) {
-                if (str_starts_with($line, '**')) {
-                    if ($currentHeader !== null) {
-                        $entries[] = [
-                            'header' => $currentHeader,
-                            'preferred_name' => $currentHeader,
-                            'variations' => array_values(array_unique($currentVars)),
-                            'variants' => array_values(array_unique($currentVars)),
-                        ];
-                    }
-                    $currentHeader = trim(ltrim($line, '*#'));
-                    $currentVars = [];
-                } elseif (str_starts_with($line, ';')) {
-                    $v = trim(ltrim($line, ';'));
+            if (str_starts_with($line, '**')) {
+                if ($currentHeader !== null) {
+                    $entries[] = [
+                        'header' => $currentHeader,
+                        'preferred_name' => $currentHeader,
+                        'variations' => array_values(array_unique($currentVars)),
+                        'variants' => array_values(array_unique($currentVars)),
+                    ];
+                }
+                $currentHeader = trim(ltrim($line, '*#'));
+                $currentVars = [];
+            } elseif (str_starts_with($line, ';')) {
+                $v = trim(ltrim($line, ';'));
+                if ($v !== '') $currentVars[] = $v;
+            } elseif (preg_match('/\\^(.*?)\\$?$/', $line, $m)) {
+                $v = trim($m[1]);
+                if ($v !== '') $currentVars[] = $v;
+            } else {
+                if ($hasAsteriskHeaders && $currentHeader !== null) {
+                    $v = trim(rtrim($line, '$'));
                     if ($v !== '') $currentVars[] = $v;
                 } else {
                     if ($currentHeader !== null) {
@@ -88,17 +114,6 @@ class ThesaurusFileService
                     }
                     $currentHeader = $line;
                     $currentVars = [];
-                }
-            } else {
-                if (preg_match('/\\^(.*?)\\$?$/', $line, $m)) {
-                    $v = trim($m[1]);
-                    if ($v !== '') $currentVars[] = $v;
-                } elseif (str_starts_with($line, ';')) {
-                    $v = trim(ltrim($line, ';'));
-                    if ($v !== '') $currentVars[] = $v;
-                } else {
-                    $v = trim(rtrim($line, '$'));
-                    if ($v !== '') $currentVars[] = $v;
                 }
             }
         }

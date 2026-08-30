@@ -143,8 +143,11 @@ class AdminAuthorController extends AbstractController
         /** @var UploadedFile|null $file */
         $file = $request->files->get('thesaurus_file');
         if ($file && $file->isValid()) {
+            @set_time_limit(600);
+            @ini_set('memory_limit', '512M');
             $records = $this->fileService->parseFile($file->getRealPath(), $file->getClientOriginalExtension());
             $count = 0;
+            $batchSize = 200;
             foreach ($records as $r) {
                 $pref = trim((string)($r['preferred_name'] ?? ''));
                 if ($pref === '') continue;
@@ -157,8 +160,16 @@ class AdminAuthorController extends AbstractController
                     $this->em->persist($author);
                 }
 
+                $existingNorms = [];
+                foreach ($author->getVariations() as $existingVar) {
+                    $existingNorms[$existingVar->getNormalizedName()] = true;
+                }
+
                 foreach ($r['variants'] ?? [] as $varName) {
                     $norm = StringNormalizer::normalizeString($varName, true);
+                    if ($norm === '' || isset($existingNorms[$norm])) {
+                        continue;
+                    }
                     $varObj = new AuthorNameVariant();
                     $varObj->setAuthorIdentity($author);
                     $varObj->setOriginalName($varName);
@@ -166,8 +177,12 @@ class AdminAuthorController extends AbstractController
                     $varObj->setNormalizedName($norm);
                     $varObj->setSource('import');
                     $this->em->persist($varObj);
+                    $existingNorms[$norm] = true;
                 }
                 $count++;
+                if ($count % $batchSize === 0) {
+                    $this->em->flush();
+                }
             }
             $this->em->flush();
             $this->addFlash('success', "{$count} autores importados com sucesso.");

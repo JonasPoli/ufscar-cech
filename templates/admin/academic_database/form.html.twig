@@ -51,11 +51,20 @@
                 </div>
 
                 <!-- URL Oficial -->
-                <div class="md:col-span-2">
+                <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
                         URL do Portal Oficial
                     </label>
                     <input type="url" name="url" value="{{ database.url }}" placeholder="https://www.scopus.com" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-hidden">
+                </div>
+
+                <!-- URL para Download da Lista de Periódicos -->
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
+                        URL para Download da Lista de Periódicos <span class="text-sky-600 dark:text-sky-400 font-normal">(Direct Download / Export)</span>
+                    </label>
+                    <input type="url" name="list_download_url" value="{{ database.listDownloadUrl }}" placeholder="Ex: https://data.scielo.org/... ou link direto do CSV/XLSX" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-hidden">
+                    <span class="text-[11px] text-slate-400 mt-1 block">Link direto de onde é baixada a lista oficial de periódicos indexados para importação.</span>
                 </div>
 
                 <!-- Upload de Logo -->

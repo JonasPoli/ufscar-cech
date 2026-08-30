@@ -55,6 +55,7 @@ class AdminAcademicDatabaseController extends AbstractController
             $name = trim((string)$request->request->get('name'));
             $acronym = strtolower(trim((string)$request->request->get('acronym')));
             $url = trim((string)$request->request->get('url')) ?: null;
+            $listDownloadUrl = trim((string)$request->request->get('list_download_url')) ?: null;
             $description = trim((string)$request->request->get('description')) ?: null;
             $fileFormatsRaw = trim((string)$request->request->get('file_formats', ''));
             $signatureColsRaw = trim((string)$request->request->get('signature_columns', ''));
@@ -67,6 +68,7 @@ class AdminAcademicDatabaseController extends AbstractController
                     $database->setName($name);
                     $database->setAcronym($acronym);
                     $database->setUrl($url);
+                    $database->setListDownloadUrl($listDownloadUrl);
                     $database->setDescription($description);
 
                     if ($fileFormatsRaw !== '') {
@@ -111,6 +113,7 @@ class AdminAcademicDatabaseController extends AbstractController
             $name = trim((string)$request->request->get('name'));
             $acronym = strtolower(trim((string)$request->request->get('acronym')));
             $url = trim((string)$request->request->get('url')) ?: null;
+            $listDownloadUrl = trim((string)$request->request->get('list_download_url')) ?: null;
             $description = trim((string)$request->request->get('description')) ?: null;
             $fileFormatsRaw = trim((string)$request->request->get('file_formats', ''));
             $signatureColsRaw = trim((string)$request->request->get('signature_columns', ''));
@@ -123,6 +126,7 @@ class AdminAcademicDatabaseController extends AbstractController
                     $database->setName($name);
                     $database->setAcronym($acronym);
                     $database->setUrl($url);
+                    $database->setListDownloadUrl($listDownloadUrl);
                     $database->setDescription($description);
 
                     if ($fileFormatsRaw !== '') {

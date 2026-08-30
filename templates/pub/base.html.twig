@@ -266,6 +266,17 @@
                     <a href="{{ path('app_admin_dashboard') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Acesso Restrito</a>
                 </div>
             </div>
+
+            <div class="mt-8 pt-6 border-t border-slate-200/60 dark:border-white/5 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                <span>Desenvolvido por</span>
+                <a href="https://www.nit.ufscar.br/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity" title="NIT Materiais - Núcleo de Informação Tecnológica em Materiais">
+                    <picture class="inline-flex items-center">
+                        <source srcset="{{ asset('images/logo-nit.webp') }}" type="image/webp">
+                        <img src="{{ asset('images/logo-nit.png') }}" alt="NIT Materiais" width="57" height="20" loading="lazy" decoding="async" class="h-5 w-auto object-contain">
+                    </picture>
+                    <span class="font-medium text-slate-600 dark:text-slate-300">NIT Materiais</span>
+                </a>
+            </div>
         </footer>
     </body>
 </html>

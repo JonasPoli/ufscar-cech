@@ -121,9 +121,11 @@ class PhotoApiController extends AbstractController
                 }
             }
 
+            $report = $htmlParser->getLastReport();
+
             $res = new JsonResponse([
                 'success' => true,
-                'message' => "Currículo de {$researcher->getFullName()} importado e atualizado com sucesso!",
+                'message' => $report['summaryMessage'] ?? "Currículo de {$researcher->getFullName()} importado e atualizado com sucesso!",
                 'researcher' => [
                     'id' => $researcher->getId(),
                     'fullName' => $researcher->getFullName(),
@@ -132,7 +134,8 @@ class PhotoApiController extends AbstractController
                     'photoUrl' => $researcher->getPhotoUrl(),
                     'productionsCount' => count($researcher->getProductions()),
                     'orientationsCount' => count($researcher->getOrientations()),
-                ]
+                ],
+                'report' => $report,
             ]);
             $res->headers->set('Access-Control-Allow-Origin', '*');
             return $res;

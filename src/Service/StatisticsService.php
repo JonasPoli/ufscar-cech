@@ -847,6 +847,131 @@ class StatisticsService
     }
 
     /**
+     * Relatório de Ranking Dinâmico de Pesquisadores por Estratos Qualis A1 a A4 e Indexadores (Bases de Dados).
+     *
+     * Retorna pesquisadores com a lista detalhada de seus artigos (qualis + bases associadas) para recalcular
+     * dinamicamente combinações arbitrárias de Qualis (OR) e Indexadores (OR / AND).
+     *
+     * @return array{
+     *     databases: list<array{id: int, name: string, acronym: string}>,
+     *     researchers: list<array{id: int, name: string, department: string, departmentCode: string, slug: string, lattesId: string, photoUrl: ?string, articles: list<array{id: int, qualis: string, dbIds: list<int>}>}>
+     * }
+     */
+    public function getFigQualisResearchersRanking(): array
+    {
+        $conn = $this->em->getConnection();
+
+        // 1. Obter apenas as bases de dados ativas que possuem artigos A1-A4 vinculados (total > 0)
+        $dbRows = $conn->fetchAllAssociative("
+            SELECT DISTINCT ad.id, ad.name, ad.acronym
+            FROM academic_database ad
+            JOIN qualis_journal_academic_database qb ON qb.academic_database_id = ad.id
+            JOIN production_items pi ON pi.qualis_journal_id = qb.qualis_journal_id
+            WHERE pi.item_type = 'ARTIGO'
+              AND pi.qualis IN ('A1', 'A2', 'A3', 'A4')
+            ORDER BY ad.name ASC
+        ");
+        $databases = [];
+        foreach ($dbRows as $db) {
+            $databases[] = [
+                'id' => (int)$db['id'],
+                'name' => (string)$db['name'],
+                'acronym' => (string)$db['acronym'],
+            ];
+        }
+
+        // 2. Consulta de pesquisadores que possuem ao menos 1 artigo A1..A4
+        $sqlResearchers = "
+            SELECT DISTINCT
+                r.id,
+                r.full_name as name,
+                r.department,
+                r.department_code as departmentCode,
+                r.slug,
+                r.id_lattes as lattesId,
+                r.photo_url as photoUrl
+            FROM researchers r
+            JOIN production_items pi ON pi.researcher_id = r.id
+            WHERE pi.item_type = 'ARTIGO'
+              AND pi.qualis IN ('A1', 'A2', 'A3', 'A4')
+            ORDER BY r.full_name ASC
+        ";
+
+        $researcherRows = $conn->fetchAllAssociative($sqlResearchers);
+
+        // 3. Consulta de artigos A1..A4 com agregador GROUP_CONCAT de bases de dados acadêmicas
+        $sqlArticles = "
+            SELECT 
+                pi.researcher_id as researcherId,
+                pi.id as articleId,
+                pi.qualis,
+                GROUP_CONCAT(DISTINCT qb.academic_database_id) as dbIdsStr
+            FROM production_items pi
+            LEFT JOIN qualis_journal_academic_database qb ON qb.qualis_journal_id = pi.qualis_journal_id
+            WHERE pi.item_type = 'ARTIGO'
+              AND pi.qualis IN ('A1', 'A2', 'A3', 'A4')
+            GROUP BY pi.researcher_id, pi.id, pi.qualis
+        ";
+
+        $articleRows = $conn->fetchAllAssociative($sqlArticles);
+
+        $articlesByResearcher = [];
+        foreach ($articleRows as $art) {
+            $rId = (int)$art['researcherId'];
+            if (!isset($articlesByResearcher[$rId])) {
+                $articlesByResearcher[$rId] = [];
+            }
+
+            $dbIds = [];
+            if (!empty($art['dbIdsStr'])) {
+                $dbIds = array_map('intval', explode(',', $art['dbIdsStr']));
+            }
+
+            $articlesByResearcher[$rId][] = [
+                'id' => (int)$art['articleId'],
+                'qualis' => (string)$art['qualis'],
+                'dbIds' => $dbIds
+            ];
+        }
+
+        $researchers = [];
+        foreach ($researcherRows as $r) {
+            $rId = (int)$r['id'];
+            $articles = $articlesByResearcher[$rId] ?? [];
+
+            // Contagens totais base
+            $a1 = 0; $a2 = 0; $a3 = 0; $a4 = 0;
+            foreach ($articles as $a) {
+                if ($a['qualis'] === 'A1') $a1++;
+                elseif ($a['qualis'] === 'A2') $a2++;
+                elseif ($a['qualis'] === 'A3') $a3++;
+                elseif ($a['qualis'] === 'A4') $a4++;
+            }
+
+            $researchers[] = [
+                'id' => $rId,
+                'name' => (string)$r['name'],
+                'department' => (string)($r['department'] ?? 'Não informado'),
+                'departmentCode' => (string)($r['departmentCode'] ?? ''),
+                'slug' => (string)($r['slug'] ?: $r['lattesId']),
+                'lattesId' => (string)($r['lattesId'] ?? ''),
+                'photoUrl' => $r['photoUrl'] ? (string)$r['photoUrl'] : null,
+                'A1' => $a1,
+                'A2' => $a2,
+                'A3' => $a3,
+                'A4' => $a4,
+                'totalA' => count($articles),
+                'articles' => $articles
+            ];
+        }
+
+        return [
+            'databases' => $databases,
+            'researchers' => $researchers,
+        ];
+    }
+
+    /**
      * Fig. 15 & 16: Produção Científica Indexada por Base de Dados Internacional (Scopus, Web of Science, PubMed, SciELO, etc.).
      *
      * Cruza os artigos dos docentes com a revista em que foram publicados e as bases de indexação científicas vinculadas.
@@ -986,16 +1111,26 @@ class StatisticsService
 
     /**
      * Fig. 13: Rede de Coautoria e Colaboração Docente (Obras Únicas Conjuntas Deduplicadas via DOI/Título).
+     *
+     * Cruza todos os trabalhos em parceria (de todos os tipos de produção) entre pesquisadores do CECH
+     * utilizando os vínculos resolvidos no Tesauro (matched_researcher_id).
+     *
+     * @param int $limit Se 0, retorna a matriz completa para exportação VOSviewer / relatórios ilimitados.
+     * @return array<int, array{author1: string, slug1: string, dept1: ?string, photo1: ?string, author2: string, slug2: string, dept2: ?string, photo2: ?string, collaborations: int}>
      */
-    public function getFig13CoauthorshipNetwork(int $limit = 10): array
+    public function getFig13CoauthorshipNetwork(int $limit = 0): array
     {
         $conn = $this->em->getConnection();
         $sql = "
             SELECT 
                 r1.full_name as author1,
-                r1.slug as slug1,
+                COALESCE(NULLIF(r1.slug, ''), CAST(r1.id AS CHAR)) as slug1,
+                r1.department_code as dept1,
+                r1.photo_url as photo1,
                 r2.full_name as author2,
-                r2.slug as slug2,
+                COALESCE(NULLIF(r2.slug, ''), CAST(r2.id AS CHAR)) as slug2,
+                r2.department_code as dept2,
+                r2.photo_url as photo2,
                 COUNT(DISTINCT 
                     CASE 
                         WHEN (pi.doi IS NOT NULL AND TRIM(pi.doi) != '') 
@@ -1010,12 +1145,80 @@ class StatisticsService
             JOIN production_items pi ON pi.id = pa1.production_item_id
             JOIN researchers r1 ON r1.id = pa1.matched_researcher_id
             JOIN researchers r2 ON r2.id = pa2.matched_researcher_id
-            GROUP BY r1.id, r1.full_name, r1.slug, r2.id, r2.full_name, r2.slug
+            GROUP BY r1.id, r1.full_name, r1.slug, r1.department_code, r1.photo_url,
+                     r2.id, r2.full_name, r2.slug, r2.department_code, r2.photo_url
             ORDER BY collaborations DESC
-            LIMIT :lim
         ";
 
-        return $conn->fetchAllAssociative($sql, ['lim' => $limit], ['lim' => \PDO::PARAM_INT]);
+        if ($limit > 0) {
+            $sql .= " LIMIT :lim";
+            return $conn->fetchAllAssociative($sql, ['lim' => $limit], ['lim' => \PDO::PARAM_INT]);
+        }
+
+        return $conn->fetchAllAssociative($sql);
+    }
+
+    /**
+     * Retorna a Matriz N x N completa de coautoria entre todos os docentes do CECH envolvidos em parcerias.
+     *
+     * @return array{nodes: array<int, array{id: int, name: string, dept: ?string, slug: string}>, matrix: array<int, array<int, int>>}
+     */
+    public function getCoauthorshipMatrixPayload(): array
+    {
+        $conn = $this->em->getConnection();
+
+        // 1. Obter todos os docentes que possuem pelo menos 1 parceria interna
+        $nodesSql = "
+            SELECT DISTINCT 
+                r.id, 
+                r.full_name as name, 
+                r.department_code as dept,
+                COALESCE(NULLIF(r.slug, ''), CAST(r.id AS CHAR)) as slug
+            FROM researchers r
+            JOIN production_authors pa ON pa.matched_researcher_id = r.id
+            JOIN production_authors pa2 
+                ON pa2.production_item_id = pa.production_item_id 
+               AND pa2.matched_researcher_id != pa.matched_researcher_id
+            ORDER BY r.full_name ASC
+        ";
+        $nodes = $conn->fetchAllAssociative($nodesSql);
+
+        // 2. Obter todas as parcerias cruzadas por ID
+        $linksSql = "
+            SELECT 
+                pa1.matched_researcher_id as id1,
+                pa2.matched_researcher_id as id2,
+                COUNT(DISTINCT 
+                    CASE 
+                        WHEN (pi.doi IS NOT NULL AND TRIM(pi.doi) != '') 
+                        THEN CONCAT('DOI:', LOWER(TRIM(pi.doi)))
+                        ELSE CONCAT('TITLE:', pi.item_type, ':', LOWER(TRIM(pi.title)))
+                    END
+                ) as cnt
+            FROM production_authors pa1
+            JOIN production_authors pa2 
+                ON pa1.production_item_id = pa2.production_item_id 
+               AND pa1.matched_researcher_id < pa2.matched_researcher_id
+            JOIN production_items pi ON pi.id = pa1.production_item_id
+            GROUP BY pa1.matched_researcher_id, pa2.matched_researcher_id
+        ";
+        $links = $conn->fetchAllAssociative($linksSql);
+
+        // 3. Montar mapa simétrico de parcerias [id1][id2] => cnt
+        $matrix = [];
+        foreach ($links as $link) {
+            $id1 = (int)$link['id1'];
+            $id2 = (int)$link['id2'];
+            $cnt = (int)$link['cnt'];
+
+            $matrix[$id1][$id2] = $cnt;
+            $matrix[$id2][$id1] = $cnt;
+        }
+
+        return [
+            'nodes' => $nodes,
+            'matrix' => $matrix,
+        ];
     }
 
     /**

@@ -447,13 +447,13 @@
 
                 <!-- Loop bases ranking -->
                 {% for item in academicDatabases.ranking %}
-                    <div class="rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 bg-white/70 dark:bg-slate-900/60 space-y-1.5 hover:border-indigo-300 dark:hover:border-indigo-700 transition shadow-2xs">
+                    <button type="button" onclick="filterByDatabase('{{ item.acronym|lower|e('js') }}')" class="db-card-btn rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 bg-white/70 dark:bg-slate-900/60 text-left space-y-1.5 hover:border-indigo-500 dark:hover:border-indigo-400 hover:shadow-md transition-all group shadow-2xs" data-db-acronym="{{ item.acronym|lower|e('html_attr') }}" title="Filtrar produções indexadas em {{ item.name }}">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-1.5 min-w-0">
                                 {% if item.logo %}
-                                    <img src="{{ item.logo }}" alt="{{ item.name }}" class="h-3.5 w-auto object-contain shrink-0" onerror="this.style.display='none'" />
+                                    <img src="{{ item.logo }}" alt="{{ item.name }}" class="h-3.5 w-auto object-contain shrink-0 group-hover:scale-110 transition-transform" onerror="this.style.display='none'" />
                                 {% endif %}
-                                <span class="text-[11px] font-bold text-slate-800 dark:text-slate-200 truncate">{{ item.name }}</span>
+                                <span class="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate">{{ item.name }}</span>
                             </div>
                             <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">#{{ loop.index }}</span>
                         </div>
@@ -463,7 +463,7 @@
                         <div class="text-[11px] text-slate-500 dark:text-slate-400">
                             {{ item.indexedPercentage }}% das produções indexadas
                         </div>
-                    </div>
+                    </button>
                 {% endfor %}
             </div>
 
@@ -795,6 +795,33 @@
                             </button>
                         {% endif %}
                     </div>
+
+                    {% if academicDatabases.ranking|length > 0 %}
+                        <!-- Bases de Indexação Científica / Academic Databases Filter Subsection -->
+                        <div class="mt-3.5 pt-3 border-t border-slate-200/80 dark:border-slate-800/80 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                    <sl-icon name="database-check" class="text-indigo-500"></sl-icon> Bases de Indexação Científica ({{ academicDatabases.ranking|length }}):
+                                </span>
+                                <span class="text-[10px] text-slate-400">Clique no ícone/logo da base para filtrar os artigos indexados</span>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 max-h-48 overflow-y-auto pr-1">
+                                {% for db in academicDatabases.ranking %}
+                                    <button type="button" onclick="filterByDatabase('{{ db.acronym|lower|e('js') }}')" class="db-filter-btn rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40 transition-all flex items-center gap-2 shadow-2xs group" data-db-acronym="{{ db.acronym|lower|e('html_attr') }}" title="Filtrar artigos indexados na base '{{ db.name }}' ({{ db.total }} itens)">
+                                        {% if db.logo %}
+                                            <img src="{{ db.logo }}" alt="{{ db.name }}" class="h-3.5 w-auto object-contain shrink-0 group-hover:scale-110 transition-transform" onerror="this.style.display='none'" />
+                                        {% else %}
+                                            <sl-icon name="journal-check" class="text-indigo-500 text-xs shrink-0"></sl-icon>
+                                        {% endif %}
+                                        <span class="font-bold">{{ db.name }}</span>
+                                        <span class="rounded-md bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.2 text-[10px] font-bold group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900 font-mono">
+                                            {{ db.total }}
+                                        </span>
+                                    </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
                 </div>
 
                 <!-- Empty State Message for Productions -->
@@ -812,7 +839,12 @@
                         </h3>
                         <div class="space-y-3">
                             {% for p in articles %}
-                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 hover:border-sky-300 dark:hover:border-sky-700 transition-colors space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="artigo" data-year="{{ p.year }}">
+                                {% set indexedDbs = resolve_databases(p, p.issn) %}
+                                {% set dbAcronyms = [] %}
+                                {% for db in indexedDbs %}
+                                    {% set dbAcronyms = dbAcronyms|merge([db.acronym|lower]) %}
+                                {% endfor %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 hover:border-sky-300 dark:hover:border-sky-700 transition-colors space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="artigo" data-year="{{ p.year }}" data-databases="{{ dbAcronyms|json_encode|e('html_attr') }}">
                                     <div class="flex flex-wrap items-center justify-between gap-2">
                                         <div class="flex flex-wrap items-center gap-2">
                                             {% if p.year %}
@@ -1838,10 +1870,41 @@ function filterByKeyword(keyword) {
     }
 }
 
+let currentDatabase = null;
+
+function filterByDatabase(dbAcronym) {
+    dbAcronym = (dbAcronym || '').toLowerCase();
+    if (currentDatabase === dbAcronym) {
+        currentDatabase = null;
+    } else {
+        currentDatabase = dbAcronym;
+        // Garantir que a aba de artigos está selecionada/visível
+        setCategoryFilter('artigo');
+    }
+
+    document.querySelectorAll('.db-filter-btn, .db-card-btn').forEach(btn => {
+        const btnAcronym = (btn.getAttribute('data-db-acronym') || '').toLowerCase();
+        if (currentDatabase && btnAcronym === currentDatabase) {
+            btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600', 'ring-2', 'ring-indigo-500/40');
+            btn.classList.remove('bg-white/90', 'dark:bg-slate-900/80', 'bg-white/70', 'dark:bg-slate-900/60', 'text-slate-700', 'dark:text-slate-300', 'border-slate-200/90', 'dark:border-slate-800');
+        } else {
+            btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600', 'ring-2', 'ring-indigo-500/40');
+            btn.classList.add('bg-white/90', 'dark:bg-slate-900/80', 'text-slate-700', 'dark:text-slate-300', 'border-slate-200/90', 'dark:border-slate-800');
+        }
+    });
+
+    applyGlobalFilter();
+}
+
 function clearGlobalFilters() {
     const searchInput = document.getElementById('prodSearchInput');
     if (searchInput) searchInput.value = '';
     onlyDoi = false;
+    currentDatabase = null;
+    document.querySelectorAll('.db-filter-btn, .db-card-btn').forEach(btn => {
+        btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600', 'ring-2', 'ring-indigo-500/40');
+        btn.classList.add('bg-white/90', 'dark:bg-slate-900/80', 'text-slate-700', 'dark:text-slate-300', 'border-slate-200/90', 'dark:border-slate-800');
+    });
     const btnDoi = document.getElementById('btnOnlyDoi');
     if (btnDoi) {
         btnDoi.classList.remove('bg-sky-100', 'border-sky-500', 'text-sky-800', 'dark:bg-sky-950', 'dark:text-sky-300', 'ring-2', 'ring-sky-500/30');
@@ -1860,7 +1923,7 @@ function updateTabCount(panelName, currentCount) {
     const initial = parseInt(el.getAttribute('data-initial') || '0', 10);
     const searchInput = document.getElementById('prodSearchInput');
     const rawTerm = (searchInput ? searchInput.value : '').trim();
-    const isFiltered = rawTerm !== '' || onlyDoi;
+    const isFiltered = rawTerm !== '' || onlyDoi || currentDatabase !== null;
 
     if (isFiltered) {
         if (currentCount > 0) {
@@ -1888,7 +1951,7 @@ function applyGlobalFilter() {
     const searchInput = document.getElementById('prodSearchInput');
     const rawTerm = (searchInput ? searchInput.value : '').trim();
     const term = rawTerm.toLowerCase();
-    const isFiltered = term !== '' || onlyDoi;
+    const isFiltered = term !== '' || onlyDoi || currentDatabase !== null;
 
     // Filter control UI elements
     const filterBar = document.getElementById('globalFilterBar');
@@ -1909,6 +1972,7 @@ function applyGlobalFilter() {
         let labelParts = [];
         if (term !== '') labelParts.push(`"${rawTerm}"`);
         if (onlyDoi) labelParts.push('Apenas com DOI');
+        if (currentDatabase) labelParts.push(`Base: "${currentDatabase.toUpperCase()}"`);
         if (activeLabel) activeLabel.textContent = labelParts.join(' + ');
     } else {
         if (filterBar) {
@@ -1928,11 +1992,18 @@ function applyGlobalFilter() {
     document.querySelectorAll('.prod-item').forEach(item => {
         const itemCat = item.getAttribute('data-category');
         const hasDoi = item.getAttribute('data-has-doi') === '1';
+        let itemDbs = [];
+        try {
+            itemDbs = JSON.parse(item.getAttribute('data-databases') || '[]');
+        } catch (e) {
+            itemDbs = [];
+        }
         const text = item.textContent.toLowerCase();
 
         const matchDoi = !onlyDoi || hasDoi;
         const matchTerm = term === '' || text.includes(term);
-        const matchesCriteria = matchDoi && matchTerm;
+        const matchDb = !currentDatabase || itemDbs.includes(currentDatabase);
+        const matchesCriteria = matchDoi && matchTerm && matchDb;
 
         if (matchesCriteria) {
             catCounts.all++;

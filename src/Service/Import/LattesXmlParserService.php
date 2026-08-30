@@ -37,16 +37,25 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 class LattesXmlParserService
 {
+    private ?array $lastReport = null;
+
     /**
      * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
      * @param AuthorThesaurusService $authorThesaurusService Serviço de sincronização do tesauro de autores
      * @param CurriculumNormalizationService $normalizationService Serviço de normalização e enriquecimento
+     * @param CurriculumDiffService $diffService Serviço de cálculo de diff de importação
      */
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly AuthorThesaurusService $authorThesaurusService,
-        private readonly CurriculumNormalizationService $normalizationService
+        private readonly CurriculumNormalizationService $normalizationService,
+        private readonly CurriculumDiffService $diffService
     ) {}
+
+    public function getLastReport(): ?array
+    {
+        return $this->lastReport;
+    }
 
     /**
      * Trunca uma string de forma segura em UTF-8 para evitar estouro de tamanho de colunas no banco de dados.
@@ -163,6 +172,9 @@ class LattesXmlParserService
         // Sync researcher citation names to Author Thesaurus
         $this->authorThesaurusService->syncResearcherCitationNames($researcher);
 
+        // Capturar snapshot para cálculo do relatório de alterações (diff report)
+        $snapshot = $this->diffService->takeSnapshot($researcher);
+
         // Clear existing child entities for idempotency
         $conn = $this->em->getConnection();
         $conn->executeStatement('DELETE FROM production_items WHERE researcher_id = ?', [$researcher->getId()]);
@@ -219,6 +231,9 @@ class LattesXmlParserService
 
         // Automatically normalize and index co-authors, journals and institutions into new index columns
         $this->normalizationService->normalizeResearcher($researcher);
+
+        // Calcular e salvar relatório de alterações
+        $this->lastReport = $this->diffService->computeReport($researcher, $snapshot);
 
         return $researcher;
     }

@@ -51,4 +51,36 @@ class ThesaurusFileServiceTest extends TestCase
         $this->assertSame('Brasil', $records[0]['preferred_name']);
         $this->assertSame(['Brazil', 'BRA'], $records[0]['variants']);
     }
+
+    public function testParseUtf16LeTheFile(): void
+    {
+        $utf8Content = "**Ademir Donizeti Caldeira\n0 1 ^Ademir Dionizete Caldeira$\n**Adriana Garcia Gonçalves\n0 1 ^Adriana Garcia Gonçalves$\n";
+        $utf16leContent = "\xFF\xFE" . mb_convert_encoding($utf8Content, 'UTF-16LE', 'UTF-8');
+
+        $records = $this->service->parseTheContent($utf16leContent);
+
+        $this->assertCount(2, $records);
+        $this->assertSame('Ademir Donizeti Caldeira', $records[0]['preferred_name']);
+        $this->assertContains('Ademir Dionizete Caldeira', $records[0]['variants']);
+        $this->assertSame('Adriana Garcia Gonçalves', $records[1]['preferred_name']);
+    }
+
+    public function testParseRealTheFiles(): void
+    {
+        $authorFile = '/Users/jonaspoli/work/html/ufscar-cech/docs/banco/2026-08-29 - Tesauro - nomes padronizados docentes do CECH.the';
+        if (file_exists($authorFile)) {
+            $records = $this->service->parseFile($authorFile);
+            $this->assertCount(86, $records);
+            $this->assertSame('Ademir Donizeti Caldeira', $records[0]['preferred_name']);
+            $this->assertContains('Ademir Dionizete Caldeira', $records[0]['variants']);
+        }
+
+        $instFile = '/Users/jonaspoli/work/html/ufscar-cech/docs/banco/2026-08-12 - Tesauro - nomes padronizados instituições.the';
+        if (file_exists($instFile)) {
+            $records = $this->service->parseFile($instFile);
+            $this->assertCount(2649, $records);
+            $this->assertSame('aarhus univ', $records[0]['preferred_name']);
+            $this->assertContains('univ aarhus', $records[0]['variants']);
+        }
+    }
 }

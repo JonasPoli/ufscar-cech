@@ -161,10 +161,12 @@
                 <span>Cancelar</span>
             </button>
 
-            <button type="button" id="btn-index-journals" class="inline-flex items-center gap-2 rounded-2xl border border-indigo-300 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/40 dark:text-indigo-300 px-5 py-3 text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer ml-auto" title="Indexa todos os periódicos e bases internacionais (Scopus, WoS, etc.) diretamente na tabela de produções">
-                <sl-icon name="database-check" class="text-base"></sl-icon>
-                <span>Indexar Periódicos & Bases ({{ overview.totalArticles|default(13469)|number_format }} artigos)</span>
-            </button>
+            <div class="flex flex-wrap items-center gap-2 ml-auto">
+                <button type="button" id="btn-index-journals" class="inline-flex items-center gap-2 rounded-2xl border border-indigo-300 bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/60 dark:text-indigo-300 px-4 py-2.5 text-xs sm:text-sm font-bold transition-all shadow-xs cursor-pointer" title="Reindexar e recalcular imediatamente as bases científicas (SciELO, Scopus, WoS) e Qualis em todos os artigos">
+                    <sl-icon name="database-check" class="text-base"></sl-icon>
+                    <span>Reindexar Periódicos & Bases Internacional</span>
+                </button>
+            </div>
         </div>
 
         <!-- Real-Time Progress Box (Hidden until started) -->

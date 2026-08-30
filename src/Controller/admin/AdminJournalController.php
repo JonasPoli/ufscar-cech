@@ -522,9 +522,12 @@ class AdminJournalController extends AbstractController
 
         try {
             @ini_set('memory_limit', '1024M');
-            set_time_limit(600);
+            $clientExt = strtolower($file->getClientOriginalExtension());
+            $tempPath = sys_get_temp_dir() . '/import_db_' . uniqid() . '.' . ($clientExt ?: 'csv');
+            $file->move(sys_get_temp_dir(), basename($tempPath));
 
-            $result = $this->databaseImporter->import($file->getRealPath(), $targetDb);
+            $result = $this->databaseImporter->import($tempPath, $targetDb);
+            @unlink($tempPath);
 
             if ($result['success']) {
                 $this->addFlash('success', sprintf(

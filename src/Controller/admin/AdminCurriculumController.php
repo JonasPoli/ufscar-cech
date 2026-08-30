@@ -137,7 +137,8 @@ class AdminCurriculumController extends AbstractController
                 }
             }
 
-            $msg = "Docente \"{$researcher->getFullName()}\" cadastrado/atualizado com sucesso!";
+            $report = $this->parserService->getLastReport() ?? $this->htmlParserService->getLastReport();
+            $msg = $report['summaryMessage'] ?? "Docente \"{$researcher->getFullName()}\" cadastrado/atualizado com sucesso!";
             if ($photoSuccess) {
                 $msg .= " Foto oficial do CNPq vinculada com sucesso.";
             }

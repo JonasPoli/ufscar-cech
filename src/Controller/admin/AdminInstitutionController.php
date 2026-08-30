@@ -155,8 +155,11 @@ class AdminInstitutionController extends AbstractController
         /** @var UploadedFile|null $file */
         $file = $request->files->get('thesaurus_file');
         if ($file && $file->isValid()) {
+            @set_time_limit(600);
+            @ini_set('memory_limit', '512M');
             $records = $this->fileService->parseFile($file->getRealPath(), $file->getClientOriginalExtension());
             $count = 0;
+            $batchSize = 200;
             foreach ($records as $r) {
                 $pref = trim((string)($r['preferred_name'] ?? ''));
                 if ($pref === '') continue;
@@ -168,15 +171,27 @@ class AdminInstitutionController extends AbstractController
                     $this->em->persist($inst);
                 }
 
+                $existingNorms = [];
+                foreach ($inst->getVariations() as $existingVar) {
+                    $existingNorms[$existingVar->getNormalizedName()] = true;
+                }
+
                 foreach ($r['variants'] ?? [] as $varName) {
                     $norm = StringNormalizer::normalizeString($varName, true);
+                    if ($norm === '' || isset($existingNorms[$norm])) {
+                        continue;
+                    }
                     $varObj = new InstitutionVariation();
                     $varObj->setInstitution($inst);
                     $varObj->setVariationName($varName);
                     $varObj->setNormalizedName($norm);
                     $this->em->persist($varObj);
+                    $existingNorms[$norm] = true;
                 }
                 $count++;
+                if ($count % $batchSize === 0) {
+                    $this->em->flush();
+                }
             }
             $this->em->flush();
             $this->addFlash('success', "{$count} termos de instituições importados com sucesso.");
