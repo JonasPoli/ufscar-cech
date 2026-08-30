@@ -375,7 +375,9 @@ class AdminJournalController extends AbstractController
         }
 
         try {
-            @\set_time_limit(600);
+            if (\function_exists('set_time_limit')) {
+                @\set_time_limit(600);
+            }
             $csv = Reader::createFromPath($file->getRealPath(), 'r');
             $csv->setHeaderOffset(0);
             $delimiter = ';';
@@ -444,7 +446,9 @@ class AdminJournalController extends AbstractController
         }
 
         try {
-            @\set_time_limit(600);
+            if (\function_exists('set_time_limit')) {
+                @\set_time_limit(600);
+            }
             $ext = strtolower($file->getClientOriginalExtension());
             $entries = $this->fileService->parseFile($file->getRealPath(), $ext);
 
