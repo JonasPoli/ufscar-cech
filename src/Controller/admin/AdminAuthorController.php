@@ -143,8 +143,8 @@ class AdminAuthorController extends AbstractController
         /** @var UploadedFile|null $file */
         $file = $request->files->get('thesaurus_file');
         if ($file && $file->isValid()) {
-            @set_time_limit(600);
-            @ini_set('memory_limit', '512M');
+            @\set_time_limit(600);
+            @\ini_set('memory_limit', '512M');
             $records = $this->fileService->parseFile($file->getRealPath(), $file->getClientOriginalExtension());
             $count = 0;
             $batchSize = 200;

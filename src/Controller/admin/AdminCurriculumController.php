@@ -47,8 +47,8 @@ class AdminCurriculumController extends AbstractController
     #[Route('/new', name: 'app_admin_curriculum_new', methods: ['GET', 'POST'])]
     public function new(Request $request, \App\Service\Crawler\LattesPhotoCrawlerService $photoService): Response
     {
-        @ini_set('memory_limit', '512M');
-        @set_time_limit(300);
+        @\ini_set('memory_limit', '512M');
+        @\set_time_limit(300);
 
         if ($request->isMethod('POST')) {
             $rawLattes = trim((string)$request->request->get('lattes_id'));

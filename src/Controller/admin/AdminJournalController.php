@@ -375,7 +375,7 @@ class AdminJournalController extends AbstractController
         }
 
         try {
-            set_time_limit(600);
+            @\set_time_limit(600);
             $csv = Reader::createFromPath($file->getRealPath(), 'r');
             $csv->setHeaderOffset(0);
             $delimiter = ';';
