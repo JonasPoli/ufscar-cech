@@ -3507,8 +3507,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Exportação para VOSviewer (Formato Pajek / VOSviewer Co-occurrence Matrix .txt)
         if (exportVosBtn && Array.isArray(coauthorsFullData)) {
             exportVosBtn.addEventListener('click', () => {
-                let content = "*Network\n*Vertices\n";
-                
                 // Mapear docentes únicos como vértices (nodes)
                 const nodeMap = new Map();
                 let nodeId = 1;
@@ -3521,6 +3519,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         nodeMap.set(pair.author2, nodeId++);
                     }
                 });
+
+                let content = `*Vertices ${nodeMap.size}\n`;
 
                 // Adicionar lista de vértices
                 nodeMap.forEach((id, name) => {
