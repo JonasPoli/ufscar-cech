@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\ProductionItem;
 use App\Entity\Researcher;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
