@@ -21,7 +21,7 @@ class PageCacheSubscriberTest extends TestCase
         $this->assertArrayHasKey(KernelEvents::RESPONSE, $events);
     }
 
-    public function testDevModeIgnoresCacheCheckOnRequest(): void
+    public function testDisabledModeIgnoresCacheCheckOnRequest(): void
     {
         $pageCacheService = $this->createMock(PageCacheService::class);
         $pageCacheService->expects($this->once())
@@ -42,7 +42,7 @@ class PageCacheSubscriberTest extends TestCase
         $this->assertFalse($event->hasResponse());
     }
 
-    public function testProdModeSetsResponseOnCacheHit(): void
+    public function testEnabledModeSetsResponseOnCacheHit(): void
     {
         $pageCacheService = $this->createMock(PageCacheService::class);
         $pageCacheService->expects($this->once())
@@ -74,7 +74,7 @@ class PageCacheSubscriberTest extends TestCase
         $this->assertEquals('<html>Cached</html>', $event->getResponse()->getContent());
     }
 
-    public function testProdModeSavesCacheOnResponse(): void
+    public function testEnabledModeSavesCacheOnResponse(): void
     {
         $pageCacheService = $this->createMock(PageCacheService::class);
         $pageCacheService->expects($this->once())

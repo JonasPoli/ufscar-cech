@@ -17,19 +17,19 @@ class PageCacheService
     public function __construct(
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
-        #[Autowire('%kernel.environment%')]
-        private readonly string $environment
+        #[Autowire('%env(bool:PAGE_CACHE_ENABLED)%')]
+        private readonly bool $pageCacheEnabled = true
     ) {
         $this->filesystem = new Filesystem();
     }
 
     /**
      * Retorna se a verificação e servimento do cache está ativada.
-     * Ativo exclusivamente no modo de produção ('prod').
+     * Controlado via variável de ambiente PAGE_CACHE_ENABLED.
      */
     public function isEnabled(): bool
     {
-        return $this->environment === 'prod';
+        return $this->pageCacheEnabled;
     }
 
     /**
