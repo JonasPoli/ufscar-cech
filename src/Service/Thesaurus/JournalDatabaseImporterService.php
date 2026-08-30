@@ -35,7 +35,9 @@ class JournalDatabaseImporterService
     public function import(string $filePath, ?string $targetDatabaseAcronym = null, ?callable $progressCallback = null): array
     {
         @ini_set('memory_limit', '1024M');
-        @\set_time_limit(600);
+        if (\function_exists('set_time_limit')) {
+            @\set_time_limit(600);
+        }
 
         if (!file_exists($filePath)) {
             return [

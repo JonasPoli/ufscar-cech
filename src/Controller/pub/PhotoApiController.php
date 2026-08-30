@@ -89,7 +89,9 @@ class PhotoApiController extends AbstractController
         ResearcherRepository $researcherRepo
     ): Response {
         @ini_set('memory_limit', '512M');
-        @\set_time_limit(300);
+        if (\function_exists('set_time_limit')) {
+            @\set_time_limit(300);
+        }
 
         if ($request->isMethod('OPTIONS')) {
             $response = new Response();
