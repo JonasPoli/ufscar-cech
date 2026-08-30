@@ -27,21 +27,18 @@ class PageCacheServiceTest extends TestCase
         }
     }
 
-    public function testIsEnabledReturnsTrueOnlyInProd(): void
+    public function testIsEnabledBasedOnPageCacheEnabledParam(): void
     {
-        $prodService = new PageCacheService($this->tempDir, 'prod');
-        $this->assertTrue($prodService->isEnabled());
+        $enabledService = new PageCacheService($this->tempDir, true);
+        $this->assertTrue($enabledService->isEnabled());
 
-        $devService = new PageCacheService($this->tempDir, 'dev');
-        $this->assertFalse($devService->isEnabled());
-
-        $testService = new PageCacheService($this->tempDir, 'test');
-        $this->assertFalse($testService->isEnabled());
+        $disabledService = new PageCacheService($this->tempDir, false);
+        $this->assertFalse($disabledService->isEnabled());
     }
 
     public function testIsCacheableRequestFilter(): void
     {
-        $service = new PageCacheService($this->tempDir, 'prod');
+        $service = new PageCacheService($this->tempDir, true);
 
         // Requisição pública GET -> elegível
         $req1 = Request::create('/', 'GET');
@@ -68,7 +65,7 @@ class PageCacheServiceTest extends TestCase
 
     public function testSaveAndRetrieveCacheInProd(): void
     {
-        $service = new PageCacheService($this->tempDir, 'prod');
+        $service = new PageCacheService($this->tempDir, true);
         $request = Request::create('/professores?departamento=dep1', 'GET');
         $htmlContent = '<html><body><h1>Lista de Professores</h1></body></html>';
         $response = new Response($htmlContent, 200, ['Content-Type' => 'text/html; charset=UTF-8']);
@@ -93,7 +90,7 @@ class PageCacheServiceTest extends TestCase
 
     public function testCacheExpirationAfter30Days(): void
     {
-        $service = new PageCacheService($this->tempDir, 'prod');
+        $service = new PageCacheService($this->tempDir, true);
         $request = Request::create('/indicadores', 'GET');
         $response = new Response('<html>Indicadores</html>', 200, ['Content-Type' => 'text/html']);
 
@@ -113,7 +110,7 @@ class PageCacheServiceTest extends TestCase
 
     public function testClearCacheRemovesFolderCompletely(): void
     {
-        $service = new PageCacheService($this->tempDir, 'prod');
+        $service = new PageCacheService($this->tempDir, true);
         $request = Request::create('/', 'GET');
         $response = new Response('<html>Home Page</html>', 200, ['Content-Type' => 'text/html']);
 
