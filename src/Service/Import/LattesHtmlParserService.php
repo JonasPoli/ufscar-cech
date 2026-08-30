@@ -80,7 +80,7 @@ class LattesHtmlParserService
     public function parseHtmlAndSave(string $html, ?Researcher $existingResearcher = null, ?string $idLattes = null): Researcher
     {
         @ini_set('memory_limit', '512M');
-        @set_time_limit(300);
+        @\set_time_limit(300);
 
         // 1. Sanitize HTML encoding to prevent mojibake/double encoding
         $cleanHtml = preg_replace('/<meta[^>]+charset=[^>]+>/i', '', $html);

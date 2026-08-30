@@ -198,7 +198,7 @@ class DatabaseBackupService
         ?callable $progressCallback = null,
         ?string $customFilename = null
     ): array {
-        @set_time_limit(0);
+        @\set_time_limit(0);
         @ini_set('memory_limit', '512M');
 
         $startTime = microtime(true);
