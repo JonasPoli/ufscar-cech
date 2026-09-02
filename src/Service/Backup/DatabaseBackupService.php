@@ -378,6 +378,11 @@ class DatabaseBackupService
     ): array {
         $startTime = microtime(true);
 
+        @ini_set('memory_limit', '1024M');
+        if (\function_exists('set_time_limit')) {
+            @\set_time_limit(0);
+        }
+
         if (!file_exists($sourceFilePath) || !is_readable($sourceFilePath)) {
             throw new \InvalidArgumentException("Arquivo de backup não encontrado ou ilegível: {$sourceFilePath}");
         }
@@ -412,12 +417,26 @@ class DatabaseBackupService
             }
 
             $tempExtractPath = $this->backupDir . '/tmp_import_' . uniqid('', true) . '.sql';
-            $extractedContent = $zip->getFromName($sqlEntryName);
-            $zip->close();
-
-            if ($extractedContent === false || file_put_contents($tempExtractPath, $extractedContent) === false) {
-                throw new \RuntimeException("Falha ao extrair o arquivo .sql temporário do ZIP.");
+            $zipStream = $zip->getStream($sqlEntryName);
+            if (!$zipStream) {
+                $zip->close();
+                throw new \RuntimeException("Falha ao abrir stream do arquivo .sql dentro do ZIP.");
             }
+
+            $outHandle = fopen($tempExtractPath, 'wb');
+            if (!$outHandle) {
+                fclose($zipStream);
+                $zip->close();
+                throw new \RuntimeException("Não foi possível criar o arquivo temporário de extração: {$tempExtractPath}");
+            }
+
+            while (!feof($zipStream)) {
+                fwrite($outHandle, fread($zipStream, 1048576)); // 1MB streaming chunks
+            }
+
+            fclose($zipStream);
+            fclose($outHandle);
+            $zip->close();
 
             $sqlPath = $tempExtractPath;
         } elseif ($extension === 'gz') {
@@ -428,7 +447,7 @@ class DatabaseBackupService
             }
             $out = fopen($tempExtractPath, 'wb');
             while (!gzeof($gz)) {
-                fwrite($out, gzread($gz, 524288)); // 512KB chunks
+                fwrite($out, gzread($gz, 1048576)); // 1MB chunks
             }
             gzclose($gz);
             fclose($out);

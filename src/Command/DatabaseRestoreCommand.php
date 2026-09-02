@@ -37,6 +37,11 @@ class DatabaseRestoreCommand extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
+        @ini_set('memory_limit', '1024M');
+        if (\function_exists('set_time_limit')) {
+            @\set_time_limit(0);
+        }
+
         $io = new SymfonyStyle($input, $output);
         $io->title('Restauração de Base de Dados - UFSCar CECH');
 
@@ -75,7 +80,8 @@ class DatabaseRestoreCommand extends Command
             $helper = $this->getHelper('question');
             $question = new ConfirmationQuestion(
                 '⚠️  ATENÇÃO: A restauração irá sobrescrever todas as tabelas e dados existentes. Deseja continuar? (s/N) ',
-                false
+                false,
+                '/^(s|sim|y|yes)/i'
             );
 
             if (!$helper->ask($input, $output, $question)) {
