@@ -22,13 +22,15 @@ graph TD
         LattesXML[Currículos Lattes XML] --> LattesXmlParser[LattesXmlParserService]
         LattesHTML[Currículos Lattes HTML] --> LattesHtmlParser[LattesHtmlParserService]
         PlanilhaCECH[Planilha Docentes CECH] --> ExcelImporter[ExcelCechImporterService]
+        TeDCSV[Teses e Dissertações TeD-UFSCar.csv] --> RepoImporter[RepositoryImportService]
         LattesPhotoCrawler[LattesPhotoCrawlerService] --> StorageFotos[(Fotos Locais/Web)]
     end
 
-    subgraph PersistenciaRaw ["2. Persistência de Dados Brutos (Raw)"]
+    subgraph PersistenciaRaw ["2. Persistência de Dados Brutos (Raw) & Enriquecimento"]
         LattesXmlParser --> DB_Raw[(researchers, production_items, educations, orientations...)]
         LattesHtmlParser --> DB_Raw
         ExcelImporter --> DB_Raw
+        RepoImporter --> DB_Raw
     end
 
     subgraph Tesauros ["3. Camada de Tesauros e Resolução Ontológica"]
@@ -63,7 +65,7 @@ graph TD
 
 ## 2. Detalhamento dos Processos do Sistema
 
-### Processo 1: Ingestão de Dados do Currículo Lattes
+### Processo 1: Ingestão de Dados do Currículo Lattes e Repositório
 
 #### 1.1 Ingestão XML (`LattesXmlParserService` & `ImportLattesCommand`)
 - **Comando CLI**: `php bin/console app:import:lattes [--dir=docs/banco/CECH] [--file=caminho/arquivo.xml]`
@@ -98,7 +100,17 @@ graph TD
 - **Comando CLI**: `php bin/console app:import:excel-cech [caminho_planilha.xlsx]`
 - **Finalidade**: Cruzar a relação oficial de docentes com departamento, código departamental, e-mail institucional e status de admissão/afastamento.
 
-#### 1.4 Coleta Automatizada de Fotos (`LattesPhotoCrawlerService` & `CrawlLattesPhotosCommand`)
+#### 1.4 Ingestão de Teses e Dissertações do Repositório Institucional (`RepositoryImportService` & `ImportRepositoryCommand`)
+- **Comando CLI**: `php bin/console app:import:repository` (alias `app:import:ted`)
+- **Entrada**: Arquivo CSV do Repositório DSpace/BDTD da UFSCar (`docs/banco/TeD-UFSCar.csv`).
+- **Finalidade e Regras**:
+  1. Cruzamento em cascata para identificar orientadores e coorientadores docentes cadastrados no CECH (via ID Lattes de 16 dígitos, ORCID ou nome normalizado).
+  2. **Enriquecimento sem duplicação**: Quando o trabalho já existe como orientação vinda do Lattes (mesmo aluno + tipo + ano/título), enriquece o registro existente com o link persistente (`Handle`), resumo acadêmico, programa de pós-graduação e data de defesa.
+  3. **Novas obras inéditas**: Quando o trabalho existe no repositório institucional mas não foi informado no Lattes pelo docente, cadastra uma nova `Orientation` concluída (`source = 'repository_ufscar'`).
+  4. **Idempotência**: Verifica `handle` e `repository_uuid` para garantir que reexecuções ou novos dumps atualizem dados sem duplicar registros.
+- **Documentação Completa**: Consulte [`docs/REPOSITORY_IMPORT.md`](file:///Users/jonaspoli/work/html/ufscar-cech/docs/REPOSITORY_IMPORT.md).
+
+#### 1.5 Coleta Automatizada de Fotos (`LattesPhotoCrawlerService` & `CrawlLattesPhotosCommand`)
 - **Comando CLI**: `php bin/console app:crawl:lattes-photos`
 - **Finalidade**: Fazer download das fotos de perfil dos pesquisadores diretamente dos servidores de mídia do CNPq a partir do ID Lattes e salvar localmente em `public/uploads/photos/` com rota otimizada em `PhotoApiController`.
 

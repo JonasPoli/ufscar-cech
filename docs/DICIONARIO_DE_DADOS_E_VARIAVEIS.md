@@ -131,14 +131,28 @@ Formações acadêmicas do pesquisador.
 ---
 
 ### 2.6 `Orientation` (Tabela: `orientations`)
-Orientações acadêmicas concluídas ou em andamento.
-- `$orientationType`: Tipo (`CONCLUIDA`, `EM_ANDAMENTO`).
-- `$nature`: Nível (`DOUTORADO`, `MESTRADO`, `POS_DOUTORADO`, `TCC`, `INICIACAO_CIENTIFICA`, `ESPECIALIZACAO`, `OUTRA`).
-- `$studentName`: Nome do orientando.
-- `$title`: Título do trabalho acadêmico.
-- `$year`: Ano de conclusão ou início.
-- `$institutionName`: Nome da instituição de ensino.
-- `$sponsoringAgency`: Agência de fomento / bolsa (CAPES, CNPq, FAPESP...).
+Orientações acadêmicas concluídas ou em andamento, originadas do Lattes ou do Repositório Institucional da UFSCar.
+- `$researcher`: FK para a entidade `Researcher` (docente orientador ou coorientador).
+- `$orientationType`: Nível acadêmico (`MESTRADO`, `DOUTORADO`, `POS_DOUTORADO`, `TCC_GRADUACAO`, `INICIACAO_CIENTIFICA`, `ESPECIALIZACAO`, `OUTRA`).
+- `$nature`: Status da orientação (`CONCLUIDA`, `EM_ANDAMENTO`).
+- `$studentName`: Nome completo do discente/orientando.
+- `$title`: Título do trabalho acadêmico (dissertação, tese, TCC).
+- `$alternativeTitle`: Título alternativo (ex: em inglês).
+- `$year`: Ano de conclusão ou ano de início.
+- `$institutionName`: Nome da instituição de ensino (ex: `Universidade Federal de São Carlos`).
+- `$courseName`: Programa de Pós-Graduação ou curso (ex: `Programa de Pós-Graduação em Educação - PPGE`).
+- `$handleUrl`: URL persistente de acesso ao trabalho no Repositório Institucional (`https://repositorio.ufscar.br/handle/...`).
+- `$handle`: Código Handle canônico (ex: `20.500.14289/24612`).
+- `$repositoryUuid`: Identificador único do item no DSpace.
+- `$source`: Origem do registro (`lattes`, `repository_ufscar`).
+- `$isCoadvising`: Flag booleana (`true` se for coorientação).
+- `$defenseDate`: Data exata da defesa (`\DateTimeImmutable`).
+- `$abstractText`: Resumo acadêmico do trabalho.
+- `$keywords`: Palavras-chave / Assuntos.
+- `$doi`: Identificador DOI.
+- `$centerName`: Centro acadêmico (ex: `Centro de Educação e Ciências Humanas - CECH`).
+- `$campus`: Campus da universidade (ex: `Campus São Carlos`).
+- `$studentOrcid`: ORCID do aluno.
 
 ---
 

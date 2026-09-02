@@ -63,6 +63,24 @@ O painel de indexação coordena a inteligência de dados e a resolução de ent
     php bin/console app:index:journals
     ```
 
+### 3.3. Ingestão e Enriquecimento do Repositório Institucional (TeD-UFSCar)
+- **Importação de Teses e Dissertações Oficiais da UFSCar**:
+  - Processa o catálogo oficial (`docs/banco/TeD-UFSCar.csv`), cruza os docentes orientadores e coorientadores, enriquece as orientações com o link permanente (`Handle`), resumo e programa de pós-graduação, e adiciona trabalhos inéditos não cadastrados no Lattes.
+  - Execução via CLI:
+    ```bash
+    # Execução real:
+    php bin/console app:import:repository
+    # ou usando o alias:
+    php bin/console app:import:ted
+
+    # Modo simulação (sem alterar o banco):
+    php bin/console app:import:repository --dry-run
+
+    # Opções com filtros:
+    php bin/console app:import:repository --center=CECH --limit=1000
+    ```
+  - Documentação completa disponível em [`docs/REPOSITORY_IMPORT.md`](file:///Users/jonaspoli/work/html/ufscar-cech/docs/REPOSITORY_IMPORT.md).
+
 ---
 
 ## 📚 4. Gestão de Bases de Indexação Internacional (`/admin/academic-databases`)
