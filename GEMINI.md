@@ -100,6 +100,14 @@ This project has a standardized look and feel for admin sections. To create a ne
 -   **Nunca use `doctrine:schema:update`**. Todas as alterações de estrutura e esquema de banco de dados devem ser feitas exclusivamente através de Migrations versionadas (`php bin/console make:migration` ou `php bin/console doctrine:migrations:diff`).
 -   A aplicação das alterações no banco deve ser executada sempre via `php bin/console doctrine:migrations:migrate` (tanto no ambiente de desenvolvimento quanto em `APP_ENV=test`).
 
+### Production Server Environment (RunCloud)
+
+-   **Host / IP**: `104.236.71.49` (`ssh runcloud@104.236.71.49`)
+-   **Application Path**: `/home/runcloud/webapps/ufscar-cech`
+-   **PHP Binary**: `/RunCloud/Packages/php84rc/bin/php`
+-   **Console Execution**: `/RunCloud/Packages/php84rc/bin/php bin/console <command> --env=prod`
+-   **Full Guide**: See [`docs/DEPLOY_E_PRODUCAO.md`](file:///Users/jonaspoli/work/html/ufscar-cech/docs/DEPLOY_E_PRODUCAO.md) to modify or inspect production settings.
+
 ## Commits & Pull Requests
 
 -   **Commit Messages**: Use short, imperative subjects (e.g., `feat: add user profile page`). The body should explain the "why" and list any breaking changes.

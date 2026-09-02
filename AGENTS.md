@@ -38,3 +38,11 @@
 ## Regra Estrita de Banco de Dados: Uso Exclusivo de Migrations
 - **Nunca use `doctrine:schema:update`**. Todas as alterações de estrutura e esquema de banco de dados devem ser feitas exclusivamente através de Migrations versionadas (`php bin/console make:migration` ou `php bin/console doctrine:migrations:diff`).
 - A aplicação das alterações no banco deve ser executada sempre via `php bin/console doctrine:migrations:migrate` (tanto no ambiente de desenvolvimento quanto em `APP_ENV=test`).
+
+## Configurações do Servidor de Produção (RunCloud)
+- **Host / IP**: `104.236.71.49` (`ssh runcloud@104.236.71.49`)
+- **Caminho da Aplicação no Servidor**: `/home/runcloud/webapps/ufscar-cech`
+- **Binário PHP em Produção**: `/RunCloud/Packages/php84rc/bin/php`
+- **Execução de Comandos em Produção**: `/RunCloud/Packages/php84rc/bin/php bin/console <comando> --env=prod`
+- **Guia Completo de Deploy**: Consulte [`docs/DEPLOY_E_PRODUCAO.md`](file:///Users/jonaspoli/work/html/ufscar-cech/docs/DEPLOY_E_PRODUCAO.md).
+
