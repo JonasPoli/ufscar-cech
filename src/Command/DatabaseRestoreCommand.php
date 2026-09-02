@@ -55,7 +55,8 @@ class DatabaseRestoreCommand extends Command
 
             $latestBackup = $backups[0];
             $filePath = $latestBackup['path'];
-            $io->info(sprintf('Utilizando o backup mais recente: %s (%s, criado em %s)', $latestBackup['filename'], $latestBackup['sizeFormatted'], $latestBackup['dateFormatted']));
+            $dateStr = $latestBackup['createdAt'] instanceof \DateTimeInterface ? $latestBackup['createdAt']->format('d/m/Y H:i:s') : 'recente';
+            $io->info(sprintf('Utilizando o backup mais recente: %s (%s, criado em %s)', $latestBackup['filename'], $latestBackup['sizeFormatted'], $dateStr));
         } else {
             if (file_exists($fileArg)) {
                 $filePath = $fileArg;
