@@ -331,13 +331,19 @@
 
 <script>
 (function() {
-    const isDark = document.documentElement.classList.contains('dark');
-    const textColor = isDark ? '#cbd5e1' : '#475569';
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+    function initTabProduction() {
+        if (typeof Chart === 'undefined') {
+            setTimeout(initTabProduction, 30);
+            return;
+        }
 
-    // ── Fig 13: Qualis vs Sem Qualis (Área) ──
-    const fig11Data = {{ fig11QualisTimeline|json_encode|raw }};
-    const elFig11 = document.getElementById('chartFig11');
+        const isDark = document.documentElement.classList.contains('dark');
+        const textColor = isDark ? '#cbd5e1' : '#475569';
+        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+
+        // ── Fig 13: Qualis vs Sem Qualis (Área) ──
+        const fig11Data = {{ fig11QualisTimeline|json_encode|raw }};
+        const elFig11 = document.getElementById('chartFig11');
     if (elFig11) {
         new Chart(elFig11, {
             type: 'line',
@@ -789,5 +795,12 @@
 
         updateRanking();
     })();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTabProduction);
+    } else {
+        initTabProduction();
+    }
 })();
 </script>

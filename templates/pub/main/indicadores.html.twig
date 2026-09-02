@@ -4,6 +4,13 @@
 
 {% block meta_description %}Panorama estatístico e indicadores de auto-avaliação do CECH UFSCar: corpo docente, formações, orientações concluídas, produção científica, estratos Qualis e parcerias nacionais e internacionais.{% endblock %}
 
+{% block javascripts %}
+    {{ parent() }}
+    {# ── D3.js v7 & D3-Sankey Libraries carregadas no Head/Início para garantir disponibilidade aos gráficos ── #}
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+{% endblock %}
+
 {% block body %}
 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
 
@@ -110,31 +117,31 @@
     {# ── Interactive Mobile-Responsive Navigation Pill Tabs ── #}
     <div class="sticky top-16 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-y border-slate-200/80 dark:border-slate-800/80 shadow-xs">
         <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none scroll-smooth" id="indicatorsTabList" role="tablist">
-            <button type="button" class="indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 {% if initialTab == 'faculty' %}bg-primary-600 text-white shadow-md{% else %}bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300{% endif %}" data-tab="faculty" role="tab" aria-selected="{% if initialTab == 'faculty' %}true{% else %}false{% endif %}">
+            <button type="button" class="indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 {% if initialTab == 'faculty' %}bg-sky-600 hover:bg-sky-700 text-white shadow-md border border-sky-500{% else %}bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-transparent{% endif %}" data-tab="faculty" role="tab" aria-selected="{% if initialTab == 'faculty' %}true{% else %}false{% endif %}">
                 <sl-icon name="person-badge" class="text-base"></sl-icon>
                 <span>1. Corpo Docente & Vínculos</span>
                 <span class="text-[10px] px-1.5 py-0.2 rounded-full {% if initialTab == 'faculty' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400{% endif %}">8 figs</span>
             </button>
 
-            <button type="button" class="indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 {% if initialTab == 'training' %}bg-primary-600 text-white shadow-md{% else %}bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300{% endif %}" data-tab="training" role="tab" aria-selected="{% if initialTab == 'training' %}true{% else %}false{% endif %}">
+            <button type="button" class="indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 {% if initialTab == 'training' %}bg-sky-600 hover:bg-sky-700 text-white shadow-md border border-sky-500{% else %}bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-transparent{% endif %}" data-tab="training" role="tab" aria-selected="{% if initialTab == 'training' %}true{% else %}false{% endif %}">
                 <sl-icon name="mortarboard" class="text-base"></sl-icon>
                 <span>2. Formação & Orientações</span>
                 <span class="text-[10px] px-1.5 py-0.2 rounded-full {% if initialTab == 'training' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400{% endif %}">3 figs</span>
             </button>
 
-            <button type="button" class="indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 {% if initialTab == 'production' %}bg-primary-600 text-white shadow-md{% else %}bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300{% endif %}" data-tab="production" role="tab" aria-selected="{% if initialTab == 'production' %}true{% else %}false{% endif %}">
+            <button type="button" class="indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 {% if initialTab == 'production' %}bg-sky-600 hover:bg-sky-700 text-white shadow-md border border-sky-500{% else %}bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-transparent{% endif %}" data-tab="production" role="tab" aria-selected="{% if initialTab == 'production' %}true{% else %}false{% endif %}">
                 <sl-icon name="journal-text" class="text-base"></sl-icon>
                 <span>3. Produção, Qualis & Bases</span>
                 <span class="text-[10px] px-1.5 py-0.2 rounded-full {% if initialTab == 'production' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400{% endif %}">5 figs</span>
             </button>
 
-            <button type="button" class="indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 {% if initialTab == 'network' %}bg-primary-600 text-white shadow-md{% else %}bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300{% endif %}" data-tab="network" role="tab" aria-selected="{% if initialTab == 'network' %}true{% else %}false{% endif %}">
+            <button type="button" class="indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 {% if initialTab == 'network' %}bg-sky-600 hover:bg-sky-700 text-white shadow-md border border-sky-500{% else %}bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-transparent{% endif %}" data-tab="network" role="tab" aria-selected="{% if initialTab == 'network' %}true{% else %}false{% endif %}">
                 <sl-icon name="diagram-3" class="text-base"></sl-icon>
                 <span>4. Redes & Parcerias</span>
                 <span class="text-[10px] px-1.5 py-0.2 rounded-full {% if initialTab == 'network' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400{% endif %}">3 figs</span>
             </button>
 
-            <button type="button" class="indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 {% if initialTab == 'all' %}bg-primary-600 text-white shadow-md{% else %}bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300{% endif %}" data-tab="all" role="tab" aria-selected="{% if initialTab == 'all' %}true{% else %}false{% endif %}">
+            <button type="button" class="indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 {% if initialTab == 'all' %}bg-sky-600 hover:bg-sky-700 text-white shadow-md border border-sky-500{% else %}bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-transparent{% endif %}" data-tab="all" role="tab" aria-selected="{% if initialTab == 'all' %}true{% else %}false{% endif %}">
                 <sl-icon name="grid-fill" class="text-base"></sl-icon>
                 <span>Todos os 19 Indicadores</span>
             </button>
@@ -143,7 +150,7 @@
 
     {# ── Tab Loading Skeleton (Displayed while fetching fragment asynchronously) ── #}
     <div id="tabLoadingSkeleton" class="hidden py-16 text-center space-y-4">
-        <div class="inline-flex items-center justify-center p-4 rounded-3xl bg-primary-50 dark:bg-primary-950/60 text-primary-600 dark:text-primary-400 shadow-inner">
+        <div class="inline-flex items-center justify-center p-4 rounded-3xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 shadow-inner">
             <sl-spinner style="font-size: 2.5rem; --track-width: 4px;"></sl-spinner>
         </div>
         <div class="space-y-1">
@@ -191,10 +198,6 @@
 
 </div>
 
-{# ── D3.js v7 & D3-Sankey Libraries ── #}
-<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-<script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
-
 {# ── Dynamic Async Tab Loader & Cache Manager ── #}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -238,11 +241,11 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.setAttribute('aria-selected', isCurrent ? 'true' : 'false');
             
             if (isCurrent) {
-                btn.className = 'indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 bg-primary-600 text-white shadow-md';
+                btn.className = 'indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 bg-sky-600 hover:bg-sky-700 text-white shadow-md border border-sky-500';
                 const badge = btn.querySelector('span:last-child');
                 if (badge) badge.className = 'text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 text-white';
             } else {
-                btn.className = 'indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300';
+                btn.className = 'indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-transparent';
                 const badge = btn.querySelector('span:last-child');
                 if (badge) badge.className = 'text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400';
             }
@@ -310,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="glass-card rounded-2xl p-8 text-center space-y-3 border border-red-200/60 dark:border-red-900/40">
                     <sl-icon name="exclamation-triangle" class="text-red-500 text-3xl"></sl-icon>
                     <div class="text-sm font-bold text-slate-800 dark:text-slate-200">Não foi possível carregar esta seção.</div>
-                    <button type="button" onclick="location.reload()" class="px-3 py-1.5 rounded-lg bg-primary-600 text-white text-xs font-semibold cursor-pointer">
+                    <button type="button" onclick="location.reload()" class="px-3 py-1.5 rounded-lg bg-sky-600 text-white text-xs font-semibold cursor-pointer">
                         Tentar Novamente
                     </button>
                 </div>

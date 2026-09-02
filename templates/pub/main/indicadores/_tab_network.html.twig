@@ -227,13 +227,19 @@
 
 <script>
 (function() {
-    const isDark = document.documentElement.classList.contains('dark');
-    const textColor = isDark ? '#cbd5e1' : '#475569';
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+    function initTabNetwork() {
+        if (typeof Chart === 'undefined') {
+            setTimeout(initTabNetwork, 30);
+            return;
+        }
 
-    // ── Fig 18: Parcerias Nacionais ──
-    const fig14Data = {{ fig14National|json_encode|raw }};
-    const elFig14 = document.getElementById('chartFig14');
+        const isDark = document.documentElement.classList.contains('dark');
+        const textColor = isDark ? '#cbd5e1' : '#475569';
+        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+
+        // ── Fig 18: Parcerias Nacionais ──
+        const fig14Data = {{ fig14National|json_encode|raw }};
+        const elFig14 = document.getElementById('chartFig14');
     if (elFig14) {
         new Chart(elFig14, {
             type: 'bar',
@@ -376,6 +382,13 @@
             link.click();
             document.body.removeChild(link);
         });
+    }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTabNetwork);
+    } else {
+        initTabNetwork();
     }
 })();
 </script>

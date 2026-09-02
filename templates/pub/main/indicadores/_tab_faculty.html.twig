@@ -553,10 +553,16 @@
 
 <script>
 (function() {
-    const isDark = document.documentElement.classList.contains('dark');
-    const textColor = isDark ? '#cbd5e1' : '#475569';
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
-    const palette = ['#0284c7', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#64748b', '#84cc16', '#a855f7'];
+    function initTabFaculty() {
+        if (typeof d3 === 'undefined' || typeof d3.sankey === 'undefined' || typeof Chart === 'undefined') {
+            setTimeout(initTabFaculty, 30);
+            return;
+        }
+
+        const isDark = document.documentElement.classList.contains('dark');
+        const textColor = isDark ? '#cbd5e1' : '#475569';
+        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+        const palette = ['#0284c7', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#64748b', '#84cc16', '#a855f7'];
 
     // ── Fig 1: Vínculos Departamentais ──
     const fig1Data = {{ fig1Dept|json_encode|raw }};
@@ -1595,5 +1601,12 @@
             }).observe(container);
         }
     })();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTabFaculty);
+    } else {
+        initTabFaculty();
+    }
 })();
 </script>

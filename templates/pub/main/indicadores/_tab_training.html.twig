@@ -76,100 +76,113 @@
 
 <script>
 (function() {
-    const isDark = document.documentElement.classList.contains('dark');
-    const textColor = isDark ? '#cbd5e1' : '#475569';
-    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+    function initTabTraining() {
+        if (typeof Chart === 'undefined') {
+            setTimeout(initTabTraining, 30);
+            return;
+        }
 
-    // ── Fig 9: Evolução Anual de Formação (Stacked Bar) ──
-    const fig7Data = {{ fig7Graduations|json_encode|raw }};
-    const fig7Colors = {
-        'MESTRADO': '#0284c7',
-        'DOUTORADO': '#10b981',
-        'POS_DOUTORADO': '#f59e0b',
-        'INICIACAO_CIENTIFICA': '#6366f1'
-    };
-    const fig7Datasets = Object.keys(fig7Data.labels).map(k => ({
-        label: fig7Data.labels[k],
-        data: Object.values(fig7Data.series[k]),
-        backgroundColor: fig7Colors[k] || '#64748b',
-        borderRadius: 4
-    }));
+        const isDark = document.documentElement.classList.contains('dark');
+        const textColor = isDark ? '#cbd5e1' : '#475569';
+        const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
 
-    const elFig7 = document.getElementById('chartFig7');
-    if (elFig7) {
-        new Chart(elFig7, {
-            type: 'bar',
-            data: {
-                labels: fig7Data.years,
-                datasets: fig7Datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top', labels: { color: textColor, font: { size: 11 }, boxWidth: 12 } }
+        // ── Fig 9: Evolução Anual de Formação (Stacked Bar) ──
+        const fig7Data = {{ fig7Graduations|json_encode|raw }};
+        const fig7Colors = {
+            'MESTRADO': '#0284c7',
+            'DOUTORADO': '#10b981',
+            'POS_DOUTORADO': '#f59e0b',
+            'INICIACAO_CIENTIFICA': '#6366f1'
+        };
+        const fig7Datasets = Object.keys(fig7Data.labels).map(k => ({
+            label: fig7Data.labels[k],
+            data: Object.values(fig7Data.series[k]),
+            backgroundColor: fig7Colors[k] || '#64748b',
+            borderRadius: 4
+        }));
+
+        const elFig7 = document.getElementById('chartFig7');
+        if (elFig7) {
+            new Chart(elFig7, {
+                type: 'bar',
+                data: {
+                    labels: fig7Data.years,
+                    datasets: fig7Datasets
                 },
-                scales: {
-                    x: { stacked: true, grid: { display: false }, ticks: { color: textColor } },
-                    y: { stacked: true, grid: { color: gridColor }, ticks: { color: textColor } }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: textColor, font: { size: 11 }, boxWidth: 12 } }
+                    },
+                    scales: {
+                        x: { stacked: true, grid: { display: false }, ticks: { color: textColor } },
+                        y: { stacked: true, grid: { color: gridColor }, ticks: { color: textColor } }
+                    }
                 }
-            }
-        });
+            });
+        }
+
+        // ── Fig 10: Pirâmide de Formação Acadêmica ──
+        const fig9Data = {{ fig9Pyramid|json_encode|raw }};
+        const elFig9 = document.getElementById('chartFig9');
+        if (elFig9) {
+            new Chart(elFig9, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(fig9Data),
+                    datasets: [{
+                        label: 'Orientações / Titulações',
+                        data: Object.values(fig9Data),
+                        backgroundColor: ['#6366f1', '#0284c7', '#14b8a6', '#10b981', '#f59e0b', '#ec4899'],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                        y: { grid: { display: false }, ticks: { color: textColor, font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        // ── Fig 11: Cursos dos Estudantes Orientados ──
+        const fig5Data = {{ fig5StudentsGrad|json_encode|raw }};
+        const elFig5 = document.getElementById('chartFig5');
+        if (elFig5) {
+            new Chart(elFig5, {
+                type: 'bar',
+                data: {
+                    labels: fig5Data.map(d => d.courseName),
+                    datasets: [{
+                        label: 'Estudantes Orientados',
+                        data: fig5Data.map(d => parseInt(d.total)),
+                        backgroundColor: '#10b981',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 20 } },
+                        y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                    }
+                }
+            });
+        }
     }
 
-    // ── Fig 10: Pirâmide de Formação Acadêmica ──
-    const fig9Data = {{ fig9Pyramid|json_encode|raw }};
-    const elFig9 = document.getElementById('chartFig9');
-    if (elFig9) {
-        new Chart(elFig9, {
-            type: 'bar',
-            data: {
-                labels: Object.keys(fig9Data),
-                datasets: [{
-                    label: 'Orientações / Titulações',
-                    data: Object.values(fig9Data),
-                    backgroundColor: ['#6366f1', '#0284c7', '#14b8a6', '#10b981', '#f59e0b', '#ec4899'],
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
-                    y: { grid: { display: false }, ticks: { color: textColor, font: { size: 11 } } }
-                }
-            }
-        });
-    }
-
-    // ── Fig 11: Cursos dos Estudantes Orientados ──
-    const fig5Data = {{ fig5StudentsGrad|json_encode|raw }};
-    const elFig5 = document.getElementById('chartFig5');
-    if (elFig5) {
-        new Chart(elFig5, {
-            type: 'bar',
-            data: {
-                labels: fig5Data.map(d => d.courseName),
-                datasets: [{
-                    label: 'Estudantes Orientados',
-                    data: fig5Data.map(d => parseInt(d.total)),
-                    backgroundColor: '#10b981',
-                    borderRadius: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 }, maxRotation: 45, minRotation: 20 } },
-                    y: { grid: { color: gridColor }, ticks: { color: textColor } }
-                }
-            }
-        });
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTabTraining);
+    } else {
+        initTabTraining();
     }
 })();
 </script>
