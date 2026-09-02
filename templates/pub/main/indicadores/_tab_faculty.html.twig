@@ -853,9 +853,9 @@
                 const selectedDept = deptFilter ? deptFilter.value : 'all';
                 const isTopMode = !groupingFilter || groupingFilter.value === 'top';
 
-                let matrix = rawData.fullMatrix || [];
+                let matrix = rawData.fullMatrix || rawData.trajectories || [];
                 if (selectedDept !== 'all') {
-                    matrix = matrix.filter(r => r.dept === selectedDept);
+                    matrix = matrix.filter(r => r.dept === selectedDept || r.deptCode === selectedDept);
                 }
 
                 const kpiTotalEl = document.getElementById('sankeyKpiTotal');
@@ -884,13 +884,13 @@
                     let cat = 'Outras';
 
                     if (stage === 0) {
-                        inst = record.gradInst || 'Outras';
+                        inst = record.gradInst || record.grad || 'Outras';
                         cat = record.gradCat || 'Outras';
                     } else if (stage === 1) {
-                        inst = record.mscInst || 'Outras';
+                        inst = record.mscInst || record.mest || 'Outras';
                         cat = record.mscCat || 'Outras';
                     } else if (stage === 2) {
-                        inst = record.docInst || 'Outras';
+                        inst = record.docInst || record.doc || 'Outras';
                         cat = record.docCat || 'Outras';
                     } else if (stage === 3) {
                         return { id: 'CECH / UFSCar', name: 'CECH / UFSCar', stage: 3, category: 'CECH' };
@@ -998,11 +998,13 @@
                 const defs = svg.append('defs');
                 links.forEach((link, i) => {
                     const gradientId = `sankey-grad-${i}`;
+                    const x1 = isNaN(link.source.x1) ? 0 : link.source.x1;
+                    const x2 = isNaN(link.target.x0) ? 100 : link.target.x0;
                     const grad = defs.append('linearGradient')
                         .attr('id', gradientId)
                         .attr('gradientUnits', 'userSpaceOnUse')
-                        .attr('x1', link.source.x1)
-                        .attr('x2', link.target.x0);
+                        .attr('x1', x1)
+                        .attr('x2', x2);
 
                     const c1 = categoryColors[link.source.category] || stageColors[link.source.stage] || '#6366f1';
                     const c2 = categoryColors[link.target.category] || stageColors[link.target.stage] || '#6366f1';
@@ -1024,7 +1026,7 @@
                         if (mode === 'category') return categoryColors[d.source.category] || '#6366f1';
                         return categoryColors[d.source.category] || stageColors[d.source.stage] || '#6366f1';
                     })
-                    .attr('stroke-width', d => Math.max(1.5, d.width))
+                    .attr('stroke-width', d => Math.max(1.5, isNaN(d.width) ? 1.5 : d.width))
                     .attr('stroke-opacity', 0.4)
                     .attr('class', 'cursor-pointer transition-all duration-200 hover:stroke-opacity-80');
 
@@ -1036,10 +1038,10 @@
                     .attr('class', 'cursor-pointer');
 
                 nodeElements.append('rect')
-                    .attr('x', d => d.x0)
-                    .attr('y', d => d.y0)
-                    .attr('height', d => Math.max(3, d.y1 - d.y0))
-                    .attr('width', d => d.x1 - d.x0)
+                    .attr('x', d => isNaN(d.x0) ? 0 : d.x0)
+                    .attr('y', d => isNaN(d.y0) ? 0 : d.y0)
+                    .attr('height', d => Math.max(3, isNaN(d.y1 - d.y0) ? 3 : (d.y1 - d.y0)))
+                    .attr('width', d => Math.max(1, isNaN(d.x1 - d.x0) ? 18 : (d.x1 - d.x0)))
                     .attr('rx', 4)
                     .attr('fill', d => categoryColors[d.category] || stageColors[d.stage] || '#3b82f6')
                     .attr('stroke', isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
@@ -1047,10 +1049,10 @@
                     .attr('class', 'transition-all duration-150 hover:brightness-110');
 
                 nodeElements.append('text')
-                    .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
-                    .attr('y', d => (d.y1 + d.y0) / 2)
+                    .attr('x', d => (isNaN(d.x0) ? 0 : d.x0) < width / 2 ? (isNaN(d.x1) ? 18 : d.x1) + 6 : (isNaN(d.x0) ? 0 : d.x0) - 6)
+                    .attr('y', d => ((isNaN(d.y1) ? 0 : d.y1) + (isNaN(d.y0) ? 0 : d.y0)) / 2)
                     .attr('dy', '0.35em')
-                    .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
+                    .attr('text-anchor', d => (isNaN(d.x0) ? 0 : d.x0) < width / 2 ? 'start' : 'end')
                     .attr('fill', isDark ? '#e2e8f0' : '#1e293b')
                     .attr('font-size', d => d.value > 15 ? '11px' : '10px')
                     .attr('font-weight', d => d.value > 15 ? 'bold' : '500')

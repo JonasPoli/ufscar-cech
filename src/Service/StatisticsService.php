@@ -1551,15 +1551,28 @@ class StatisticsService
             @$instFrequencies[$mest]++;
             @$instFrequencies[$doc]++;
 
+            $gradCat = self::categorizeTrajectoryInstitution($grad);
+            $mestCat = self::categorizeTrajectoryInstitution($mest);
+            $docCat = self::categorizeTrajectoryInstitution($doc);
+            $docCountry = str_starts_with($doc ?? '', 'Exterior') ? 'Exterior' : 'Brasil';
+
             $trajectories[] = [
                 'researcherId' => (int)$r['id'],
                 'name' => (string)$r['full_name'],
                 'slug' => (string)($r['slug'] ?: ($r['id_lattes'] ?? '')),
+                'dept' => $deptCode,
                 'deptCode' => $deptCode,
                 'deptName' => $deptName,
                 'grad' => $grad,
+                'gradInst' => $grad,
+                'gradCat' => $gradCat,
                 'mest' => $mest,
+                'mscInst' => $mest,
+                'mscCat' => $mestCat,
                 'doc' => $doc,
+                'docInst' => $doc,
+                'docCat' => $docCat,
+                'docCountry' => $docCountry,
             ];
         }
 
@@ -1601,8 +1614,28 @@ class StatisticsService
             'summary' => $summary,
             'departments' => array_values($departmentsMap),
             'trajectories' => $trajectories,
+            'fullMatrix' => $trajectories,
             'instFrequencies' => $instFrequencies
         ];
+    }
+
+    public static function categorizeTrajectoryInstitution(?string $inst): string
+    {
+        if (!$inst || $inst === 'Graduação Não Inf.' || $inst === 'Mestrado Não Inf.' || $inst === 'Doutorado Não Inf.') {
+            return 'Outras';
+        }
+        if ($inst === 'USP') return 'USP';
+        if ($inst === 'UFSCar') return 'UFSCar';
+        if ($inst === 'UNICAMP') return 'UNICAMP';
+        if ($inst === 'UNESP') return 'UNESP';
+        if (in_array($inst, ['PUC-SP', 'PUC-Campinas', 'UNIFESP', 'Mackenzie', 'UNIMEP', 'UEL', 'UEM', 'USF', 'UNISO', 'FADISC', 'FESPSP', 'UNIVESP'], true)) {
+            return 'Paulistas';
+        }
+        if (str_starts_with($inst, 'Exterior')) return 'Exterior';
+        if (str_starts_with($inst, 'UF') || str_starts_with($inst, 'IF') || str_starts_with($inst, 'UNB') || str_starts_with($inst, 'UTFPR')) {
+            return 'Federais';
+        }
+        return 'Outras';
     }
 
     /**
