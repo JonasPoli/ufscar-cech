@@ -308,19 +308,32 @@
 </div>
 
 <script>
+let chartsExpanded = true;
+function toggleChartsPanel() {
+    const container = document.getElementById('chartsContainer');
+    const toggleIcon = document.getElementById('toggleIcon');
+    const toggleText = document.getElementById('toggleText');
+    if (!container) return;
+    if (chartsExpanded) {
+        container.style.display = 'none';
+        if (toggleIcon) toggleIcon.name = 'arrows-collapse';
+        if (toggleText) toggleText.textContent = 'Exibir Gráficos';
+        chartsExpanded = false;
+    } else {
+        container.style.display = '';
+        if (toggleIcon) toggleIcon.name = 'arrows-expand';
+        if (toggleText) toggleText.textContent = 'Recolher Gráficos';
+        chartsExpanded = true;
+    }
+}
+
 (function initProfessorAnalytics() {
     if (typeof Chart === "undefined") {
         console.warn("Chart.js not loaded yet, retrying...");
         setTimeout(initProfessorAnalytics, 150);
         return;
     }
-    setTimeout(() => {
-        toast.classList.add('translate-y-20', 'opacity-0');
-    }, 3000);
-}
 
-// ── Chart.js Initialization ──
-document.addEventListener('DOMContentLoaded', () => {
     const isDark = document.documentElement.classList.contains('dark');
     const textColor = isDark ? '#94a3b8' : '#475569';
     const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
@@ -605,5 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     y: { grid: { color: gridColor }, ticks: { color: textColor, precision: 0 } }
                 }
             }
+        });
+    }
 })();
 </script>
