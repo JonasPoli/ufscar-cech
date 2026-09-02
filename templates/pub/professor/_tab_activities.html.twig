@@ -1,0 +1,233 @@
+<div class="space-y-8">
+    {% if researcher.researchProjects|length > 0 %}
+    <!-- 1. PROJETOS DE PESQUISA & EXTENSÃO -->
+    <div class="space-y-4">
+                    <!-- Empty State Message for Projects -->
+                    <div id="empty-projects" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhum projeto encontrado para o filtro aplicado.</p>
+                    </div>
+
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="kanban" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                        Projetos de Pesquisa, Extensão & Desenvolvimento ({{ researcher.researchProjects|length }})
+                    </h3>
+                    <div class="space-y-4">
+                        {% for proj in researcher.researchProjects %}
+                            <div class="project-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-2.5 bg-white/50 dark:bg-slate-900/50 hover:border-slate-300 transition-colors">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="rounded-md {% if proj.nature == 'EXTENSAO' %}bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300{% elseif proj.nature == 'DESENVOLVIMENTO' %}bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300{% else %}bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300{% endif %} px-2.5 py-0.5 text-[11px] font-bold">
+                                            {{ proj.nature }}
+                                        </span>
+                                        <span class="rounded-md {% if proj.status == 'EM_ANDAMENTO' %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300{% else %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300{% endif %} px-2 py-0.5 text-[11px] font-semibold">
+                                            {{ proj.status|replace({'_': ' '}) }}
+                                        </span>
+                                        {% if proj.isCoordinator %}
+                                            <span class="rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 text-[10px] font-bold">
+                                                Coordenador
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono">
+                                        {{ proj.startYear ?: '?' }} — {{ proj.endYear ?: 'Atual' }}
+                                    </span>
+                                </div>
+
+                                <h4 class="font-heading text-base font-bold text-slate-900 dark:text-white leading-snug">
+                                    {{ proj.name }}
+                                </h4>
+
+                                {% if proj.description %}
+                                    <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed pt-1">{{ proj.description }}</p>
+                                {% endif %}
+
+                                {% if proj.agencyFinancier %}
+                                    <div class="flex items-center gap-1.5 pt-1 text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+                                        <sl-icon name="cash-coin"></sl-icon> Financiador(es): {{ proj.agencyFinancier }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+    </div>
+    {% endif %}
+
+    {% if researcher.examinationBoards|length > 0 %}
+    <!-- 2. BANCAS EXAMINADORAS -->
+    <div class="space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
+                    <!-- Empty State Message for Boards -->
+                    <div id="empty-boards" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhuma participação em banca encontrada para o filtro aplicado.</p>
+                    </div>
+
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="clipboard-check" class="text-indigo-600 dark:text-indigo-400"></sl-icon>
+                        Participação em Bancas Julgadoras e Comissões ({{ researcher.examinationBoards|length }})
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {% for b in researcher.examinationBoards %}
+                            <div class="board-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
+                                <div class="flex items-center justify-between">
+                                    <span class="rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 px-2 py-0.5 text-[11px] font-bold">
+                                        {{ b.boardType }}
+                                    </span>
+                                    {% if b.year %}<span class="text-xs text-slate-400 font-semibold font-mono">{{ b.year }}</span>{% endif %}
+                                </div>
+                                {% if b.candidateName %}
+                                    <p class="text-sm font-semibold text-slate-900 dark:text-white">Candidato(a): {{ b.candidateName }}</p>
+                                {% endif %}
+                                {% if b.title %}
+                                    <p class="text-xs text-slate-600 dark:text-slate-300 italic">"{{ b.title }}"</p>
+                                {% endif %}
+                                {% if b.institutionName %}
+                                    <p class="text-[11px] text-slate-500 dark:text-slate-400">{{ b.institutionName }}</p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+    </div>
+    {% endif %}
+
+    {% if researcher.professionalExperiences|length > 0 %}
+    <!-- 3. ATUAÇÃO PROFISSIONAL -->
+    <div class="space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
+                    <!-- Empty State Message for Experience -->
+                    <div id="empty-experience" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhuma atuação profissional encontrada para o filtro aplicado.</p>
+                    </div>
+
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="briefcase" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                        Atuação Profissional e Vínculos Institucionais
+                    </h3>
+                    <div class="space-y-4">
+                        {% for exp in researcher.professionalExperiences %}
+                            <div class="experience-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-2 bg-white/50 dark:bg-slate-900/50">
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2">
+                                        {{ institution_badge(exp.institutionName) }}
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        {% if exp.isCurrent %}
+                                            <span class="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                                Atual
+                                            </span>
+                                        {% endif %}
+                                        <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono">
+                                            {{ exp.startYear ?: '?' }} — {{ exp.endYear ?: 'Atual' }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="text-xs text-slate-600 dark:text-slate-300 space-y-1">
+                                    {% if exp.roleName %}
+                                        <p><strong class="font-semibold text-slate-700 dark:text-slate-200">Cargo / Enquadramento:</strong> {{ exp.roleName }}</p>
+                                    {% endif %}
+                                    {% if exp.contractType %}
+                                        <p><strong class="font-semibold text-slate-700 dark:text-slate-200">Vínculo:</strong> {{ exp.contractType }} {% if exp.workloadHours %}({{ exp.workloadHours }}h semanais){% endif %}</p>
+                                    {% endif %}
+                                    {% if exp.otherInfo %}
+                                        <p class="italic text-slate-500 dark:text-slate-400 pt-1">{{ exp.otherInfo }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+    </div>
+    {% endif %}
+
+    {% if researcher.eventParticipations|length > 0 %}
+    <!-- 4. EVENTOS -->
+    <div class="space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
+                    <!-- Empty State Message for Events -->
+                    <div id="empty-events" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhum evento encontrado para o filtro aplicado.</p>
+                    </div>
+
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="calendar-event" class="text-teal-600 dark:text-teal-400"></sl-icon>
+                        Participação em Eventos, Congressos e Exposições ({{ researcher.eventParticipations|length }})
+                    </h3>
+                    <div class="space-y-3">
+                        {% for ev in researcher.eventParticipations %}
+                            <div class="event-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <span class="rounded-md bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 px-2 py-0.5 text-[11px] font-bold">
+                                            {{ ev.eventType ?: 'Evento' }}
+                                        </span>
+                                        {% if ev.participationType %}
+                                            <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                                                ({{ ev.participationType }})
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    {% if ev.year %}<span class="text-xs text-slate-400 font-semibold font-mono">{{ ev.year }}</span>{% endif %}
+                                </div>
+                                <h4 class="text-sm font-bold text-slate-900 dark:text-white">{{ ev.eventName }}</h4>
+                                {% if ev.presentationTitle %}
+                                    <p class="text-xs text-slate-600 dark:text-slate-300 italic">Apresentação: "{{ ev.presentationTitle }}"</p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+    </div>
+    {% endif %}
+
+    {% if researcher.awards|length > 0 %}
+    <!-- 5. PRÊMIOS E TÍTULOS -->
+    <div class="space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
+                    <!-- Empty State Message for Awards -->
+                    <div id="empty-awards" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhum prêmio ou título encontrado para o filtro aplicado.</p>
+                    </div>
+
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="trophy" class="text-amber-500"></sl-icon> Prêmios e Distinções
+                    </h3>
+                    <div class="space-y-3">
+                        {% for a in researcher.awards %}
+                            <div class="award-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1 bg-white/50 dark:bg-slate-900/50">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">{{ a.name }}</h4>
+                                    {% if a.year %}<span class="text-xs font-semibold text-amber-600 dark:text-amber-400 font-mono">{{ a.year }}</span>{% endif %}
+                                </div>
+                                {% if a.promoterEntity %}
+                                    <p class="text-xs text-slate-500 dark:text-slate-400">{{ a.promoterEntity }}</p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+    </div>
+    {% endif %}
+
+    {% if researcher.knowledgeAreas|length > 0 %}
+    <!-- 6. ÁREAS DO CNPQ -->
+    <div class="space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
+                    <!-- Empty State Message for Knowledge Areas -->
+                    <div id="empty-areas" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhuma área de atuação encontrada para o filtro aplicado.</p>
+                    </div>
+
+                    <h3 class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                        <sl-icon name="diagram-2" class="text-sky-600 dark:text-sky-400"></sl-icon> Áreas de Atuação do CNPq
+                    </h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {% for ka in researcher.knowledgeAreas %}
+                            <div class="area-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50">
+                                <span class="text-[11px] font-bold uppercase text-sky-600 dark:text-sky-400">{{ ka.majorArea }}</span>
+                                <h4 class="text-sm font-semibold text-slate-900 dark:text-white">{{ ka.area }}</h4>
+                                {% if ka.subArea %}<p class="text-xs text-slate-500 dark:text-slate-400">Subárea: {{ ka.subArea }}</p>{% endif %}
+                                {% if ka.specialty %}<p class="text-xs text-slate-500 dark:text-slate-400">Especialidade: {{ ka.specialty }}</p>{% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+    </div>
+    {% endif %}
+</div>

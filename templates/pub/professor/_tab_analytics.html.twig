@@ -1,0 +1,609 @@
+<div class="space-y-8">
+    <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 no-print">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200/60 dark:border-white/10">
+            <div>
+                <h2 class="font-heading text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <sl-icon name="graph-up-arrow" class="text-sky-500"></sl-icon> Painel de Gráficos e Inteligência de Produção
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Análise cronológica da produção científica, intelectual e formação de recursos humanos ao longo dos anos.
+                </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button type="button" id="toggleChartsBtn" onclick="toggleChartsPanel()" class="inline-flex items-center gap-2 rounded-xl bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800/60 px-3.5 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-100 transition-colors">
+                    <sl-icon name="arrows-expand" id="toggleIcon"></sl-icon> <span id="toggleText">Recolher Gráficos</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="chartsContainer" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Main Chart: Stacked Production Timeline -->
+            <div class="lg:col-span-8 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Evolução da Produção por Categoria (Histórico Anual)
+                    </h3>
+                    <span class="text-[11px] text-slate-400 font-mono">{{ kpiStats.firstYear }} - {{ kpiStats.lastYear }}</span>
+                </div>
+                <div class="h-72 w-full">
+                    <canvas id="productionTimelineChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Side Chart: Donut Category Distribution -->
+            <div class="lg:col-span-4 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                        Distribuição por Categoria
+                    </h3>
+                    <span class="text-[11px] text-slate-400 font-semibold">{{ kpiStats.totalProductions }} itens</span>
+                </div>
+                <div class="h-72 w-full flex items-center justify-center">
+                    <canvas id="categoryDonutChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Orientations Timeline Chart -->
+            {% if completedOrientations|length > 0 %}
+                <div class="lg:col-span-12 pt-4 border-t border-slate-200/60 dark:border-white/10 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                            <sl-icon name="people" class="text-rose-500"></sl-icon> Histórico de Orientações Concluídas por Nível
+                        </h3>
+                        <span class="text-[11px] text-slate-400">{{ kpiStats.orientationsCompleted }} concluídas, {{ kpiStats.orientationsOngoing }} em andamento</span>
+                    </div>
+                    <div class="h-56 w-full">
+                        <canvas id="orientationsTimelineChart"></canvas>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── Bases Científicas & Indexação Internacional (Scopus, WoS, Latindex, etc.) ── -->
+    {% if academicDatabases.ranking|length > 0 or academicDatabases.totalIndexedArticles > 0 %}
+        <div class="glass-card rounded-3xl p-6 sm:p-7 shadow-sm space-y-6 border-l-4 border-indigo-500 no-print">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 dark:border-white/10 pb-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Bases Científicas & Indexação</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                            Visibilidade Internacional
+                        </span>
+                    </div>
+                    <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+                        <sl-icon name="journal-bookmark-fill" class="text-indigo-600 dark:text-indigo-400 text-xl"></sl-icon> Produção Científica Indexada em Bases Internacionais
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Cruzamento entre os artigos publicados pelo docente, as revistas científicas e as bases internacionais de indexação.
+                    </p>
+                </div>
+                <span class="rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-3.5 py-1.5 text-xs font-bold self-start sm:self-auto shrink-0 flex items-center gap-1.5 shadow-2xs">
+                    <sl-icon name="check-circle-fill" class="text-xs text-indigo-600 dark:text-indigo-400"></sl-icon> {{ academicDatabases.totalIndexedArticles }} de {{ academicDatabases.totalArticles }} artigos indexados ({{ academicDatabases.indexedPercentage }}%)
+                </span>
+            </div>
+
+            <!-- KPI Cards Ranking -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+                <!-- Total Indexados -->
+                <div class="rounded-2xl border border-indigo-200/80 dark:border-indigo-900/60 p-4 bg-gradient-to-br from-indigo-50/80 to-sky-50/50 dark:from-indigo-950/40 dark:to-slate-900/40 space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Artigos Indexados</span>
+                        <sl-icon name="award" class="text-indigo-500 text-sm"></sl-icon>
+                    </div>
+                    <div class="text-2xl font-black text-indigo-900 dark:text-indigo-200 font-heading">
+                        {{ academicDatabases.totalIndexedArticles|number_format(0, ',', '.') }}
+                    </div>
+                    <div class="text-[11px] text-indigo-600/80 dark:text-indigo-400 font-medium">
+                        {{ academicDatabases.indexedPercentage }}% de todos os artigos
+                    </div>
+                </div>
+
+                <!-- Loop bases ranking -->
+                {% for item in academicDatabases.ranking %}
+                    <button type="button" onclick="filterByDatabase('{{ item.acronym|lower|e('js') }}')" class="db-card-btn rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 bg-white/70 dark:bg-slate-900/60 text-left space-y-1.5 hover:border-indigo-500 dark:hover:border-indigo-400 hover:shadow-md transition-all group shadow-2xs" data-db-acronym="{{ item.acronym|lower|e('html_attr') }}" title="Filtrar produções indexadas em {{ item.name }}">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1.5 min-w-0">
+                                {% if item.logo %}
+                                    <img src="{{ item.logo }}" alt="{{ item.name }}" class="h-3.5 w-auto object-contain shrink-0 group-hover:scale-110 transition-transform" onerror="this.style.display='none'" />
+                                {% endif %}
+                                <span class="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate">{{ item.name }}</span>
+                            </div>
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">#{{ loop.index }}</span>
+                        </div>
+                        <div class="text-2xl font-black text-slate-900 dark:text-white font-heading">
+                            {{ item.total|number_format(0, ',', '.') }}
+                        </div>
+                        <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                            {{ item.indexedPercentage }}% das produções indexadas
+                        </div>
+                    </button>
+                {% endfor %}
+            </div>
+
+            <!-- Fig 15 & Fig 16 Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+                <!-- Fig 15: Produção por Base de Indexação -->
+                <div class="rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 15</span>
+                            <span class="text-[11px] text-slate-400">Bases Científicas Internacionais</span>
+                        </div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-heading">
+                            Trabalhos por Base de Indexação
+                        </h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            Distribuição dos artigos publicados pelo docente nas bases de dados indexadoras.
+                        </p>
+                    </div>
+                    <div class="h-64 w-full">
+                        <canvas id="chartProfessorAcademicDatabases"></canvas>
+                    </div>
+                </div>
+
+                <!-- Fig 16: Evolução Temporal por Base -->
+                <div class="rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 16</span>
+                            <span class="text-[11px] text-slate-400">Séries Históricas</span>
+                        </div>
+                        <h4 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-heading">
+                            Evolução Temporal da Indexação por Base ({{ academicDatabases.years|first }}–{{ academicDatabases.years|last }})
+                        </h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            Histórico comparativo do número anual de artigos publicados em periódicos indexados.
+                        </p>
+                    </div>
+                    <div class="h-64 w-full">
+                        <canvas id="chartProfessorAcademicDatabasesTimeline"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- ── 1. Principais Colaboradores e Rede de Coautoria (Largura Total) ── -->
+    {% if topCoauthors|length > 0 %}
+        <div class="glass-card rounded-3xl p-6 sm:p-7 shadow-sm space-y-5 border-l-4 border-indigo-500 no-print">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 dark:border-white/10 pb-4">
+                <div>
+                    <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+                        <sl-icon name="people-fill" class="text-indigo-600 dark:text-indigo-400 text-xl"></sl-icon> Principais Colaboradores e Rede de Coautoria
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Pesquisadores e docentes com maior volume de trabalhos e produções em parceria
+                    </p>
+                </div>
+                <span class="rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 px-3 py-1 text-xs font-bold self-start sm:self-auto shrink-0 flex items-center gap-1.5 shadow-2xs">
+                    <sl-icon name="diagram-2" class="text-xs"></sl-icon> {{ topCoauthors|length }} colaboradores em destaque
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {% for coauthor in topCoauthors %}
+                    <div class="rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 flex flex-col justify-between bg-white/70 dark:bg-slate-900/60 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md transition-all group">
+                        <div class="space-y-2.5">
+                            <!-- Top: Avatar + Name + Count -->
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <div class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center font-bold text-xs uppercase shrink-0 ring-2 {% if coauthor.researcher and coauthor.researcher.photoUrl %}ring-sky-500/30 bg-slate-100 dark:bg-slate-800 shadow-xs{% elseif coauthor.researcher %}ring-indigo-500/30 bg-gradient-to-tr from-indigo-600 to-sky-600 text-white shadow-xs{% else %}ring-slate-200 dark:ring-slate-800 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300{% endif %}">
+                                        {% if coauthor.researcher and coauthor.researcher.photoUrl %}
+                                            <img src="{{ coauthor.researcher.photoUrl }}" alt="{{ coauthor.name }}" class="h-full w-full object-cover" onerror="this.onerror=null;this.parentElement.innerHTML='{{ coauthor.name|slice(0, 2)|upper }}';this.parentElement.className='w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center font-bold text-xs uppercase shrink-0 ring-2 ring-indigo-500/30 bg-gradient-to-tr from-indigo-600 to-sky-600 text-white shadow-xs';" />
+                                        {% else %}
+                                            {{ coauthor.name|slice(0, 2)|upper }}
+                                        {% endif %}
+                                    </div>
+                                    <div class="min-w-0">
+                                        {% if coauthor.researcher %}
+                                            <a href="{{ path('app_pub_professor_show', {'slugOrId': coauthor.researcher.slug ?: coauthor.researcher.idLattes}) }}" class="text-xs font-bold text-slate-900 dark:text-white hover:text-sky-600 dark:hover:text-sky-400 hover:underline truncate block" title="Ver perfil docente no CECH">
+                                                {{ coauthor.name }}
+                                            </a>
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded mt-0.5 truncate max-w-full">
+                                                <sl-icon name="check-circle-fill" class="text-[9px]"></sl-icon> {{ coauthor.researcher.department ?: 'CECH UFSCar' }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate block" title="{{ coauthor.name }}">
+                                                {{ coauthor.name }}
+                                            </span>
+                                            <span class="text-[10px] text-slate-400 block mt-0.5">Colaborador externo</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <span class="rounded-lg bg-indigo-50 dark:bg-indigo-950 px-2.5 py-1 text-xs font-bold text-indigo-700 dark:text-indigo-300 shrink-0 shadow-2xs">
+                                    {{ coauthor.count }} pub.
+                                </span>
+                            </div>
+
+                            <!-- Middle: Period and Types breakdown -->
+                            <div class="pt-2 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5 text-[11px]">
+                                {% if coauthor.period %}
+                                    <div class="flex items-center justify-between text-slate-500 dark:text-slate-400 text-[11px]">
+                                        <span class="flex items-center gap-1"><sl-icon name="calendar3" class="text-slate-400 text-[10px]"></sl-icon> Período:</span>
+                                        <span class="font-semibold text-slate-700 dark:text-slate-300">{{ coauthor.period }}</span>
+                                    </div>
+                                {% endif %}
+
+                                {% if coauthor.types|length > 0 %}
+                                    <div class="flex flex-wrap gap-1 pt-0.5">
+                                        {% for t, c in coauthor.types %}
+                                            <span class="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded font-medium">
+                                                {{ t|capitalize }}: {{ c }}
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- ── 2. Palavras-chave dos Trabalhos & Temas Frequentes (Duas Colunas Lado a Lado) ── -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 no-print">
+        <!-- Coluna 1: Palavras-chave dos Trabalhos (Lattes) -->
+        {% if authorKeywords|length > 0 %}
+            <div class="glass-card rounded-3xl p-6 sm:p-7 shadow-sm space-y-4 border-l-4 border-emerald-500 flex flex-col justify-between">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
+                        <div>
+                            <h3 class="font-heading text-sm sm:text-base font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                <sl-icon name="tags-fill" class="text-emerald-500"></sl-icon> Palavras-chave dos Trabalhos
+                            </h3>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Cadastradas pelo autor nos artigos e produções no Lattes</p>
+                        </div>
+                        <span class="rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 text-[10px] font-bold shrink-0">Lattes Oficial</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2 pt-1 max-h-64 overflow-y-auto pr-1">
+                        {% set maxAuthCount = authorKeywords|first %}
+                        {% for kw, count in authorKeywords %}
+                            {% set weight = ((count / (maxAuthCount ?: 1)) * 100)|round %}
+                            <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-xl border border-emerald-200/80 dark:border-emerald-900/60 px-3 py-1.5 text-xs transition-all hover:border-emerald-500 hover:scale-105 {% if weight > 70 %}bg-emerald-600 text-white font-bold shadow-sm{% elseif weight > 40 %}bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold{% else %}bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200{% endif %}" title="Filtrar produções com palavra-chave '{{ kw }}' ({{ count }} ocorrências)">
+                                {{ kw }} <span class="text-[10px] opacity-75">({{ count }})</span>
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Clique em qualquer termo para filtrar produções</span>
+                    <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ authorKeywords|length }} termos</span>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Coluna 2: Temas e Termos Frequentes (Mineração de Títulos) -->
+        {% if topKeywords|length > 0 %}
+            <div class="glass-card rounded-3xl p-6 sm:p-7 shadow-sm space-y-4 border-l-4 border-sky-500 flex flex-col justify-between">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
+                        <div>
+                            <h3 class="font-heading text-sm sm:text-base font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                <sl-icon name="diagram-3" class="text-sky-500"></sl-icon> Temas e Termos Frequentes
+                            </h3>
+                            <p class="text-[11px] text-slate-400 mt-0.5">Sintagmas e conceitos mais recorrentes nos títulos</p>
+                        </div>
+                        <span class="rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 px-2.5 py-0.5 text-[10px] font-bold shrink-0">Mineração</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2 pt-1 max-h-64 overflow-y-auto pr-1">
+                        {% set maxCount = topKeywords|first %}
+                        {% for word, count in topKeywords %}
+                            {% set weight = ((count / (maxCount ?: 1)) * 100)|round %}
+                            <button type="button" onclick="filterByKeyword('{{ word|e('js') }}')" class="rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-1.5 text-xs transition-all hover:border-sky-500 hover:scale-105 {% if weight > 70 %}bg-sky-500 text-white font-bold shadow-sm{% elseif weight > 40 %}bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-semibold{% else %}bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300{% endif %}" title="Filtrar produções contendo '{{ word }}' ({{ count }} ocorrências)">
+                                {{ word|capitalize }} <span class="text-[10px] opacity-75">({{ count }})</span>
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Clique em qualquer termo para filtrar produções</span>
+                    <span class="font-semibold text-sky-600 dark:text-sky-400">{{ topKeywords|length }} temas</span>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+(function initProfessorAnalytics() {
+    if (typeof Chart === "undefined") {
+        console.warn("Chart.js not loaded yet, retrying...");
+        setTimeout(initProfessorAnalytics, 150);
+        return;
+    }
+    setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+    }, 3000);
+}
+
+// ── Chart.js Initialization ──
+document.addEventListener('DOMContentLoaded', () => {
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#94a3b8' : '#475569';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+
+    const timelineYears = {{ timelineYears|json_encode|raw }};
+    const prodTimeline = {{ productionTimeline|json_encode|raw }};
+    const orientTimeline = {{ orientationsTimeline|json_encode|raw }};
+    const catDistribution = {{ categoryDistribution|json_encode|raw }};
+
+    // 1. Stacked Production Timeline Chart
+    const prodCanvas = document.getElementById('productionTimelineChart');
+    if (prodCanvas) {
+        new Chart(prodCanvas, {
+            type: 'bar',
+            data: {
+                labels: timelineYears,
+                datasets: [
+                    {
+                        label: 'Artigos Periódicos',
+                        data: Object.values(prodTimeline.artigos),
+                        backgroundColor: '#0284c7',
+                        stack: 'prod',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Livros & Capítulos',
+                        data: Object.values(prodTimeline.livros_capitulos),
+                        backgroundColor: '#f59e0b',
+                        stack: 'prod',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Jornais / Revistas',
+                        data: Object.values(prodTimeline.jornais_revistas),
+                        backgroundColor: '#3b82f6',
+                        stack: 'prod',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Trabalhos em Congressos',
+                        data: Object.values(prodTimeline.eventos),
+                        backgroundColor: '#ec4899',
+                        stack: 'prod',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Produção Técnica & Inovação',
+                        data: Object.values(prodTimeline.tecnicos_inovacao),
+                        backgroundColor: '#10b981',
+                        stack: 'prod',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Outras',
+                        data: Object.values(prodTimeline.outras),
+                        backgroundColor: '#94a3b8',
+                        stack: 'prod',
+                        borderRadius: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { boxWidth: 12, font: { size: 10 }, color: textColor }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false },
+                        ticks: { color: textColor, font: { size: 10 } }
+                    },
+                    y: {
+                        stacked: true,
+                        grid: { color: gridColor },
+                        ticks: { color: textColor, precision: 0 }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Donut Category Distribution Chart
+    const catCanvas = document.getElementById('categoryDonutChart');
+    if (catCanvas) {
+        new Chart(catCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(catDistribution),
+                datasets: [{
+                    data: Object.values(catDistribution),
+                    backgroundColor: [
+                        '#0284c7', '#f59e0b', '#3b82f6', '#ec4899',
+                        '#10b981', '#6366f1', '#a855f7', '#64748b'
+                    ],
+                    borderWidth: isDark ? 2 : 1,
+                    borderColor: isDark ? '#0f172a' : '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 10, font: { size: 9 }, color: textColor }
+                    }
+                },
+                cutout: '62%'
+            }
+        });
+    }
+
+    // 3. Orientations Timeline Chart
+    const orientCanvas = document.getElementById('orientationsTimelineChart');
+    if (orientCanvas) {
+        new Chart(orientCanvas, {
+            type: 'bar',
+            data: {
+                labels: timelineYears,
+                datasets: [
+                    {
+                        label: 'Doutorado',
+                        data: Object.values(orientTimeline.doutorado || {}),
+                        backgroundColor: '#7c3aed',
+                        stack: 'orient',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Mestrado',
+                        data: Object.values(orientTimeline.mestrado || {}),
+                        backgroundColor: '#059669',
+                        stack: 'orient',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Pós-Doutorado',
+                        data: Object.values(orientTimeline.pos_doutorado || {}),
+                        backgroundColor: '#ea580c',
+                        stack: 'orient',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'TCC / Graduação',
+                        data: Object.values(orientTimeline.tcc_graduacao || {}),
+                        backgroundColor: '#0284c7',
+                        stack: 'orient',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Iniciação Científica (PIBIC)',
+                        data: Object.values(orientTimeline.iniciacao_cientifica || {}),
+                        backgroundColor: '#eab308',
+                        stack: 'orient',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Especialização',
+                        data: Object.values(orientTimeline.especializacao || {}),
+                        backgroundColor: '#ec4899',
+                        stack: 'orient',
+                        borderRadius: 3
+                    },
+                    {
+                        label: 'Outras Orientações',
+                        data: Object.values(orientTimeline.outras || {}),
+                        backgroundColor: '#64748b',
+                        stack: 'orient',
+                        borderRadius: 3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { boxWidth: 12, font: { size: 10 }, color: textColor }
+                    }
+                },
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: { display: false },
+                        ticks: { color: textColor, font: { size: 10 } }
+                    },
+                    y: {
+                        stacked: true,
+                        grid: { color: gridColor },
+                        ticks: { color: textColor, precision: 0 }
+                    }
+                }
+            }
+        });
+    }
+
+    // 4. Professor Academic Databases Chart (Fig 15 Horizontal Bar)
+    const profAcademicDbData = {{ academicDatabases|json_encode|raw }};
+    const profDbCanvas = document.getElementById('chartProfessorAcademicDatabases');
+    if (profDbCanvas && profAcademicDbData && profAcademicDbData.ranking && profAcademicDbData.ranking.length > 0) {
+        new Chart(profDbCanvas, {
+            type: 'bar',
+            data: {
+                labels: profAcademicDbData.ranking.map(d => d.name),
+                datasets: [{
+                    label: 'Artigos Indexados',
+                    data: profAcademicDbData.ranking.map(d => d.total),
+                    backgroundColor: profAcademicDbData.ranking.map(d => d.color),
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: profAcademicDbData.ranking.map(d => d.color)
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const item = profAcademicDbData.ranking[context.dataIndex];
+                                return ` ${item.total.toLocaleString('pt-BR')} artigos (${item.indexedPercentage}% dos indexados / ${item.percentage}% do total)`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: textColor, precision: 0 } },
+                    y: { grid: { display: false }, ticks: { color: textColor, font: { size: 11, weight: 'bold' } } }
+                }
+            }
+        });
+    }
+
+    // 5. Professor Academic Databases Timeline (Fig 16 Multi-Line Chart)
+    const profDbTimelineCanvas = document.getElementById('chartProfessorAcademicDatabasesTimeline');
+    if (profDbTimelineCanvas && profAcademicDbData && profAcademicDbData.timelineSeries && profAcademicDbData.timelineSeries.length > 0) {
+        const profTimelineDatasets = profAcademicDbData.timelineSeries.map(s => ({
+            label: s.name,
+            data: s.data,
+            borderColor: s.color,
+            backgroundColor: s.color + '20',
+            tension: 0.35,
+            borderWidth: 2.5,
+            fill: false,
+            pointRadius: 3,
+            pointHoverRadius: 6
+        }));
+
+        new Chart(profDbTimelineCanvas, {
+            type: 'line',
+            data: {
+                labels: profAcademicDbData.years,
+                datasets: profTimelineDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: textColor, font: { size: 10, weight: 'bold' }, boxWidth: 12 }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10 } } },
+                    y: { grid: { color: gridColor }, ticks: { color: textColor, precision: 0 } }
+                }
+            }
+})();
+</script>

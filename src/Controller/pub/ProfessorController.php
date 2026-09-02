@@ -38,7 +38,7 @@ class ProfessorController extends AbstractController
     ) {}
 
     /**
-     * Exibe a página de perfil público completo do pesquisador.
+     * Exibe a página de perfil público completo do pesquisador (layout modular de 4 abas).
      *
      * @param string $slugOrId Slug textual amigável ou ID Lattes de 16 dígitos
      * @return Response Página HTML renderizada
@@ -52,7 +52,65 @@ class ProfessorController extends AbstractController
             throw $this->createNotFoundException('Pesquisador não encontrado.');
         }
 
-        // 1. Categorize all production items
+        $allYears = [];
+        $prods = $this->categorizeProductions($researcher, $allYears);
+        $orients = $this->categorizeOrientations($researcher, $allYears);
+        $kpiStats = $this->calculateKpiStats($researcher, $prods, $orients, $allYears);
+
+        return $this->render('pub/professor/show.html.twig', array_merge([
+            'researcher' => $researcher,
+            'kpiStats' => $kpiStats,
+        ], $prods, $orients));
+    }
+
+    /**
+     * Renderiza o fragmento HTML de uma aba específica sob demanda (Lazy Loading).
+     */
+    #[Route('/professor/{slugOrId}/fragment/{tab}', name: 'app_pub_professor_fragment')]
+    public function fragment(string $slugOrId, string $tab): Response
+    {
+        $researcher = $this->researcherRepo->findWithAllDetails($slugOrId);
+
+        if (!$researcher) {
+            throw $this->createNotFoundException('Pesquisador não encontrado.');
+        }
+
+        $allYears = [];
+        $prods = $this->categorizeProductions($researcher, $allYears);
+        $orients = $this->categorizeOrientations($researcher, $allYears);
+        $kpiStats = $this->calculateKpiStats($researcher, $prods, $orients, $allYears);
+
+        $response = match ($tab) {
+            'productions' => $this->render('pub/professor/_tab_productions.html.twig', array_merge([
+                'researcher' => $researcher,
+                'kpiStats' => $kpiStats,
+            ], $prods)),
+            'orientations' => $this->render('pub/professor/_tab_orientations.html.twig', array_merge([
+                'researcher' => $researcher,
+                'kpiStats' => $kpiStats,
+            ], $orients)),
+            'activities' => $this->render('pub/professor/_tab_activities.html.twig', [
+                'researcher' => $researcher,
+                'kpiStats' => $kpiStats,
+            ]),
+            'analytics' => $this->render('pub/professor/_tab_analytics.html.twig', array_merge([
+                'researcher' => $researcher,
+                'kpiStats' => $kpiStats,
+                'completedOrientations' => $orients['completedOrientations'],
+                'academicDatabases' => $prods['academicDatabases'],
+            ], $this->buildAnalyticsData($researcher, $prods['articles'], $orients['completedOrientations'], $allYears, $kpiStats, $prods['categoryDistribution']))),
+            default => throw $this->createNotFoundException('Aba não encontrada.'),
+        };
+
+        $response->headers->set('Cache-Control', 'public, max-age=3600');
+        return $response;
+    }
+
+    /**
+     * Categoriza e ordena as produções científicas e calcula metadados de bases internacionais.
+     */
+    private function categorizeProductions(Researcher $researcher, array &$allYears = []): array
+    {
         $articles = [];
         $books = [];
         $chapters = [];
@@ -65,7 +123,6 @@ class ProfessorController extends AbstractController
         $otherProds = [];
 
         $totalWithDoi = 0;
-        $allYears = [];
 
         foreach ($researcher->getProductions() as $prod) {
             if ($prod->getDoi()) {
@@ -89,7 +146,6 @@ class ProfessorController extends AbstractController
             };
         }
 
-        // Sort items in each category by year DESC
         $sortFn = fn($a, $b) => ($b->getYear() ?? 0) <=> ($a->getYear() ?? 0);
         usort($articles, $sortFn);
         usort($books, $sortFn);
@@ -102,139 +158,6 @@ class ProfessorController extends AbstractController
         usort($artistic, $sortFn);
         usort($otherProds, $sortFn);
 
-        // 2. Categorize Orientations (Completed & Ongoing) with Level Breakdown
-        $completedOrientations = [];
-        $ongoingOrientations = [];
-
-        $orientationsCount = [
-            'doutorado_concluido' => 0,
-            'mestrado_concluido' => 0,
-            'pos_doc_concluido' => 0,
-            'tcc_concluido' => 0,
-            'iniciacao_concluido' => 0,
-            'especializacao_concluido' => 0,
-            'outras_concluido' => 0,
-            'doutorado_andamento' => 0,
-            'mestrado_andamento' => 0,
-            'pos_doc_andamento' => 0,
-            'tcc_andamento' => 0,
-            'iniciacao_andamento' => 0,
-            'especializacao_andamento' => 0,
-            'outras_andamento' => 0,
-        ];
-
-        foreach ($researcher->getOrientations() as $orientation) {
-            $isAndamento = $orientation->getNature() === Orientation::NATURE_EM_ANDAMENTO || stripos($orientation->getNature(), 'Andamento') !== false;
-            $type = $orientation->getOrientationType();
-
-            if ($orientation->getYear()) {
-                $allYears[$orientation->getYear()] = true;
-            }
-
-            if ($isAndamento) {
-                $ongoingOrientations[] = $orientation;
-                match ($type) {
-                    Orientation::TYPE_DOUTORADO => $orientationsCount['doutorado_andamento']++,
-                    Orientation::TYPE_MESTRADO => $orientationsCount['mestrado_andamento']++,
-                    Orientation::TYPE_POS_DOUTORADO => $orientationsCount['pos_doc_andamento']++,
-                    Orientation::TYPE_TCC_GRADUACAO => $orientationsCount['tcc_andamento']++,
-                    Orientation::TYPE_INICIACAO_CIENTIFICA => $orientationsCount['iniciacao_andamento']++,
-                    Orientation::TYPE_ESPECIALIZACAO => $orientationsCount['especializacao_andamento']++,
-                    default => $orientationsCount['outras_andamento']++,
-                };
-            } else {
-                $completedOrientations[] = $orientation;
-                match ($type) {
-                    Orientation::TYPE_DOUTORADO => $orientationsCount['doutorado_concluido']++,
-                    Orientation::TYPE_MESTRADO => $orientationsCount['mestrado_concluido']++,
-                    Orientation::TYPE_POS_DOUTORADO => $orientationsCount['pos_doc_concluido']++,
-                    Orientation::TYPE_TCC_GRADUACAO => $orientationsCount['tcc_concluido']++,
-                    Orientation::TYPE_INICIACAO_CIENTIFICA => $orientationsCount['iniciacao_concluido']++,
-                    Orientation::TYPE_ESPECIALIZACAO => $orientationsCount['especializacao_concluido']++,
-                    default => $orientationsCount['outras_concluido']++,
-                };
-            }
-        }
-
-        $sortOrientFn = fn($a, $b) => ($b->getYear() ?? 0) <=> ($a->getYear() ?? 0);
-        usort($completedOrientations, $sortOrientFn);
-        usort($ongoingOrientations, $sortOrientFn);
-
-        // 3. Build Timeline Datasets for Chart.js
-        ksort($allYears);
-        $timelineYears = array_keys($allYears);
-        if (empty($timelineYears)) {
-            $timelineYears = [(int)date('Y')];
-        }
-
-        // Fill complete continuous range of years for clean charting
-        $minYear = min($timelineYears);
-        $maxYear = max($timelineYears);
-        $continuousYears = range(max(1980, $minYear), max((int)date('Y'), $maxYear));
-
-        $productionTimeline = [
-            'artigos' => array_fill_keys($continuousYears, 0),
-            'livros_capitulos' => array_fill_keys($continuousYears, 0),
-            'jornais_revistas' => array_fill_keys($continuousYears, 0),
-            'eventos' => array_fill_keys($continuousYears, 0),
-            'tecnicos_inovacao' => array_fill_keys($continuousYears, 0),
-            'outras' => array_fill_keys($continuousYears, 0),
-        ];
-
-        foreach ($researcher->getProductions() as $prod) {
-            $y = $prod->getYear();
-            if (!$y || !isset($productionTimeline['artigos'][$y])) continue;
-
-            match ($prod->getItemType()) {
-                ProductionItem::TYPE_ARTIGO => $productionTimeline['artigos'][$y]++,
-                ProductionItem::TYPE_LIVRO, ProductionItem::TYPE_CAPITULO => $productionTimeline['livros_capitulos'][$y]++,
-                ProductionItem::TYPE_TEXTO_JORNAL => $productionTimeline['jornais_revistas'][$y]++,
-                ProductionItem::TYPE_EVENTO => $productionTimeline['eventos'][$y]++,
-                ProductionItem::TYPE_TRABALHO_TECNICO, ProductionItem::TYPE_SOFTWARE, ProductionItem::TYPE_PATENTE, ProductionItem::TYPE_MARCA => $productionTimeline['tecnicos_inovacao'][$y]++,
-                default => $productionTimeline['outras'][$y]++,
-            };
-        }
-
-        $orientationsTimeline = [
-            'doutorado' => array_fill_keys($continuousYears, 0),
-            'mestrado' => array_fill_keys($continuousYears, 0),
-            'pos_doutorado' => array_fill_keys($continuousYears, 0),
-            'tcc_graduacao' => array_fill_keys($continuousYears, 0),
-            'iniciacao_cientifica' => array_fill_keys($continuousYears, 0),
-            'especializacao' => array_fill_keys($continuousYears, 0),
-            'outras' => array_fill_keys($continuousYears, 0),
-        ];
-
-        foreach ($completedOrientations as $orientation) {
-            $y = $orientation->getYear();
-            if (!$y || !isset($orientationsTimeline['doutorado'][$y])) continue;
-
-            match ($orientation->getOrientationType()) {
-                Orientation::TYPE_DOUTORADO => $orientationsTimeline['doutorado'][$y]++,
-                Orientation::TYPE_MESTRADO => $orientationsTimeline['mestrado'][$y]++,
-                Orientation::TYPE_POS_DOUTORADO => $orientationsTimeline['pos_doutorado'][$y]++,
-                Orientation::TYPE_TCC_GRADUACAO => $orientationsTimeline['tcc_graduacao'][$y]++,
-                Orientation::TYPE_INICIACAO_CIENTIFICA => $orientationsTimeline['iniciacao_cientifica'][$y]++,
-                Orientation::TYPE_ESPECIALIZACAO => $orientationsTimeline['especializacao'][$y]++,
-                default => $orientationsTimeline['outras'][$y]++,
-            };
-        }
-
-        // Yearly production simple count
-        $yearlyProduction = [];
-        foreach ($continuousYears as $y) {
-            $totalInYear = $productionTimeline['artigos'][$y]
-                + $productionTimeline['livros_capitulos'][$y]
-                + $productionTimeline['jornais_revistas'][$y]
-                + $productionTimeline['eventos'][$y]
-                + $productionTimeline['tecnicos_inovacao'][$y]
-                + $productionTimeline['outras'][$y];
-            if ($totalInYear > 0 || (isset($allYears[$y]))) {
-                $yearlyProduction[$y] = $totalInYear;
-            }
-        }
-
-        // Category distribution for donut chart
         $categoryDistribution = [
             'Artigos em Periódicos' => count($articles),
             'Livros e Capítulos' => count($books) + count($chapters),
@@ -247,311 +170,13 @@ class ProfessorController extends AbstractController
         ];
         $categoryDistribution = array_filter($categoryDistribution, fn($v) => $v > 0);
 
-        // 4. Calculate KPI statistics
-        $totalProds = count($researcher->getProductions());
-        $percentWithDoi = $totalProds > 0 ? round(($totalWithDoi / $totalProds) * 100, 1) : 0;
-        $articlesWithDoi = count(array_filter($articles, fn($p) => !empty($p->getDoi())));
-        $percentArticlesWithDoi = count($articles) > 0 ? round(($articlesWithDoi / count($articles)) * 100, 1) : 0;
-
-        $activeYearsCount = count($yearlyProduction) > 0 ? count($yearlyProduction) : 1;
-        $avgPerYear = $activeYearsCount > 0 ? round($totalProds / $activeYearsCount, 1) : 0;
-
-        $kpiStats = [
-            'totalProductions' => $totalProds,
-            'totalWithDoi' => $totalWithDoi,
-            'percentWithDoi' => $percentWithDoi,
-            'articlesCount' => count($articles),
-            'articlesWithDoi' => $articlesWithDoi,
-            'percentArticlesWithDoi' => $percentArticlesWithDoi,
-            'booksCount' => count($books),
-            'chaptersCount' => count($chapters),
-            'eventsCount' => count($events),
-            'techCount' => count($techWorks) + count($software) + count($patents),
-            'newspaperCount' => count($newspaperTexts),
-            'orientationsCompleted' => count($completedOrientations),
-            'orientationsOngoing' => count($ongoingOrientations),
-            'orientationsBreakdown' => $orientationsCount,
-            'projectsCount' => count($researcher->getResearchProjects()),
-            'boardsCount' => count($researcher->getExaminationBoards()),
-            'eventsParticipatedCount' => count($researcher->getEventParticipations()),
-            'awardsCount' => count($researcher->getAwards()),
-            'firstYear' => $minYear,
-            'lastYear' => $maxYear,
-            'activeYearsCount' => $activeYearsCount,
-            'averagePerYear' => $avgPerYear,
-        ];
-
-        // 5. Compute Top Co-authors / Collaborators (Ontological & Canonical Resolution)
-        $myId = $researcher->getId();
-        $myLattes = $researcher->getIdLattes();
-        $myNorm = \App\Service\Thesaurus\StringNormalizer::normalizeString((string)$researcher->getFullName(), true);
-
-        $collaboratorsMap = [];
-
-        foreach ($researcher->getProductions() as $prod) {
-            $seenInProd = [];
-
-            foreach ($prod->getAuthors() as $author) {
-                // 1. Direct matched researcher self check
-                $matchedR = $author->getMatchedResearcher();
-                if ($matchedR && $matchedR->getId() === $myId) {
-                    continue;
-                }
-
-                // 2. Direct Lattes self check
-                if ($author->getIdLattes() && $myLattes && $author->getIdLattes() === $myLattes) {
-                    continue;
-                }
-
-                $rawName = trim($author->getCitationName() ?: $author->getAuthorName());
-                if ($rawName === '' || mb_strlen($rawName) < 3) {
-                    continue;
-                }
-
-                $authorNorm = \App\Service\Thesaurus\StringNormalizer::normalizeString($rawName, true);
-                if ($authorNorm === $myNorm) {
-                    continue;
-                }
-
-                // 3. Determine canonical identity key, display name and CECH profile data
-                if ($matchedR) {
-                    $key = 'researcher_' . $matchedR->getId();
-                    $name = $matchedR->getFullName();
-                    $resData = [
-                        'slug' => $matchedR->getSlug() ?: $matchedR->getIdLattes(),
-                        'idLattes' => $matchedR->getIdLattes(),
-                        'fullName' => $matchedR->getFullName(),
-                        'department' => $matchedR->getDepartment(),
-                        'photoUrl' => $matchedR->getPhotoUrl(),
-                    ];
-                } elseif ($author->getAuthorIdentity()) {
-                    $key = 'identity_' . $author->getAuthorIdentity()->getId();
-                    $name = $author->getAuthorIdentity()->getPreferredName();
-                    $resData = null;
-                } else {
-                    // Fallback to Thesaurus AuthorResolver for unindexed authors
-                    $resolved = $this->authorResolver->resolveAuthorData($rawName)
-                        ?: ($author->getAuthorName() !== '' ? $this->authorResolver->resolveAuthorData($author->getAuthorName()) : null)
-                        ?: ($author->getCitationName() !== '' ? $this->authorResolver->resolveAuthorData($author->getCitationName()) : null);
-
-                    if ($resolved && !empty($resolved['researcher'])) {
-                        if ((int)$resolved['researcher']['id'] === $myId) {
-                            continue;
-                        }
-                        $key = 'researcher_' . $resolved['researcher']['id'];
-                        $name = $resolved['researcher']['fullName'];
-                        $resData = [
-                            'slug' => $resolved['researcher']['slug'],
-                            'idLattes' => $resolved['researcher']['idLattes'],
-                            'fullName' => $resolved['researcher']['fullName'],
-                            'department' => $resolved['researcher']['department'],
-                            'photoUrl' => $resolved['researcher']['photoUrl'] ?? null,
-                        ];
-                    } elseif ($resolved && !empty($resolved['identityId'])) {
-                        $key = 'identity_' . $resolved['identityId'];
-                        $name = $resolved['preferredName'];
-                        $resData = null;
-                    } else {
-                        $inv = \App\Service\Thesaurus\AuthorResolverService::invertName($rawName);
-                        $displayName = ($inv && str_contains($rawName, ',')) ? $inv : ($author->getAuthorName() ?: $rawName);
-                        $key = 'name_' . $authorNorm;
-                        $name = $displayName;
-                        $resData = null;
-                    }
-                }
-
-                // Ensure name is clean and in natural reading order
-                if (str_contains($name, ',')) {
-                    $inv = \App\Service\Thesaurus\AuthorResolverService::invertName($name);
-                    if ($inv) {
-                        $name = $inv;
-                    }
-                }
-
-                // Deduplicate per production
-                if (isset($seenInProd[$key])) {
-                    continue;
-                }
-                $seenInProd[$key] = true;
-
-                if (!isset($collaboratorsMap[$key])) {
-                    $collaboratorsMap[$key] = [
-                        'name' => $name,
-                        'count' => 0,
-                        'researcher' => $resData,
-                        'years' => [],
-                        'types' => [],
-                        'sampleWorks' => [],
-                    ];
-                }
-                $collaboratorsMap[$key]['count']++;
-                if ($prod->getYear()) {
-                    $collaboratorsMap[$key]['years'][] = (int)$prod->getYear();
-                }
-                $itemType = (string)$prod->getItemType();
-                if ($itemType !== '') {
-                    $collaboratorsMap[$key]['types'][$itemType] = ($collaboratorsMap[$key]['types'][$itemType] ?? 0) + 1;
-                }
-                if (count($collaboratorsMap[$key]['sampleWorks']) < 2) {
-                    $collaboratorsMap[$key]['sampleWorks'][] = [
-                        'title' => $prod->getTitle(),
-                        'year' => $prod->getYear(),
-                        'type' => $prod->getItemType(),
-                    ];
-                }
-            }
-        }
-
-        foreach ($collaboratorsMap as &$collab) {
-            if (!empty($collab['years'])) {
-                $minYear = min($collab['years']);
-                $maxYear = max($collab['years']);
-                $collab['period'] = ($minYear === $maxYear) ? (string)$minYear : ($minYear . '–' . $maxYear);
-                $collab['lastYear'] = $maxYear;
-            } else {
-                $collab['period'] = '';
-                $collab['lastYear'] = null;
-            }
-            if (!empty($collab['types'])) {
-                arsort($collab['types']);
-            }
-        }
-        unset($collab);
-
-        uasort($collaboratorsMap, fn($a, $b) => $b['count'] <=> $a['count']);
-        $topCoauthors = array_slice($collaboratorsMap, 0, 12, true);
-
-        // 6. Compute Research Keyword / Topic Cloud (N-Grams & Sintagmas Compostos)
-        $stopWords = [
-            'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na', 'nos', 'nas', 'por', 'para', 'com', 'sem',
-            'sob', 'sobre', 'entre', 'até', 'ante', 'após', 'uma', 'um', 'umas', 'uns', 'o', 'a', 'os', 'as',
-            'e', 'ou', 'se', 'que', 'como', 'qual', 'quais', 'onde', 'quando', 'mais', 'menos', 'muito', 'muita',
-            'sua', 'seu', 'suas', 'seus', 'este', 'esta', 'estes', 'estas', 'esse', 'essa', 'esses', 'essas',
-            'aquele', 'aquela', 'aqueles', 'aquelas', 'isto', 'isso', 'aquilo', 'estudo', 'analise', 'análise',
-            'pesquisa', 'brasil', 'caso', 'desenvolvimento', 'processo', 'reflexoes', 'reflexões', 'perspectivas',
-            'proposta', 'aspectos', 'artigo', 'relatorio', 'relatório', 'projeto', 'trabalho', 'volume', 'anais',
-            'revista', 'caderno', 'livro', 'capitulo', 'capítulo', 'resumo', 'edição', 'parte', 'partir', 'base',
-            'uso', 'guia', 'apresentação', 'considerações', 'introdução', 'conclusão', 'ad', 'hoc', 'parecerista',
-            'parecer', 'consultor', 'consultoria', 'cnpq', 'fapesp', 'capes', 'encaminhado', 'concedida', 'submetido', 'submetida',
-            'apreciação', 'comitê', 'ética', 'hospital', 'clínicas', 'faculdade', 'universidade', 'instituto',
-            'departamento', 'escola', 'ribeirão', 'preto', 'são', 'paulo', 'usp', 'ufscar', 'unesp', 'unicamp',
-            'sociedade', 'encontro', 'reunião', 'congresso', 'simpósio', 'seminário', 'jornada', 'progresso',
-            'fundação', 'amparo', 'nacional', 'internacional', 'brasileira', 'brasileiro', 'estado', 'periódico',
-            'submetidos', 'trabalhos', 'membro', 'avaliador', 'comissão', 'coordenador', 'coordenadora',
-            'the', 'and', 'for', 'with', 'from', 'about', 'study', 'analysis', 'brazil', 'social', 'using',
-            'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'year', 'data', 'journal'
-        ];
-        $connectors = ['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'na', 'no', 'para', 'of', 'in', 'and'];
-
-        $unigramCounts = [];
-        $compoundCounts = [];
-
-        $titleSources = [];
-        foreach ($researcher->getProductions() as $prod) {
-            $titleSources[] = ['text' => $prod->getTitle(), 'weight' => 1];
-        }
-        foreach ($researcher->getResearchProjects() as $proj) {
-            $titleSources[] = ['text' => $proj->getName(), 'weight' => 2];
-        }
-
-        foreach ($titleSources as $source) {
-            $text = $source['text'] ?? '';
-            $weight = $source['weight'] ?? 1;
-            if (!$text) {
-                continue;
-            }
-
-            $clean = mb_strtolower(trim($text));
-            preg_match_all('/[a-záàâãéèêíïóôõöúçñ0-9]+/u', $clean, $matches);
-            $words = $matches[0] ?? [];
-            $totalWords = count($words);
-
-            for ($i = 0; $i < $totalWords; $i++) {
-                $w1 = $words[$i];
-                if (mb_strlen($w1) < 3 || in_array($w1, $stopWords, true) || is_numeric($w1) || preg_match('/^[ivxlcdm]+$/i', $w1)) {
-                    continue;
-                }
-
-                $unigramCounts[$w1] = ($unigramCounts[$w1] ?? 0) + $weight;
-
-                // Bigrama Direto: W1 W2
-                if ($i + 1 < $totalWords) {
-                    $w2 = $words[$i + 1];
-                    if (mb_strlen($w2) >= 3 && !in_array($w2, $stopWords, true) && !is_numeric($w2) && !preg_match('/^[ivxlcdm]+$/i', $w2)) {
-                        $phrase = $w1 . ' ' . $w2;
-                        $compoundCounts[$phrase] = ($compoundCounts[$phrase] ?? 0) + $weight;
-                    }
-                    // Bigrama com conector: W1 [conector] W3
-                    if (in_array($w2, $connectors, true) && $i + 2 < $totalWords) {
-                        $w3 = $words[$i + 2];
-                        if (mb_strlen($w3) >= 3 && !in_array($w3, $stopWords, true) && !is_numeric($w3) && !preg_match('/^[ivxlcdm]+$/i', $w3)) {
-                            $phrase = $w1 . ' ' . $w2 . ' ' . $w3;
-                            $compoundCounts[$phrase] = ($compoundCounts[$phrase] ?? 0) + $weight;
-                        }
-                    }
-                }
-            }
-        }
-
-        // Filtrar compostos com frequência mínima (>= 2)
-        $validCompounds = array_filter($compoundCounts, fn($c) => $c >= 2);
-        arsort($validCompounds);
-
-        // Descontar ocorrências absorvidas para que palavras individuais não dupliquem os compostos
-        $absorbed = [];
-        foreach ($validCompounds as $phrase => $count) {
-            $parts = explode(' ', $phrase);
-            foreach ($parts as $p) {
-                if (!in_array($p, $connectors, true)) {
-                    $absorbed[$p] = ($absorbed[$p] ?? 0) + $count;
-                }
-            }
-        }
-
-        $finalKeywords = $validCompounds;
-        foreach ($unigramCounts as $word => $count) {
-            $netCount = $count - ($absorbed[$word] ?? 0);
-            if ($netCount >= 2) {
-                $finalKeywords[$word] = $netCount;
-            }
-        }
-
-        arsort($finalKeywords);
-        $topKeywords = array_slice($finalKeywords, 0, 24, true);
-
-        // 7. Compute Author-Declared Keywords (Palavras-chave cadastradas no Lattes)
-        $rawAuthorKeywords = [];
-        $canonFormMap = [];
-
-        foreach ($researcher->getProductions() as $prod) {
-            $kws = $prod->getKeywords();
-            foreach ($kws as $kw) {
-                $trimmed = trim($kw);
-                $cleaned = trim($trimmed, " \t\n\r\0\x0B.,;:-");
-                if (mb_strlen($cleaned) < 2) continue;
-
-                $lower = mb_strtolower($cleaned, 'UTF-8');
-                if (!isset($canonFormMap[$lower])) {
-                    $canonFormMap[$lower] = mb_convert_case($cleaned, MB_CASE_TITLE, 'UTF-8');
-                }
-
-                $rawAuthorKeywords[$lower] = ($rawAuthorKeywords[$lower] ?? 0) + 1;
-            }
-        }
-
-        arsort($rawAuthorKeywords);
-        $authorKeywords = [];
-        foreach (array_slice($rawAuthorKeywords, 0, 24, true) as $lower => $count) {
-            $authorKeywords[$canonFormMap[$lower]] = $count;
-        }
-
-        // 8. Academic Databases Indexing Stats & Timeline
+        // Academic Databases Indexing Stats
         $totalsByDb = [];
         $timelineByDb = [];
         $dbMeta = [];
         $totalArticlesCount = count($articles);
         $totalIndexedArticlesCount = 0;
-        $dbYearsRange = !empty($continuousYears) ? $continuousYears : range(2010, (int)date('Y'));
+        $dbYearsRange = !empty($allYears) ? range(min(array_keys($allYears)), max(array_keys($allYears))) : range(2010, (int)date('Y'));
 
         $colorMap = [
             'scopus' => '#ea580c',
@@ -626,8 +251,7 @@ class ProfessorController extends AbstractController
             'timelineSeries' => $dbTimelineSeries,
         ];
 
-        return $this->render('pub/professor/show.html.twig', [
-            'researcher' => $researcher,
+        return [
             'articles' => $articles,
             'books' => $books,
             'chapters' => $chapters,
@@ -638,19 +262,443 @@ class ProfessorController extends AbstractController
             'patents' => $patents,
             'artistic' => $artistic,
             'otherProds' => $otherProds,
+            'totalWithDoi' => $totalWithDoi,
+            'categoryDistribution' => $categoryDistribution,
+            'academicDatabases' => $academicDatabasesStats,
+        ];
+    }
+
+    /**
+     * Categoriza e ordena as orientações concluídas e em andamento.
+     */
+    private function categorizeOrientations(Researcher $researcher, array &$allYears = []): array
+    {
+        $completedOrientations = [];
+        $ongoingOrientations = [];
+
+        $orientationsCount = [
+            'doutorado_concluido' => 0,
+            'mestrado_concluido' => 0,
+            'pos_doc_concluido' => 0,
+            'tcc_concluido' => 0,
+            'iniciacao_concluido' => 0,
+            'especializacao_concluido' => 0,
+            'outras_concluido' => 0,
+            'doutorado_andamento' => 0,
+            'mestrado_andamento' => 0,
+            'pos_doc_andamento' => 0,
+            'tcc_andamento' => 0,
+            'iniciacao_andamento' => 0,
+            'especializacao_andamento' => 0,
+            'outras_andamento' => 0,
+        ];
+
+        foreach ($researcher->getOrientations() as $orientation) {
+            $isAndamento = $orientation->getNature() === Orientation::NATURE_EM_ANDAMENTO || stripos((string)$orientation->getNature(), 'Andamento') !== false;
+            $type = $orientation->getOrientationType();
+
+            if ($orientation->getYear()) {
+                $allYears[$orientation->getYear()] = true;
+            }
+
+            if ($isAndamento) {
+                $ongoingOrientations[] = $orientation;
+                match ($type) {
+                    Orientation::TYPE_DOUTORADO => $orientationsCount['doutorado_andamento']++,
+                    Orientation::TYPE_MESTRADO => $orientationsCount['mestrado_andamento']++,
+                    Orientation::TYPE_POS_DOUTORADO => $orientationsCount['pos_doc_andamento']++,
+                    Orientation::TYPE_TCC_GRADUACAO => $orientationsCount['tcc_andamento']++,
+                    Orientation::TYPE_INICIACAO_CIENTIFICA => $orientationsCount['iniciacao_andamento']++,
+                    Orientation::TYPE_ESPECIALIZACAO => $orientationsCount['especializacao_andamento']++,
+                    default => $orientationsCount['outras_andamento']++,
+                };
+            } else {
+                $completedOrientations[] = $orientation;
+                match ($type) {
+                    Orientation::TYPE_DOUTORADO => $orientationsCount['doutorado_concluido']++,
+                    Orientation::TYPE_MESTRADO => $orientationsCount['mestrado_concluido']++,
+                    Orientation::TYPE_POS_DOUTORADO => $orientationsCount['pos_doc_concluido']++,
+                    Orientation::TYPE_TCC_GRADUACAO => $orientationsCount['tcc_concluido']++,
+                    Orientation::TYPE_INICIACAO_CIENTIFICA => $orientationsCount['iniciacao_concluido']++,
+                    Orientation::TYPE_ESPECIALIZACAO => $orientationsCount['especializacao_concluido']++,
+                    default => $orientationsCount['outras_concluido']++,
+                };
+            }
+        }
+
+        $sortOrientFn = fn($a, $b) => ($b->getYear() ?? 0) <=> ($a->getYear() ?? 0);
+        usort($completedOrientations, $sortOrientFn);
+        usort($ongoingOrientations, $sortOrientFn);
+
+        return [
             'completedOrientations' => $completedOrientations,
             'ongoingOrientations' => $ongoingOrientations,
+            'orientationsCount' => $orientationsCount,
+        ];
+    }
+
+    /**
+     * Calcula métricas agregadas de resumo (KPIs).
+     */
+    private function calculateKpiStats(Researcher $researcher, array $prods, array $orients, array $allYears): array
+    {
+        $totalProds = count($researcher->getProductions());
+        $articles = $prods['articles'];
+        $totalWithDoi = $prods['totalWithDoi'];
+        $completedOrientations = $orients['completedOrientations'];
+        $ongoingOrientations = $orients['ongoingOrientations'];
+        $orientationsCount = $orients['orientationsCount'];
+
+        $percentWithDoi = $totalProds > 0 ? round(($totalWithDoi / $totalProds) * 100, 1) : 0;
+        $articlesWithDoi = count(array_filter($articles, fn($p) => !empty($p->getDoi())));
+        $percentArticlesWithDoi = count($articles) > 0 ? round(($articlesWithDoi / count($articles)) * 100, 1) : 0;
+
+        $minYear = !empty($allYears) ? min(array_keys($allYears)) : (int)date('Y');
+        $maxYear = !empty($allYears) ? max(array_keys($allYears)) : (int)date('Y');
+        $activeYearsCount = count($allYears) > 0 ? count($allYears) : 1;
+        $avgPerYear = $activeYearsCount > 0 ? round($totalProds / $activeYearsCount, 1) : 0;
+
+        return [
+            'totalProductions' => $totalProds,
+            'totalWithDoi' => $totalWithDoi,
+            'percentWithDoi' => $percentWithDoi,
+            'articlesCount' => count($articles),
+            'articlesWithDoi' => $articlesWithDoi,
+            'percentArticlesWithDoi' => $percentArticlesWithDoi,
+            'booksCount' => count($prods['books']),
+            'chaptersCount' => count($prods['chapters']),
+            'eventsCount' => count($prods['events']),
+            'techCount' => count($prods['techWorks']) + count($prods['software']) + count($prods['patents']),
+            'newspaperCount' => count($prods['newspaperTexts']),
+            'orientationsCompleted' => count($completedOrientations),
+            'orientationsOngoing' => count($ongoingOrientations),
+            'orientationsBreakdown' => $orientationsCount,
+            'projectsCount' => count($researcher->getResearchProjects()),
+            'boardsCount' => count($researcher->getExaminationBoards()),
+            'eventsParticipatedCount' => count($researcher->getEventParticipations()),
+            'awardsCount' => count($researcher->getAwards()),
+            'firstYear' => $minYear,
+            'lastYear' => $maxYear,
+            'activeYearsCount' => $activeYearsCount,
+            'averagePerYear' => $avgPerYear,
+        ];
+    }
+
+    /**
+     * Constrói os dados analíticos avançados para a Aba 4 (Timeline Chart.js, Rede de Coautoria, Nuvem de Palavras-Chave).
+     */
+    private function buildAnalyticsData(Researcher $researcher, array $articles, array $completedOrientations, array $allYears, array $kpiStats, array $categoryDistribution): array
+    {
+        ksort($allYears);
+        $timelineYears = array_keys($allYears);
+        if (empty($timelineYears)) {
+            $timelineYears = [(int)date('Y')];
+        }
+
+        $minYear = min($timelineYears);
+        $maxYear = max($timelineYears);
+        $continuousYears = range(max(1980, $minYear), max((int)date('Y'), $maxYear));
+
+        $productionTimeline = [
+            'artigos' => array_fill_keys($continuousYears, 0),
+            'livros_capitulos' => array_fill_keys($continuousYears, 0),
+            'jornais_revistas' => array_fill_keys($continuousYears, 0),
+            'eventos' => array_fill_keys($continuousYears, 0),
+            'tecnicos_inovacao' => array_fill_keys($continuousYears, 0),
+            'outras' => array_fill_keys($continuousYears, 0),
+        ];
+
+        foreach ($researcher->getProductions() as $prod) {
+            $y = $prod->getYear();
+            if (!$y || !isset($productionTimeline['artigos'][$y])) continue;
+
+            match ($prod->getItemType()) {
+                ProductionItem::TYPE_ARTIGO => $productionTimeline['artigos'][$y]++,
+                ProductionItem::TYPE_LIVRO, ProductionItem::TYPE_CAPITULO => $productionTimeline['livros_capitulos'][$y]++,
+                ProductionItem::TYPE_TEXTO_JORNAL => $productionTimeline['jornais_revistas'][$y]++,
+                ProductionItem::TYPE_EVENTO => $productionTimeline['eventos'][$y]++,
+                ProductionItem::TYPE_TRABALHO_TECNICO, ProductionItem::TYPE_SOFTWARE, ProductionItem::TYPE_PATENTE, ProductionItem::TYPE_MARCA => $productionTimeline['tecnicos_inovacao'][$y]++,
+                default => $productionTimeline['outras'][$y]++,
+            };
+        }
+
+        $orientationsTimeline = [
+            'doutorado' => array_fill_keys($continuousYears, 0),
+            'mestrado' => array_fill_keys($continuousYears, 0),
+            'pos_doutorado' => array_fill_keys($continuousYears, 0),
+            'tcc_graduacao' => array_fill_keys($continuousYears, 0),
+            'iniciacao_cientifica' => array_fill_keys($continuousYears, 0),
+            'especializacao' => array_fill_keys($continuousYears, 0),
+            'outras' => array_fill_keys($continuousYears, 0),
+        ];
+
+        foreach ($completedOrientations as $orientation) {
+            $y = $orientation->getYear();
+            if (!$y || !isset($orientationsTimeline['doutorado'][$y])) continue;
+
+            match ($orientation->getOrientationType()) {
+                Orientation::TYPE_DOUTORADO => $orientationsTimeline['doutorado'][$y]++,
+                Orientation::TYPE_MESTRADO => $orientationsTimeline['mestrado'][$y]++,
+                Orientation::TYPE_POS_DOUTORADO => $orientationsTimeline['pos_doutorado'][$y]++,
+                Orientation::TYPE_TCC_GRADUACAO => $orientationsTimeline['tcc_graduacao'][$y]++,
+                Orientation::TYPE_INICIACAO_CIENTIFICA => $orientationsTimeline['iniciacao_cientifica'][$y]++,
+                Orientation::TYPE_ESPECIALIZACAO => $orientationsTimeline['especializacao'][$y]++,
+                default => $orientationsTimeline['outras'][$y]++,
+            };
+        }
+
+        $yearlyProduction = [];
+        foreach ($continuousYears as $y) {
+            $totalInYear = $productionTimeline['artigos'][$y]
+                + $productionTimeline['livros_capitulos'][$y]
+                + $productionTimeline['jornais_revistas'][$y]
+                + $productionTimeline['eventos'][$y]
+                + $productionTimeline['tecnicos_inovacao'][$y]
+                + $productionTimeline['outras'][$y];
+            if ($totalInYear > 0 || (isset($allYears[$y]))) {
+                $yearlyProduction[$y] = $totalInYear;
+            }
+        }
+
+        // Top Co-authors
+        $myId = $researcher->getId();
+        $myLattes = $researcher->getIdLattes();
+        $myNorm = \App\Service\Thesaurus\StringNormalizer::normalizeString((string)$researcher->getFullName(), true);
+
+        $collaboratorsMap = [];
+
+        foreach ($researcher->getProductions() as $prod) {
+            $seenInProd = [];
+
+            foreach ($prod->getAuthors() as $author) {
+                $matchedR = $author->getMatchedResearcher();
+                if ($matchedR && $matchedR->getId() === $myId) continue;
+                if ($author->getIdLattes() && $myLattes && $author->getIdLattes() === $myLattes) continue;
+
+                $rawName = trim((string)($author->getCitationName() ?: $author->getAuthorName()));
+                if ($rawName === '' || mb_strlen($rawName) < 3) continue;
+
+                $authorNorm = \App\Service\Thesaurus\StringNormalizer::normalizeString($rawName, true);
+                if ($authorNorm === $myNorm) continue;
+
+                if ($matchedR) {
+                    $key = 'researcher_' . $matchedR->getId();
+                    $name = $matchedR->getFullName();
+                    $resData = [
+                        'slug' => $matchedR->getSlug() ?: $matchedR->getIdLattes(),
+                        'idLattes' => $matchedR->getIdLattes(),
+                        'fullName' => $matchedR->getFullName(),
+                        'department' => $matchedR->getDepartment(),
+                        'photoUrl' => $matchedR->getPhotoUrl(),
+                    ];
+                } elseif ($author->getAuthorIdentity()) {
+                    $key = 'identity_' . $author->getAuthorIdentity()->getId();
+                    $name = $author->getAuthorIdentity()->getPreferredName();
+                    $resData = null;
+                } else {
+                    $resolved = $this->authorResolver->resolveAuthorData($rawName)
+                        ?: ($author->getAuthorName() !== '' ? $this->authorResolver->resolveAuthorData($author->getAuthorName()) : null)
+                        ?: ($author->getCitationName() !== '' ? $this->authorResolver->resolveAuthorData($author->getCitationName()) : null);
+
+                    if ($resolved && !empty($resolved['researcher'])) {
+                        if ((int)$resolved['researcher']['id'] === $myId) continue;
+                        $key = 'researcher_' . $resolved['researcher']['id'];
+                        $name = $resolved['researcher']['fullName'];
+                        $resData = [
+                            'slug' => $resolved['researcher']['slug'],
+                            'idLattes' => $resolved['researcher']['idLattes'],
+                            'fullName' => $resolved['researcher']['fullName'],
+                            'department' => $resolved['researcher']['department'],
+                            'photoUrl' => $resolved['researcher']['photoUrl'] ?? null,
+                        ];
+                    } elseif ($resolved && !empty($resolved['identityId'])) {
+                        $key = 'identity_' . $resolved['identityId'];
+                        $name = $resolved['preferredName'];
+                        $resData = null;
+                    } else {
+                        $inv = \App\Service\Thesaurus\AuthorResolverService::invertName($rawName);
+                        $displayName = ($inv && str_contains($rawName, ',')) ? $inv : ($author->getAuthorName() ?: $rawName);
+                        $key = 'name_' . $authorNorm;
+                        $name = $displayName;
+                        $resData = null;
+                    }
+                }
+
+                if (str_contains($name, ',')) {
+                    $inv = \App\Service\Thesaurus\AuthorResolverService::invertName($name);
+                    if ($inv) $name = $inv;
+                }
+
+                if (isset($seenInProd[$key])) continue;
+                $seenInProd[$key] = true;
+
+                if (!isset($collaboratorsMap[$key])) {
+                    $collaboratorsMap[$key] = [
+                        'name' => $name,
+                        'count' => 0,
+                        'researcher' => $resData,
+                        'years' => [],
+                        'types' => [],
+                        'sampleWorks' => [],
+                    ];
+                }
+                $collaboratorsMap[$key]['count']++;
+                if ($prod->getYear()) {
+                    $collaboratorsMap[$key]['years'][] = (int)$prod->getYear();
+                }
+                $itemType = (string)$prod->getItemType();
+                if ($itemType !== '') {
+                    $collaboratorsMap[$key]['types'][$itemType] = ($collaboratorsMap[$key]['types'][$itemType] ?? 0) + 1;
+                }
+                if (count($collaboratorsMap[$key]['sampleWorks']) < 2) {
+                    $collaboratorsMap[$key]['sampleWorks'][] = [
+                        'title' => $prod->getTitle(),
+                        'year' => $prod->getYear(),
+                        'type' => $prod->getItemType(),
+                    ];
+                }
+            }
+        }
+
+        foreach ($collaboratorsMap as &$collab) {
+            if (!empty($collab['years'])) {
+                $minY = min($collab['years']);
+                $maxY = max($collab['years']);
+                $collab['period'] = ($minY === $maxY) ? (string)$minY : ($minY . '–' . $maxY);
+                $collab['lastYear'] = $maxY;
+            } else {
+                $collab['period'] = '';
+                $collab['lastYear'] = null;
+            }
+            if (!empty($collab['types'])) {
+                arsort($collab['types']);
+            }
+        }
+        unset($collab);
+
+        uasort($collaboratorsMap, fn($a, $b) => $b['count'] <=> $a['count']);
+        $topCoauthors = array_slice($collaboratorsMap, 0, 12, true);
+
+        // Keyword & Topic Cloud
+        $stopWords = [
+            'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na', 'nos', 'nas', 'por', 'para', 'com', 'sem',
+            'sob', 'sobre', 'entre', 'até', 'ante', 'após', 'uma', 'um', 'umas', 'uns', 'o', 'a', 'os', 'as',
+            'e', 'ou', 'se', 'que', 'como', 'qual', 'quais', 'onde', 'quando', 'mais', 'menos', 'muito', 'muita',
+            'sua', 'seu', 'suas', 'seus', 'este', 'esta', 'estes', 'estas', 'esse', 'essa', 'esses', 'essas',
+            'aquele', 'aquela', 'aqueles', 'aquelas', 'isto', 'isso', 'aquilo', 'estudo', 'analise', 'análise',
+            'pesquisa', 'brasil', 'caso', 'desenvolvimento', 'processo', 'reflexoes', 'reflexões', 'perspectivas',
+            'proposta', 'aspectos', 'artigo', 'relatorio', 'relatório', 'projeto', 'trabalho', 'volume', 'anais',
+            'revista', 'caderno', 'livro', 'capitulo', 'capítulo', 'resumo', 'edição', 'parte', 'partir', 'base',
+            'uso', 'guia', 'apresentação', 'considerações', 'introdução', 'conclusão', 'ad', 'hoc', 'parecerista',
+            'parecer', 'consultor', 'consultoria', 'cnpq', 'fapesp', 'capes', 'encaminhado', 'concedida', 'submetido', 'submetida',
+            'apreciação', 'comitê', 'ética', 'hospital', 'clínicas', 'faculdade', 'universidade', 'instituto',
+            'departamento', 'escola', 'ribeirão', 'preto', 'são', 'paulo', 'usp', 'ufscar', 'unesp', 'unicamp',
+            'sociedade', 'encontro', 'reunião', 'congresso', 'simpósio', 'seminário', 'jornada', 'progresso',
+            'fundação', 'amparo', 'nacional', 'internacional', 'brasileira', 'brasileiro', 'estado', 'periódico',
+            'submetidos', 'trabalhos', 'membro', 'avaliador', 'comissão', 'coordenador', 'coordenadora',
+            'the', 'and', 'for', 'with', 'from', 'about', 'study', 'analysis', 'brazil', 'social', 'using',
+            'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'year', 'data', 'journal'
+        ];
+        $connectors = ['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'na', 'no', 'para', 'of', 'in', 'and'];
+
+        $unigramCounts = [];
+        $compoundCounts = [];
+
+        $titleSources = [];
+        foreach ($researcher->getProductions() as $prod) {
+            $titleSources[] = ['text' => $prod->getTitle(), 'weight' => 1];
+        }
+        foreach ($researcher->getResearchProjects() as $proj) {
+            $titleSources[] = ['text' => $proj->getName(), 'weight' => 2];
+        }
+
+        foreach ($titleSources as $source) {
+            $text = $source['text'] ?? '';
+            $weight = $source['weight'] ?? 1;
+            if (!$text) continue;
+
+            $clean = mb_strtolower(trim($text));
+            preg_match_all('/[a-záàâãéèêíïóôõöúçñ0-9]+/u', $clean, $matches);
+            $words = $matches[0] ?? [];
+            $totalWords = count($words);
+
+            for ($i = 0; $i < $totalWords; $i++) {
+                $w1 = $words[$i];
+                if (mb_strlen($w1) < 3 || in_array($w1, $stopWords, true) || is_numeric($w1) || preg_match('/^[ivxlcdm]+$/i', $w1)) continue;
+
+                $unigramCounts[$w1] = ($unigramCounts[$w1] ?? 0) + $weight;
+
+                if ($i + 1 < $totalWords) {
+                    $w2 = $words[$i + 1];
+                    if (mb_strlen($w2) >= 3 && !in_array($w2, $stopWords, true) && !is_numeric($w2) && !preg_match('/^[ivxlcdm]+$/i', $w2)) {
+                        $compoundCounts[$w1 . ' ' . $w2] = ($compoundCounts[$w1 . ' ' . $w2] ?? 0) + $weight;
+                    }
+                    if (in_array($w2, $connectors, true) && $i + 2 < $totalWords) {
+                        $w3 = $words[$i + 2];
+                        if (mb_strlen($w3) >= 3 && !in_array($w3, $stopWords, true) && !is_numeric($w3) && !preg_match('/^[ivxlcdm]+$/i', $w3)) {
+                            $compoundCounts[$w1 . ' ' . $w2 . ' ' . $w3] = ($compoundCounts[$w1 . ' ' . $w2 . ' ' . $w3] ?? 0) + $weight;
+                        }
+                    }
+                }
+            }
+        }
+
+        $validCompounds = array_filter($compoundCounts, fn($c) => $c >= 2);
+        arsort($validCompounds);
+
+        $absorbed = [];
+        foreach ($validCompounds as $phrase => $count) {
+            foreach (explode(' ', $phrase) as $p) {
+                if (!in_array($p, $connectors, true)) {
+                    $absorbed[$p] = ($absorbed[$p] ?? 0) + $count;
+                }
+            }
+        }
+
+        $finalKeywords = $validCompounds;
+        foreach ($unigramCounts as $word => $count) {
+            $netCount = $count - ($absorbed[$word] ?? 0);
+            if ($netCount >= 2) {
+                $finalKeywords[$word] = $netCount;
+            }
+        }
+
+        arsort($finalKeywords);
+        $topKeywords = array_slice($finalKeywords, 0, 24, true);
+
+        // Author-Declared Keywords (Lattes)
+        $rawAuthorKeywords = [];
+        $canonFormMap = [];
+
+        foreach ($researcher->getProductions() as $prod) {
+            foreach ($prod->getKeywords() as $kw) {
+                $cleaned = trim(trim($kw), " \t\n\r\0\x0B.,;:-");
+                if (mb_strlen($cleaned) < 2) continue;
+
+                $lower = mb_strtolower($cleaned, 'UTF-8');
+                if (!isset($canonFormMap[$lower])) {
+                    $canonFormMap[$lower] = mb_convert_case($cleaned, MB_CASE_TITLE, 'UTF-8');
+                }
+                $rawAuthorKeywords[$lower] = ($rawAuthorKeywords[$lower] ?? 0) + 1;
+            }
+        }
+
+        arsort($rawAuthorKeywords);
+        $authorKeywords = [];
+        foreach (array_slice($rawAuthorKeywords, 0, 24, true) as $lower => $count) {
+            $authorKeywords[$canonFormMap[$lower]] = $count;
+        }
+
+        return [
             'timelineYears' => $continuousYears,
             'productionTimeline' => $productionTimeline,
             'orientationsTimeline' => $orientationsTimeline,
             'yearlyProduction' => $yearlyProduction,
             'categoryDistribution' => $categoryDistribution,
-            'kpiStats' => $kpiStats,
             'topCoauthors' => $topCoauthors,
             'topKeywords' => $topKeywords,
             'authorKeywords' => $authorKeywords,
-            'academicDatabases' => $academicDatabasesStats,
-        ]);
+        ];
     }
 
     #[Route('/professor/{slugOrId}/export/{format}', name: 'app_pub_professor_export', requirements: ['format' => 'bibtex|json|csv'])]

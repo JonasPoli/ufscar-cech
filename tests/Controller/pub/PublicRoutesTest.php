@@ -147,12 +147,23 @@ class PublicRoutesTest extends WebTestCase
             $client->request('GET', '/professor/' . $roniberto->getSlug());
             $this->assertResponseIsSuccessful();
             $content = (string)$client->getResponse()->getContent();
-            $this->assertStringContainsString('Palavras-chave dos Trabalhos', $content);
-            $this->assertStringContainsString('Temas e Termos Frequentes', $content);
             $this->assertStringContainsString('id="globalFilterBar"', $content);
             $this->assertStringContainsString('id="btnClearFiltersMain"', $content);
             $this->assertStringContainsString('id="tabCount-productions"', $content);
             $this->assertStringContainsString('class="pill-count"', $content);
+
+            // Test Modular Fragments
+            $client->request('GET', '/professor/' . $roniberto->getSlug() . '/fragment/analytics');
+            $this->assertResponseIsSuccessful();
+            $analyticsContent = (string)$client->getResponse()->getContent();
+            $this->assertStringContainsString('Palavras-chave dos Trabalhos', $analyticsContent);
+            $this->assertStringContainsString('Temas e Termos Frequentes', $analyticsContent);
+
+            $client->request('GET', '/professor/' . $roniberto->getSlug() . '/fragment/orientations');
+            $this->assertResponseIsSuccessful();
+
+            $client->request('GET', '/professor/' . $roniberto->getSlug() . '/fragment/activities');
+            $this->assertResponseIsSuccessful();
         }
     }
 

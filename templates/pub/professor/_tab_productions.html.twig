@@ -1,0 +1,551 @@
+<div class="space-y-6">
+                <!-- Production Category Pills Toolbar -->
+                <div class="rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 bg-slate-50/70 dark:bg-slate-900/60 no-print">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <button type="button" onclick="setCategoryFilter('all')" class="category-pill active rounded-lg px-2.5 py-1 text-xs font-semibold bg-sky-600 text-white shadow-sm transition-all" data-category="all">
+                            Todas (<span class="pill-count" data-initial="{{ researcher.productions|length }}">{{ researcher.productions|length }}</span>)
+                        </button>
+                        {% if articles|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('artigo')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="artigo">
+                                Artigos (<span class="pill-count" data-initial="{{ articles|length }}">{{ articles|length }}</span>)
+                            </button>
+                        {% endif %}
+                        {% if books|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('livro')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="livro">
+                                Livros (<span class="pill-count" data-initial="{{ books|length }}">{{ books|length }}</span>)
+                            </button>
+                        {% endif %}
+                        {% if chapters|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('capitulo')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="capitulo">
+                                Capítulos (<span class="pill-count" data-initial="{{ chapters|length }}">{{ chapters|length }}</span>)
+                            </button>
+                        {% endif %}
+                        {% if newspaperTexts|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('jornal')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="jornal">
+                                Jornais/Revistas (<span class="pill-count" data-initial="{{ newspaperTexts|length }}">{{ newspaperTexts|length }}</span>)
+                            </button>
+                        {% endif %}
+                        {% if events|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('evento')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="evento">
+                                Congressos (<span class="pill-count" data-initial="{{ events|length }}">{{ events|length }}</span>)
+                            </button>
+                        {% endif %}
+                        {% if techWorks|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('tecnico')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="tecnico">
+                                Trabalhos Técnicos (<span class="pill-count" data-initial="{{ techWorks|length }}">{{ techWorks|length }}</span>)
+                            </button>
+                        {% endif %}
+                        {% if software|length > 0 or patents|length > 0 %}
+                            {% set innovCount = software|length + patents|length %}
+                            <button type="button" onclick="setCategoryFilter('inovacao')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="inovacao">
+                                Inovação (<span class="pill-count" data-initial="{{ innovCount }}">{{ innovCount }}</span>)
+                            </button>
+                        {% endif %}
+                        {% if artistic|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('artes')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="artes">
+                                Artes (<span class="pill-count" data-initial="{{ artistic|length }}">{{ artistic|length }}</span>)
+                            </button>
+                        {% endif %}
+                        {% if otherProds|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('outra')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="outra">
+                                Outras (<span class="pill-count" data-initial="{{ otherProds|length }}">{{ otherProds|length }}</span>)
+                            </button>
+                        {% endif %}
+                    </div>
+
+                    {% if academicDatabases.ranking|length > 0 %}
+                        <!-- Bases de Indexação Científica / Academic Databases Filter Subsection -->
+                        <div class="mt-3.5 pt-3 border-t border-slate-200/80 dark:border-slate-800/80 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                    <sl-icon name="database-check" class="text-indigo-500"></sl-icon> Bases de Indexação Científica ({{ academicDatabases.ranking|length }}):
+                                </span>
+                                <span class="text-[10px] text-slate-400">Clique no ícone/logo da base para filtrar os artigos indexados</span>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 max-h-48 overflow-y-auto pr-1">
+                                {% for db in academicDatabases.ranking %}
+                                    <button type="button" onclick="filterByDatabase('{{ db.acronym|lower|e('js') }}')" class="db-filter-btn rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40 transition-all flex items-center gap-2 shadow-2xs group" data-db-acronym="{{ db.acronym|lower|e('html_attr') }}" title="Filtrar artigos indexados na base '{{ db.name }}' ({{ db.total }} itens)">
+                                        {% if db.logo %}
+                                            <img src="{{ db.logo }}" alt="{{ db.name }}" class="h-3.5 w-auto object-contain shrink-0 group-hover:scale-110 transition-transform" onerror="this.style.display='none'" />
+                                        {% else %}
+                                            <sl-icon name="journal-check" class="text-indigo-500 text-xs shrink-0"></sl-icon>
+                                        {% endif %}
+                                        <span class="font-bold">{{ db.name }}</span>
+                                        <span class="rounded-md bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 px-1.5 py-0.2 text-[10px] font-bold group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900 font-mono">
+                                            {{ db.total }}
+                                        </span>
+                                    </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Empty State Message for Productions -->
+                <div id="empty-productions" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                    <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+                    <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhuma produção encontrada para o filtro selecionado.</p>
+                </div>
+
+                <!-- 1. Articles in Journals -->
+                {% if articles|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="artigo">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="file-earmark-text" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                            Artigos em Periódicos ({{ articles|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in articles %}
+                                {% set indexedDbs = resolve_databases(p, p.issn) %}
+                                {% set dbAcronyms = [] %}
+                                {% for db in indexedDbs %}
+                                    {% set dbAcronyms = dbAcronyms|merge([db.acronym|lower]) %}
+                                {% endfor %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 hover:border-sky-300 dark:hover:border-sky-700 transition-colors space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="artigo" data-year="{{ p.year }}" data-databases="{{ dbAcronyms|json_encode|e('html_attr') }}">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            {% if p.year %}
+                                                <span class="rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            {% set jBadges = p.journalName ? journal_badges(p, p.issn, p.qualis) : '' %}
+                                            {% if jBadges %}
+                                                {{ jBadges|raw }}
+                                            {% elseif p.qualis %}
+                                                <span class="rounded-md px-2 py-0.5 text-[11px] font-bold badge-qualis-{{ p.qualis|lower }}">
+                                                    Qualis {{ p.qualis }}
+                                                </span>
+                                            {% endif %}
+                                            {% if p.nature %}
+                                                <span class="text-[11px] text-slate-400 font-medium">{{ p.nature }}</span>
+                                            {% endif %}
+                                        </div>
+                                        <button type="button" onclick="copyCitation(this, '{{ p.title|e('js') }}', '{{ (p.journalName ?: '')|e('js') }}', '{{ p.year }}', '{{ p.doi ?: '' }}')" class="text-[11px] font-medium text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 flex items-center gap-1 no-print" title="Copiar citação ABNT">
+                                            <sl-icon name="clipboard"></sl-icon> Citar
+                                        </button>
+                                    </div>
+
+                                    <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white leading-snug prod-title">
+                                        {{ p.title }}
+                                    </h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
+                                    <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
+                                        {% if p.journalName %}
+                                            <span class="font-medium italic text-slate-800 dark:text-slate-200">{{ p.journalName }}</span>
+                                        {% endif %}
+                                        {% if p.volume %} v. {{ p.volume }},{% endif %}
+                                        {% if p.issue %} n. {{ p.issue }},{% endif %}
+                                        {% if p.pages %} p. {{ p.pages }},{% endif %}
+                                        {% if p.issn %} ISSN: {{ p.issn }}{% endif %}
+                                    </div>
+
+                                    <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-white/10 text-xs">
+                                        <div class="text-slate-500 dark:text-slate-400 prod-authors">
+                                            {% if p.authors|length > 0 %}
+                                                Autores: {{ render_production_authors(p, researcher.id) }}
+                                            {% endif %}
+                                        </div>
+
+                                        {% if p.doi %}
+                                            <a href="{{ p.doiUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300 hover:underline shrink-0" title="Abrir artigo pelo DOI em nova aba">
+                                                <sl-icon name="box-arrow-up-right" class="text-[11px]"></sl-icon> DOI: {{ p.doi }}
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 2. Books -->
+                {% if books|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="livro">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="book" class="text-amber-600 dark:text-amber-400"></sl-icon>
+                            Livros Publicados ou Organizados ({{ books|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in books %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="livro" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}
+                                                <span class="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            <span class="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase">Livro</span>
+                                        </div>
+                                        <button type="button" onclick="copyCitation(this, '{{ p.title|e('js') }}', '{{ (p.publisher ?: '')|e('js') }}', '{{ p.year }}', '{{ p.doi ?: '' }}')" class="text-[11px] font-medium text-slate-400 hover:text-amber-600 flex items-center gap-1 no-print">
+                                            <sl-icon name="clipboard"></sl-icon> Citar
+                                        </button>
+                                    </div>
+                                    <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
+                                    <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
+                                        {% if p.publisher %}Editora: {{ p.publisher }}.{% endif %}
+                                        {% if p.volume %} v. {{ p.volume }}.{% endif %}
+                                        {% if p.pages %} {{ p.pages }}.{% endif %}
+                                        {% if p.isbn %} ISBN: {{ p.isbn }}.{% endif %}
+                                    </div>
+
+                                    <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-white/10 text-xs">
+                                        <div class="text-slate-500 dark:text-slate-400 prod-authors">
+                                            {% if p.authors|length > 0 %}Autores: {{ render_production_authors(p, researcher.id) }}{% endif %}
+                                        </div>
+                                        {% if p.doi %}
+                                            <a href="{{ p.doiUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:underline shrink-0">
+                                                <sl-icon name="box-arrow-up-right"></sl-icon> DOI
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 3. Book Chapters -->
+                {% if chapters|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="capitulo">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="bookmark" class="text-purple-600 dark:text-purple-400"></sl-icon>
+                            Capítulos de Livros Publicados ({{ chapters|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in chapters %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="capitulo" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}
+                                                 <span class="rounded-md bg-purple-100 px-2 py-0.5 text-[11px] font-semibold text-purple-800 dark:bg-purple-950 dark:text-purple-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            <span class="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase">Capítulo</span>
+                                        </div>
+                                        <button type="button" onclick="copyCitation(this, '{{ p.title|e('js') }}', 'In: {{ (p.journalName ?: '')|e('js') }}', '{{ p.year }}', '{{ p.doi ?: '' }}')" class="text-[11px] font-medium text-slate-400 hover:text-purple-600 flex items-center gap-1 no-print">
+                                            <sl-icon name="clipboard"></sl-icon> Citar
+                                        </button>
+                                    </div>
+                                    <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
+                                    <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
+                                        {% if p.journalName %}In: <span class="italic font-medium">{{ p.journalName }}</span>.{% endif %}
+                                        {% if p.publisher %} Editora: {{ p.publisher }}.{% endif %}
+                                        {% if p.volume %} v. {{ p.volume }}.{% endif %}
+                                        {% if p.pages %} p. {{ p.pages }}.{% endif %}
+                                    </div>
+
+                                    <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-white/10 text-xs">
+                                        <div class="text-slate-500 dark:text-slate-400 prod-authors">
+                                            {% if p.authors|length > 0 %}Autores: {{ render_production_authors(p, researcher.id) }}{% endif %}
+                                        </div>
+                                        {% if p.doi %}
+                                            <a href="{{ p.doiUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:underline shrink-0">
+                                                <sl-icon name="box-arrow-up-right"></sl-icon> DOI
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 4. Textos em Jornais e Revistas -->
+                {% if newspaperTexts|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="jornal">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="newspaper" class="text-blue-600 dark:text-blue-400"></sl-icon>
+                            Textos em Jornais de Notícias / Revistas ({{ newspaperTexts|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in newspaperTexts %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="jornal" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}
+                                                <span class="rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            <span class="text-[11px] font-bold text-blue-600 dark:text-blue-400 uppercase">Jornal / Revista</span>
+                                        </div>
+                                    </div>
+                                    <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
+                                    <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
+                                        {% if p.journalName %}Veículo: <span class="font-medium">{{ p.journalName }}</span>.{% endif %}
+                                        {% if p.pages %} p. {{ p.pages }}.{% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 5. Event Papers -->
+                {% if events|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="evento">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="calendar-event" class="text-rose-600 dark:text-rose-400"></sl-icon>
+                            Trabalhos em Anais de Congressos & Apresentações ({{ events|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in events %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="evento" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}
+                                                <span class="rounded-md bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-800 dark:bg-rose-950 dark:text-rose-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            <span class="rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase">
+                                                {{ p.nature ?: 'Congresso' }}
+                                            </span>
+                                        </div>
+                                        <button type="button" onclick="copyCitation(this, '{{ p.title|e('js') }}', 'In: {{ (p.eventName ?: p.journalName ?: '')|e('js') }}', '{{ p.year }}', '{{ p.doi ?: '' }}')" class="text-[11px] font-medium text-slate-400 hover:text-rose-600 flex items-center gap-1 no-print">
+                                            <sl-icon name="clipboard"></sl-icon> Citar
+                                        </button>
+                                    </div>
+                                    <h4 class="font-heading text-sm sm:text-base font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
+                                    <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
+                                        {% if p.eventName or p.journalName %}In: <span class="italic">{{ p.eventName ?: p.journalName }}</span>.{% endif %}
+                                        {% if p.eventCity %} Local: {{ p.eventCity }}.{% endif %}
+                                        {% if p.volume %} v. {{ p.volume }}.{% endif %}
+                                        {% if p.pages %} p. {{ p.pages }}.{% endif %}
+                                    </div>
+
+                                    <div class="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-white/10 text-xs">
+                                        <div class="text-slate-500 dark:text-slate-400 prod-authors">
+                                            {% if p.authors|length > 0 %}Autores: {{ render_production_authors(p, researcher.id) }}{% endif %}
+                                        </div>
+                                        {% if p.doi %}
+                                            <a href="{{ p.doiUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:underline shrink-0">
+                                                <sl-icon name="box-arrow-up-right"></sl-icon> DOI
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 6. Technical Works & Consultancy -->
+                {% if techWorks|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="tecnico">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="gear" class="text-teal-600 dark:text-teal-400"></sl-icon>
+                            Trabalhos Técnicos, Pareceres e Consultorias ({{ techWorks|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in techWorks %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="tecnico" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}
+                                                <span class="rounded-md bg-teal-100 px-2 py-0.5 text-[11px] font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            <span class="text-[11px] font-bold text-teal-600 dark:text-teal-400 uppercase">{{ p.nature ?: 'Trabalho Técnico' }}</span>
+                                        </div>
+                                    </div>
+                                    <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
+                                    {% if p.journalName %}<p class="text-xs text-slate-500 dark:text-slate-400 prod-details">{{ p.journalName }}</p>{% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 7. Innovation: Software & Patents -->
+                {% if software|length > 0 or patents|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="inovacao">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="cpu" class="text-indigo-600 dark:text-indigo-400"></sl-icon>
+                            Inovação Tecnológica: Softwares e Patentes ({{ software|length + patents|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in software|merge(patents) %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="inovacao" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}<span class="rounded-md bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">{{ p.year }}</span>{% endif %}
+                                            <span class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">{{ p.itemType }}</span>
+                                        </div>
+                                    </div>
+                                    <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
+                                    {% if p.journalName %}<p class="text-xs text-slate-500 dark:text-slate-400 prod-details">{{ p.journalName }}</p>{% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 8. Artistic & Cultural -->
+                {% if artistic|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="artes">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="palette" class="text-purple-600 dark:text-purple-400"></sl-icon>
+                            Produção Artística e Cultural ({{ artistic|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in artistic %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="artes" data-year="{{ p.year }}">
+                                    <div class="flex items-center gap-2">
+                                        {% if p.year %}<span class="rounded-md bg-purple-100 px-2 py-0.5 text-[11px] font-semibold text-purple-800 dark:bg-purple-950 dark:text-purple-300">{{ p.year }}</span>{% endif %}
+                                        <span class="text-[11px] font-bold text-purple-600 dark:text-purple-400 uppercase">{{ p.nature ?: 'Artes' }}</span>
+                                    </div>
+                                    <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 9. Outras Produções -->
+                {% if otherProds|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="outra">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="collection" class="text-slate-600 dark:text-slate-400"></sl-icon>
+                            Demais Tipos de Produção ({{ otherProds|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in otherProds %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="outra" data-year="{{ p.year }}">
+                                    <div class="flex items-center gap-2">
+                                        {% if p.year %}<span class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-800 dark:bg-slate-800 dark:text-slate-300">{{ p.year }}</span>{% endif %}
+                                    </div>
+                                    <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+</div>
