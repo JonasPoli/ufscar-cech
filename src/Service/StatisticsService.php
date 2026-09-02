@@ -1652,16 +1652,20 @@ class StatisticsService
             ORDER BY full_name ASC
         ");
 
-        $allExps = $conn->fetchAllAssociative("
-            SELECT pe.researcher_id, pe.institution_name, pe.role_name, pe.contract_type, pe.start_year, pe.end_year, pe.is_current
-            FROM professional_experiences pe
-            WHERE pe.institution_name IS NOT NULL AND TRIM(pe.institution_name) != ''
-            ORDER BY pe.is_current DESC, pe.end_year DESC, pe.start_year DESC
-        ");
-
         $expsByResearcher = [];
-        foreach ($allExps as $exp) {
-            $expsByResearcher[$exp['researcher_id']][] = $exp;
+        if (!empty($researchers)) {
+            $rIds = array_column($researchers, 'id');
+            $allExps = $conn->fetchAllAssociative("
+                SELECT pe.researcher_id, pe.institution_name, pe.role_name, pe.contract_type, pe.start_year, pe.end_year, pe.is_current
+                FROM professional_experiences pe
+                WHERE pe.researcher_id IN (" . implode(',', array_map('intval', $rIds)) . ")
+                  AND pe.institution_name IS NOT NULL AND TRIM(pe.institution_name) != ''
+                ORDER BY pe.is_current DESC, pe.end_year DESC, pe.start_year DESC
+            ");
+
+            foreach ($allExps as $exp) {
+                $expsByResearcher[$exp['researcher_id']][] = $exp;
+            }
         }
 
         $departmentNames = [
