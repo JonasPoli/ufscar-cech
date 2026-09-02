@@ -136,9 +136,9 @@ class AdminDatabaseBackupController extends AbstractController
         return $this->download($backups[0]['filename']);
     }
 
-    #[Route('/admin/database/backup/download/{filename}', name: 'app_admin_database_backup_download', methods: ['GET'])]
-    #[Route('/admin/database/backup/{filename}', name: 'app_admin_database_backup_file', requirements: ['filename' => '.+\.(zip|sql)'], methods: ['GET'])]
-    #[Route('/admin/database/{filename}', name: 'app_admin_database_catchall', methods: ['GET'])]
+    #[Route('/admin/database/backup/download/{filename}', name: 'app_admin_database_backup_download', requirements: ['filename' => '.+'], methods: ['GET'])]
+    #[Route('/admin/database/backup/{filename}', name: 'app_admin_database_backup_file', requirements: ['filename' => '.+\.(zip|sql|gz)'], methods: ['GET'])]
+    #[Route('/admin/database/{filename}', name: 'app_admin_database_catchall', requirements: ['filename' => '.+'], methods: ['GET'])]
     public function download(string $filename): Response
     {
         if ($filename === 'undefined' || $filename === 'backup' || trim($filename) === '') {
@@ -158,17 +158,28 @@ class AdminDatabaseBackupController extends AbstractController
             return $this->redirectToRoute('app_admin_database_backup_index');
         }
 
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
         $response = new BinaryFileResponse($file->getRealPath());
         $response->setContentDisposition(
             ResponseHeaderBag::DISPOSITION_ATTACHMENT,
             $file->getFilename()
         );
-        $response->headers->set('Content-Type', str_ends_with($filename, '.zip') ? 'application/zip' : 'application/sql');
+        $mimeType = match (true) {
+            str_ends_with($filename, '.zip') => 'application/zip',
+            str_ends_with($filename, '.gz') => 'application/gzip',
+            default => 'application/sql',
+        };
+        $response->headers->set('Content-Type', $mimeType);
+        $response->headers->set('Content-Length', (string)$file->getSize());
+        $response->headers->set('X-Accel-Buffering', 'no');
 
         return $response;
     }
 
-    #[Route('/admin/database/backup/delete/{filename}', name: 'app_admin_database_backup_delete', methods: ['POST'])]
+    #[Route('/admin/database/backup/delete/{filename}', name: 'app_admin_database_backup_delete', requirements: ['filename' => '.+'], methods: ['POST'])]
     public function delete(string $filename, Request $request): Response
     {
         if ($this->isCsrfTokenValid('delete_backup_' . $filename, (string)$request->request->get('_token'))) {
@@ -220,7 +231,7 @@ class AdminDatabaseBackupController extends AbstractController
         }
     }
 
-    #[Route('/admin/database/backup/restore/{filename}', name: 'app_admin_database_backup_restore', methods: ['POST'])]
+    #[Route('/admin/database/backup/restore/{filename}', name: 'app_admin_database_backup_restore', requirements: ['filename' => '.+'], methods: ['POST'])]
     public function restore(string $filename, Request $request): Response
     {
         if (!$this->isCsrfTokenValid('restore_backup_' . $filename, (string)$request->request->get('_token'))) {
