@@ -1,0 +1,793 @@
+{# ══════════════════════════════════════════════════════════════════
+   BLOCO 3: PRODUÇÃO CIENTÍFICA, TÉCNICA E QUALIS
+   ══════════════════════════════════════════════════════════════════ #}
+<div class="indicator-group space-y-6" data-group="production">
+    <div class="flex items-center gap-3">
+        <div class="h-8 w-1.5 rounded-full bg-indigo-600"></div>
+        <div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white font-heading">
+                3. Produção Científica, Técnica & Estratos Qualis
+            </h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Matriz holística de produção anual, proporção de indexação CAPES e distribuição estratificada de periódicos.</p>
+        </div>
+    </div>
+
+    {# Fig 12: Matriz Geral de Produções (Heatmap Table) #}
+    <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 12</span>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
+                        Matriz Heatmap Anual
+                    </span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                    Resultado Geral da Atuação dos Docentes por Categoria e Ano
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                    Total de itens científicos, bibliográficos, técnicos e artísticos consolidados por ano (2010 a {{ fig10Heatmap.years|first }}).
+                </p>
+            </div>
+            <div class="text-right">
+                <span class="text-xs text-slate-500 dark:text-slate-400 block">Total Geral Acumulado</span>
+                <span class="text-2xl font-black text-indigo-600 dark:text-indigo-400 font-heading">
+                    {{ fig10Heatmap.grandTotal|number_format(0, ',', '.') }}
+                </span>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800">
+            <table class="w-full text-xs text-left">
+                <thead class="bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 uppercase tracking-wider font-semibold border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                        <th class="py-3 px-3 sticky left-0 bg-slate-100 dark:bg-slate-800 z-10">Ano</th>
+                        {% for tKey, tLabel in fig10Heatmap.types %}
+                            <th class="py-3 px-2 text-center whitespace-nowrap">{{ tLabel }}</th>
+                        {% endfor %}
+                        <th class="py-3 px-3 text-right bg-slate-200/60 dark:bg-slate-700/60 font-bold">Total Ano</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200/60 dark:divide-slate-800">
+                    {% for y in fig10Heatmap.years %}
+                        <tr class="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition font-mono">
+                            <td class="py-2 px-3 font-bold text-slate-900 dark:text-white sticky left-0 bg-white dark:bg-slate-900 z-10">
+                                {{ y }}
+                            </td>
+                            {% for tKey, tLabel in fig10Heatmap.types %}
+                                {% set val = fig10Heatmap.matrix[y][tKey] ?? 0 %}
+                                {% set intensity = (val > 500) ? 'bg-indigo-600/30 text-indigo-900 dark:text-indigo-200 font-bold' : ((val > 200) ? 'bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 font-semibold' : ((val > 50) ? 'bg-indigo-500/10 text-slate-700 dark:text-slate-300' : 'text-slate-400 dark:text-slate-500')) %}
+                                <td class="py-2 px-2 text-center {{ intensity }} rounded-sm">
+                                    {{ val > 0 ? (val|number_format(0, ',', '.')) : '-' }}
+                                </td>
+                            {% endfor %}
+                            <td class="py-2 px-3 text-right font-bold text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-800/40">
+                                {{ fig10Heatmap.rowTotals[y]|number_format(0, ',', '.') }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-slate-100/90 dark:bg-slate-800/90 font-bold text-slate-900 dark:text-white border-t-2 border-slate-300 dark:border-slate-600">
+                    <tr>
+                        <td class="py-3 px-3 sticky left-0 bg-slate-100 dark:bg-slate-800 z-10">Total Acumulado</td>
+                        {% for tKey, tLabel in fig10Heatmap.types %}
+                            <td class="py-3 px-2 text-center text-indigo-700 dark:text-indigo-300 font-mono">
+                                {{ fig10Heatmap.columnTotals[tKey]|number_format(0, ',', '.') }}
+                            </td>
+                        {% endfor %}
+                        <td class="py-3 px-3 text-right text-indigo-700 dark:text-indigo-300 font-mono font-black">
+                            {{ fig10Heatmap.grandTotal|number_format(0, ',', '.') }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {# Fig 13: Qualis vs Sem Qualis #}
+        <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 13</span>
+                    <span class="text-xs text-slate-400">Qualificação CAPES</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                    Produção de Artigos: Com Qualis vs Sem Qualis
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Evolução histórica de artigos publicados em periódicos indexados com classificação Qualis versus periódicos sem Qualis.
+                </p>
+            </div>
+            <div class="h-80">
+                <canvas id="chartFig11"></canvas>
+            </div>
+        </div>
+
+        {# Fig 14: Distribuição por Estrato Qualis (A1..C) #}
+        <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 14</span>
+                    <span class="text-xs text-slate-400">Estratos A1 a C</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                    Distribuição Anual por Estrato Qualis Sucupira
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Detalhamento do volume anual de publicações distribuídas nos estratos A1, A2, A3, A4, B1, B2, B3, B4 e C.
+                </p>
+            </div>
+            <div class="h-80">
+                <canvas id="chartFig12"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    {# ── Painel de Ranking Dinâmico de Docentes por Estrato Qualis (A1 a A4) ── #}
+    <div class="glass-card rounded-2xl p-6 sm:p-8 border border-slate-200/60 dark:border-white/10 shadow-sm space-y-6">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-100 dark:border-white/5 pb-5">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Relatório Interativo</span>
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60">
+                        <sl-icon name="trophy"></sl-icon> Top Publicadores Qualis
+                    </span>
+                </div>
+                <h3 class="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white font-heading">
+                    Docentes com Maior Volume de Publicações em Estratos Qualis A (A1 - A4)
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-3xl">
+                    Selecione e combine os estratos <strong>A1, A2, A3 e A4</strong> abaixo para recalcular dinamicamente a pontuação e a posição dos docentes no ranking do CECH.
+                </p>
+            </div>
+
+            {# KPI resumido do filtro atual #}
+            <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-800/80 px-4 py-3 rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
+                <div id="qualisLeaderAvatar" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-xs bg-slate-200 dark:bg-slate-800 text-slate-400 font-bold text-xs">
+                    -
+                </div>
+                <div class="text-right">
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Docente Líder</span>
+                    <span class="text-sm font-extrabold text-slate-900 dark:text-white font-heading truncate max-w-[160px] block" id="qualisLeaderName">
+                        -
+                    </span>
+                </div>
+                <div class="h-8 w-px bg-slate-200 dark:bg-slate-700"></div>
+                <div class="text-right">
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Total Artigos</span>
+                    <span class="text-lg font-black text-indigo-600 dark:text-indigo-400 font-heading" id="qualisLeaderTotal">
+                        0
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        {# Toggles de Qualis A1 - A4 & Toggles de Indexadores (AND) #}
+        <div class="space-y-4 bg-slate-50/80 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-800">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                
+                {# 1. Estratos Qualis (OR) #}
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mr-1">
+                        <sl-icon name="sliders"></sl-icon> Estratos Qualis:
+                    </span>
+
+                    {# Toggle A1 #}
+                    <button type="button" id="toggleQualisA1" data-qualis="A1" class="qualis-toggle-btn active inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all shadow-xs border bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700">
+                        <sl-icon name="check-circle-fill" class="text-xs"></sl-icon>
+                        <span>A1</span>
+                    </button>
+
+                    {# Toggle A2 #}
+                    <button type="button" id="toggleQualisA2" data-qualis="A2" class="qualis-toggle-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all shadow-xs border bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-700">
+                        <sl-icon name="circle" class="text-xs"></sl-icon>
+                        <span>A2</span>
+                    </button>
+
+                    {# Toggle A3 #}
+                    <button type="button" id="toggleQualisA3" data-qualis="A3" class="qualis-toggle-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all shadow-xs border bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-700">
+                        <sl-icon name="circle" class="text-xs"></sl-icon>
+                        <span>A3</span>
+                    </button>
+
+                    {# Toggle A4 #}
+                    <button type="button" id="toggleQualisA4" data-qualis="A4" class="qualis-toggle-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all shadow-xs border bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-700">
+                        <sl-icon name="circle" class="text-xs"></sl-icon>
+                        <span>A4</span>
+                    </button>
+                </div>
+
+                {# Busca rápida por docente #}
+                <div class="relative w-full sm:w-64">
+                    <sl-icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></sl-icon>
+                    <input type="text" id="qualisResearcherSearch" placeholder="Filtrar por docente..." class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium">
+                </div>
+            </div>
+
+            <div class="h-px w-full bg-slate-200/70 dark:bg-slate-800"></div>
+
+            {# 2. Indexadores (Pill-buttons de múltipla seleção - AND com Qualis) #}
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5 mr-1">
+                    <sl-icon name="globe" class="text-indigo-500"></sl-icon> Indexadores (Bases de Dados):
+                </span>
+
+                {# Botão Todos (Limpar Seleção de Indexadores) #}
+                <button type="button" id="toggleDbAll" class="db-toggle-btn active inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all shadow-xs border bg-indigo-600 text-white border-indigo-500 hover:bg-indigo-700">
+                    <sl-icon name="check-circle-fill" class="text-xs"></sl-icon>
+                    <span>Todas as Bases</span>
+                </button>
+
+                {% for db in figQualisResearchers.databases %}
+                    <button type="button" data-db-id="{{ db.id }}" class="db-toggle-btn db-item-btn inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all shadow-xs border bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-700 hover:bg-slate-300 dark:hover:bg-slate-700">
+                        <sl-icon name="circle" class="text-xs"></sl-icon>
+                        <span>{{ db.name }}</span>
+                    </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Tabela / Listagem de Ranking Dinâmico #}
+        <div class="overflow-x-auto rounded-xl border border-slate-200/80 dark:border-slate-800">
+            <table class="min-w-full divide-y divide-slate-200/70 dark:divide-slate-800 text-left text-xs" id="qualisResearchersTable">
+                <thead class="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase font-semibold">
+                    <tr>
+                        <th scope="col" class="py-3 px-4 text-center w-16">Posição</th>
+                        <th scope="col" class="py-3 px-4">Docente / Pesquisador</th>
+                        <th scope="col" class="py-3 px-4">Departamento</th>
+                        <th scope="col" class="py-3 px-4 text-center">Detalhamento dos Estratos</th>
+                        <th scope="col" class="py-3 px-4 text-right">Total Artigos</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white/40 dark:bg-slate-900/40" id="qualisResearchersTbody">
+                    <!-- Preenchido via JavaScript em tempo real -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# Destaques & KPIs de Indexação Internacional #}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
+        <div class="glass-card rounded-2xl p-4 border border-slate-200/60 dark:border-white/10 shadow-xs bg-indigo-50/40 dark:bg-indigo-950/20">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">Artigos Indexados</span>
+                <sl-icon name="globe" class="text-indigo-600 dark:text-indigo-400 text-base"></sl-icon>
+            </div>
+            <div class="text-2xl font-black text-slate-900 dark:text-white font-heading">
+                {{ figAcademicDatabases.totalIndexedArticles|number_format(0, ',', '.') }}
+            </div>
+            <div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                {{ figAcademicDatabases.indexedPercentage }}% de todos os artigos do CECH
+            </div>
+        </div>
+
+        {% for item in figAcademicDatabases.ranking|slice(0, 3) %}
+            <div class="glass-card rounded-2xl p-4 border border-slate-200/60 dark:border-white/10 shadow-xs">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                        {% if item.logo %}
+                            <img src="{{ item.logo }}" alt="{{ item.name }}" class="h-3.5 w-auto inline-block object-contain" />
+                        {% endif %}
+                        {{ item.name }}
+                    </span>
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">#{{ loop.index }}</span>
+                </div>
+                <div class="text-2xl font-black text-slate-900 dark:text-white font-heading">
+                    {{ item.total|number_format(0, ',', '.') }}
+                </div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    {{ item.indexedPercentage }}% das produções indexadas
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {# Fig 15 & Fig 16: Bases de Indexação Internacional #}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {# Fig 15: Produção por Base de Indexação #}
+        <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 15</span>
+                    <span class="text-xs text-slate-400">Bases Científicas Internacionais</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                    Trabalhos dos Docentes por Base de Indexação
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Cruzamento entre os artigos publicados pelos docentes do CECH, suas revistas e as bases de indexação científica (Scopus, Web of Science, Latindex, SciELO, PubMed, DOAJ, OpenAlex).
+                </p>
+            </div>
+            <div class="h-80">
+                <canvas id="chartFigAcademicDatabases"></canvas>
+            </div>
+        </div>
+
+        {# Fig 16: Evolução Temporal por Base #}
+        <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 16</span>
+                    <span class="text-xs text-slate-400">Séries Históricas</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                    Evolução Temporal da Indexação por Base (2010–{{ figAcademicDatabases.years|last }})
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Histórico comparativo do número anual de artigos dos docentes do CECH publicados em periódicos indexados em cada base científica internacional.
+                </p>
+            </div>
+            <div class="h-80">
+                <canvas id="chartFigAcademicDatabasesTimeline"></canvas>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+(function() {
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#cbd5e1' : '#475569';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+
+    // ── Fig 13: Qualis vs Sem Qualis (Área) ──
+    const fig11Data = {{ fig11QualisTimeline|json_encode|raw }};
+    const elFig11 = document.getElementById('chartFig11');
+    if (elFig11) {
+        new Chart(elFig11, {
+            type: 'line',
+            data: {
+                labels: fig11Data.years,
+                datasets: [
+                    {
+                        label: 'Com Qualis CAPES',
+                        data: fig11Data.withQualis,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2.5
+                    },
+                    {
+                        label: 'Sem Qualis',
+                        data: fig11Data.withoutQualis,
+                        borderColor: '#94a3b8',
+                        backgroundColor: 'rgba(148, 163, 184, 0.1)',
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2,
+                        borderDash: [4, 4]
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { color: textColor, font: { size: 11 }, boxWidth: 12 } }
+                },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                    y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                }
+            }
+        });
+    }
+
+    // ── Fig 14: Estratos Qualis A1..C (Stacked Bar) ──
+    const fig12Data = {{ fig12QualisStrata|json_encode|raw }};
+    const qualisColors = {
+        'A1': '#065f46',
+        'A2': '#059669',
+        'A3': '#10b981',
+        'A4': '#34d399',
+        'B1': '#0284c7',
+        'B2': '#38bdf8',
+        'B3': '#f59e0b',
+        'B4': '#fb923c',
+        'C':  '#94a3b8'
+    };
+    const fig12Datasets = fig12Data.strata.map(st => ({
+        label: st + ' (' + (fig12Data.strataTotals[st] || 0) + ')',
+        data: Object.values(fig12Data.series[st]),
+        backgroundColor: qualisColors[st] || '#64748b',
+        borderRadius: 2
+    }));
+
+    const elFig12 = document.getElementById('chartFig12');
+    if (elFig12) {
+        new Chart(elFig12, {
+            type: 'bar',
+            data: {
+                labels: fig12Data.years,
+                datasets: fig12Datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { color: textColor, font: { size: 10 }, boxWidth: 10 } }
+                },
+                scales: {
+                    x: { stacked: true, grid: { display: false }, ticks: { color: textColor } },
+                    y: { stacked: true, grid: { color: gridColor }, ticks: { color: textColor } }
+                }
+            }
+        });
+    }
+
+    // ── Fig 15: Produção por Base de Indexação Científica (Horizontal Bar) ──
+    const figAcademicDatabasesData = {{ figAcademicDatabases|json_encode|raw }};
+    const elFigDB = document.getElementById('chartFigAcademicDatabases');
+    if (elFigDB && figAcademicDatabasesData.ranking) {
+        new Chart(elFigDB, {
+            type: 'bar',
+            data: {
+                labels: figAcademicDatabasesData.ranking.map(d => d.name),
+                datasets: [{
+                    label: 'Artigos Indexados',
+                    data: figAcademicDatabasesData.ranking.map(d => d.total),
+                    backgroundColor: figAcademicDatabasesData.ranking.map(d => d.color),
+                    borderRadius: 6,
+                    borderWidth: 1,
+                    borderColor: figAcademicDatabasesData.ranking.map(d => d.color)
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const item = figAcademicDatabasesData.ranking[context.dataIndex];
+                                return ` ${item.total.toLocaleString('pt-BR')} artigos (${item.indexedPercentage}% dos indexados / ${item.percentage}% do total)`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                    y: { grid: { display: false }, ticks: { color: textColor, font: { size: 11, weight: 'bold' } } }
+                }
+            }
+        });
+    }
+
+    // ── Fig 16: Evolução Temporal das Bases Indexadoras (Multi-Line Chart) ──
+    const elFigDBTimeline = document.getElementById('chartFigAcademicDatabasesTimeline');
+    if (elFigDBTimeline && figAcademicDatabasesData.timelineSeries) {
+        const dbTimelineDatasets = figAcademicDatabasesData.timelineSeries.map(s => ({
+            label: s.name,
+            data: s.data,
+            borderColor: s.color,
+            backgroundColor: s.color + '20',
+            tension: 0.35,
+            borderWidth: 2.5,
+            fill: false,
+            pointRadius: 3,
+            pointHoverRadius: 6
+        }));
+
+        new Chart(elFigDBTimeline, {
+            type: 'line',
+            data: {
+                labels: figAcademicDatabasesData.years,
+                datasets: dbTimelineDatasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { color: textColor, font: { size: 10, weight: 'bold' }, boxWidth: 12 }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                    y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                }
+            }
+        });
+    }
+
+    // ── Lógica Dinâmica do Ranking de Pesquisadores por Estrato Qualis (A1 - A4) & Indexadores (AND) ──
+    (function() {
+        const rawQualisPayload = {{ figQualisResearchers|json_encode|raw }};
+        if (!rawQualisPayload || !Array.isArray(rawQualisPayload.researchers)) return;
+
+        const researchersData = rawQualisPayload.researchers;
+
+        const activeStrata = {
+            'A1': true,
+            'A2': false,
+            'A3': false,
+            'A4': false
+        };
+
+        const activeDbs = new Set();
+
+        const qualisToggleBtns = document.querySelectorAll('.qualis-toggle-btn');
+        const dbToggleBtns = document.querySelectorAll('.db-toggle-btn');
+        const dbAllBtn = document.getElementById('toggleDbAll');
+        const searchInput = document.getElementById('qualisResearcherSearch');
+        const tbody = document.getElementById('qualisResearchersTbody');
+        const leaderAvatarEl = document.getElementById('qualisLeaderAvatar');
+        const leaderNameEl = document.getElementById('qualisLeaderName');
+        const leaderTotalEl = document.getElementById('qualisLeaderTotal');
+
+        function getInitials(name) {
+            if (!name) return '??';
+            const parts = name.trim().split(/\s+/);
+            if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+
+        function updateRanking() {
+            if (!tbody) return;
+
+            const searchQuery = searchInput ? searchInput.value.trim().toLowerCase() : '';
+            const isAllDbs = activeDbs.size === 0;
+
+            const filtered = researchersData.map(r => {
+                let score = 0;
+                let displayA1 = 0;
+                let displayA2 = 0;
+                let displayA3 = 0;
+                let displayA4 = 0;
+
+                if (isAllDbs) {
+                    displayA1 = r.strata['A1'] || 0;
+                    displayA2 = r.strata['A2'] || 0;
+                    displayA3 = r.strata['A3'] || 0;
+                    displayA4 = r.strata['A4'] || 0;
+                } else {
+                    activeDbs.forEach(dbId => {
+                        const dbCounts = r.dbStrata[dbId] || {};
+                        displayA1 += dbCounts['A1'] || 0;
+                        displayA2 += dbCounts['A2'] || 0;
+                        displayA3 += dbCounts['A3'] || 0;
+                        displayA4 += dbCounts['A4'] || 0;
+                    });
+                }
+
+                if (activeStrata['A1']) score += displayA1;
+                if (activeStrata['A2']) score += displayA2;
+                if (activeStrata['A3']) score += displayA3;
+                if (activeStrata['A4']) score += displayA4;
+
+                return {
+                    ...r,
+                    currentScore: score,
+                    displayA1,
+                    displayA2,
+                    displayA3,
+                    displayA4
+                };
+            }).filter(r => {
+                if (r.currentScore <= 0) return false;
+                if (searchQuery !== '' && !r.name.toLowerCase().includes(searchQuery) && !r.department.toLowerCase().includes(searchQuery)) {
+                    return false;
+                }
+                return true;
+            });
+
+            filtered.sort((a, b) => {
+                if (b.currentScore !== a.currentScore) {
+                    return b.currentScore - a.currentScore;
+                }
+                return a.name.localeCompare(b.name);
+            });
+
+            if (filtered.length > 0) {
+                const leader = filtered[0];
+                if (leaderNameEl) leaderNameEl.textContent = leader.name;
+                if (leaderTotalEl) leaderTotalEl.textContent = leader.currentScore;
+                
+                if (leaderAvatarEl) {
+                    if (leader.photoUrl) {
+                        leaderAvatarEl.innerHTML = `<img src="${leader.photoUrl}" alt="${leader.name}" class="h-full w-full object-cover">`;
+                        leaderAvatarEl.className = "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-xs border border-amber-300 dark:border-amber-700";
+                    } else {
+                        leaderAvatarEl.innerHTML = getInitials(leader.name);
+                        leaderAvatarEl.className = "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-xs bg-gradient-to-tr from-amber-500 to-indigo-600 text-white font-bold text-xs";
+                    }
+                }
+            } else {
+                if (leaderNameEl) leaderNameEl.textContent = 'Nenhum';
+                if (leaderTotalEl) leaderTotalEl.textContent = '0';
+                if (leaderAvatarEl) {
+                    leaderAvatarEl.innerHTML = '-';
+                    leaderAvatarEl.className = "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-800 text-slate-400 text-xs font-bold";
+                }
+            }
+
+            tbody.innerHTML = '';
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-slate-400 text-xs">
+                            Nenhum docente encontrado para os Qualis e Indexadores selecionados.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            filtered.forEach((r, idx) => {
+                const rank = idx + 1;
+                let rankBadge = `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full font-black text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">${rank}</span>`;
+                
+                if (rank === 1) {
+                    rankBadge = `<span class="inline-flex items-center justify-center w-8 h-8 rounded-full font-black text-xs bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 text-amber-950 shadow-md border border-amber-300 transform scale-110" title="1º Lugar - Medalha de Ouro"><sl-icon name="trophy-fill" class="text-sm"></sl-icon></span>`;
+                } else if (rank === 2) {
+                    rankBadge = `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full font-black text-xs bg-gradient-to-tr from-slate-400 via-slate-300 to-slate-200 text-slate-900 shadow-sm border border-slate-300 dark:border-slate-500" title="2º Lugar - Medalha de Prata"><sl-icon name="award-fill" class="text-xs"></sl-icon></span>`;
+                } else if (rank === 3) {
+                    rankBadge = `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full font-black text-xs bg-gradient-to-tr from-amber-800 via-amber-700 to-amber-600 text-amber-100 shadow-sm border border-amber-600 dark:border-amber-700" title="3º Lugar - Medalha de Bronze"><sl-icon name="award" class="text-xs"></sl-icon></span>`;
+                }
+
+                let photoHtml = '';
+                if (r.photoUrl) {
+                    photoHtml = `<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-xs border border-slate-200 dark:border-slate-700">
+                        <img src="${r.photoUrl}" alt="${r.name}" class="h-full w-full object-cover">
+                    </div>`;
+                } else {
+                    const initials = getInitials(r.name);
+                    photoHtml = `<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-xs bg-gradient-to-tr from-indigo-500 to-sky-600 text-white font-bold text-xs">
+                        ${initials}
+                    </div>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition font-medium';
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-4 text-center">
+                        ${rankBadge}
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <a href="/docentes/${encodeURIComponent(r.slug)}" class="font-bold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition flex items-center gap-3 group">
+                            ${photoHtml}
+                            <span class="group-hover:underline">${r.name}</span>
+                        </a>
+                    </td>
+                    <td class="py-3.5 px-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60">
+                            ${r.department}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-4 text-center">
+                        <div class="inline-flex items-center gap-1.5 font-mono text-[11px]">
+                            <span class="px-2 py-0.5 rounded ${activeStrata['A1'] ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-700' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 opacity-60'}">
+                                A1: <strong>${r.displayA1}</strong>
+                            </span>
+                            <span class="px-2 py-0.5 rounded ${activeStrata['A2'] ? 'bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 font-bold border border-blue-300 dark:border-blue-700' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 opacity-60'}">
+                                A2: <strong>${r.displayA2}</strong>
+                            </span>
+                            <span class="px-2 py-0.5 rounded ${activeStrata['A3'] ? 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-800 dark:text-indigo-300 font-bold border border-indigo-300 dark:border-indigo-700' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 opacity-60'}">
+                                A3: <strong>${r.displayA3}</strong>
+                            </span>
+                            <span class="px-2 py-0.5 rounded ${activeStrata['A4'] ? 'bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 font-bold border border-purple-300 dark:border-purple-700' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 opacity-60'}">
+                                A4: <strong>${r.displayA4}</strong>
+                            </span>
+                        </div>
+                    </td>
+                    <td class="py-3.5 px-4 text-right">
+                        <span class="font-heading font-black text-base text-indigo-600 dark:text-indigo-400">
+                            ${r.currentScore}
+                        </span>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        qualisToggleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const stratum = btn.dataset.qualis;
+                if (!stratum) return;
+
+                activeStrata[stratum] = !activeStrata[stratum];
+
+                if (activeStrata[stratum]) {
+                    btn.classList.add('active');
+                    btn.classList.remove('bg-slate-200/80', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-400', 'border-slate-300', 'dark:border-slate-700');
+                    
+                    if (stratum === 'A1') btn.classList.add('bg-emerald-600', 'text-white', 'border-emerald-500', 'hover:bg-emerald-700');
+                    else if (stratum === 'A2') btn.classList.add('bg-blue-600', 'text-white', 'border-blue-500', 'hover:bg-blue-700');
+                    else if (stratum === 'A3') btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-500', 'hover:bg-indigo-700');
+                    else if (stratum === 'A4') btn.classList.add('bg-purple-600', 'text-white', 'border-purple-500', 'hover:bg-purple-700');
+
+                    const icon = btn.querySelector('sl-icon');
+                    if (icon) icon.setAttribute('name', 'check-circle-fill');
+                } else {
+                    btn.classList.remove('active', 'bg-emerald-600', 'bg-blue-600', 'bg-indigo-600', 'bg-purple-600', 'text-white', 'border-emerald-500', 'border-blue-500', 'border-indigo-500', 'border-purple-500');
+                    btn.classList.add('bg-slate-200/80', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-400', 'border-slate-300', 'dark:border-slate-700');
+
+                    const icon = btn.querySelector('sl-icon');
+                    if (icon) icon.setAttribute('name', 'circle');
+                }
+
+                updateRanking();
+            });
+        });
+
+        function updateDbToggleUI() {
+            const isAll = activeDbs.size === 0;
+
+            if (dbAllBtn) {
+                if (isAll) {
+                    dbAllBtn.classList.add('active', 'bg-indigo-600', 'text-white', 'border-indigo-500', 'hover:bg-indigo-700');
+                    dbAllBtn.classList.remove('bg-slate-200/80', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-400', 'border-slate-300', 'dark:border-slate-700');
+                    const icon = dbAllBtn.querySelector('sl-icon');
+                    if (icon) icon.setAttribute('name', 'check-circle-fill');
+                } else {
+                    dbAllBtn.classList.remove('active', 'bg-indigo-600', 'text-white', 'border-indigo-500', 'hover:bg-indigo-700');
+                    dbAllBtn.classList.add('bg-slate-200/80', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-400', 'border-slate-300', 'dark:border-slate-700');
+                    const icon = dbAllBtn.querySelector('sl-icon');
+                    if (icon) icon.setAttribute('name', 'circle');
+                }
+            }
+
+            document.querySelectorAll('.db-item-btn').forEach(btn => {
+                const dbId = btn.dataset.dbId;
+                const isActive = activeDbs.has(dbId);
+
+                if (isActive) {
+                    btn.classList.add('active', 'bg-sky-600', 'text-white', 'border-sky-500', 'hover:bg-sky-700');
+                    btn.classList.remove('bg-slate-200/80', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-400', 'border-slate-300', 'dark:border-slate-700');
+                    const icon = btn.querySelector('sl-icon');
+                    if (icon) icon.setAttribute('name', 'check-circle-fill');
+                } else {
+                    btn.classList.remove('active', 'bg-sky-600', 'text-white', 'border-sky-500', 'hover:bg-sky-700');
+                    btn.classList.add('bg-slate-200/80', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-400', 'border-slate-300', 'dark:border-slate-700');
+                    const icon = btn.querySelector('sl-icon');
+                    if (icon) icon.setAttribute('name', 'circle');
+                }
+            });
+        }
+
+        if (dbAllBtn) {
+            dbAllBtn.addEventListener('click', () => {
+                activeDbs.clear();
+                updateDbToggleUI();
+                updateRanking();
+            });
+        }
+
+        document.querySelectorAll('.db-item-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const dbId = btn.dataset.dbId;
+                if (!dbId) return;
+
+                if (activeDbs.has(dbId)) {
+                    activeDbs.delete(dbId);
+                } else {
+                    activeDbs.add(dbId);
+                }
+
+                updateDbToggleUI();
+                updateRanking();
+            });
+        });
+
+        if (searchInput) {
+            searchInput.addEventListener('input', updateRanking);
+        }
+
+        updateRanking();
+    })();
+})();
+</script>

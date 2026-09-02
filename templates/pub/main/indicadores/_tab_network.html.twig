@@ -1,0 +1,381 @@
+{# ══════════════════════════════════════════════════════════════════
+   BLOCO 4: REDES DE COLABORAÇÃO E PARCERIAS INSTITUCIONAIS
+   ══════════════════════════════════════════════════════════════════ #}
+<div class="indicator-group space-y-6" data-group="network">
+    <div class="flex items-center gap-3">
+        <div class="h-8 w-1.5 rounded-full bg-purple-600"></div>
+        <div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white font-heading">
+                4. Redes de Colaboração & Parcerias Institucionais
+            </h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Coautoria interna entre docentes do CECH e redes de cooperação científica nacional e internacional.</p>
+        </div>
+    </div>
+
+    {# Fig 17: Rede de Coautoria Docente & Exportador VOSviewer #}
+    <div class="glass-card rounded-2xl p-6 sm:p-8 border border-slate-200/60 dark:border-white/10 shadow-sm space-y-6">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-slate-100 dark:border-white/5 pb-5">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Figura 17</span>
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60">
+                        <sl-icon name="diagram-3"></sl-icon> Rede de Coautoria & VOSviewer
+                    </span>
+                </div>
+                <h3 class="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white font-heading">
+                    Rede de Colaboração e Parcerias Acadêmicas entre Docentes do CECH
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-3xl">
+                    Cruzamento sistemático de todos os trabalhos em parceria (artigos, livros, capítulos, eventos e técnicos) deduplicados via Tesauro de Autores. Exporte a matriz de coautoria para análise bibliométrica avançada no <strong>VOSviewer</strong>.
+                </p>
+            </div>
+
+            {# Botões de Ação e Exportação #}
+            <div class="flex flex-wrap items-center gap-2.5">
+                {# Exportador VOSviewer (Rede de Coautoria .txt/.net) #}
+                <button type="button" id="exportVosviewerBtn" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-md transition transform hover:-translate-y-0.5">
+                    <sl-icon name="download" class="text-sm"></sl-icon> Exportar para VOSviewer (.txt)
+                </button>
+
+                {# Exportador CSV Matriz #}
+                <button type="button" id="exportCoauthorsCsvBtn" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 shadow-xs transition">
+                    <sl-icon name="filetype-csv" class="text-emerald-600 text-sm"></sl-icon> Matriz CSV
+                </button>
+            </div>
+        </div>
+
+        {# Cards das Principais Parcerias (Top Highlights) #}
+        <div class="space-y-3">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                    <sl-icon name="trophy" class="text-amber-500"></sl-icon> Principais Elos de Colaboração do CECH
+                </span>
+                <span class="text-xs text-slate-400 font-medium">Total de {{ fig13CoauthorsFull|length }} conexões mapeadas</span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {% for pair in fig13Coauthors %}
+                    <div class="rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 bg-slate-50/50 dark:bg-slate-900/40 space-y-3 flex flex-col justify-between hover:border-purple-400 dark:hover:border-purple-700 hover:shadow-md transition group">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-extrabold uppercase tracking-wider text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-800/40">
+                                #{{ loop.index }} Parceria
+                            </span>
+                            <span class="text-xs font-black text-purple-600 dark:text-purple-400 flex items-center gap-1 font-heading">
+                                <sl-icon name="link-45deg" class="text-base"></sl-icon> {{ pair.collaborations }} {% if pair.collaborations == 1 %}parceria{% else %}parcerias{% endif %}
+                            </span>
+                        </div>
+
+                        {# Cruzamento dos dois docentes #}
+                        <div class="space-y-2 py-1">
+                            <div class="flex items-center gap-2.5">
+                                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                                    {% if pair.photo1 %}
+                                        <img src="{{ pair.photo1 }}" alt="{{ pair.author1 }}" class="h-full w-full object-cover">
+                                    {% else %}
+                                        <span class="font-bold text-[10px] text-indigo-600 dark:text-indigo-400">{{ pair.author1|slice(0, 2)|upper }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <a href="{{ path('app_pub_professor_show', {slugOrId: pair.slug1}) }}" class="text-xs font-bold text-slate-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400 truncate block transition">
+                                        {{ pair.author1 }}
+                                    </a>
+                                    <span class="text-[10px] text-slate-400 block truncate">{{ pair.dept1 ?: 'CECH' }}</span>
+                                </div>
+                            </div>
+
+                            <div class="text-[10px] text-purple-400 dark:text-purple-500 font-extrabold text-center flex items-center justify-center gap-1 my-0.5">
+                                <span class="h-px w-6 bg-slate-200 dark:bg-slate-800"></span> &times; <span class="h-px w-6 bg-slate-200 dark:bg-slate-800"></span>
+                            </div>
+
+                            <div class="flex items-center gap-2.5">
+                                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                                    {% if pair.photo2 %}
+                                        <img src="{{ pair.photo2 }}" alt="{{ pair.author2 }}" class="h-full w-full object-cover">
+                                    {% else %}
+                                        <span class="font-bold text-[10px] text-indigo-600 dark:text-indigo-400">{{ pair.author2|slice(0, 2)|upper }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <a href="{{ path('app_pub_professor_show', {slugOrId: pair.slug2}) }}" class="text-xs font-bold text-slate-900 dark:text-white hover:text-purple-600 dark:hover:text-purple-400 truncate block transition">
+                                        {{ pair.author2 }}
+                                    </a>
+                                    <span class="text-[10px] text-slate-400 block truncate">{{ pair.dept2 ?: 'CECH' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {# Matriz Visual N x N de Coautoria entre Docentes #}
+        <div class="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <sl-icon name="grid-3x3-gap-fill" class="text-purple-600 dark:text-purple-400"></sl-icon> Matriz N &times; N de Coautoria Docente ({{ fig13MatrixPayload.nodes|length }} pesquisadores)
+                    </span>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Interseção completa de trabalhos em parceria entre todos os docentes do CECH. Nomes nas colunas rotacionados em 90°.
+                    </p>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    {# Busca na Matriz #}
+                    <div class="relative w-full sm:w-64">
+                        <sl-icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></sl-icon>
+                        <input type="text" id="matrixSearchInput" placeholder="Destacar docente na matriz..." class="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium">
+                    </div>
+                </div>
+            </div>
+
+            {# Container da Tabela Matriz com rolagem bi-direcional suave #}
+            <div class="relative rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 overflow-auto max-h-[600px] scrollbar-thin shadow-inner">
+                <table class="border-collapse text-xs w-auto min-w-full" id="coauthorshipMatrixTable">
+                    <thead>
+                        <tr class="bg-slate-100/90 dark:bg-slate-800/90 sticky top-0 z-20 backdrop-blur-md">
+                            <th class="sticky left-0 top-0 z-30 bg-slate-200 dark:bg-slate-800 p-2 text-[10px] font-extrabold uppercase text-slate-600 dark:text-slate-300 border-b border-r border-slate-300 dark:border-slate-700 text-center min-w-[180px] max-w-[180px]">
+                                Docente &bsol; Coautor
+                            </th>
+                            {% for node in fig13MatrixPayload.nodes %}
+                                <th class="p-1 h-44 text-center align-bottom border-b border-r border-slate-200/80 dark:border-slate-700/60 min-w-[34px] max-w-[34px] matrix-col-header" data-node-id="{{ node.id }}" data-name="{{ node.name|lower }}">
+                                    <div class="w-7 mx-auto flex items-center justify-start pb-2" style="height: 160px;">
+                                        <a href="{{ path('app_pub_professor_show', {slugOrId: node.slug}) }}" class="font-bold text-[11px] text-slate-700 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 whitespace-nowrap tracking-tight transition" style="writing-mode: vertical-rl; transform: rotate(180deg);" title="{{ node.name }} ({{ node.dept ?: 'CECH' }})">
+                                            {{ node.name }}
+                                        </a>
+                                    </div>
+                                </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200/60 dark:divide-slate-800/60">
+                        {% for rowNode in fig13MatrixPayload.nodes %}
+                            <tr class="matrix-row hover:bg-purple-50/50 dark:hover:bg-purple-950/30 transition" data-node-id="{{ rowNode.id }}" data-name="{{ rowNode.name|lower }}">
+                                <th scope="row" class="sticky left-0 z-10 bg-slate-100/95 dark:bg-slate-800/95 p-2 font-bold text-slate-900 dark:text-white text-left border-r border-slate-300 dark:border-slate-700 whitespace-nowrap min-w-[180px] max-w-[180px] truncate shadow-xs">
+                                    <a href="{{ path('app_pub_professor_show', {slugOrId: rowNode.slug}) }}" class="hover:text-purple-600 dark:hover:text-purple-400 transition flex items-center gap-1.5" title="{{ rowNode.name }} ({{ rowNode.dept ?: 'CECH' }})">
+                                        <span class="inline-block w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0"></span>
+                                        <span class="truncate">{{ rowNode.name }}</span>
+                                    </a>
+                                </th>
+
+                                {% for colNode in fig13MatrixPayload.nodes %}
+                                    {% set count = fig13MatrixPayload.matrix[rowNode.id][colNode.id] ?? 0 %}
+                                    <td class="text-center border-r border-slate-200/50 dark:border-slate-800/50 p-1 min-w-[34px] max-w-[34px] h-8 matrix-cell {% if rowNode.id == colNode.id %}bg-slate-200/50 dark:bg-slate-800/50{% elseif count > 0 %}cursor-pointer font-bold text-xs{% endif %}"
+                                        {% if count > 0 %}
+                                            style="background-color: rgba(147, 51, 234, {% if count > 10 %}0.85{% elseif count > 5 %}0.65{% elseif count > 2 %}0.45{% else %}0.25{% endif %}); color: {% if count > 4 %}#ffffff{% else %}#6b21a8{% endif %};"
+                                            title="{{ rowNode.name }} & {{ colNode.name }}: {{ count }} produções em parceria"
+                                        {% endif %}>
+                                        {% if rowNode.id == colNode.id %}
+                                            <span class="text-slate-300 dark:text-slate-700 font-mono text-[9px]">&bull;</span>
+                                        {% elseif count > 0 %}
+                                            <span>{{ count }}</span>
+                                        {% else %}
+                                            <span class="text-slate-200 dark:text-slate-800 font-mono text-[9px]">-</span>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {# Fig 18: Parcerias Nacionais #}
+        <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Figura 18</span>
+                    <span class="text-xs text-slate-400">Top Instituições Nacionais</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                    Ranking de Parcerias Institucionais Nacionais
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Universidades, agências de fomento e centros de pesquisa brasileiros com maior cooperação.
+                </p>
+            </div>
+            <div class="h-80">
+                <canvas id="chartFig14"></canvas>
+            </div>
+        </div>
+
+        {# Fig 19: Parcerias Internacionais #}
+        <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Figura 19</span>
+                    <span class="text-xs text-slate-400">Top Internacional</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                    Ranking de Parcerias Institucionais Internacionais
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Universidades e centros internacionais com intercâmbio de formação e pesquisa.
+                </p>
+            </div>
+            <div class="h-80">
+                <canvas id="chartFig15"></canvas>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+(function() {
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#cbd5e1' : '#475569';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+
+    // ── Fig 18: Parcerias Nacionais ──
+    const fig14Data = {{ fig14National|json_encode|raw }};
+    const elFig14 = document.getElementById('chartFig14');
+    if (elFig14) {
+        new Chart(elFig14, {
+            type: 'bar',
+            data: {
+                labels: fig14Data.map(d => d.name),
+                datasets: [{
+                    label: 'Vínculos e Projetos',
+                    data: fig14Data.map(d => parseInt(d.total)),
+                    backgroundColor: '#6366f1',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                    y: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } }
+                }
+            }
+        });
+    }
+
+    // ── Fig 19: Parcerias Internacionais ──
+    const fig15Data = {{ fig15International|json_encode|raw }};
+    const elFig15 = document.getElementById('chartFig15');
+    if (elFig15) {
+        new Chart(elFig15, {
+            type: 'bar',
+            data: {
+                labels: fig15Data.map(d => d.name),
+                datasets: [{
+                    label: 'Intercâmbios & Doutorados',
+                    data: fig15Data.map(d => parseInt(d.total)),
+                    backgroundColor: '#ec4899',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                    y: { grid: { display: false }, ticks: { color: textColor, font: { size: 10 } } }
+                }
+            }
+        });
+    }
+
+    // ── Exportador VOSviewer & Busca/Highlight na Matriz N x N de Coautoria Docente ──
+    const coauthorsFullData = {{ fig13CoauthorsFull|json_encode|raw }};
+    const exportVosBtn = document.getElementById('exportVosviewerBtn');
+    const exportCsvBtn = document.getElementById('exportCoauthorsCsvBtn');
+    const matrixSearchInput = document.getElementById('matrixSearchInput');
+    const matrixRows = document.querySelectorAll('.matrix-row');
+    const matrixCols = document.querySelectorAll('.matrix-col-header');
+
+    if (matrixSearchInput) {
+        matrixSearchInput.addEventListener('input', () => {
+            const query = matrixSearchInput.value.trim().toLowerCase();
+            
+            matrixRows.forEach(row => {
+                const rowName = row.dataset.name || '';
+                if (query === '' || rowName.includes(query)) {
+                    row.style.opacity = '1';
+                } else {
+                    row.style.opacity = '0.35';
+                }
+            });
+
+            matrixCols.forEach(col => {
+                const colName = col.dataset.name || '';
+                if (query === '' || colName.includes(query)) {
+                    col.style.opacity = '1';
+                } else {
+                    col.style.opacity = '0.35';
+                }
+            });
+        });
+    }
+
+    if (exportVosBtn && Array.isArray(coauthorsFullData)) {
+        exportVosBtn.addEventListener('click', () => {
+            const nodeMap = new Map();
+            let nodeId = 1;
+
+            coauthorsFullData.forEach(pair => {
+                if (!nodeMap.has(pair.author1)) {
+                    nodeMap.set(pair.author1, nodeId++);
+                }
+                if (!nodeMap.has(pair.author2)) {
+                    nodeMap.set(pair.author2, nodeId++);
+                }
+            });
+
+            let content = `*Vertices ${nodeMap.size}\n`;
+
+            nodeMap.forEach((id, name) => {
+                content += `${id} "${name}"\n`;
+            });
+
+            content += "*Edges\n";
+            coauthorsFullData.forEach(pair => {
+                const id1 = nodeMap.get(pair.author1);
+                const id2 = nodeMap.get(pair.author2);
+                const weight = pair.collaborations || 1;
+                content += `${id1} ${id2} ${weight}\n`;
+            });
+
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'rede_coautoria_cech_vosviewer.txt');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    }
+
+    if (exportCsvBtn && Array.isArray(coauthorsFullData)) {
+        exportCsvBtn.addEventListener('click', () => {
+            let csv = "Docente 1;Departamento 1;Docente 2;Departamento 2;Obras em Parceria\n";
+            coauthorsFullData.forEach(pair => {
+                const d1 = (pair.dept1 || 'CECH').replace(/;/g, ',');
+                const d2 = (pair.dept2 || 'CECH').replace(/;/g, ',');
+                const a1 = pair.author1.replace(/;/g, ',');
+                const a2 = pair.author2.replace(/;/g, ',');
+                csv += `"${a1}";"${d1}";"${a2}";"${d2}";${pair.collaborations}\n`;
+            });
+
+            const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'matriz_coautoria_cech.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    }
+})();
+</script>

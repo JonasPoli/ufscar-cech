@@ -1,0 +1,1599 @@
+{# ══════════════════════════════════════════════════════════════════
+   BLOCO 1: CORPO DOCENTE, FORMAÇÕES E VÍNCULOS
+   ══════════════════════════════════════════════════════════════════ #}
+<div class="indicator-group space-y-6" data-group="faculty">
+    <div class="flex items-center gap-3">
+        <div class="h-8 w-1.5 rounded-full bg-blue-600"></div>
+        <div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white font-heading">
+                1. Corpo Docente, Formações e Vínculos
+            </h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Perfil departamental, formação de graduação, doutorados, áreas CNPq e distribuição geográfica dos docentes.</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {# Fig 1: Vínculos Institucionais #}
+        <div class="col-span-1 lg:col-span-2 glass-card rounded-2xl p-6 sm:p-8 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 1</span>
+                    <span class="text-xs text-slate-400">{{ fig1Dept|length }} Departamentos</span>
+                </div>
+                <h3 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white font-heading">
+                    Vínculos Departamentais do Corpo Docente
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-6">
+                    Distribuição do número de docentes vinculados por departamento do CECH.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                {# Chart canvas (left side) #}
+                <div class="lg:col-span-7 h-80 sm:h-96">
+                    <canvas id="chartFig1"></canvas>
+                </div>
+
+                {# Legend (right side) #}
+                <div class="lg:col-span-5 bg-slate-50/80 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 flex flex-col justify-center">
+                    <div class="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-200/60 dark:border-slate-700/60">
+                        <span class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <sl-icon name="list-ul" class="text-blue-500"></sl-icon> Legenda dos Departamentos
+                        </span>
+                        <span class="text-[11px] text-slate-400 font-medium">Sigla &bull; Nome &bull; Docentes</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-1.5 text-xs max-h-80 overflow-y-auto pr-1 scrollbar-thin" id="fig1LegendList">
+                        {% set deptColors = ['#0284c7', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#e11d48', '#64748b'] %}
+                        {% for d in fig1Dept %}
+                            {% set color = deptColors[loop.index0 % deptColors|length] %}
+                            <div class="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-white/70 dark:bg-slate-900/50 border border-slate-200/40 dark:border-slate-800/80 hover:bg-white dark:hover:bg-slate-800 transition">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="w-3 h-3 rounded-sm flex-shrink-0 shadow-xs" style="background-color: {{ color }};"></span>
+                                    <span class="font-mono font-bold text-slate-900 dark:text-white text-xs w-9 flex-shrink-0">{{ d.deptCode }}</span>
+                                    <span class="text-slate-600 dark:text-slate-300 truncate text-[11px]" title="{{ d.deptName }}">{{ d.deptName }}</span>
+                                </div>
+                                <span class="font-mono font-bold text-slate-800 dark:text-slate-200 text-xs ml-1 flex-shrink-0">{{ d.total }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Fig 2: Formação de Graduação #}
+        <div class="col-span-1 lg:col-span-2 glass-card rounded-2xl p-6 sm:p-8 border border-slate-200/60 dark:border-white/10 shadow-sm">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 border-b border-slate-100 dark:border-white/5 pb-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 2</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-900 dark:text-white font-heading">
+                        Formação de graduação do corpo docente
+                    </h3>
+                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                        Distribuição das formações por grande área do conhecimento
+                    </p>
+                </div>
+
+                {# Quick stats / badges #}
+                <div class="flex flex-wrap items-center gap-2 text-xs" id="fig2PillsContainer">
+                    <!-- Badges com as cores das Grandes Áreas -->
+                </div>
+            </div>
+
+            {# Container for SVG chart & tooltip #}
+            <div id="chartFig2Wrapper" class="relative w-full overflow-hidden">
+                <div id="chartFig2Tooltip" class="pointer-events-none absolute z-20 hidden rounded-xl bg-slate-900/95 p-3 text-xs text-white shadow-xl backdrop-blur-md transition-opacity duration-150 border border-slate-700/60 dark:bg-slate-800/95">
+                </div>
+                <div id="chartFig2" class="w-full"></div>
+            </div>
+        </div>
+
+        {# Fig 3: Trajetória Acadêmica e Origem dos Docentes #}
+        <div class="col-span-1 lg:col-span-2 glass-card rounded-2xl p-6 sm:p-8 border border-slate-200/60 dark:border-white/10 shadow-sm">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6 border-b border-slate-100 dark:border-white/5 pb-5">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 3</span>
+                        <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                            Fluxo Linear de Origem
+                        </span>
+                    </div>
+                    <h3 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white font-heading">
+                        Trajetória Acadêmica e Origem dos Docentes do CECH
+                    </h3>
+                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                        Mapeamento da evolução formativa: <strong>Graduação → Mestrado → Doutorado → Ingresso no CECH/UFSCar</strong>
+                    </p>
+                </div>
+
+                {# KPI summary badges #}
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div class="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-2.5 border border-slate-200/70 dark:border-slate-700/50">
+                        <div class="text-slate-400 text-[10px] uppercase font-semibold">Total Analisado</div>
+                        <div class="text-base font-extrabold text-slate-900 dark:text-white font-heading" id="sankeyKpiTotal">
+                            {{ fig16Sankey.summary.totalResearchers }}
+                        </div>
+                        <div class="text-[10px] text-slate-500">Docentes Ativos</div>
+                    </div>
+                    <div class="bg-blue-50/60 dark:bg-blue-950/30 rounded-xl p-2.5 border border-blue-200/50 dark:border-blue-800/30">
+                        <div class="text-blue-600 dark:text-blue-400 text-[10px] uppercase font-semibold">Doutorado em SP</div>
+                        <div class="text-base font-extrabold text-blue-700 dark:text-blue-300 font-heading" id="sankeyKpiDocSP">
+                            {{ fig16Sankey.summary.docSPPercent }}%
+                        </div>
+                        <div class="text-[10px] text-blue-600/70 dark:text-blue-400/70">USP, UFSCar, UNICAMP...</div>
+                    </div>
+                    <div class="bg-amber-50/60 dark:bg-amber-950/30 rounded-xl p-2.5 border border-amber-200/50 dark:border-amber-800/30">
+                        <div class="text-amber-600 dark:text-amber-400 text-[10px] uppercase font-semibold">Doutorado Exterior</div>
+                        <div class="text-base font-extrabold text-amber-700 dark:text-amber-300 font-heading" id="sankeyKpiDocExt">
+                            {{ fig16Sankey.summary.docForeignCount }} <span class="text-xs font-normal">({{ fig16Sankey.summary.docForeignPercent }}%)</span>
+                        </div>
+                        <div class="text-[10px] text-amber-600/70 dark:text-amber-400/70">Europa & Américas</div>
+                    </div>
+                    <div class="bg-emerald-50/60 dark:bg-emerald-950/30 rounded-xl p-2.5 border border-emerald-200/50 dark:border-emerald-800/30">
+                        <div class="text-emerald-600 dark:text-emerald-400 text-[10px] uppercase font-semibold">Titulados UFSCar</div>
+                        <div class="text-base font-extrabold text-emerald-700 dark:text-emerald-300 font-heading" id="sankeyKpiDocUFSCar">
+                            {{ fig16Sankey.summary.docUFSCarPercent }}%
+                        </div>
+                        <div class="text-[10px] text-emerald-600/70 dark:text-emerald-400/70">Doutores formados na casa</div>
+                    </div>
+                </div>
+            </div>
+
+            {# Interactive Toolbar Controls #}
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-6 bg-slate-50/80 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                <div class="flex flex-wrap items-center gap-3">
+                    {# Department Filter #}
+                    <div class="flex items-center gap-2">
+                        <label for="sankeyDeptFilter" class="text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap flex items-center gap-1">
+                            <sl-icon name="funnel"></sl-icon> Departamento:
+                        </label>
+                        <select id="sankeyDeptFilter" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 font-medium">
+                            <option value="all">Todo o CECH ({{ fig16Sankey.summary.totalResearchers }} docentes)</option>
+                            {% for dept in fig16Sankey.departments %}
+                                <option value="{{ dept.code }}">{{ dept.name }} ({{ dept.count }} docentes)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {# Grouping / Threshold Toggle #}
+                    <div class="flex items-center gap-2">
+                        <label for="sankeyGroupingFilter" class="text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap flex items-center gap-1">
+                            <sl-icon name="collection"></sl-icon> Detalhamento:
+                        </label>
+                        <select id="sankeyGroupingFilter" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 font-medium">
+                            <option value="top">Principais Instituições (Top + Outras)</option>
+                            <option value="all">Todas as Instituições (Expandido)</option>
+                        </select>
+                    </div>
+
+                    {# Color Scheme #}
+                    <div class="flex items-center gap-2">
+                        <label for="sankeyColorFilter" class="text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap flex items-center gap-1">
+                            <sl-icon name="palette"></sl-icon> Cores dos Fluxos:
+                        </label>
+                        <select id="sankeyColorFilter" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 font-medium">
+                            <option value="source">Por Instituição de Origem</option>
+                            <option value="gradient">Gradiente Suave de Transição</option>
+                            <option value="category">Por Categoria (Paulistas, Federais, Exterior)</option>
+                        </select>
+                    </div>
+                </div>
+
+                {# Reset / Status #}
+                <div class="flex items-center gap-2">
+                    <button id="sankeyResetBtn" type="button" class="hidden inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/60 dark:text-blue-200 transition shadow-sm">
+                        <sl-icon name="arrow-counterclockwise"></sl-icon> Limpar Destaque
+                    </button>
+                    <span class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <sl-icon name="info-circle"></sl-icon> Passe o cursor nos nós ou elos para rastrear o fluxo
+                    </span>
+                </div>
+            </div>
+
+            {# Column Stage Headers #}
+            <div class="grid grid-cols-4 gap-2 mb-3 text-xs font-bold text-center">
+                <div class="py-2 px-2 rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 flex items-center justify-center gap-1.5 shadow-sm">
+                    <span class="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">1</span>
+                    <span>Graduação (Origem)</span>
+                </div>
+                <div class="py-2 px-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 flex items-center justify-center gap-1.5 shadow-sm">
+                    <span class="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">2</span>
+                    <span>Mestrado</span>
+                </div>
+                <div class="py-2 px-2 rounded-xl bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 flex items-center justify-center gap-1.5 shadow-sm">
+                    <span class="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">3</span>
+                    <span>Doutorado (Titulação)</span>
+                </div>
+                <div class="py-2 px-2 rounded-xl bg-slate-900/10 dark:bg-white/10 text-slate-900 dark:text-white border border-slate-400/20 flex items-center justify-center gap-1.5 shadow-sm">
+                    <span class="w-4 h-4 rounded-full bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900 flex items-center justify-center text-[10px]">4</span>
+                    <span>CECH / UFSCar</span>
+                </div>
+            </div>
+
+            {# Container for SVG chart & tooltip #}
+            <div id="chartFig16Wrapper" class="relative w-full overflow-hidden min-h-[580px]">
+                <div id="chartFig16Tooltip" class="pointer-events-none absolute z-30 hidden rounded-xl bg-slate-900/95 p-4 text-xs text-white shadow-2xl backdrop-blur-md transition-all duration-150 border border-slate-700/80 max-w-sm dark:bg-slate-800/95">
+                </div>
+                <div id="chartFig16" class="w-full"></div>
+            </div>
+        </div>
+
+        {# Fig 4: Destino Institucional dos Docentes Egressos #}
+        <div class="col-span-1 lg:col-span-2 glass-card rounded-2xl p-6 sm:p-8 border border-slate-200/60 dark:border-white/10 shadow-sm">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6 border-b border-slate-100 dark:border-white/5 pb-5">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Figura 4</span>
+                        <span class="inline-flex items-center gap-1 rounded-md bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                            Docentes Egressos
+                        </span>
+                    </div>
+                    <h3 class="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white font-heading">
+                        Destino Institucional dos Docentes Egressos do CECH
+                    </h3>
+                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                        Mapeamento da mobilidade docente: <strong>para onde foram os pesquisadores após a saída do CECH/UFSCar</strong>
+                    </p>
+                </div>
+
+                {# KPI summary badges #}
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div class="bg-slate-50 dark:bg-slate-800/80 rounded-xl p-2.5 border border-slate-200/70 dark:border-slate-700/50">
+                        <div class="text-slate-400 text-[10px] uppercase font-semibold">Total Mapeado</div>
+                        <div class="text-base font-extrabold text-slate-900 dark:text-white font-heading" id="fig17KpiTotal">
+                            {{ fig17Exits.summary.totalMapped }} <span class="text-xs font-normal text-slate-400">/ {{ fig17Exits.summary.totalExits }}</span>
+                        </div>
+                        <div class="text-[10px] text-slate-500">{{ fig17Exits.summary.mappedPercent }}% com destino mapeado</div>
+                    </div>
+                    <div class="bg-blue-50/60 dark:bg-blue-950/30 rounded-xl p-2.5 border border-blue-200/50 dark:border-blue-800/30">
+                        <div class="text-blue-600 dark:text-blue-400 text-[10px] uppercase font-semibold">Universidades Públicas</div>
+                        <div class="text-base font-extrabold text-blue-700 dark:text-blue-300 font-heading" id="fig17KpiPublic">
+                            {{ fig17Exits.summary.publicHigherEdPercent }}%
+                        </div>
+                        <div class="text-[10px] text-blue-600/70 dark:text-blue-400/70">{{ fig17Exits.summary.totalPublicHigherEd }} docentes (USP, UNESP, IFES)</div>
+                    </div>
+                    <div class="bg-amber-50/60 dark:bg-amber-950/30 rounded-xl p-2.5 border border-amber-200/50 dark:border-amber-800/30">
+                        <div class="text-amber-600 dark:text-amber-400 text-[10px] uppercase font-semibold">Outros Estados / Exterior</div>
+                        <div class="text-base font-extrabold text-amber-700 dark:text-amber-300 font-heading" id="fig17KpiOutState">
+                            {{ fig17Exits.summary.totalOutStateOrIntl }} <span class="text-xs font-normal">({{ fig17Exits.summary.outStateOrIntlPercent }}%)</span>
+                        </div>
+                        <div class="text-[10px] text-amber-600/70 dark:text-amber-400/70">8 Estados e Exterior</div>
+                    </div>
+                    <div class="bg-indigo-50/60 dark:bg-indigo-950/30 rounded-xl p-2.5 border border-indigo-200/50 dark:border-indigo-800/30">
+                        <div class="text-indigo-600 dark:text-indigo-400 text-[10px] uppercase font-semibold">Liderança de Absorção</div>
+                        <div class="text-base font-extrabold text-indigo-700 dark:text-indigo-300 font-heading">
+                            UNESP & USP
+                        </div>
+                        <div class="text-[10px] text-indigo-600/70 dark:text-indigo-400/70">Seguidas por UNICAMP & IFES</div>
+                    </div>
+                </div>
+            </div>
+
+            {# Interactive Toolbar & View Switcher #}
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-6 bg-slate-50/80 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                <div class="flex flex-wrap items-center gap-2">
+                    {# View Mode Buttons #}
+                    <div class="inline-flex rounded-lg p-1 bg-slate-200/60 dark:bg-slate-900 border border-slate-300/40 dark:border-slate-700/50 text-xs font-semibold">
+                        <button type="button" id="fig17ViewBtnSankey" class="fig17-view-btn px-3 py-1.5 rounded-md bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-xs transition flex items-center gap-1.5" data-view="sankey">
+                            <sl-icon name="diagram-3"></sl-icon> <span>Fluxo Sankey</span>
+                        </button>
+                        <button type="button" id="fig17ViewBtnRanking" class="fig17-view-btn px-3 py-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition flex items-center gap-1.5" data-view="ranking">
+                            <sl-icon name="bar-chart-line"></sl-icon> <span>Ranking de Destinos</span>
+                        </button>
+                        <button type="button" id="fig17ViewBtnTable" class="fig17-view-btn px-3 py-1.5 rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition flex items-center gap-1.5" data-view="table">
+                            <sl-icon name="table"></sl-icon> <span>Tabela Detalhada ({{ fig17Exits.records|length }})</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    {# Department Filter #}
+                    <div class="flex items-center gap-2">
+                        <label for="fig17DeptFilter" class="text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap flex items-center gap-1">
+                            <sl-icon name="funnel"></sl-icon> Origem:
+                        </label>
+                        <select id="fig17DeptFilter" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 font-medium">
+                            <option value="all">Todos os Departamentos ({{ fig17Exits.summary.totalMapped }} docentes)</option>
+                            {% for dept, cnt in fig17Exits.departmentsDistribution %}
+                                <option value="{{ dept }}">{{ dept }} ({{ cnt }} docentes)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {# Category Filter #}
+                    <div class="flex items-center gap-2">
+                        <label for="fig17CatFilter" class="text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap flex items-center gap-1">
+                            <sl-icon name="building"></sl-icon> Esfera:
+                        </label>
+                        <select id="fig17CatFilter" class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 font-medium">
+                            <option value="all">Todas as Esferas / Categorias</option>
+                            {% for cat, cnt in fig17Exits.categoriesDistribution %}
+                                <option value="{{ cat }}">{{ cat }} ({{ cnt }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {# Reset Filters #}
+                    <button type="button" id="fig17ResetBtn" class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1">
+                        <sl-icon name="arrow-counterclockwise"></sl-icon> Limpar
+                    </button>
+                </div>
+            </div>
+
+            {# ── VIEW 1: SANKEY FLOW ── #}
+            <div id="fig17ViewSankeyContainer" class="fig17-view-container">
+                {# Flow Column Step Labels #}
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4 text-center text-xs font-bold uppercase tracking-wider">
+                    <div class="py-2 px-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800/30 flex items-center justify-center gap-1.5 shadow-xs">
+                        <span class="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center text-[10px]">1</span>
+                        <span>Departamento de Origem no CECH</span>
+                    </div>
+                    <div class="py-2 px-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/30 flex items-center justify-center gap-1.5 shadow-xs">
+                        <span class="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px]">2</span>
+                        <span>Esfera / Categoria Institucional</span>
+                    </div>
+                    <div class="py-2 px-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/30 flex items-center justify-center gap-1.5 shadow-xs">
+                        <span class="w-4 h-4 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">3</span>
+                        <span>Instituição de Destino</span>
+                    </div>
+                </div>
+
+                {# Container for SVG chart & tooltip #}
+                <div id="chartFig17Wrapper" class="relative w-full overflow-hidden min-h-[580px]">
+                    <div id="chartFig17Tooltip" class="pointer-events-none absolute z-30 hidden rounded-xl bg-slate-900/95 p-4 text-xs text-white shadow-2xl backdrop-blur-md transition-all duration-150 border border-slate-700/80 max-w-sm dark:bg-slate-800/95">
+                    </div>
+                    <div id="chartFig17" class="w-full"></div>
+                </div>
+            </div>
+
+            {# ── VIEW 2: RANKING DE DESTINOS ── #}
+            <div id="fig17ViewRankingContainer" class="fig17-view-container hidden">
+                <div class="space-y-3" id="fig17RankingList">
+                    {% for dest in fig17Exits.destinationsRanking %}
+                        <div class="fig17-ranking-card p-4 rounded-xl border border-slate-200/70 dark:border-slate-800 bg-white/60 dark:bg-slate-900/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition group" data-inst="{{ dest.name }}" data-category="{{ dest.category }}">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                                <div class="flex items-center gap-2.5">
+                                    <span class="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-extrabold text-xs flex items-center justify-center border border-indigo-200/60 dark:border-indigo-800/40">
+                                        {{ loop.index }}
+                                    </span>
+                                    <h4 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white font-heading">
+                                        {{ dest.name }}
+                                    </h4>
+                                    <span class="inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium 
+                                        {% if 'Paulista' in dest.category %}bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40
+                                        {% elseif 'Federal' in dest.category %}bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300 border border-cyan-200/60 dark:border-cyan-800/40
+                                        {% elseif 'Internacional' in dest.category %}bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/40
+                                        {% elseif 'Órgão' in dest.category %}bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/60 dark:border-purple-800/40
+                                        {% else %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/40{% endif %}">
+                                        {{ dest.category }}
+                                    </span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                                        <strong class="text-indigo-600 dark:text-indigo-400 font-extrabold text-sm">{{ dest.count }}</strong> {% if dest.count == 1 %}docente{% else %}docentes{% endif %} ({{ dest.percentage }}%)
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {# Progress bar #}
+                            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden mb-3">
+                                <div class="bg-gradient-to-r from-indigo-500 to-blue-500 h-2 rounded-full transition-all duration-500" style="width: {{ (dest.count / fig17Exits.destinationsRanking[0].count) * 100 }}%"></div>
+                            </div>
+
+                            {# Researcher chips #}
+                            <div class="flex flex-wrap gap-1.5 pt-1">
+                                {% for res in dest.researchers %}
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60">
+                                        <sl-icon name="person" class="text-indigo-500"></sl-icon>
+                                        <span class="font-medium">{{ res.name }}</span>
+                                        <span class="text-[10px] text-slate-400">({{ res.dept }})</span>
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# ── VIEW 3: TABELA DETALHADA ── #}
+            <div id="fig17ViewTableContainer" class="fig17-view-container hidden">
+                <div class="mb-4 flex items-center gap-3">
+                    <div class="relative flex-1">
+                        <sl-icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></sl-icon>
+                        <input type="text" id="fig17TableSearch" placeholder="Buscar por docente, instituição de destino, departamento ou cargo..." class="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium">
+                    </div>
+                    <span class="text-xs text-slate-500 whitespace-nowrap" id="fig17TableCountBadge">
+                        Exibindo {{ fig17Exits.records|length }} pesquisadores
+                    </span>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-slate-200/70 dark:border-slate-800 scrollbar-thin">
+                    <table class="min-w-full divide-y divide-slate-200/70 dark:divide-slate-800 text-left text-xs" id="fig17Table">
+                        <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 uppercase font-semibold">
+                            <tr>
+                                <th scope="col" class="py-3 px-4">Docente / Pesquisador</th>
+                                <th scope="col" class="py-3 px-4">Origem CECH</th>
+                                <th scope="col" class="py-3 px-4">Ano Saída</th>
+                                <th scope="col" class="py-3 px-4">Instituição de Destino</th>
+                                <th scope="col" class="py-3 px-4">Esfera / Tipo</th>
+                                <th scope="col" class="py-3 px-4">Cargo / Função</th>
+                                <th scope="col" class="py-3 px-4">Período</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60 bg-white/40 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300">
+                            {% for r in fig17Exits.records %}
+                                <tr class="fig17-table-row hover:bg-slate-50 dark:hover:bg-slate-800/40 transition" 
+                                    data-name="{{ r.name|lower }}" 
+                                    data-dept="{{ r.department|lower }}" 
+                                    data-inst="{{ r.destinationInstitution|lower }}" 
+                                    data-cat="{{ r.institutionCategory|lower }}"
+                                    data-role="{{ r.role|lower }}">
+                                    <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">
+                                        <a href="{{ path('app_pub_professor_show', {'slugOrId': r.slug}) }}" class="hover:text-indigo-600 dark:hover:text-indigo-400 transition inline-flex items-center gap-1.5">
+                                            <sl-icon name="person" class="text-indigo-500"></sl-icon>
+                                            {{ r.name }}
+                                        </a>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                            {{ r.department }}
+                                        </span>
+                                    </td>
+                                    <td class="py-3 px-4 font-mono font-medium">
+                                        {{ r.leaveYear ?: '–' }}
+                                    </td>
+                                    <td class="py-3 px-4 font-bold text-indigo-700 dark:text-indigo-300">
+                                        {{ r.destinationInstitution }}
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium
+                                            {% if 'Paulista' in r.institutionCategory %}bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300
+                                            {% elseif 'Federal' in r.institutionCategory %}bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300
+                                            {% elseif 'Internacional' in r.institutionCategory %}bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300
+                                            {% elseif 'Órgão' in r.institutionCategory %}bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300
+                                            {% else %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300{% endif %}">
+                                            {{ r.institutionCategory }}
+                                        </span>
+                                    </td>
+                                    <td class="py-3 px-4 text-slate-600 dark:text-slate-400">
+                                        {{ r.role }}
+                                    </td>
+                                    <td class="py-3 px-4 font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                                        {{ r.period }}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        {# Fig 5: Formação de Doutorado #}
+        <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 5</span>
+                    <span class="text-xs text-slate-400">Doutorados</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                    Formação de Doutorado do Corpo Docente
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Áreas de pós-graduação stricto sensu onde os docentes obtiveram seus títulos de Doutor.
+                </p>
+            </div>
+            <div class="h-80">
+                <canvas id="chartFig3"></canvas>
+            </div>
+        </div>
+
+        {# Fig 6: Áreas CNPq #}
+        <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 6</span>
+                    <span class="text-xs text-slate-400">Tabela CNPq</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                    Áreas de Atuação dos Docentes (CNPq)
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Distribuição das grandes áreas do conhecimento registradas nos currículos Lattes.
+                </p>
+            </div>
+            <div class="h-80">
+                <canvas id="chartFig4"></canvas>
+            </div>
+        </div>
+
+        {# Fig 7: Origem Geográfica dos Docentes #}
+        <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 7</span>
+                    <span class="text-xs text-slate-400">Naturalidade</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                    Origem Geográfica dos Docentes (Estados / UF)
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Estado de nascimento dos pesquisadores atuantes no CECH.
+                </p>
+            </div>
+            <div class="h-80">
+                <canvas id="chartFig6"></canvas>
+            </div>
+        </div>
+
+        {# Fig 8: Vínculos Profissionais #}
+        <div class="glass-card rounded-2xl p-6 border border-slate-200/60 dark:border-white/10 shadow-sm flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Figura 8</span>
+                    <span class="text-xs text-slate-400">Inserção</span>
+                </div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white font-heading">
+                    Tipos de Vínculos e Inserção Profissional
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    Regimes de contratação e categorias funcionais nas experiências profissionais.
+                </p>
+            </div>
+            <div class="h-80">
+                <canvas id="chartFig8"></canvas>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+(function() {
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#cbd5e1' : '#475569';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+    const palette = ['#0284c7', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#64748b', '#84cc16', '#a855f7'];
+
+    // ── Fig 1: Vínculos Departamentais ──
+    const fig1Data = {{ fig1Dept|json_encode|raw }};
+    const fig1DeptColors = ['#0284c7', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#e11d48', '#64748b'];
+
+    const elFig1 = document.getElementById('chartFig1');
+    if (elFig1) {
+        new Chart(elFig1, {
+            type: 'bar',
+            data: {
+                labels: fig1Data.map(d => d.deptCode),
+                datasets: [{
+                    label: 'Docentes',
+                    data: fig1Data.map(d => parseInt(d.total)),
+                    backgroundColor: fig1Data.map((d, i) => fig1DeptColors[i % fig1DeptColors.length]),
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: (items) => {
+                                const item = fig1Data[items[0].dataIndex];
+                                return item.deptName ? `${item.deptName} (${item.deptCode})` : items[0].label;
+                            },
+                            label: (item) => `${item.raw} docentes vinculados`
+                        }
+                    }
+                },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                    y: { grid: { display: false }, ticks: { color: textColor, font: { weight: 'bold', size: 11 } } }
+                }
+            }
+        });
+    }
+
+    // ── Fig 2: Formação de Graduação do Corpo Docente ──
+    (function initFig2ObservableChart() {
+        const container = document.getElementById('chartFig2');
+        const tooltip = document.getElementById('chartFig2Tooltip');
+        const pillsContainer = document.getElementById('fig2PillsContainer');
+        if (!container || typeof d3 === 'undefined') return;
+
+        const dados = {{ fig2Grad|json_encode|raw }};
+        const cores = {
+            "Ciências Sociais Aplicadas": "#72B544",
+            "Ciências Humanas": "#E86F8A",
+            "Engenharias": "#F2C94C",
+            "Ciências Exatas e da Terra": "#6C63B5",
+            "Linguística, Letras e Artes": "#52B8A6",
+            "Ciências da Saúde": "#5AA9E6",
+            "Ciências Agrárias": "#9ACD32",
+            "Ciências Biológicas": "#38BDF8",
+            "Outras": "#9E9E9E"
+        };
+
+        const areaOrder = [
+            "Ciências Humanas",
+            "Ciências Sociais Aplicadas",
+            "Linguística, Letras e Artes",
+            "Ciências Exatas e da Terra",
+            "Engenharias",
+            "Ciências Biológicas",
+            "Ciências da Saúde",
+            "Ciências Agrárias",
+            "Outras"
+        ];
+
+        if (pillsContainer) {
+            pillsContainer.innerHTML = '';
+            const totalGeral = dados.reduce((acc, cur) => acc + (parseInt(cur.total) || 0), 0);
+            
+            const areasPresentes = Array.from(new Set(dados.map(d => d.majorArea || "Outras")))
+                .sort((a, b) => {
+                    const idxA = areaOrder.indexOf(a);
+                    const idxB = areaOrder.indexOf(b);
+                    return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+                });
+
+            areasPresentes.forEach(area => {
+                const totalArea = dados
+                    .filter(d => (d.majorArea || "Outras") === area)
+                    .reduce((acc, cur) => acc + (parseInt(cur.total) || 0), 0);
+                const pct = totalGeral > 0 ? ((totalArea / totalGeral) * 100).toFixed(1) : 0;
+                const cor = cores[area] || "#9E9E9E";
+
+                const pill = document.createElement('span');
+                pill.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-xs";
+                pill.innerHTML = `
+                    <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${cor};"></span>
+                    <span class="text-slate-700 dark:text-slate-200">${area}</span>
+                    <span class="text-slate-400 font-mono text-[11px]">(${totalArea})</span>
+                `;
+                pillsContainer.appendChild(pill);
+            });
+        }
+
+        const margin = { top: 20, right: 30, bottom: 40, left: 240 };
+        const barHeight = 26;
+        const height = margin.top + margin.bottom + (dados.length * barHeight);
+
+        function render() {
+            container.innerHTML = '';
+            const width = container.clientWidth || 800;
+            const innerWidth = Math.max(300, width - margin.left - margin.right);
+
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .attr('viewBox', `0 0 ${width} ${height}`)
+                .attr('class', 'overflow-visible font-sans');
+
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+
+            const maxVal = d3.max(dados, d => parseInt(d.total)) || 10;
+            const x = d3.scaleLinear()
+                .domain([0, maxVal * 1.1])
+                .range([0, innerWidth]);
+
+            const y = d3.scaleBand()
+                .domain(dados.map(d => d.courseName))
+                .range([0, dados.length * barHeight])
+                .padding(0.25);
+
+            g.append('g')
+                .attr('class', 'grid')
+                .selectAll('line')
+                .data(x.ticks(6))
+                .enter()
+                .append('line')
+                .attr('x1', d => x(d))
+                .attr('x2', d => x(d))
+                .attr('y1', 0)
+                .attr('y2', dados.length * barHeight)
+                .attr('stroke', isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)')
+                .attr('stroke-dasharray', '2,2');
+
+            const bars = g.selectAll('.bar-group')
+                .data(dados)
+                .enter()
+                .append('g')
+                .attr('class', 'bar-group')
+                .attr('transform', d => `translate(0, ${y(d.courseName)})`);
+
+            bars.append('rect')
+                .attr('x', 0)
+                .attr('y', 0)
+                .attr('height', y.bandwidth())
+                .attr('width', 0)
+                .attr('rx', 4)
+                .attr('fill', d => cores[d.majorArea] || '#9E9E9E')
+                .attr('opacity', 0.9)
+                .attr('class', 'cursor-pointer transition-opacity duration-150 hover:opacity-100')
+                .on('mouseenter', (event, d) => {
+                    if (!tooltip) return;
+                    const pct = ((parseInt(d.total) / (d3.sum(dados, x => parseInt(x.total)) || 1)) * 100).toFixed(1);
+                    tooltip.innerHTML = `
+                        <div class="font-bold text-sm text-white mb-1">${d.courseName}</div>
+                        <div class="flex items-center gap-1.5 mb-1.5">
+                            <span class="w-2 h-2 rounded-full" style="background-color: ${cores[d.majorArea] || '#9E9E9E'};"></span>
+                            <span class="text-slate-300">${d.majorArea || 'Outras'}</span>
+                        </div>
+                        <div class="border-t border-slate-700/60 pt-1 text-slate-300 font-mono flex justify-between gap-4">
+                            <span>Total Docentes:</span>
+                            <strong class="text-white">${d.total} (${pct}%)</strong>
+                        </div>
+                    `;
+                    tooltip.classList.remove('hidden');
+                })
+                .on('mousemove', (event) => {
+                    if (!tooltip) return;
+                    const [mouseX, mouseY] = d3.pointer(event, container);
+                    tooltip.style.left = `${mouseX + 16}px`;
+                    tooltip.style.top = `${mouseY - 20}px`;
+                })
+                .on('mouseleave', () => {
+                    if (tooltip) tooltip.classList.add('hidden');
+                })
+                .transition()
+                .duration(800)
+                .delay((d, i) => i * 15)
+                .attr('width', d => Math.max(2, x(parseInt(d.total))));
+
+            bars.append('text')
+                .attr('x', d => x(parseInt(d.total)) + 6)
+                .attr('y', y.bandwidth() / 2)
+                .attr('dy', '0.35em')
+                .attr('fill', isDark ? '#94a3b8' : '#64748b')
+                .attr('font-size', '10px')
+                .attr('font-family', 'monospace')
+                .attr('font-weight', 'bold')
+                .text(d => d.total);
+
+            const yAxis = g.append('g')
+                .attr('class', 'y-axis')
+                .call(d3.axisLeft(y).tickSize(0));
+
+            yAxis.select('.domain').remove();
+            yAxis.selectAll('text')
+                .attr('fill', isDark ? '#e2e8f0' : '#334155')
+                .attr('font-size', '11px')
+                .attr('font-weight', '500')
+                .attr('dx', '-8px')
+                .style('text-anchor', 'end')
+                .text(d => d.length > 32 ? d.substring(0, 30) + '…' : d);
+
+            const xAxis = g.append('g')
+                .attr('class', 'x-axis')
+                .attr('transform', `translate(0, ${dados.length * barHeight})`)
+                .call(d3.axisBottom(x).ticks(5).tickSize(4));
+
+            xAxis.select('.domain').attr('stroke', isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)');
+            xAxis.selectAll('text')
+                .attr('fill', isDark ? '#94a3b8' : '#64748b')
+                .attr('font-size', '10px');
+        }
+
+        render();
+
+        if (window.ResizeObserver) {
+            let timer;
+            new ResizeObserver(() => {
+                clearTimeout(timer);
+                timer = setTimeout(render, 150);
+            }).observe(container);
+        }
+    })();
+
+    // ── Fig 3: Trajetória Acadêmica e Origem dos Docentes (Sankey) ──
+    (function initSankeyTrajectoriesChart() {
+        const container = document.getElementById('chartFig16');
+        const tooltip = document.getElementById('chartFig16Tooltip');
+        const deptFilter = document.getElementById('sankeyDeptFilter');
+        const groupingFilter = document.getElementById('sankeyGroupingFilter');
+        const colorFilter = document.getElementById('sankeyColorFilter');
+        const resetBtn = document.getElementById('sankeyResetBtn');
+
+        if (!container || typeof d3 === 'undefined' || typeof d3.sankey === 'undefined') return;
+
+        const rawData = {{ fig16Sankey|json_encode|raw }};
+        const totalFacultyCount = rawData.summary.totalResearchers;
+
+        const categoryColors = {
+            'USP': '#0284c7',
+            'UFSCar': '#10b981',
+            'UNICAMP': '#ec4899',
+            'UNESP': '#f59e0b',
+            'Paulistas': '#0ea5e9',
+            'Federais': '#6366f1',
+            'Outras': '#94a3b8',
+            'Exterior': '#f97316',
+            'CECH': '#1e293b'
+        };
+
+        const stageColors = ['#0284c7', '#10b981', '#6366f1', '#1e293b'];
+
+        let highlightedNode = null;
+
+        function buildFilteredData() {
+            const selectedDept = deptFilter ? deptFilter.value : 'all';
+            const isTopMode = !groupingFilter || groupingFilter.value === 'top';
+
+            let matrix = rawData.fullMatrix || [];
+            if (selectedDept !== 'all') {
+                matrix = matrix.filter(r => r.dept === selectedDept);
+            }
+
+            const kpiTotalEl = document.getElementById('sankeyKpiTotal');
+            const kpiDocSPEl = document.getElementById('sankeyKpiDocSP');
+            const kpiDocExtEl = document.getElementById('sankeyKpiDocExt');
+            const kpiDocUFSCarEl = document.getElementById('sankeyKpiDocUFSCar');
+
+            const currentTotal = matrix.length;
+            if (kpiTotalEl) kpiTotalEl.textContent = currentTotal;
+
+            if (currentTotal > 0) {
+                const docSPCount = matrix.filter(r => ['USP', 'UFSCar', 'UNICAMP', 'UNESP'].includes(r.docCat) || r.docInst.includes('USP') || r.docInst.includes('UFSCar') || r.docInst.includes('UNICAMP') || r.docInst.includes('UNESP')).length;
+                const docExtCount = matrix.filter(r => r.docCat === 'Exterior' || r.docCountry !== 'Brasil').length;
+                const docUFSCarCount = matrix.filter(r => r.docCat === 'UFSCar' || r.docInst.includes('UFSCar')).length;
+
+                if (kpiDocSPEl) kpiDocSPEl.textContent = `${Math.round((docSPCount / currentTotal) * 100)}%`;
+                if (kpiDocExtEl) kpiDocExtEl.innerHTML = `${docExtCount} <span class="text-xs font-normal">(${Math.round((docExtCount / currentTotal) * 100)}%)</span>`;
+                if (kpiDocUFSCarEl) kpiDocUFSCarEl.textContent = `${Math.round((docUFSCarCount / currentTotal) * 100)}%`;
+            }
+
+            const nodesMap = new Map();
+            const linksMap = new Map();
+
+            function getNodeName(record, stage) {
+                let inst = 'Outras';
+                let cat = 'Outras';
+
+                if (stage === 0) {
+                    inst = record.gradInst || 'Outras';
+                    cat = record.gradCat || 'Outras';
+                } else if (stage === 1) {
+                    inst = record.mscInst || 'Outras';
+                    cat = record.mscCat || 'Outras';
+                } else if (stage === 2) {
+                    inst = record.docInst || 'Outras';
+                    cat = record.docCat || 'Outras';
+                } else if (stage === 3) {
+                    return { id: 'CECH / UFSCar', name: 'CECH / UFSCar', stage: 3, category: 'CECH' };
+                }
+
+                if (isTopMode && !['USP', 'UFSCar', 'UNICAMP', 'UNESP', 'PUC-SP', 'UNIFESP', 'Exterior'].includes(cat) && !['USP', 'UFSCar', 'UNICAMP', 'UNESP'].includes(inst)) {
+                    inst = cat === 'Exterior' ? 'Universidade Estrangeira' : (cat === 'Federais' ? 'Outra Federal' : 'Outra Instituição');
+                }
+
+                const stagePrefix = ['Graduação: ', 'Mestrado: ', 'Doutorado: ', ''][stage];
+                return {
+                    id: `${stage}_${inst}`,
+                    displayName: inst,
+                    fullName: `${stagePrefix}${inst}`,
+                    stage: stage,
+                    category: cat
+                };
+            }
+
+            matrix.forEach(rec => {
+                const n0 = getNodeName(rec, 0);
+                const n1 = getNodeName(rec, 1);
+                const n2 = getNodeName(rec, 2);
+                const n3 = getNodeName(rec, 3);
+
+                [n0, n1, n2, n3].forEach(n => {
+                    if (!nodesMap.has(n.id)) {
+                        nodesMap.set(n.id, {
+                            id: n.id,
+                            name: n.displayName || n.id,
+                            fullName: n.fullName || n.name,
+                            stage: n.stage,
+                            category: n.category,
+                            researchers: []
+                        });
+                    }
+                    nodesMap.get(n.id).researchers.push(rec);
+                });
+
+                const linkPairs = [[n0.id, n1.id], [n1.id, n2.id], [n2.id, n3.id]];
+                linkPairs.forEach(([source, target]) => {
+                    const key = `${source}-->${target}`;
+                    if (!linksMap.has(key)) {
+                        linksMap.set(key, {
+                            source: source,
+                            target: target,
+                            value: 0,
+                            researchers: []
+                        });
+                    }
+                    const link = linksMap.get(key);
+                    link.value += 1;
+                    link.researchers.push(rec);
+                });
+            });
+
+            const nodesArray = Array.from(nodesMap.values());
+            const nodeIndexMap = new Map();
+            nodesArray.forEach((node, idx) => {
+                nodeIndexMap.set(node.id, idx);
+            });
+
+            const linksArray = Array.from(linksMap.values()).map(l => ({
+                source: nodeIndexMap.get(l.source),
+                target: nodeIndexMap.get(l.target),
+                value: l.value,
+                researchers: l.researchers
+            }));
+
+            return {
+                nodes: nodesArray,
+                links: linksArray
+            };
+        }
+
+        function render() {
+            container.innerHTML = '';
+            const width = container.clientWidth || 960;
+            const height = 580;
+
+            const data = buildFilteredData();
+            if (!data.nodes.length || !data.links.length) {
+                container.innerHTML = '<div class="py-20 text-center text-xs text-slate-400">Nenhum dado de fluxo encontrado para o filtro selecionado.</div>';
+                return;
+            }
+
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .attr('viewBox', `0 0 ${width} ${height}`)
+                .attr('class', 'overflow-visible font-sans');
+
+            const sankey = d3.sankey()
+                .nodeWidth(18)
+                .nodePadding(14)
+                .extent([[10, 10], [width - 10, height - 10]])
+                .nodeAlign(d3.sankeyJustify);
+
+            const { nodes, links } = sankey({
+                nodes: data.nodes.map(d => Object.assign({}, d)),
+                links: data.links.map(d => Object.assign({}, d))
+            });
+
+            const defs = svg.append('defs');
+            links.forEach((link, i) => {
+                const gradientId = `sankey-grad-${i}`;
+                const grad = defs.append('linearGradient')
+                    .attr('id', gradientId)
+                    .attr('gradientUnits', 'userSpaceOnUse')
+                    .attr('x1', link.source.x1)
+                    .attr('x2', link.target.x0);
+
+                const c1 = categoryColors[link.source.category] || stageColors[link.source.stage] || '#6366f1';
+                const c2 = categoryColors[link.target.category] || stageColors[link.target.stage] || '#6366f1';
+
+                grad.append('stop').attr('offset', '0%').attr('stop-color', c1);
+                grad.append('stop').attr('offset', '100%').attr('stop-color', c2);
+            });
+
+            const linkElements = svg.append('g')
+                .attr('fill', 'none')
+                .selectAll('g')
+                .data(links)
+                .enter()
+                .append('path')
+                .attr('d', d3.sankeyLinkHorizontal())
+                .attr('stroke', (d, i) => {
+                    const mode = colorFilter ? colorFilter.value : 'source';
+                    if (mode === 'gradient') return `url(#sankey-grad-${i})`;
+                    if (mode === 'category') return categoryColors[d.source.category] || '#6366f1';
+                    return categoryColors[d.source.category] || stageColors[d.source.stage] || '#6366f1';
+                })
+                .attr('stroke-width', d => Math.max(1.5, d.width))
+                .attr('stroke-opacity', 0.4)
+                .attr('class', 'cursor-pointer transition-all duration-200 hover:stroke-opacity-80');
+
+            const nodeElements = svg.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .enter()
+                .append('g')
+                .attr('class', 'cursor-pointer');
+
+            nodeElements.append('rect')
+                .attr('x', d => d.x0)
+                .attr('y', d => d.y0)
+                .attr('height', d => Math.max(3, d.y1 - d.y0))
+                .attr('width', d => d.x1 - d.x0)
+                .attr('rx', 4)
+                .attr('fill', d => categoryColors[d.category] || stageColors[d.stage] || '#3b82f6')
+                .attr('stroke', isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
+                .attr('stroke-width', 1)
+                .attr('class', 'transition-all duration-150 hover:brightness-110');
+
+            nodeElements.append('text')
+                .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
+                .attr('y', d => (d.y1 + d.y0) / 2)
+                .attr('dy', '0.35em')
+                .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
+                .attr('fill', isDark ? '#e2e8f0' : '#1e293b')
+                .attr('font-size', d => d.value > 15 ? '11px' : '10px')
+                .attr('font-weight', d => d.value > 15 ? 'bold' : '500')
+                .text(d => {
+                    const label = d.name.length > 22 ? d.name.slice(0, 20) + '…' : d.name;
+                    return `${label} (${d.value})`;
+                });
+
+            // Hover interactions
+            nodeElements.on('mouseenter', (event, d) => {
+                if (!tooltip) return;
+                const pct = ((d.value / totalFacultyCount) * 100).toFixed(1);
+                const stageNames = ['Graduação', 'Mestrado', 'Doutorado', 'Lotação no CECH'];
+                
+                tooltip.innerHTML = `
+                    <div class="font-extrabold text-sm text-white mb-1 flex items-center justify-between gap-2">
+                        <span>${d.name}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/30 text-blue-200 border border-blue-400/40">${stageNames[d.stage]}</span>
+                    </div>
+                    <div class="border-t border-slate-700/80 pt-2 text-slate-300 space-y-1">
+                        <div class="flex justify-between gap-4 font-mono">
+                            <span>Docentes no fluxo:</span>
+                            <strong class="text-emerald-400 font-bold">${d.value} (${pct}%)</strong>
+                        </div>
+                        <div class="flex justify-between gap-4 font-mono text-[11px] text-slate-400">
+                            <span>Categoria:</span>
+                            <span>${d.category}</span>
+                        </div>
+                    </div>
+                `;
+                tooltip.classList.remove('hidden');
+
+                linkElements.attr('stroke-opacity', l => (l.source === d || l.target === d) ? 0.85 : 0.08);
+            })
+            .on('mousemove', (event) => {
+                if (!tooltip) return;
+                const [mouseX, mouseY] = d3.pointer(event, container);
+                tooltip.style.left = `${Math.min(width - 240, mouseX + 16)}px`;
+                tooltip.style.top = `${Math.max(10, mouseY - 30)}px`;
+            })
+            .on('mouseleave', () => {
+                if (tooltip) tooltip.classList.add('hidden');
+                linkElements.attr('stroke-opacity', 0.4);
+            });
+
+            linkElements.on('mouseenter', (event, d) => {
+                if (!tooltip) return;
+                tooltip.innerHTML = `
+                    <div class="font-bold text-xs text-white mb-1">
+                        ${d.source.name} &rarr; ${d.target.name}
+                    </div>
+                    <div class="border-t border-slate-700/80 pt-1.5 font-mono text-emerald-400 text-xs">
+                        <strong>${d.value}</strong> docentes transitaram neste elo
+                    </div>
+                `;
+                tooltip.classList.remove('hidden');
+                d3.select(event.currentTarget).attr('stroke-opacity', 0.95).attr('stroke-width', Math.max(3, d.width + 1));
+            })
+            .on('mousemove', (event) => {
+                if (!tooltip) return;
+                const [mouseX, mouseY] = d3.pointer(event, container);
+                tooltip.style.left = `${Math.min(width - 240, mouseX + 16)}px`;
+                tooltip.style.top = `${Math.max(10, mouseY - 20)}px`;
+            })
+            .on('mouseleave', (event, d) => {
+                if (tooltip) tooltip.classList.add('hidden');
+                d3.select(event.currentTarget).attr('stroke-opacity', 0.4).attr('stroke-width', Math.max(1.5, d.width));
+            });
+        }
+
+        render();
+
+        if (deptFilter) deptFilter.addEventListener('change', render);
+        if (groupingFilter) groupingFilter.addEventListener('change', render);
+        if (colorFilter) colorFilter.addEventListener('change', render);
+        if (resetBtn) resetBtn.addEventListener('click', render);
+
+        if (window.ResizeObserver) {
+            let timer;
+            new ResizeObserver(() => {
+                clearTimeout(timer);
+                timer = setTimeout(render, 150);
+            }).observe(container);
+        }
+    })();
+
+    // ── Fig 5: Formação Doutorado ──
+    const fig3Data = {{ fig3Doc|json_encode|raw }};
+    const elFig3 = document.getElementById('chartFig3');
+    if (elFig3) {
+        new Chart(elFig3, {
+            type: 'polarArea',
+            data: {
+                labels: fig3Data.map(d => d.courseName),
+                datasets: [{
+                    data: fig3Data.map(d => parseInt(d.total)),
+                    backgroundColor: palette.map(c => c + 'cc')
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { color: textColor, font: { size: 10 }, boxWidth: 10 } }
+                },
+                scales: {
+                    r: { grid: { color: gridColor }, ticks: { display: false } }
+                }
+            }
+        });
+    }
+
+    // ── Fig 6: Áreas CNPq ──
+    const fig4Data = {{ fig4Cnpq|json_encode|raw }};
+    const elFig4 = document.getElementById('chartFig4');
+    if (elFig4) {
+        new Chart(elFig4, {
+            type: 'bar',
+            data: {
+                labels: fig4Data.map(d => d.areaName),
+                datasets: [{
+                    label: 'Pesquisadores / Especialidades',
+                    data: fig4Data.map(d => parseInt(d.total)),
+                    backgroundColor: '#6366f1',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                    y: { grid: { display: false }, ticks: { color: textColor, font: { size: 11 } } }
+                }
+            }
+        });
+    }
+
+    // ── Fig 7: Origem Geográfica ──
+    const fig6Data = {{ fig6Geo|json_encode|raw }};
+    const elFig6 = document.getElementById('chartFig6');
+    if (elFig6) {
+        new Chart(elFig6, {
+            type: 'bar',
+            data: {
+                labels: fig6Data.map(d => d.uf),
+                datasets: [{
+                    label: 'Docentes',
+                    data: fig6Data.map(d => parseInt(d.total)),
+                    backgroundColor: '#10b981',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: textColor } },
+                    y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                }
+            }
+        });
+    }
+
+    // ── Fig 8: Inserção Profissional ──
+    const fig8Data = {{ fig8Experiences|json_encode|raw }};
+    const elFig8 = document.getElementById('chartFig8');
+    if (elFig8) {
+        new Chart(elFig8, {
+            type: 'doughnut',
+            data: {
+                labels: fig8Data.map(d => d.contractType),
+                datasets: [{
+                    data: fig8Data.map(d => parseInt(d.total)),
+                    backgroundColor: ['#0284c7', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b', '#14b8a6', '#f97316']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { color: textColor, font: { size: 11 }, boxWidth: 12 } }
+                }
+            }
+        });
+    }
+
+    // ── Fig 4: Destino Institucional dos Docentes Egressos do CECH (Sankey) ──
+    (function initFig17ExitsChart() {
+        const container = document.getElementById('chartFig17');
+        const tooltip = document.getElementById('chartFig17Tooltip');
+        const viewBtns = document.querySelectorAll('.fig17-view-btn');
+        const deptFilter = document.getElementById('fig17DeptFilter');
+        const catFilter = document.getElementById('fig17CatFilter');
+        const resetBtn = document.getElementById('fig17ResetBtn');
+
+        const kpiTotal = document.getElementById('fig17KpiTotal');
+        const kpiPublic = document.getElementById('fig17KpiPublic');
+        const kpiOutState = document.getElementById('fig17KpiOutState');
+
+        const tableSearch = document.getElementById('fig17TableSearch');
+        const tableCountBadge = document.getElementById('fig17TableCountBadge');
+        const tableRows = document.querySelectorAll('.fig17-table-row');
+        const rankingCards = document.querySelectorAll('.fig17-ranking-card');
+
+        if (!container || typeof d3 === 'undefined' || typeof d3.sankey === 'undefined') return;
+
+        const rawData = {{ fig17Exits|json_encode|raw }};
+        const allRecords = rawData.records || [];
+        const initialTotalExits = {{ fig17Exits.summary.totalExits }};
+
+        const colorsMap = {
+            'Letras (DL)': '#0284c7',
+            'Educação (DEn)': '#6366f1',
+            'Ciências Sociais (DCSo)': '#10b981',
+            'Filosofia (DFil)': '#f59e0b',
+            'Psicologia (DPsi)': '#ec4899',
+            'Ciência da Informação (DCI)': '#8b5cf6',
+            'Educação Física (DFis)': '#14b8a6',
+            'Metodologia de Ensino (DME)': '#f97316',
+            'Geografia (DGeo)': '#06b6d4',
+            'CECH': '#3b82f6',
+
+            'Estadual Paulista': '#0ea5e9',
+            'Federal': '#10b981',
+            'Internacional': '#f59e0b',
+            'Órgão Público / Gestão': '#8b5cf6',
+            'Privada / Confessional': '#94a3b8',
+            'Outras': '#64748b',
+
+            'USP': '#0284c7',
+            'UNESP': '#0ea5e9',
+            'UNICAMP': '#ec4899',
+            'UFSCar': '#10b981',
+            'UFABC': '#14b8a6',
+            'UNIFESP': '#8b5cf6',
+            'UFRJ': '#6366f1',
+            'UFMG': '#06b6d4',
+            'UNB': '#f97316'
+        };
+
+        const stageColors = ['#0284c7', '#6366f1', '#10b981'];
+
+        let currentFilteredRecords = [...allRecords];
+
+        function updateKpis(records) {
+            const mapped = records.length;
+            const publicCount = records.filter(r => r.institutionCategory === 'Estadual Paulista' || r.institutionCategory === 'Federal').length;
+            const outStateCount = records.filter(r => r.institutionCategory === 'Internacional' || (r.state && r.state !== 'SP')).length;
+
+            if (kpiTotal) {
+                kpiTotal.innerHTML = `${mapped} <span class="text-xs font-normal text-slate-400">/ ${initialTotalExits}</span>`;
+            }
+            if (kpiPublic) {
+                const pct = mapped > 0 ? Math.round((publicCount / mapped) * 100) : 0;
+                kpiPublic.textContent = `${pct}%`;
+            }
+            if (kpiOutState) {
+                const pct = mapped > 0 ? Math.round((outStateCount / mapped) * 100) : 0;
+                kpiOutState.innerHTML = `${outStateCount} <span class="text-xs font-normal">(${pct}%)</span>`;
+            }
+        }
+
+        function filterRanking(records) {
+            const countsByInst = {};
+            records.forEach(r => {
+                const inst = r.destinationInstitution || 'Outras';
+                countsByInst[inst] = (countsByInst[inst] || 0) + 1;
+            });
+
+            rankingCards.forEach(card => {
+                const inst = card.dataset.inst;
+                const count = countsByInst[inst] || 0;
+                if (count > 0) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        function renderSankey() {
+            container.innerHTML = '';
+            const width = container.clientWidth || 960;
+            const height = 580;
+
+            const records = currentFilteredRecords;
+            if (!records.length) {
+                container.innerHTML = '<div class="py-20 text-center text-xs text-slate-400">Nenhum registro encontrado para os filtros selecionados.</div>';
+                return;
+            }
+
+            const nodesMap = new Map();
+            const linksMap = new Map();
+
+            function getStageNode(rec, stage) {
+                let name = '';
+                let cat = '';
+
+                if (stage === 0) {
+                    name = rec.department || 'CECH';
+                    cat = name;
+                } else if (stage === 1) {
+                    name = rec.institutionCategory || 'Outras';
+                    cat = name;
+                } else if (stage === 2) {
+                    name = rec.destinationInstitution || 'Outras';
+                    cat = rec.institutionCategory || 'Outras';
+                }
+
+                const id = `${stage}_${name}`;
+                return { id, name, stage, category: cat };
+            }
+
+            records.forEach(rec => {
+                const n0 = getStageNode(rec, 0);
+                const n1 = getStageNode(rec, 1);
+                const n2 = getStageNode(rec, 2);
+
+                [n0, n1, n2].forEach(n => {
+                    if (!nodesMap.has(n.id)) {
+                        nodesMap.set(n.id, {
+                            id: n.id,
+                            name: n.name,
+                            stage: n.stage,
+                            category: n.category,
+                            researchers: []
+                        });
+                    }
+                    nodesMap.get(n.id).researchers.push(rec);
+                });
+
+                const linkPairs = [[n0.id, n1.id], [n1.id, n2.id]];
+                linkPairs.forEach(([source, target]) => {
+                    const key = `${source}-->${target}`;
+                    if (!linksMap.has(key)) {
+                        linksMap.set(key, { source, target, value: 0, researchers: [] });
+                    }
+                    const link = linksMap.get(key);
+                    link.value += 1;
+                    link.researchers.push(rec);
+                });
+            });
+
+            const nodesArray = Array.from(nodesMap.values());
+            const nodeIndexMap = new Map();
+            nodesArray.forEach((node, idx) => {
+                nodeIndexMap.set(node.id, idx);
+            });
+
+            const linksArray = Array.from(linksMap.values()).map(l => ({
+                source: nodeIndexMap.get(l.source),
+                target: nodeIndexMap.get(l.target),
+                value: l.value,
+                researchers: l.researchers
+            }));
+
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height)
+                .attr('viewBox', `0 0 ${width} ${height}`)
+                .attr('class', 'overflow-visible font-sans');
+
+            const sankey = d3.sankey()
+                .nodeWidth(18)
+                .nodePadding(14)
+                .extent([[10, 10], [width - 10, height - 10]])
+                .nodeAlign(d3.sankeyJustify);
+
+            const { nodes, links } = sankey({
+                nodes: nodesArray.map(d => Object.assign({}, d)),
+                links: linksArray.map(d => Object.assign({}, d))
+            });
+
+            const defs = svg.append('defs');
+            links.forEach((link, i) => {
+                const gradId = `fig17-grad-${i}`;
+                const grad = defs.append('linearGradient')
+                    .attr('id', gradId)
+                    .attr('gradientUnits', 'userSpaceOnUse')
+                    .attr('x1', link.source.x1)
+                    .attr('x2', link.target.x0);
+
+                const c1 = colorsMap[link.source.name] || stageColors[link.source.stage] || '#6366f1';
+                const c2 = colorsMap[link.target.name] || stageColors[link.target.stage] || '#10b981';
+
+                grad.append('stop').attr('offset', '0%').attr('stop-color', c1);
+                grad.append('stop').attr('offset', '100%').attr('stop-color', c2);
+            });
+
+            const linkElements = svg.append('g')
+                .attr('fill', 'none')
+                .selectAll('g')
+                .data(links)
+                .enter()
+                .append('path')
+                .attr('d', d3.sankeyLinkHorizontal())
+                .attr('stroke', (d, i) => `url(#fig17-grad-${i})`)
+                .attr('stroke-width', d => Math.max(1.5, d.width))
+                .attr('stroke-opacity', 0.45)
+                .attr('class', 'cursor-pointer transition-all duration-150 hover:stroke-opacity-85');
+
+            const nodeElements = svg.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .enter()
+                .append('g')
+                .attr('class', 'cursor-pointer');
+
+            nodeElements.append('rect')
+                .attr('x', d => d.x0)
+                .attr('y', d => d.y0)
+                .attr('height', d => Math.max(3, d.y1 - d.y0))
+                .attr('width', d => d.x1 - d.x0)
+                .attr('rx', 4)
+                .attr('fill', d => colorsMap[d.name] || stageColors[d.stage] || '#3b82f6')
+                .attr('stroke', isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
+                .attr('stroke-width', 1)
+                .attr('class', 'transition-all duration-150 hover:brightness-110');
+
+            nodeElements.append('text')
+                .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
+                .attr('y', d => (d.y1 + d.y0) / 2)
+                .attr('dy', '0.35em')
+                .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
+                .attr('fill', isDark ? '#e2e8f0' : '#1e293b')
+                .attr('font-size', d => d.value > 10 ? '11px' : '10px')
+                .attr('font-weight', d => d.value > 10 ? 'bold' : '500')
+                .text(d => {
+                    const label = d.name.length > 24 ? d.name.slice(0, 22) + '…' : d.name;
+                    return `${label} (${d.value})`;
+                });
+
+            nodeElements.on('mouseenter', (event, d) => {
+                if (!tooltip) return;
+                const totalM = records.length;
+                const pct = totalM > 0 ? Math.round((d.value / totalM) * 100) : 0;
+                const stageLabels = ['Origem no CECH', 'Esfera Institucional', 'Instituição de Destino'];
+
+                tooltip.innerHTML = `
+                    <div class="font-bold text-sm text-white mb-1 flex items-center justify-between gap-2">
+                        <span>${d.name}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/40">${stageLabels[d.stage]}</span>
+                    </div>
+                    <div class="border-t border-slate-700/80 pt-2 text-slate-300 space-y-1 font-mono text-xs">
+                        <div class="flex justify-between gap-4">
+                            <span>Pesquisadores:</span>
+                            <strong class="text-emerald-400 font-bold">${d.value} (${pct}%)</strong>
+                        </div>
+                    </div>
+                `;
+                tooltip.classList.remove('hidden');
+                linkElements.attr('stroke-opacity', l => (l.source === d || l.target === d) ? 0.85 : 0.08);
+            })
+            .on('mousemove', (event) => {
+                if (!tooltip) return;
+                const [mouseX, mouseY] = d3.pointer(event, container);
+                tooltip.style.left = `${Math.min(width - 240, mouseX + 16)}px`;
+                tooltip.style.top = `${Math.max(10, mouseY - 30)}px`;
+            })
+            .on('mouseleave', () => {
+                if (tooltip) tooltip.classList.add('hidden');
+                linkElements.attr('stroke-opacity', 0.45);
+            });
+        }
+
+        function applyFilters() {
+            const selDept = deptFilter ? deptFilter.value : 'all';
+            const selCat = catFilter ? catFilter.value : 'all';
+
+            currentFilteredRecords = allRecords.filter(r => {
+                const matchDept = selDept === 'all' || r.department === selDept;
+                const matchCat = selCat === 'all' || r.institutionCategory === selCat;
+                return matchDept && matchCat;
+            });
+
+            updateKpis(currentFilteredRecords);
+            filterRanking(currentFilteredRecords);
+            filterTable();
+            renderSankey();
+        }
+
+        // View Mode Switcher
+        viewBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                viewBtns.forEach(b => {
+                    b.classList.remove('bg-white', 'dark:bg-slate-800', 'text-indigo-600', 'dark:text-indigo-400', 'shadow-xs');
+                    b.classList.add('text-slate-600', 'dark:text-slate-400');
+                });
+                btn.classList.add('bg-white', 'dark:bg-slate-800', 'text-indigo-600', 'dark:text-indigo-400', 'shadow-xs');
+                btn.classList.remove('text-slate-600', 'dark:text-slate-400');
+
+                const view = btn.dataset.view;
+                const containers = document.querySelectorAll('.fig17-view-container');
+                containers.forEach(c => c.classList.add('hidden'));
+
+                if (view === 'sankey') {
+                    const c = document.getElementById('fig17ViewSankeyContainer');
+                    if (c) c.classList.remove('hidden');
+                    renderSankey();
+                } else if (view === 'ranking') {
+                    const c = document.getElementById('fig17ViewRankingContainer');
+                    if (c) c.classList.remove('hidden');
+                } else if (view === 'table') {
+                    const c = document.getElementById('fig17ViewTableContainer');
+                    if (c) c.classList.remove('hidden');
+                }
+            });
+        });
+
+        if (deptFilter) deptFilter.addEventListener('change', applyFilters);
+        if (catFilter) catFilter.addEventListener('change', applyFilters);
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                if (deptFilter) deptFilter.value = 'all';
+                if (catFilter) catFilter.value = 'all';
+                if (tableSearch) tableSearch.value = '';
+                applyFilters();
+            });
+        }
+
+        function filterTable() {
+            const query = tableSearch ? tableSearch.value.trim().toLowerCase() : '';
+            const selectedDept = deptFilter ? deptFilter.value.toLowerCase() : 'all';
+            const selectedCat = catFilter ? catFilter.value.toLowerCase() : 'all';
+
+            let visibleCount = 0;
+
+            tableRows.forEach(row => {
+                const name = row.dataset.name || '';
+                const dept = row.dataset.dept || '';
+                const inst = row.dataset.inst || '';
+                const cat = row.dataset.cat || '';
+                const role = row.dataset.role || '';
+
+                const matchQuery = query === '' || name.includes(query) || dept.includes(query) || inst.includes(query) || cat.includes(query) || role.includes(query);
+                const matchDept = selectedDept === 'all' || dept === selectedDept;
+                const matchCat = selectedCat === 'all' || cat === selectedCat;
+
+                if (matchQuery && matchDept && matchCat) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            if (tableCountBadge) {
+                tableCountBadge.textContent = `Exibindo ${visibleCount} de ${allRecords.length} pesquisadores`;
+            }
+        }
+
+        if (tableSearch) {
+            tableSearch.addEventListener('input', filterTable);
+        }
+
+        renderSankey();
+
+        if (window.ResizeObserver) {
+            let resizeTimer;
+            new ResizeObserver(() => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(renderSankey, 150);
+            }).observe(container);
+        }
+    })();
+})();
+</script>

@@ -26,18 +26,59 @@ class PublicRoutesTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Indicadores');
         $this->assertSelectorTextContains('#fig1LegendList', 'Departamento');
-        $this->assertStringNotContainsString('D3.js Observable Template', $client->getResponse()->getContent());
-        $this->assertStringNotContainsString('D3.js Sankey Observable', $client->getResponse()->getContent());
-        $this->assertStringNotContainsString('D3.js Sankey & Mobilidade', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Figura 1', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Figura 2', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Figura 3', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Figura 4', $client->getResponse()->getContent());
+        $this->assertStringContainsString('data-tab="faculty"', $client->getResponse()->getContent());
+        $this->assertStringContainsString('data-tab="training"', $client->getResponse()->getContent());
+        $this->assertStringContainsString('data-tab="production"', $client->getResponse()->getContent());
+        $this->assertStringContainsString('data-tab="network"', $client->getResponse()->getContent());
+    }
 
+    public function testIndicadoresAllWhenRequested(): void
+    {
+        $client = static::createClient();
+        $crawler = $client->request('GET', '/indicadores?tab=all');
+
+        $this->assertResponseIsSuccessful();
         for ($i = 1; $i <= 19; $i++) {
             $this->assertStringContainsString("Figura {$i}", $client->getResponse()->getContent());
         }
-
-        $this->assertStringContainsString('Bases Científicas Internacionais', $client->getResponse()->getContent());
-        $this->assertStringContainsString('Trabalhos dos Docentes por Base de Indexação', $client->getResponse()->getContent());
         $this->assertStringContainsString('chartFigAcademicDatabases', $client->getResponse()->getContent());
         $this->assertStringContainsString('chartFigAcademicDatabasesTimeline', $client->getResponse()->getContent());
+    }
+
+    public function testIndicadoresFragmentEndpoints(): void
+    {
+        $client = static::createClient();
+
+        // 1. Fragment training
+        $client->request('GET', '/indicadores/fragment/training');
+        $this->assertResponseIsSuccessful();
+        $this->assertStringContainsString('Figura 9', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Figura 10', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Figura 11', $client->getResponse()->getContent());
+
+        // 2. Fragment production
+        $client->request('GET', '/indicadores/fragment/production');
+        $this->assertResponseIsSuccessful();
+        $this->assertStringContainsString('Figura 12', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Figura 13', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Figura 14', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Figura 15', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Figura 16', $client->getResponse()->getContent());
+
+        // 3. Fragment network
+        $client->request('GET', '/indicadores/fragment/network');
+        $this->assertResponseIsSuccessful();
+        $this->assertStringContainsString('Figura 17', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Figura 18', $client->getResponse()->getContent());
+        $this->assertStringContainsString('Figura 19', $client->getResponse()->getContent());
+
+        // 4. Invalid fragment -> 404
+        $client->request('GET', '/indicadores/fragment/invalid-tab');
+        $this->assertResponseStatusCodeSame(404);
     }
 
     public function testSearchPageIsSuccessful(): void

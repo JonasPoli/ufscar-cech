@@ -58,57 +58,111 @@ class MainController extends AbstractController
     }
 
     #[Route('/indicadores', name: 'app_pub_indicators')]
-    public function indicators(): Response
+    public function indicators(Request $request): Response
     {
         ini_set('memory_limit', '512M');
 
-        $summary = $this->statisticsService->getGlobalSummary();
-        $fig1Dept = $this->statisticsService->getFig1InstitutionalAffiliations();
-        $fig2Grad = $this->statisticsService->getFig2UndergraduateDegrees();
-        $fig3Doc = $this->statisticsService->getFig3DoctorateDegrees(10);
-        $fig4Cnpq = $this->statisticsService->getFig4KnowledgeAreas();
-        $fig5StudentsGrad = $this->statisticsService->getFig5StudentsUndergradCourses(10);
-        $fig6Geo = $this->statisticsService->getFig6GeographicalDistribution();
-        $fig7Graduations = $this->statisticsService->getFig7OrientationsConcludedByYear(2010, (int)date('Y'));
-        $fig8Experiences = $this->statisticsService->getFig8ProfessionalExperiences();
-        $fig9Pyramid = $this->statisticsService->getFig9AcademicLevelsPyramid();
-        $fig10Heatmap = $this->statisticsService->getFig10ProductionHeatmapMatrix(2010, (int)date('Y'));
-        $fig11QualisTimeline = $this->statisticsService->getFig11QualisVsNonQualisTimeline(2010, (int)date('Y'));
-        $fig12QualisStrata = $this->statisticsService->getFig12QualisStratumTimeline(2010, (int)date('Y'));
-        $figQualisResearchers = $this->statisticsService->getFigQualisResearchersRanking();
-        $figAcademicDatabases = $this->statisticsService->getFigAcademicDatabases(2010, (int)date('Y'));
-        $fig13Coauthors = $this->statisticsService->getFig13CoauthorshipNetwork(8);
-        $fig13CoauthorsFull = $this->statisticsService->getFig13CoauthorshipNetwork(0);
-        $fig13MatrixPayload = $this->statisticsService->getCoauthorshipMatrixPayload();
-        $fig14National = $this->statisticsService->getFig14NationalPartners(10);
-        $fig15International = $this->statisticsService->getFig15InternationalPartners(10);
-        $fig16Sankey = $this->statisticsService->getFig16AcademicTrajectoriesSankey();
-        $fig17Exits = $this->statisticsService->getFig17FacultyExitsAndDestinations();
+        $tab = $request->query->get('tab', 'faculty');
+        $validTabs = ['faculty', 'training', 'production', 'network', 'all'];
+        if (!in_array($tab, $validTabs, true)) {
+            $tab = 'faculty';
+        }
 
-        return $this->render('pub/main/indicadores.html.twig', [
+        $summary = $this->statisticsService->getGlobalSummary();
+        $isPrintAll = $request->query->getBoolean('print') || $tab === 'all';
+
+        // Carrega apenas os dados da aba solicitada inicialmente
+        $tabData = $this->getIndicatorTabData($isPrintAll ? 'all' : $tab);
+
+        return $this->render('pub/main/indicadores.html.twig', array_merge([
             'summary' => $summary,
-            'fig1Dept' => $fig1Dept,
-            'fig2Grad' => $fig2Grad,
-            'fig3Doc' => $fig3Doc,
-            'fig4Cnpq' => $fig4Cnpq,
-            'fig5StudentsGrad' => $fig5StudentsGrad,
-            'fig6Geo' => $fig6Geo,
-            'fig7Graduations' => $fig7Graduations,
-            'fig8Experiences' => $fig8Experiences,
-            'fig9Pyramid' => $fig9Pyramid,
-            'fig10Heatmap' => $fig10Heatmap,
-            'fig11QualisTimeline' => $fig11QualisTimeline,
-            'fig12QualisStrata' => $fig12QualisStrata,
-            'figQualisResearchers' => $figQualisResearchers,
-            'figAcademicDatabases' => $figAcademicDatabases,
-            'fig13Coauthors' => $fig13Coauthors,
-            'fig13CoauthorsFull' => $fig13CoauthorsFull,
-            'fig13MatrixPayload' => $fig13MatrixPayload,
-            'fig14National' => $fig14National,
-            'fig15International' => $fig15International,
-            'fig16Sankey' => $fig16Sankey,
-            'fig17Exits' => $fig17Exits,
-        ]);
+            'initialTab' => $isPrintAll ? 'all' : $tab,
+            'isPrintAll' => $isPrintAll,
+        ], $tabData));
+    }
+
+    #[Route('/indicadores/fragment/{tab}', name: 'app_pub_indicators_fragment')]
+    public function indicatorFragment(string $tab, Request $request): Response
+    {
+        ini_set('memory_limit', '512M');
+
+        $validTabs = ['faculty', 'training', 'production', 'network'];
+        if (!in_array($tab, $validTabs, true)) {
+            throw $this->createNotFoundException('Aba de indicadores não encontrada.');
+        }
+
+        $tabData = $this->getIndicatorTabData($tab);
+
+        $template = match ($tab) {
+            'faculty' => 'pub/main/indicadores/_tab_faculty.html.twig',
+            'training' => 'pub/main/indicadores/_tab_training.html.twig',
+            'production' => 'pub/main/indicadores/_tab_production.html.twig',
+            'network' => 'pub/main/indicadores/_tab_network.html.twig',
+        };
+
+        $response = $this->render($template, $tabData);
+        $response->setPublic();
+        $response->setMaxAge(3600);
+        $response->headers->addCacheControlDirective('must-revalidate', true);
+
+        return $response;
+    }
+
+    private function getIndicatorTabData(string $tab): array
+    {
+        $currentYear = (int)date('Y');
+
+        if ($tab === 'faculty') {
+            return [
+                'fig1Dept' => $this->statisticsService->getFig1InstitutionalAffiliations(),
+                'fig2Grad' => $this->statisticsService->getFig2UndergraduateDegrees(),
+                'fig3Doc' => $this->statisticsService->getFig3DoctorateDegrees(10),
+                'fig4Cnpq' => $this->statisticsService->getFig4KnowledgeAreas(),
+                'fig6Geo' => $this->statisticsService->getFig6GeographicalDistribution(),
+                'fig8Experiences' => $this->statisticsService->getFig8ProfessionalExperiences(),
+                'fig16Sankey' => $this->statisticsService->getFig16AcademicTrajectoriesSankey(),
+                'fig17Exits' => $this->statisticsService->getFig17FacultyExitsAndDestinations(),
+            ];
+        }
+
+        if ($tab === 'training') {
+            return [
+                'fig7Graduations' => $this->statisticsService->getFig7OrientationsConcludedByYear(2010, $currentYear),
+                'fig9Pyramid' => $this->statisticsService->getFig9AcademicLevelsPyramid(),
+                'fig5StudentsGrad' => $this->statisticsService->getFig5StudentsUndergradCourses(10),
+            ];
+        }
+
+        if ($tab === 'production') {
+            return [
+                'fig10Heatmap' => $this->statisticsService->getFig10ProductionHeatmapMatrix(2010, $currentYear),
+                'fig11QualisTimeline' => $this->statisticsService->getFig11QualisVsNonQualisTimeline(2010, $currentYear),
+                'fig12QualisStrata' => $this->statisticsService->getFig12QualisStratumTimeline(2010, $currentYear),
+                'figQualisResearchers' => $this->statisticsService->getFigQualisResearchersRanking(),
+                'figAcademicDatabases' => $this->statisticsService->getFigAcademicDatabases(2010, $currentYear),
+            ];
+        }
+
+        if ($tab === 'network') {
+            return [
+                'fig13Coauthors' => $this->statisticsService->getFig13CoauthorshipNetwork(8),
+                'fig13CoauthorsFull' => $this->statisticsService->getFig13CoauthorshipNetwork(0),
+                'fig13MatrixPayload' => $this->statisticsService->getCoauthorshipMatrixPayload(),
+                'fig14National' => $this->statisticsService->getFig14NationalPartners(10),
+                'fig15International' => $this->statisticsService->getFig15InternationalPartners(10),
+            ];
+        }
+
+        if ($tab === 'all') {
+            return array_merge(
+                $this->getIndicatorTabData('faculty'),
+                $this->getIndicatorTabData('training'),
+                $this->getIndicatorTabData('production'),
+                $this->getIndicatorTabData('network')
+            );
+        }
+
+        return [];
     }
 
     #[Route('/busca', name: 'app_pub_search')]
