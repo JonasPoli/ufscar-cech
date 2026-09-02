@@ -565,6 +565,14 @@ class DatabaseBackupService
                 $this->connection->executeStatement("SET FOREIGN_KEY_CHECKS = 1;");
             }
 
+            // Invalida o cache de páginas públicas para garantir que novos dados apareçam imediatamente
+            $publicPagesCacheDir = dirname($this->backupDir) . '/cache/public_pages';
+            if ($this->filesystem->exists($publicPagesCacheDir)) {
+                try {
+                    $this->filesystem->remove($publicPagesCacheDir);
+                } catch (\Throwable) {}
+            }
+
             if ($progressCallback) {
                 $progressCallback('completed', 'Importação concluída com sucesso!', 100);
             }
