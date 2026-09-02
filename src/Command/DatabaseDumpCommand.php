@@ -14,7 +14,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand(
     name: 'app:database:dump',
     description: 'Exporta a base de dados completa do CECH em arquivo SQL superdump comprimido (.zip)',
-    aliases: ['app:backup:export', 'app:db:dump']
+    aliases: ['app:database:backup', 'app:backup:export', 'app:db:dump']
 )]
 class DatabaseDumpCommand extends Command
 {
