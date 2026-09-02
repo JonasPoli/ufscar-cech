@@ -96,7 +96,14 @@ cd /home/runcloud/webapps/ufscar-cech
 /RunCloud/Packages/php84rc/bin/php bin/console app:thesaurus:sync-authors --env=prod
 ```
 
-### 4.4. Superdump / Backup do Banco em Produção
+### 4.4. Sincronização Automática do Banco Online para o Local (Script Único)
+Para exportar a base de dados online, baixar via SCP e restaurar automaticamente no seu ambiente de desenvolvimento com um único comando no seu Mac:
+
+```bash
+./sync-db.sh
+```
+
+Ou manualmente pelo terminal do servidor:
 ```bash
 /RunCloud/Packages/php84rc/bin/php bin/console app:database:dump --env=prod
 ```
