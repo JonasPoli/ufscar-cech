@@ -611,509 +611,361 @@
         });
 
     // ── Fig 2: Formação de Graduação do Corpo Docente ──
-    (function initFig2ObservableChart() {
-        const container = document.getElementById('chartFig2');
-        const tooltip = document.getElementById('chartFig2Tooltip');
-        const pillsContainer = document.getElementById('fig2PillsContainer');
-        if (!container || typeof d3 === 'undefined') return;
+    try {
+        (function initFig2ObservableChart() {
+            const container = document.getElementById('chartFig2');
+            const tooltip = document.getElementById('chartFig2Tooltip');
+            const pillsContainer = document.getElementById('fig2PillsContainer');
+            if (!container || typeof d3 === 'undefined') return;
 
-        const dados = {{ fig2Grad|json_encode|raw }};
-        const cores = {
-            "Ciências Sociais Aplicadas": "#72B544",
-            "Ciências Humanas": "#E86F8A",
-            "Engenharias": "#F2C94C",
-            "Ciências Exatas e da Terra": "#6C63B5",
-            "Linguística, Letras e Artes": "#52B8A6",
-            "Ciências da Saúde": "#5AA9E6",
-            "Ciências Agrárias": "#9ACD32",
-            "Ciências Biológicas": "#38BDF8",
-            "Outras": "#9E9E9E"
-        };
+            const rawDados = {{ fig2Grad|json_encode|raw }} || [];
+            const dados = rawDados.map((d, i) => ({
+                id: i,
+                majorArea: d.majorArea || d.area || "Outras",
+                courseName: d.courseName || d.formacao || "Não Informado",
+                total: parseInt(d.total || d.quantidade || 0)
+            }));
 
-        const areaOrder = [
-            "Ciências Humanas",
-            "Ciências Sociais Aplicadas",
-            "Linguística, Letras e Artes",
-            "Ciências Exatas e da Terra",
-            "Engenharias",
-            "Ciências Biológicas",
-            "Ciências da Saúde",
-            "Ciências Agrárias",
-            "Outras"
-        ];
+            const cores = {
+                "Ciências Sociais Aplicadas": "#72B544",
+                "Ciências Humanas": "#E86F8A",
+                "Engenharias": "#F2C94C",
+                "Ciências Exatas e da Terra": "#6C63B5",
+                "Linguística, Letras e Artes": "#52B8A6",
+                "Ciências da Saúde": "#5AA9E6",
+                "Ciências Agrárias": "#9ACD32",
+                "Ciências Biológicas": "#38BDF8",
+                "Outras": "#9E9E9E"
+            };
 
-        if (pillsContainer) {
-            pillsContainer.innerHTML = '';
-            const totalGeral = dados.reduce((acc, cur) => acc + (parseInt(cur.total) || 0), 0);
-            
-            const areasPresentes = Array.from(new Set(dados.map(d => d.majorArea || "Outras")))
-                .sort((a, b) => {
-                    const idxA = areaOrder.indexOf(a);
-                    const idxB = areaOrder.indexOf(b);
-                    return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
-                });
+            const areaOrder = [
+                "Ciências Humanas",
+                "Ciências Sociais Aplicadas",
+                "Linguística, Letras e Artes",
+                "Ciências Exatas e da Terra",
+                "Engenharias",
+                "Ciências Biológicas",
+                "Ciências da Saúde",
+                "Ciências Agrárias",
+                "Outras"
+            ];
 
-            areasPresentes.forEach(area => {
-                const totalArea = dados
-                    .filter(d => (d.majorArea || "Outras") === area)
-                    .reduce((acc, cur) => acc + (parseInt(cur.total) || 0), 0);
-                const pct = totalGeral > 0 ? ((totalArea / totalGeral) * 100).toFixed(1) : 0;
-                const cor = cores[area] || "#9E9E9E";
+            if (pillsContainer) {
+                pillsContainer.innerHTML = '';
+                const totalGeral = dados.reduce((acc, cur) => acc + cur.total, 0);
+                
+                const areasPresentes = Array.from(new Set(dados.map(d => d.majorArea)))
+                    .sort((a, b) => {
+                        const idxA = areaOrder.indexOf(a);
+                        const idxB = areaOrder.indexOf(b);
+                        return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+                    });
 
-                const pill = document.createElement('span');
-                pill.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-xs";
-                pill.innerHTML = `
-                    <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${cor};"></span>
-                    <span class="text-slate-700 dark:text-slate-200">${area}</span>
-                    <span class="text-slate-400 font-mono text-[11px]">(${totalArea})</span>
-                `;
-                pillsContainer.appendChild(pill);
-            });
-        }
+                areasPresentes.forEach(area => {
+                    const totalArea = dados
+                        .filter(d => d.majorArea === area)
+                        .reduce((acc, cur) => acc + cur.total, 0);
+                    const pct = totalGeral > 0 ? ((totalArea / totalGeral) * 100).toFixed(1) : 0;
+                    const cor = cores[area] || "#9E9E9E";
 
-        const margin = { top: 20, right: 30, bottom: 40, left: 240 };
-        const barHeight = 26;
-        const height = margin.top + margin.bottom + (dados.length * barHeight);
-
-        function render() {
-            container.innerHTML = '';
-            const width = container.clientWidth || 800;
-            const innerWidth = Math.max(300, width - margin.left - margin.right);
-
-            const svg = d3.select(container)
-                .append('svg')
-                .attr('width', width)
-                .attr('height', height)
-                .attr('viewBox', `0 0 ${width} ${height}`)
-                .attr('class', 'overflow-visible font-sans');
-
-            const g = svg.append('g')
-                .attr('transform', `translate(${margin.left},${margin.top})`);
-
-            const maxVal = d3.max(dados, d => parseInt(d.total)) || 10;
-            const x = d3.scaleLinear()
-                .domain([0, maxVal * 1.1])
-                .range([0, innerWidth]);
-
-            const y = d3.scaleBand()
-                .domain(dados.map(d => d.courseName))
-                .range([0, dados.length * barHeight])
-                .padding(0.25);
-
-            g.append('g')
-                .attr('class', 'grid')
-                .selectAll('line')
-                .data(x.ticks(6))
-                .enter()
-                .append('line')
-                .attr('x1', d => x(d))
-                .attr('x2', d => x(d))
-                .attr('y1', 0)
-                .attr('y2', dados.length * barHeight)
-                .attr('stroke', isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)')
-                .attr('stroke-dasharray', '2,2');
-
-            const bars = g.selectAll('.bar-group')
-                .data(dados)
-                .enter()
-                .append('g')
-                .attr('class', 'bar-group')
-                .attr('transform', d => `translate(0, ${y(d.courseName)})`);
-
-            bars.append('rect')
-                .attr('x', 0)
-                .attr('y', 0)
-                .attr('height', y.bandwidth())
-                .attr('width', 0)
-                .attr('rx', 4)
-                .attr('fill', d => cores[d.majorArea] || '#9E9E9E')
-                .attr('opacity', 0.9)
-                .attr('class', 'cursor-pointer transition-opacity duration-150 hover:opacity-100')
-                .on('mouseenter', (event, d) => {
-                    if (!tooltip) return;
-                    const pct = ((parseInt(d.total) / (d3.sum(dados, x => parseInt(x.total)) || 1)) * 100).toFixed(1);
-                    tooltip.innerHTML = `
-                        <div class="font-bold text-sm text-white mb-1">${d.courseName}</div>
-                        <div class="flex items-center gap-1.5 mb-1.5">
-                            <span class="w-2 h-2 rounded-full" style="background-color: ${cores[d.majorArea] || '#9E9E9E'};"></span>
-                            <span class="text-slate-300">${d.majorArea || 'Outras'}</span>
-                        </div>
-                        <div class="border-t border-slate-700/60 pt-1 text-slate-300 font-mono flex justify-between gap-4">
-                            <span>Total Docentes:</span>
-                            <strong class="text-white">${d.total} (${pct}%)</strong>
-                        </div>
+                    const pill = document.createElement('span');
+                    pill.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-xs";
+                    pill.innerHTML = `
+                        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background-color: ${cor};"></span>
+                        <span class="text-slate-700 dark:text-slate-200">${area}</span>
+                        <span class="text-slate-400 font-mono text-[11px]">(${totalArea})</span>
                     `;
-                    tooltip.classList.remove('hidden');
-                })
-                .on('mousemove', (event) => {
-                    if (!tooltip) return;
-                    const [mouseX, mouseY] = d3.pointer(event, container);
-                    tooltip.style.left = `${mouseX + 16}px`;
-                    tooltip.style.top = `${mouseY - 20}px`;
-                })
-                .on('mouseleave', () => {
-                    if (tooltip) tooltip.classList.add('hidden');
-                })
-                .transition()
-                .duration(800)
-                .delay((d, i) => i * 15)
-                .attr('width', d => Math.max(2, x(parseInt(d.total))));
+                    pillsContainer.appendChild(pill);
+                });
+            }
 
-            bars.append('text')
-                .attr('x', d => x(parseInt(d.total)) + 6)
-                .attr('y', y.bandwidth() / 2)
-                .attr('dy', '0.35em')
-                .attr('fill', isDark ? '#94a3b8' : '#64748b')
-                .attr('font-size', '10px')
-                .attr('font-family', 'monospace')
-                .attr('font-weight', 'bold')
-                .text(d => d.total);
+            const margin = { top: 20, right: 30, bottom: 40, left: 240 };
+            const barHeight = 26;
+            const height = margin.top + margin.bottom + (dados.length * barHeight);
 
-            const yAxis = g.append('g')
-                .attr('class', 'y-axis')
-                .call(d3.axisLeft(y).tickSize(0));
+            function render() {
+                container.innerHTML = '';
+                const width = container.clientWidth || 800;
+                const innerWidth = Math.max(300, width - margin.left - margin.right);
 
-            yAxis.select('.domain').remove();
-            yAxis.selectAll('text')
-                .attr('fill', isDark ? '#e2e8f0' : '#334155')
-                .attr('font-size', '11px')
-                .attr('font-weight', '500')
-                .attr('dx', '-8px')
-                .style('text-anchor', 'end')
-                .text(d => d.length > 32 ? d.substring(0, 30) + '…' : d);
+                const svg = d3.select(container)
+                    .append('svg')
+                    .attr('width', width)
+                    .attr('height', height)
+                    .attr('viewBox', `0 0 ${width} ${height}`)
+                    .attr('class', 'overflow-visible font-sans');
 
-            const xAxis = g.append('g')
-                .attr('class', 'x-axis')
-                .attr('transform', `translate(0, ${dados.length * barHeight})`)
-                .call(d3.axisBottom(x).ticks(5).tickSize(4));
+                const g = svg.append('g')
+                    .attr('transform', `translate(${margin.left},${margin.top})`);
 
-            xAxis.select('.domain').attr('stroke', isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)');
-            xAxis.selectAll('text')
-                .attr('fill', isDark ? '#94a3b8' : '#64748b')
-                .attr('font-size', '10px');
-        }
+                const maxVal = d3.max(dados, d => d.total) || 10;
+                const x = d3.scaleLinear()
+                    .domain([0, maxVal * 1.1])
+                    .range([0, innerWidth]);
 
-        render();
+                const y = d3.scaleBand()
+                    .domain(dados.map((d, i) => `${d.courseName}__${i}`))
+                    .range([0, dados.length * barHeight])
+                    .padding(0.25);
 
-        if (window.ResizeObserver) {
-            let timer;
-            new ResizeObserver(() => {
-                clearTimeout(timer);
-                timer = setTimeout(render, 150);
-            }).observe(container);
-        }
-    })();
+                g.append('g')
+                    .attr('class', 'grid')
+                    .selectAll('line')
+                    .data(x.ticks(6))
+                    .enter()
+                    .append('line')
+                    .attr('x1', d => x(d))
+                    .attr('x2', d => x(d))
+                    .attr('y1', 0)
+                    .attr('y2', dados.length * barHeight)
+                    .attr('stroke', isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)')
+                    .attr('stroke-dasharray', '2,2');
+
+                const bars = g.selectAll('.bar-group')
+                    .data(dados)
+                    .enter()
+                    .append('g')
+                    .attr('class', 'bar-group')
+                    .attr('transform', (d, i) => `translate(0, ${y(`${d.courseName}__${i}`)})`);
+
+                bars.append('rect')
+                    .attr('x', 0)
+                    .attr('y', 0)
+                    .attr('height', y.bandwidth())
+                    .attr('width', 0)
+                    .attr('rx', 4)
+                    .attr('fill', d => cores[d.majorArea] || '#9E9E9E')
+                    .attr('opacity', 0.9)
+                    .attr('class', 'cursor-pointer transition-opacity duration-150 hover:opacity-100')
+                    .on('mouseenter', (event, d) => {
+                        if (!tooltip) return;
+                        const pct = ((d.total / (d3.sum(dados, x => x.total) || 1)) * 100).toFixed(1);
+                        tooltip.innerHTML = `
+                            <div class="font-bold text-sm text-white mb-1">${d.courseName}</div>
+                            <div class="flex items-center gap-1.5 mb-1.5">
+                                <span class="w-2 h-2 rounded-full" style="background-color: ${cores[d.majorArea] || '#9E9E9E'};"></span>
+                                <span class="text-slate-300">${d.majorArea}</span>
+                            </div>
+                            <div class="border-t border-slate-700/60 pt-1 text-slate-300 font-mono flex justify-between gap-4">
+                                <span>Total Docentes:</span>
+                                <strong class="text-white">${d.total} (${pct}%)</strong>
+                            </div>
+                        `;
+                        tooltip.classList.remove('hidden');
+                    })
+                    .on('mousemove', (event) => {
+                        if (!tooltip) return;
+                        const [mouseX, mouseY] = d3.pointer(event, container);
+                        tooltip.style.left = `${mouseX + 16}px`;
+                        tooltip.style.top = `${mouseY - 20}px`;
+                    })
+                    .on('mouseleave', () => {
+                        if (tooltip) tooltip.classList.add('hidden');
+                    })
+                    .transition()
+                    .duration(800)
+                    .delay((d, i) => i * 15)
+                    .attr('width', d => Math.max(2, isNaN(x(d.total)) ? 2 : x(d.total)));
+
+                bars.append('text')
+                    .attr('x', d => (isNaN(x(d.total)) ? 0 : x(d.total)) + 6)
+                    .attr('y', y.bandwidth() / 2)
+                    .attr('dy', '0.35em')
+                    .attr('fill', isDark ? '#94a3b8' : '#64748b')
+                    .attr('font-size', '10px')
+                    .attr('font-family', 'monospace')
+                    .attr('font-weight', 'bold')
+                    .text(d => d.total);
+
+                const yAxis = g.append('g')
+                    .attr('class', 'y-axis')
+                    .call(d3.axisLeft(y).tickSize(0));
+
+                yAxis.select('.domain').remove();
+                yAxis.selectAll('text')
+                    .attr('fill', isDark ? '#e2e8f0' : '#334155')
+                    .attr('font-size', '11px')
+                    .attr('font-weight', '500')
+                    .attr('dx', '-8px')
+                    .style('text-anchor', 'end')
+                    .text(d => {
+                        const rawName = String(d ? d.split('__')[0] : '');
+                        return rawName.length > 32 ? rawName.substring(0, 30) + '…' : rawName;
+                    });
+
+                const xAxis = g.append('g')
+                    .attr('class', 'x-axis')
+                    .attr('transform', `translate(0, ${dados.length * barHeight})`)
+                    .call(d3.axisBottom(x).ticks(5).tickSize(4));
+
+                xAxis.select('.domain').attr('stroke', isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)');
+                xAxis.selectAll('text')
+                    .attr('fill', isDark ? '#94a3b8' : '#64748b')
+                    .attr('font-size', '10px');
+            }
+
+            render();
+
+            if (window.ResizeObserver) {
+                let timer;
+                new ResizeObserver(() => {
+                    clearTimeout(timer);
+                    timer = setTimeout(render, 150);
+                }).observe(container);
+            }
+        })();
+    } catch (eFig2) {
+        console.error('Erro ao renderizar Figura 2:', eFig2);
+    }
 
     // ── Fig 3: Trajetória Acadêmica e Origem dos Docentes (Sankey) ──
-    (function initSankeyTrajectoriesChart() {
-        const container = document.getElementById('chartFig16');
-        const tooltip = document.getElementById('chartFig16Tooltip');
-        const deptFilter = document.getElementById('sankeyDeptFilter');
-        const groupingFilter = document.getElementById('sankeyGroupingFilter');
-        const colorFilter = document.getElementById('sankeyColorFilter');
-        const resetBtn = document.getElementById('sankeyResetBtn');
+    try {
+        (function initSankeyTrajectoriesChart() {
+            const container = document.getElementById('chartFig16');
+            const tooltip = document.getElementById('chartFig16Tooltip');
+            const deptFilter = document.getElementById('sankeyDeptFilter');
+            const groupingFilter = document.getElementById('sankeyGroupingFilter');
+            const colorFilter = document.getElementById('sankeyColorFilter');
+            const resetBtn = document.getElementById('sankeyResetBtn');
 
-        if (!container || typeof d3 === 'undefined' || typeof d3.sankey === 'undefined') return;
+            if (!container || typeof d3 === 'undefined' || typeof d3.sankey === 'undefined') return;
 
-        const rawData = {{ fig16Sankey|json_encode|raw }};
-        const totalFacultyCount = rawData.summary.totalResearchers;
+            const rawData = {{ fig16Sankey|json_encode|raw }} || {};
+            const totalFacultyCount = (rawData.summary && rawData.summary.totalResearchers) ? rawData.summary.totalResearchers : 1;
 
-        const categoryColors = {
-            'USP': '#0284c7',
-            'UFSCar': '#10b981',
-            'UNICAMP': '#ec4899',
-            'UNESP': '#f59e0b',
-            'Paulistas': '#0ea5e9',
-            'Federais': '#6366f1',
-            'Outras': '#94a3b8',
-            'Exterior': '#f97316',
-            'CECH': '#1e293b'
-        };
+            const categoryColors = {
+                'USP': '#0284c7',
+                'UFSCar': '#10b981',
+                'UNICAMP': '#ec4899',
+                'UNESP': '#f59e0b',
+                'Paulistas': '#0ea5e9',
+                'Federais': '#6366f1',
+                'Outras': '#94a3b8',
+                'Exterior': '#f97316',
+                'CECH': '#1e293b'
+            };
 
-        const stageColors = ['#0284c7', '#10b981', '#6366f1', '#1e293b'];
+            const stageColors = ['#0284c7', '#10b981', '#6366f1', '#1e293b'];
 
-        let highlightedNode = null;
+            let highlightedNode = null;
 
-        function buildFilteredData() {
-            const selectedDept = deptFilter ? deptFilter.value : 'all';
-            const isTopMode = !groupingFilter || groupingFilter.value === 'top';
+            function buildFilteredData() {
+                const selectedDept = deptFilter ? deptFilter.value : 'all';
+                const isTopMode = !groupingFilter || groupingFilter.value === 'top';
 
-            let matrix = rawData.fullMatrix || [];
-            if (selectedDept !== 'all') {
-                matrix = matrix.filter(r => r.dept === selectedDept);
-            }
-
-            const kpiTotalEl = document.getElementById('sankeyKpiTotal');
-            const kpiDocSPEl = document.getElementById('sankeyKpiDocSP');
-            const kpiDocExtEl = document.getElementById('sankeyKpiDocExt');
-            const kpiDocUFSCarEl = document.getElementById('sankeyKpiDocUFSCar');
-
-            const currentTotal = matrix.length;
-            if (kpiTotalEl) kpiTotalEl.textContent = currentTotal;
-
-            if (currentTotal > 0) {
-                const docSPCount = matrix.filter(r => ['USP', 'UFSCar', 'UNICAMP', 'UNESP'].includes(r.docCat) || r.docInst.includes('USP') || r.docInst.includes('UFSCar') || r.docInst.includes('UNICAMP') || r.docInst.includes('UNESP')).length;
-                const docExtCount = matrix.filter(r => r.docCat === 'Exterior' || r.docCountry !== 'Brasil').length;
-                const docUFSCarCount = matrix.filter(r => r.docCat === 'UFSCar' || r.docInst.includes('UFSCar')).length;
-
-                if (kpiDocSPEl) kpiDocSPEl.textContent = `${Math.round((docSPCount / currentTotal) * 100)}%`;
-                if (kpiDocExtEl) kpiDocExtEl.innerHTML = `${docExtCount} <span class="text-xs font-normal">(${Math.round((docExtCount / currentTotal) * 100)}%)</span>`;
-                if (kpiDocUFSCarEl) kpiDocUFSCarEl.textContent = `${Math.round((docUFSCarCount / currentTotal) * 100)}%`;
-            }
-
-            const nodesMap = new Map();
-            const linksMap = new Map();
-
-            function getNodeName(record, stage) {
-                let inst = 'Outras';
-                let cat = 'Outras';
-
-                if (stage === 0) {
-                    inst = record.gradInst || 'Outras';
-                    cat = record.gradCat || 'Outras';
-                } else if (stage === 1) {
-                    inst = record.mscInst || 'Outras';
-                    cat = record.mscCat || 'Outras';
-                } else if (stage === 2) {
-                    inst = record.docInst || 'Outras';
-                    cat = record.docCat || 'Outras';
-                } else if (stage === 3) {
-                    return { id: 'CECH / UFSCar', name: 'CECH / UFSCar', stage: 3, category: 'CECH' };
+                let matrix = rawData.fullMatrix || [];
+                if (selectedDept !== 'all') {
+                    matrix = matrix.filter(r => r.dept === selectedDept);
                 }
 
-                if (isTopMode && !['USP', 'UFSCar', 'UNICAMP', 'UNESP', 'PUC-SP', 'UNIFESP', 'Exterior'].includes(cat) && !['USP', 'UFSCar', 'UNICAMP', 'UNESP'].includes(inst)) {
-                    inst = cat === 'Exterior' ? 'Universidade Estrangeira' : (cat === 'Federais' ? 'Outra Federal' : 'Outra Instituição');
+                const kpiTotalEl = document.getElementById('sankeyKpiTotal');
+                const kpiDocSPEl = document.getElementById('sankeyKpiDocSP');
+                const kpiDocExtEl = document.getElementById('sankeyKpiDocExt');
+                const kpiDocUFSCarEl = document.getElementById('sankeyKpiDocUFSCar');
+
+                const currentTotal = matrix.length;
+                if (kpiTotalEl) kpiTotalEl.textContent = currentTotal;
+
+                if (currentTotal > 0) {
+                    const docSPCount = matrix.filter(r => ['USP', 'UFSCar', 'UNICAMP', 'UNESP'].includes(r.docCat) || (r.docInst && (r.docInst.includes('USP') || r.docInst.includes('UFSCar') || r.docInst.includes('UNICAMP') || r.docInst.includes('UNESP')))).length;
+                    const docExtCount = matrix.filter(r => r.docCat === 'Exterior' || r.docCountry !== 'Brasil').length;
+                    const docUFSCarCount = matrix.filter(r => r.docCat === 'UFSCar' || (r.docInst && r.docInst.includes('UFSCar'))).length;
+
+                    if (kpiDocSPEl) kpiDocSPEl.textContent = `${Math.round((docSPCount / currentTotal) * 100)}%`;
+                    if (kpiDocExtEl) kpiDocExtEl.innerHTML = `${docExtCount} <span class="text-xs font-normal">(${Math.round((docExtCount / currentTotal) * 100)}%)</span>`;
+                    if (kpiDocUFSCarEl) kpiDocUFSCarEl.textContent = `${Math.round((docUFSCarCount / currentTotal) * 100)}%`;
                 }
 
-                const stagePrefix = ['Graduação: ', 'Mestrado: ', 'Doutorado: ', ''][stage];
+                const nodesMap = new Map();
+                const linksMap = new Map();
+
+                function getNodeName(record, stage) {
+                    let inst = 'Outras';
+                    let cat = 'Outras';
+
+                    if (stage === 0) {
+                        inst = record.gradInst || 'Outras';
+                        cat = record.gradCat || 'Outras';
+                    } else if (stage === 1) {
+                        inst = record.mscInst || 'Outras';
+                        cat = record.mscCat || 'Outras';
+                    } else if (stage === 2) {
+                        inst = record.docInst || 'Outras';
+                        cat = record.docCat || 'Outras';
+                    } else if (stage === 3) {
+                        return { id: 'CECH / UFSCar', name: 'CECH / UFSCar', stage: 3, category: 'CECH' };
+                    }
+
+                    if (isTopMode && !['USP', 'UFSCar', 'UNICAMP', 'UNESP', 'PUC-SP', 'UNIFESP', 'Exterior'].includes(cat) && !['USP', 'UFSCar', 'UNICAMP', 'UNESP'].includes(inst)) {
+                        inst = cat === 'Exterior' ? 'Universidade Estrangeira' : (cat === 'Federais' ? 'Outra Federal' : 'Outra Instituição');
+                    }
+
+                    const stagePrefix = ['Graduação: ', 'Mestrado: ', 'Doutorado: ', ''][stage];
+                    return {
+                        id: `${stage}_${inst}`,
+                        displayName: inst,
+                        fullName: `${stagePrefix}${inst}`,
+                        stage: stage,
+                        category: cat
+                    };
+                }
+
+                matrix.forEach(rec => {
+                    const n0 = getNodeName(rec, 0);
+                    const n1 = getNodeName(rec, 1);
+                    const n2 = getNodeName(rec, 2);
+                    const n3 = getNodeName(rec, 3);
+
+                    [n0, n1, n2, n3].forEach(n => {
+                        if (!nodesMap.has(n.id)) {
+                            nodesMap.set(n.id, {
+                                id: n.id,
+                                name: n.displayName || n.id,
+                                fullName: n.fullName || n.name,
+                                stage: n.stage,
+                                category: n.category,
+                                researchers: []
+                            });
+                        }
+                        nodesMap.get(n.id).researchers.push(rec);
+                    });
+
+                    const linkPairs = [[n0.id, n1.id], [n1.id, n2.id], [n2.id, n3.id]];
+                    linkPairs.forEach(([source, target]) => {
+                        const key = `${source}-->${target}`;
+                        if (!linksMap.has(key)) {
+                            linksMap.set(key, {
+                                source: source,
+                                target: target,
+                                value: 0,
+                                researchers: []
+                            });
+                        }
+                        const link = linksMap.get(key);
+                        link.value += 1;
+                        link.researchers.push(rec);
+                    });
+                });
+
+                const nodesArray = Array.from(nodesMap.values());
+                const nodeIndexMap = new Map();
+                nodesArray.forEach((node, idx) => {
+                    nodeIndexMap.set(node.id, idx);
+                });
+
+                const linksArray = Array.from(linksMap.values()).map(l => ({
+                    source: nodeIndexMap.get(l.source),
+                    target: nodeIndexMap.get(l.target),
+                    value: l.value,
+                    researchers: l.researchers
+                }));
+
                 return {
-                    id: `${stage}_${inst}`,
-                    displayName: inst,
-                    fullName: `${stagePrefix}${inst}`,
-                    stage: stage,
-                    category: cat
+                    nodes: nodesArray,
+                    links: linksArray
                 };
             }
 
-            matrix.forEach(rec => {
-                const n0 = getNodeName(rec, 0);
-                const n1 = getNodeName(rec, 1);
-                const n2 = getNodeName(rec, 2);
-                const n3 = getNodeName(rec, 3);
-
-                [n0, n1, n2, n3].forEach(n => {
-                    if (!nodesMap.has(n.id)) {
-                        nodesMap.set(n.id, {
-                            id: n.id,
-                            name: n.displayName || n.id,
-                            fullName: n.fullName || n.name,
-                            stage: n.stage,
-                            category: n.category,
-                            researchers: []
-                        });
-                    }
-                    nodesMap.get(n.id).researchers.push(rec);
-                });
-
-                const linkPairs = [[n0.id, n1.id], [n1.id, n2.id], [n2.id, n3.id]];
-                linkPairs.forEach(([source, target]) => {
-                    const key = `${source}-->${target}`;
-                    if (!linksMap.has(key)) {
-                        linksMap.set(key, {
-                            source: source,
-                            target: target,
-                            value: 0,
-                            researchers: []
-                        });
-                    }
-                    const link = linksMap.get(key);
-                    link.value += 1;
-                    link.researchers.push(rec);
-                });
-            });
-
-            const nodesArray = Array.from(nodesMap.values());
-            const nodeIndexMap = new Map();
-            nodesArray.forEach((node, idx) => {
-                nodeIndexMap.set(node.id, idx);
-            });
-
-            const linksArray = Array.from(linksMap.values()).map(l => ({
-                source: nodeIndexMap.get(l.source),
-                target: nodeIndexMap.get(l.target),
-                value: l.value,
-                researchers: l.researchers
-            }));
-
-            return {
-                nodes: nodesArray,
-                links: linksArray
-            };
-        }
-
-        function render() {
-            container.innerHTML = '';
-            const width = container.clientWidth || 960;
-            const height = 580;
-
-            const data = buildFilteredData();
-            if (!data.nodes.length || !data.links.length) {
-                container.innerHTML = '<div class="py-20 text-center text-xs text-slate-400">Nenhum dado de fluxo encontrado para o filtro selecionado.</div>';
-                return;
-            }
-
-            const svg = d3.select(container)
-                .append('svg')
-                .attr('width', width)
-                .attr('height', height)
-                .attr('viewBox', `0 0 ${width} ${height}`)
-                .attr('class', 'overflow-visible font-sans');
-
-            const sankey = d3.sankey()
-                .nodeWidth(18)
-                .nodePadding(14)
-                .extent([[10, 10], [width - 10, height - 10]])
-                .nodeAlign(d3.sankeyJustify);
-
-            const { nodes, links } = sankey({
-                nodes: data.nodes.map(d => Object.assign({}, d)),
-                links: data.links.map(d => Object.assign({}, d))
-            });
-
-            const defs = svg.append('defs');
-            links.forEach((link, i) => {
-                const gradientId = `sankey-grad-${i}`;
-                const grad = defs.append('linearGradient')
-                    .attr('id', gradientId)
-                    .attr('gradientUnits', 'userSpaceOnUse')
-                    .attr('x1', link.source.x1)
-                    .attr('x2', link.target.x0);
-
-                const c1 = categoryColors[link.source.category] || stageColors[link.source.stage] || '#6366f1';
-                const c2 = categoryColors[link.target.category] || stageColors[link.target.stage] || '#6366f1';
-
-                grad.append('stop').attr('offset', '0%').attr('stop-color', c1);
-                grad.append('stop').attr('offset', '100%').attr('stop-color', c2);
-            });
-
-            const linkElements = svg.append('g')
-                .attr('fill', 'none')
-                .selectAll('g')
-                .data(links)
-                .enter()
-                .append('path')
-                .attr('d', d3.sankeyLinkHorizontal())
-                .attr('stroke', (d, i) => {
-                    const mode = colorFilter ? colorFilter.value : 'source';
-                    if (mode === 'gradient') return `url(#sankey-grad-${i})`;
-                    if (mode === 'category') return categoryColors[d.source.category] || '#6366f1';
-                    return categoryColors[d.source.category] || stageColors[d.source.stage] || '#6366f1';
-                })
-                .attr('stroke-width', d => Math.max(1.5, d.width))
-                .attr('stroke-opacity', 0.4)
-                .attr('class', 'cursor-pointer transition-all duration-200 hover:stroke-opacity-80');
-
-            const nodeElements = svg.append('g')
-                .selectAll('g')
-                .data(nodes)
-                .enter()
-                .append('g')
-                .attr('class', 'cursor-pointer');
-
-            nodeElements.append('rect')
-                .attr('x', d => d.x0)
-                .attr('y', d => d.y0)
-                .attr('height', d => Math.max(3, d.y1 - d.y0))
-                .attr('width', d => d.x1 - d.x0)
-                .attr('rx', 4)
-                .attr('fill', d => categoryColors[d.category] || stageColors[d.stage] || '#3b82f6')
-                .attr('stroke', isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
-                .attr('stroke-width', 1)
-                .attr('class', 'transition-all duration-150 hover:brightness-110');
-
-            nodeElements.append('text')
-                .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
-                .attr('y', d => (d.y1 + d.y0) / 2)
-                .attr('dy', '0.35em')
-                .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
-                .attr('fill', isDark ? '#e2e8f0' : '#1e293b')
-                .attr('font-size', d => d.value > 15 ? '11px' : '10px')
-                .attr('font-weight', d => d.value > 15 ? 'bold' : '500')
-                .text(d => {
-                    const label = d.name.length > 22 ? d.name.slice(0, 20) + '…' : d.name;
-                    return `${label} (${d.value})`;
-                });
-
-            // Hover interactions
-            nodeElements.on('mouseenter', (event, d) => {
-                if (!tooltip) return;
-                const pct = ((d.value / totalFacultyCount) * 100).toFixed(1);
-                const stageNames = ['Graduação', 'Mestrado', 'Doutorado', 'Lotação no CECH'];
-                
-                tooltip.innerHTML = `
-                    <div class="font-extrabold text-sm text-white mb-1 flex items-center justify-between gap-2">
-                        <span>${d.name}</span>
-                        <span class="text-[10px] px-2 py-0.5 rounded bg-blue-500/30 text-blue-200 border border-blue-400/40">${stageNames[d.stage]}</span>
-                    </div>
-                    <div class="border-t border-slate-700/80 pt-2 text-slate-300 space-y-1">
-                        <div class="flex justify-between gap-4 font-mono">
-                            <span>Docentes no fluxo:</span>
-                            <strong class="text-emerald-400 font-bold">${d.value} (${pct}%)</strong>
-                        </div>
-                        <div class="flex justify-between gap-4 font-mono text-[11px] text-slate-400">
-                            <span>Categoria:</span>
-                            <span>${d.category}</span>
-                        </div>
-                    </div>
-                `;
-                tooltip.classList.remove('hidden');
-
-                linkElements.attr('stroke-opacity', l => (l.source === d || l.target === d) ? 0.85 : 0.08);
-            })
-            .on('mousemove', (event) => {
-                if (!tooltip) return;
-                const [mouseX, mouseY] = d3.pointer(event, container);
-                tooltip.style.left = `${Math.min(width - 240, mouseX + 16)}px`;
-                tooltip.style.top = `${Math.max(10, mouseY - 30)}px`;
-            })
-            .on('mouseleave', () => {
-                if (tooltip) tooltip.classList.add('hidden');
-                linkElements.attr('stroke-opacity', 0.4);
-            });
-
-            linkElements.on('mouseenter', (event, d) => {
-                if (!tooltip) return;
-                tooltip.innerHTML = `
-                    <div class="font-bold text-xs text-white mb-1">
-                        ${d.source.name} &rarr; ${d.target.name}
-                    </div>
-                    <div class="border-t border-slate-700/80 pt-1.5 font-mono text-emerald-400 text-xs">
-                        <strong>${d.value}</strong> docentes transitaram neste elo
-                    </div>
-                `;
-                tooltip.classList.remove('hidden');
-                d3.select(event.currentTarget).attr('stroke-opacity', 0.95).attr('stroke-width', Math.max(3, d.width + 1));
-            })
-            .on('mousemove', (event) => {
-                if (!tooltip) return;
-                const [mouseX, mouseY] = d3.pointer(event, container);
-                tooltip.style.left = `${Math.min(width - 240, mouseX + 16)}px`;
-                tooltip.style.top = `${Math.max(10, mouseY - 20)}px`;
-            })
-            .on('mouseleave', (event, d) => {
-                if (tooltip) tooltip.classList.add('hidden');
-                d3.select(event.currentTarget).attr('stroke-opacity', 0.4).attr('stroke-width', Math.max(1.5, d.width));
-            });
-        }
-
-        render();
-
-        if (deptFilter) deptFilter.addEventListener('change', render);
-        if (groupingFilter) groupingFilter.addEventListener('change', render);
-        if (colorFilter) colorFilter.addEventListener('change', render);
-        if (resetBtn) resetBtn.addEventListener('click', render);
-
-        if (window.ResizeObserver) {
             let timer;
             new ResizeObserver(() => {
                 clearTimeout(timer);
@@ -1215,385 +1067,411 @@
         });
 
     // ── Fig 4: Destino Institucional dos Docentes Egressos do CECH (Sankey) ──
-    (function initFig17ExitsChart() {
-        const container = document.getElementById('chartFig17');
-        const tooltip = document.getElementById('chartFig17Tooltip');
-        const viewBtns = document.querySelectorAll('.fig17-view-btn');
-        const deptFilter = document.getElementById('fig17DeptFilter');
-        const catFilter = document.getElementById('fig17CatFilter');
-        const resetBtn = document.getElementById('fig17ResetBtn');
+    try {
+        (function initFig17ExitsChart() {
+            const container = document.getElementById('chartFig17');
+            const tooltip = document.getElementById('chartFig17Tooltip');
+            const viewBtns = document.querySelectorAll('.fig17-view-btn');
+            const deptFilter = document.getElementById('fig17DeptFilter');
+            const catFilter = document.getElementById('fig17CatFilter');
+            const resetBtn = document.getElementById('fig17ResetBtn');
 
-        const kpiTotal = document.getElementById('fig17KpiTotal');
-        const kpiPublic = document.getElementById('fig17KpiPublic');
-        const kpiOutState = document.getElementById('fig17KpiOutState');
+            const kpiTotal = document.getElementById('fig17KpiTotal');
+            const kpiPublic = document.getElementById('fig17KpiPublic');
+            const kpiOutState = document.getElementById('fig17KpiOutState');
 
-        const tableSearch = document.getElementById('fig17TableSearch');
-        const tableCountBadge = document.getElementById('fig17TableCountBadge');
-        const tableRows = document.querySelectorAll('.fig17-table-row');
-        const rankingCards = document.querySelectorAll('.fig17-ranking-card');
+            const tableSearch = document.getElementById('fig17TableSearch');
+            const tableCountBadge = document.getElementById('fig17TableCountBadge');
+            const tableRows = document.querySelectorAll('.fig17-table-row');
+            const rankingCards = document.querySelectorAll('.fig17-ranking-card');
 
-        if (!container || typeof d3 === 'undefined' || typeof d3.sankey === 'undefined') return;
+            if (!container || typeof d3 === 'undefined' || typeof d3.sankey === 'undefined') return;
 
-        const rawData = {{ fig17Exits|json_encode|raw }};
-        const allRecords = rawData.records || [];
-        const initialTotalExits = {{ fig17Exits.summary.totalExits }};
+            const rawData = {{ fig17Exits|json_encode|raw }} || {};
+            const allRecords = rawData.records || [];
+            const initialTotalExits = {{ fig17Exits.summary.totalExits|default(0) }};
 
-        const colorsMap = {
-            'Letras (DL)': '#0284c7',
-            'Educação (DEn)': '#6366f1',
-            'Ciências Sociais (DCSo)': '#10b981',
-            'Filosofia (DFil)': '#f59e0b',
-            'Psicologia (DPsi)': '#ec4899',
-            'Ciência da Informação (DCI)': '#8b5cf6',
-            'Educação Física (DFis)': '#14b8a6',
-            'Metodologia de Ensino (DME)': '#f97316',
-            'Geografia (DGeo)': '#06b6d4',
-            'CECH': '#3b82f6',
+            const colorsMap = {
+                'Letras (DL)': '#0284c7',
+                'Educação (DEn)': '#6366f1',
+                'Ciências Sociais (DCSo)': '#10b981',
+                'Filosofia (DFil)': '#f59e0b',
+                'Psicologia (DPsi)': '#ec4899',
+                'Ciência da Informação (DCI)': '#8b5cf6',
+                'Educação Física (DFis)': '#14b8a6',
+                'Metodologia de Ensino (DME)': '#f97316',
+                'Geografia (DGeo)': '#06b6d4',
+                'CECH': '#3b82f6',
 
-            'Estadual Paulista': '#0ea5e9',
-            'Federal': '#10b981',
-            'Internacional': '#f59e0b',
-            'Órgão Público / Gestão': '#8b5cf6',
-            'Privada / Confessional': '#94a3b8',
-            'Outras': '#64748b',
+                'Estadual Paulista': '#0ea5e9',
+                'Federal': '#10b981',
+                'Internacional': '#f59e0b',
+                'Órgão Público / Gestão': '#8b5cf6',
+                'Privada / Confessional': '#94a3b8',
+                'Outras': '#64748b',
 
-            'USP': '#0284c7',
-            'UNESP': '#0ea5e9',
-            'UNICAMP': '#ec4899',
-            'UFSCar': '#10b981',
-            'UFABC': '#14b8a6',
-            'UNIFESP': '#8b5cf6',
-            'UFRJ': '#6366f1',
-            'UFMG': '#06b6d4',
-            'UNB': '#f97316'
-        };
+                'USP': '#0284c7',
+                'UNESP': '#0ea5e9',
+                'UNICAMP': '#ec4899',
+                'UFSCar': '#10b981',
+                'UFABC': '#14b8a6',
+                'UNIFESP': '#8b5cf6',
+                'UFRJ': '#6366f1',
+                'UFMG': '#06b6d4',
+                'UNB': '#f97316'
+            };
 
-        const stageColors = ['#0284c7', '#6366f1', '#10b981'];
+            const stageColors = ['#0284c7', '#6366f1', '#10b981'];
 
-        let currentFilteredRecords = [...allRecords];
+            let currentFilteredRecords = [...allRecords];
 
-        function updateKpis(records) {
-            const mapped = records.length;
-            const publicCount = records.filter(r => r.institutionCategory === 'Estadual Paulista' || r.institutionCategory === 'Federal').length;
-            const outStateCount = records.filter(r => r.institutionCategory === 'Internacional' || (r.state && r.state !== 'SP')).length;
+            function updateKpis(records) {
+                const mapped = records.length;
+                const publicCount = records.filter(r => r.institutionCategory === 'Estadual Paulista' || r.institutionCategory === 'Federal').length;
+                const outStateCount = records.filter(r => r.institutionCategory === 'Internacional' || (r.state && r.state !== 'SP')).length;
 
-            if (kpiTotal) {
-                kpiTotal.innerHTML = `${mapped} <span class="text-xs font-normal text-slate-400">/ ${initialTotalExits}</span>`;
-            }
-            if (kpiPublic) {
-                const pct = mapped > 0 ? Math.round((publicCount / mapped) * 100) : 0;
-                kpiPublic.textContent = `${pct}%`;
-            }
-            if (kpiOutState) {
-                const pct = mapped > 0 ? Math.round((outStateCount / mapped) * 100) : 0;
-                kpiOutState.innerHTML = `${outStateCount} <span class="text-xs font-normal">(${pct}%)</span>`;
-            }
-        }
-
-        function filterRanking(records) {
-            const countsByInst = {};
-            records.forEach(r => {
-                const inst = r.destinationInstitution || 'Outras';
-                countsByInst[inst] = (countsByInst[inst] || 0) + 1;
-            });
-
-            rankingCards.forEach(card => {
-                const inst = card.dataset.inst;
-                const count = countsByInst[inst] || 0;
-                if (count > 0) {
-                    card.style.display = '';
-                } else {
-                    card.style.display = 'none';
+                if (kpiTotal) {
+                    kpiTotal.innerHTML = `${mapped} <span class="text-xs font-normal text-slate-400">/ ${initialTotalExits}</span>`;
                 }
-            });
-        }
-
-        function renderSankey() {
-            container.innerHTML = '';
-            const width = container.clientWidth || 960;
-            const height = 580;
-
-            const records = currentFilteredRecords;
-            if (!records.length) {
-                container.innerHTML = '<div class="py-20 text-center text-xs text-slate-400">Nenhum registro encontrado para os filtros selecionados.</div>';
-                return;
+                if (kpiPublic) {
+                    const pct = mapped > 0 ? Math.round((publicCount / mapped) * 100) : 0;
+                    kpiPublic.textContent = `${pct}%`;
+                }
+                if (kpiOutState) {
+                    const pct = mapped > 0 ? Math.round((outStateCount / mapped) * 100) : 0;
+                    kpiOutState.innerHTML = `${outStateCount} <span class="text-xs font-normal">(${pct}%)</span>`;
+                }
             }
 
-            const nodesMap = new Map();
-            const linksMap = new Map();
+            function filterRanking(records) {
+                const countsByInst = {};
+                records.forEach(r => {
+                    const inst = r.destinationInstitution || 'Outras';
+                    countsByInst[inst] = (countsByInst[inst] || 0) + 1;
+                });
 
-            function getStageNode(rec, stage) {
-                let name = '';
-                let cat = '';
+                rankingCards.forEach(card => {
+                    const inst = card.dataset.inst;
+                    const count = countsByInst[inst] || 0;
+                    if (count > 0) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
 
-                if (stage === 0) {
-                    name = rec.department || 'CECH';
-                    cat = name;
-                } else if (stage === 1) {
-                    name = rec.institutionCategory || 'Outras';
-                    cat = name;
-                } else if (stage === 2) {
-                    name = rec.destinationInstitution || 'Outras';
-                    cat = rec.institutionCategory || 'Outras';
+            function renderSankey() {
+                container.innerHTML = '';
+                const width = container.clientWidth || 960;
+                const height = 580;
+
+                const records = currentFilteredRecords;
+                if (!records.length) {
+                    container.innerHTML = '<div class="py-20 text-center text-xs text-slate-400">Nenhum registro encontrado para os filtros selecionados.</div>';
+                    return;
                 }
 
-                const id = `${stage}_${name}`;
-                return { id, name, stage, category: cat };
-            }
+                const nodesMap = new Map();
+                const linksMap = new Map();
 
-            records.forEach(rec => {
-                const n0 = getStageNode(rec, 0);
-                const n1 = getStageNode(rec, 1);
-                const n2 = getStageNode(rec, 2);
+                function getStageNode(rec, stage) {
+                    let name = '';
+                    let cat = '';
 
-                [n0, n1, n2].forEach(n => {
-                    if (!nodesMap.has(n.id)) {
-                        nodesMap.set(n.id, {
-                            id: n.id,
-                            name: n.name,
-                            stage: n.stage,
-                            category: n.category,
-                            researchers: []
-                        });
+                    if (stage === 0) {
+                        name = rec.department || 'CECH';
+                        cat = name;
+                    } else if (stage === 1) {
+                        name = rec.institutionCategory || 'Outras';
+                        cat = name;
+                    } else if (stage === 2) {
+                        name = rec.destinationInstitution || 'Outras';
+                        cat = rec.institutionCategory || 'Outras';
                     }
-                    nodesMap.get(n.id).researchers.push(rec);
+
+                    const id = `${stage}_${name}`;
+                    return { id, name, stage, category: cat };
+                }
+
+                records.forEach(rec => {
+                    const n0 = getStageNode(rec, 0);
+                    const n1 = getStageNode(rec, 1);
+                    const n2 = getStageNode(rec, 2);
+
+                    [n0, n1, n2].forEach(n => {
+                        if (!nodesMap.has(n.id)) {
+                            nodesMap.set(n.id, {
+                                id: n.id,
+                                name: n.name,
+                                stage: n.stage,
+                                category: n.category,
+                                researchers: []
+                            });
+                        }
+                        nodesMap.get(n.id).researchers.push(rec);
+                    });
+
+                    const linkPairs = [[n0.id, n1.id], [n1.id, n2.id]];
+                    linkPairs.forEach(([source, target]) => {
+                        const key = `${source}-->${target}`;
+                        if (!linksMap.has(key)) {
+                            linksMap.set(key, { source, target, value: 0, researchers: [] });
+                        }
+                        const link = linksMap.get(key);
+                        link.value += 1;
+                        link.researchers.push(rec);
+                    });
                 });
 
-                const linkPairs = [[n0.id, n1.id], [n1.id, n2.id]];
-                linkPairs.forEach(([source, target]) => {
-                    const key = `${source}-->${target}`;
-                    if (!linksMap.has(key)) {
-                        linksMap.set(key, { source, target, value: 0, researchers: [] });
-                    }
-                    const link = linksMap.get(key);
-                    link.value += 1;
-                    link.researchers.push(rec);
-                });
-            });
-
-            const nodesArray = Array.from(nodesMap.values());
-            const nodeIndexMap = new Map();
-            nodesArray.forEach((node, idx) => {
-                nodeIndexMap.set(node.id, idx);
-            });
-
-            const linksArray = Array.from(linksMap.values()).map(l => ({
-                source: nodeIndexMap.get(l.source),
-                target: nodeIndexMap.get(l.target),
-                value: l.value,
-                researchers: l.researchers
-            }));
-
-            const svg = d3.select(container)
-                .append('svg')
-                .attr('width', width)
-                .attr('height', height)
-                .attr('viewBox', `0 0 ${width} ${height}`)
-                .attr('class', 'overflow-visible font-sans');
-
-            const sankey = d3.sankey()
-                .nodeWidth(18)
-                .nodePadding(14)
-                .extent([[10, 10], [width - 10, height - 10]])
-                .nodeAlign(d3.sankeyJustify);
-
-            const { nodes, links } = sankey({
-                nodes: nodesArray.map(d => Object.assign({}, d)),
-                links: linksArray.map(d => Object.assign({}, d))
-            });
-
-            const defs = svg.append('defs');
-            links.forEach((link, i) => {
-                const gradId = `fig17-grad-${i}`;
-                const grad = defs.append('linearGradient')
-                    .attr('id', gradId)
-                    .attr('gradientUnits', 'userSpaceOnUse')
-                    .attr('x1', link.source.x1)
-                    .attr('x2', link.target.x0);
-
-                const c1 = colorsMap[link.source.name] || stageColors[link.source.stage] || '#6366f1';
-                const c2 = colorsMap[link.target.name] || stageColors[link.target.stage] || '#10b981';
-
-                grad.append('stop').attr('offset', '0%').attr('stop-color', c1);
-                grad.append('stop').attr('offset', '100%').attr('stop-color', c2);
-            });
-
-            const linkElements = svg.append('g')
-                .attr('fill', 'none')
-                .selectAll('g')
-                .data(links)
-                .enter()
-                .append('path')
-                .attr('d', d3.sankeyLinkHorizontal())
-                .attr('stroke', (d, i) => `url(#fig17-grad-${i})`)
-                .attr('stroke-width', d => Math.max(1.5, d.width))
-                .attr('stroke-opacity', 0.45)
-                .attr('class', 'cursor-pointer transition-all duration-150 hover:stroke-opacity-85');
-
-            const nodeElements = svg.append('g')
-                .selectAll('g')
-                .data(nodes)
-                .enter()
-                .append('g')
-                .attr('class', 'cursor-pointer');
-
-            nodeElements.append('rect')
-                .attr('x', d => d.x0)
-                .attr('y', d => d.y0)
-                .attr('height', d => Math.max(3, d.y1 - d.y0))
-                .attr('width', d => d.x1 - d.x0)
-                .attr('rx', 4)
-                .attr('fill', d => colorsMap[d.name] || stageColors[d.stage] || '#3b82f6')
-                .attr('stroke', isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
-                .attr('stroke-width', 1)
-                .attr('class', 'transition-all duration-150 hover:brightness-110');
-
-            nodeElements.append('text')
-                .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
-                .attr('y', d => (d.y1 + d.y0) / 2)
-                .attr('dy', '0.35em')
-                .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
-                .attr('fill', isDark ? '#e2e8f0' : '#1e293b')
-                .attr('font-size', d => d.value > 10 ? '11px' : '10px')
-                .attr('font-weight', d => d.value > 10 ? 'bold' : '500')
-                .text(d => {
-                    const label = d.name.length > 24 ? d.name.slice(0, 22) + '…' : d.name;
-                    return `${label} (${d.value})`;
+                const nodesArray = Array.from(nodesMap.values());
+                const nodeIndexMap = new Map();
+                nodesArray.forEach((node, idx) => {
+                    nodeIndexMap.set(node.id, idx);
                 });
 
-            nodeElements.on('mouseenter', (event, d) => {
-                if (!tooltip) return;
-                const totalM = records.length;
-                const pct = totalM > 0 ? Math.round((d.value / totalM) * 100) : 0;
-                const stageLabels = ['Origem no CECH', 'Esfera Institucional', 'Instituição de Destino'];
+                const linksArray = Array.from(linksMap.values()).map(l => ({
+                    source: nodeIndexMap.get(l.source),
+                    target: nodeIndexMap.get(l.target),
+                    value: l.value,
+                    researchers: l.researchers
+                }));
 
-                tooltip.innerHTML = `
-                    <div class="font-bold text-sm text-white mb-1 flex items-center justify-between gap-2">
-                        <span>${d.name}</span>
-                        <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/40">${stageLabels[d.stage]}</span>
-                    </div>
-                    <div class="border-t border-slate-700/80 pt-2 text-slate-300 space-y-1 font-mono text-xs">
-                        <div class="flex justify-between gap-4">
-                            <span>Pesquisadores:</span>
-                            <strong class="text-emerald-400 font-bold">${d.value} (${pct}%)</strong>
+                const svg = d3.select(container)
+                    .append('svg')
+                    .attr('width', width)
+                    .attr('height', height)
+                    .attr('viewBox', `0 0 ${width} ${height}`)
+                    .attr('class', 'overflow-visible font-sans');
+
+                const sankey = d3.sankey()
+                    .nodeWidth(18)
+                    .nodePadding(14)
+                    .extent([[10, 10], [width - 10, height - 10]])
+                    .nodeAlign(d3.sankeyJustify);
+
+                const { nodes, links } = sankey({
+                    nodes: nodesArray.map(d => Object.assign({}, d)),
+                    links: linksArray.map(d => Object.assign({}, d))
+                });
+
+                const defs = svg.append('defs');
+                links.forEach((link, i) => {
+                    const gradId = `fig17-grad-${i}`;
+                    const grad = defs.append('linearGradient')
+                        .attr('id', gradId)
+                        .attr('gradientUnits', 'userSpaceOnUse')
+                        .attr('x1', link.source.x1)
+                        .attr('x2', link.target.x0);
+
+                    const c1 = colorsMap[link.source.name] || stageColors[link.source.stage] || '#6366f1';
+                    const c2 = colorsMap[link.target.name] || stageColors[link.target.stage] || '#10b981';
+
+                    grad.append('stop').attr('offset', '0%').attr('stop-color', c1);
+                    grad.append('stop').attr('offset', '100%').attr('stop-color', c2);
+                });
+
+                const linkElements = svg.append('g')
+                    .attr('fill', 'none')
+                    .selectAll('g')
+                    .data(links)
+                    .enter()
+                    .append('path')
+                    .attr('d', d3.sankeyLinkHorizontal())
+                    .attr('stroke', (d, i) => `url(#fig17-grad-${i})`)
+                    .attr('stroke-width', d => Math.max(1.5, d.width))
+                    .attr('stroke-opacity', 0.45)
+                    .attr('class', 'cursor-pointer transition-all duration-150 hover:stroke-opacity-85');
+
+                const nodeElements = svg.append('g')
+                    .selectAll('g')
+                    .data(nodes)
+                    .enter()
+                    .append('g')
+                    .attr('class', 'cursor-pointer');
+
+                nodeElements.append('rect')
+                    .attr('x', d => d.x0)
+                    .attr('y', d => d.y0)
+                    .attr('height', d => Math.max(3, d.y1 - d.y0))
+                    .attr('width', d => d.x1 - d.x0)
+                    .attr('rx', 4)
+                    .attr('fill', d => colorsMap[d.name] || stageColors[d.stage] || '#3b82f6')
+                    .attr('stroke', isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)')
+                    .attr('stroke-width', 1)
+                    .attr('class', 'transition-all duration-150 hover:brightness-110');
+
+                nodeElements.append('text')
+                    .attr('x', d => d.x0 < width / 2 ? d.x1 + 6 : d.x0 - 6)
+                    .attr('y', d => (d.y1 + d.y0) / 2)
+                    .attr('dy', '0.35em')
+                    .attr('text-anchor', d => d.x0 < width / 2 ? 'start' : 'end')
+                    .attr('fill', isDark ? '#e2e8f0' : '#1e293b')
+                    .attr('font-size', d => d.value > 10 ? '11px' : '10px')
+                    .attr('font-weight', d => d.value > 10 ? 'bold' : '500')
+                    .text(d => {
+                        const nameStr = String(d.name || '');
+                        const label = nameStr.length > 24 ? nameStr.slice(0, 22) + '…' : nameStr;
+                        return `${label} (${d.value})`;
+                    });
+
+                nodeElements.on('mouseenter', (event, d) => {
+                    if (!tooltip) return;
+                    const totalM = records.length;
+                    const pct = totalM > 0 ? Math.round((d.value / totalM) * 100) : 0;
+                    const stageLabels = ['Origem no CECH', 'Esfera Institucional', 'Instituição de Destino'];
+
+                    tooltip.innerHTML = `
+                        <div class="font-bold text-sm text-white mb-1 flex items-center justify-between gap-2">
+                            <span>${d.name}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-200 border border-indigo-400/40">${stageLabels[d.stage]}</span>
                         </div>
-                    </div>
-                `;
-                tooltip.classList.remove('hidden');
-                linkElements.attr('stroke-opacity', l => (l.source === d || l.target === d) ? 0.85 : 0.08);
-            })
-            .on('mousemove', (event) => {
-                if (!tooltip) return;
-                const [mouseX, mouseY] = d3.pointer(event, container);
-                tooltip.style.left = `${Math.min(width - 240, mouseX + 16)}px`;
-                tooltip.style.top = `${Math.max(10, mouseY - 30)}px`;
-            })
-            .on('mouseleave', () => {
-                if (tooltip) tooltip.classList.add('hidden');
-                linkElements.attr('stroke-opacity', 0.45);
-            });
-        }
-
-        function applyFilters() {
-            const selDept = deptFilter ? deptFilter.value : 'all';
-            const selCat = catFilter ? catFilter.value : 'all';
-
-            currentFilteredRecords = allRecords.filter(r => {
-                const matchDept = selDept === 'all' || r.department === selDept;
-                const matchCat = selCat === 'all' || r.institutionCategory === selCat;
-                return matchDept && matchCat;
-            });
-
-            updateKpis(currentFilteredRecords);
-            filterRanking(currentFilteredRecords);
-            filterTable();
-            renderSankey();
-        }
-
-        // View Mode Switcher
-        viewBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                viewBtns.forEach(b => {
-                    b.classList.remove('bg-white', 'dark:bg-slate-800', 'text-indigo-600', 'dark:text-indigo-400', 'shadow-xs');
-                    b.classList.add('text-slate-600', 'dark:text-slate-400');
+                        <div class="border-t border-slate-700/80 pt-2 text-slate-300 space-y-1 font-mono text-xs">
+                            <div class="flex justify-between gap-4">
+                                <span>Pesquisadores:</span>
+                                <strong class="text-emerald-400 font-bold">${d.value} (${pct}%)</strong>
+                            </div>
+                        </div>
+                    `;
+                    tooltip.classList.remove('hidden');
+                    linkElements.attr('stroke-opacity', l => (l.source === d || l.target === d) ? 0.85 : 0.08);
+                })
+                .on('mousemove', (event) => {
+                    if (!tooltip) return;
+                    const [mouseX, mouseY] = d3.pointer(event, container);
+                    tooltip.style.left = `${Math.min(width - 240, mouseX + 16)}px`;
+                    tooltip.style.top = `${Math.max(10, mouseY - 20)}px`;
+                })
+                .on('mouseleave', () => {
+                    if (tooltip) tooltip.classList.add('hidden');
+                    linkElements.attr('stroke-opacity', 0.45);
                 });
-                btn.classList.add('bg-white', 'dark:bg-slate-800', 'text-indigo-600', 'dark:text-indigo-400', 'shadow-xs');
-                btn.classList.remove('text-slate-600', 'dark:text-slate-400');
 
-                const view = btn.dataset.view;
-                const containers = document.querySelectorAll('.fig17-view-container');
-                containers.forEach(c => c.classList.add('hidden'));
-
-                if (view === 'sankey') {
-                    const c = document.getElementById('fig17ViewSankeyContainer');
-                    if (c) c.classList.remove('hidden');
-                    renderSankey();
-                } else if (view === 'ranking') {
-                    const c = document.getElementById('fig17ViewRankingContainer');
-                    if (c) c.classList.remove('hidden');
-                } else if (view === 'table') {
-                    const c = document.getElementById('fig17ViewTableContainer');
-                    if (c) c.classList.remove('hidden');
-                }
-            });
-        });
-
-        if (deptFilter) deptFilter.addEventListener('change', applyFilters);
-        if (catFilter) catFilter.addEventListener('change', applyFilters);
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                if (deptFilter) deptFilter.value = 'all';
-                if (catFilter) catFilter.value = 'all';
-                if (tableSearch) tableSearch.value = '';
-                applyFilters();
-            });
-        }
-
-        function filterTable() {
-            const query = tableSearch ? tableSearch.value.trim().toLowerCase() : '';
-            const selectedDept = deptFilter ? deptFilter.value.toLowerCase() : 'all';
-            const selectedCat = catFilter ? catFilter.value.toLowerCase() : 'all';
-
-            let visibleCount = 0;
-
-            tableRows.forEach(row => {
-                const name = row.dataset.name || '';
-                const dept = row.dataset.dept || '';
-                const inst = row.dataset.inst || '';
-                const cat = row.dataset.cat || '';
-                const role = row.dataset.role || '';
-
-                const matchQuery = query === '' || name.includes(query) || dept.includes(query) || inst.includes(query) || cat.includes(query) || role.includes(query);
-                const matchDept = selectedDept === 'all' || dept === selectedDept;
-                const matchCat = selectedCat === 'all' || cat === selectedCat;
-
-                if (matchQuery && matchDept && matchCat) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
-            });
-
-            if (tableCountBadge) {
-                tableCountBadge.textContent = `Exibindo ${visibleCount} de ${allRecords.length} pesquisadores`;
+                linkElements.on('mouseenter', (event, d) => {
+                    if (!tooltip) return;
+                    tooltip.innerHTML = `
+                        <div class="font-bold text-xs text-white mb-1">
+                            ${d.source.name} &rarr; ${d.target.name}
+                        </div>
+                        <div class="border-t border-slate-700/80 pt-1 text-emerald-400 font-mono text-xs">
+                            ${d.value} ${d.value === 1 ? 'docente egresso' : 'docentes egressos'}
+                        </div>
+                    `;
+                    tooltip.classList.remove('hidden');
+                    d3.select(event.currentTarget).attr('stroke-opacity', 0.95).attr('stroke-width', Math.max(3, d.width + 1));
+                })
+                .on('mousemove', (event) => {
+                    if (!tooltip) return;
+                    const [mouseX, mouseY] = d3.pointer(event, container);
+                    tooltip.style.left = `${Math.min(width - 240, mouseX + 16)}px`;
+                    tooltip.style.top = `${Math.max(10, mouseY - 20)}px`;
+                })
+                .on('mouseleave', (event, d) => {
+                    if (tooltip) tooltip.classList.add('hidden');
+                    d3.select(event.currentTarget).attr('stroke-opacity', 0.45).attr('stroke-width', Math.max(1.5, d.width));
+                });
             }
-        }
 
-        if (tableSearch) {
-            tableSearch.addEventListener('input', filterTable);
-        }
+            function applyFilters() {
+                const selDept = deptFilter ? deptFilter.value : 'all';
+                const selCat = catFilter ? catFilter.value : 'all';
 
-        renderSankey();
+                currentFilteredRecords = allRecords.filter(r => {
+                    const matchDept = selDept === 'all' || r.department === selDept;
+                    const matchCat = selCat === 'all' || r.institutionCategory === selCat;
+                    return matchDept && matchCat;
+                });
 
-        if (window.ResizeObserver) {
-            let resizeTimer;
-            new ResizeObserver(() => {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(renderSankey, 150);
-            }).observe(container);
-        }
-    })();
+                updateKpis(currentFilteredRecords);
+                filterRanking(currentFilteredRecords);
+                renderSankey();
+            }
+
+            if (deptFilter) deptFilter.addEventListener('change', applyFilters);
+            if (catFilter) catFilter.addEventListener('change', applyFilters);
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => {
+                    if (deptFilter) deptFilter.value = 'all';
+                    if (catFilter) catFilter.value = 'all';
+                    applyFilters();
+                });
+            }
+
+            viewBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    viewBtns.forEach(b => {
+                        b.classList.remove('bg-white', 'dark:bg-slate-800', 'text-indigo-600', 'dark:text-indigo-400', 'shadow-xs');
+                        b.classList.add('text-slate-600', 'dark:text-slate-400');
+                    });
+                    btn.classList.add('bg-white', 'dark:bg-slate-800', 'text-indigo-600', 'dark:text-indigo-400', 'shadow-xs');
+                    btn.classList.remove('text-slate-600', 'dark:text-slate-400');
+
+                    const target = btn.dataset.view;
+                    const sankeyView = document.getElementById('fig17ViewSankeyContainer');
+                    const rankingView = document.getElementById('fig17ViewRankingContainer');
+                    const tableView = document.getElementById('fig17ViewTableContainer');
+
+                    if (sankeyView) sankeyView.classList.add('hidden');
+                    if (rankingView) rankingView.classList.add('hidden');
+                    if (tableView) tableView.classList.add('hidden');
+
+                    if (target === 'sankey' && sankeyView) {
+                        sankeyView.classList.remove('hidden');
+                        renderSankey();
+                    } else if (target === 'ranking' && rankingView) {
+                        rankingView.classList.remove('hidden');
+                    } else if (target === 'table' && tableView) {
+                        tableView.classList.remove('hidden');
+                    }
+                });
+            });
+
+            function filterTable() {
+                const query = tableSearch ? tableSearch.value.trim().toLowerCase() : '';
+                const selectedDept = deptFilter ? deptFilter.value : 'all';
+                const selectedCat = catFilter ? catFilter.value : 'all';
+                let visibleCount = 0;
+
+                tableRows.forEach(row => {
+                    const name = row.dataset.name || '';
+                    const dept = row.dataset.dept || '';
+                    const inst = row.dataset.inst || '';
+                    const cat = row.dataset.cat || '';
+                    const role = row.dataset.role || '';
+
+                    const matchQuery = query === '' || name.includes(query) || dept.includes(query) || inst.includes(query) || cat.includes(query) || role.includes(query);
+                    const matchDept = selectedDept === 'all' || dept === selectedDept;
+                    const matchCat = selectedCat === 'all' || cat === selectedCat;
+
+                    if (matchQuery && matchDept && matchCat) {
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                if (tableCountBadge) {
+                    tableCountBadge.textContent = `Exibindo ${visibleCount} de ${allRecords.length} pesquisadores`;
+                }
+            }
+
+            if (tableSearch) {
+                tableSearch.addEventListener('input', filterTable);
+            }
+
+            renderSankey();
+
+            if (window.ResizeObserver) {
+                let resizeTimer;
+                new ResizeObserver(() => {
+                    clearTimeout(resizeTimer);
+                    resizeTimer = setTimeout(renderSankey, 150);
+                }).observe(container);
+            }
+        })();
+    } catch (eFig4) {
+        console.error('Erro ao renderizar Figura 4:', eFig4);
     }
 
     window.initTabFaculty = initTabFaculty;

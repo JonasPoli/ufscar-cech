@@ -422,8 +422,11 @@ class StatisticsService
             }
             $itemsByArea[$area][] = [
                 'area' => $area,
+                'majorArea' => $area,
                 'formacao' => $name,
+                'courseName' => $name,
                 'quantidade' => $total,
+                'total' => $total,
             ];
         }
 
