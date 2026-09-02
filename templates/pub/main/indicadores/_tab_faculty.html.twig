@@ -564,13 +564,19 @@
         const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
         const palette = ['#0284c7', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#64748b', '#84cc16', '#a855f7'];
 
-    // ── Fig 1: Vínculos Departamentais ──
-    const fig1Data = {{ fig1Dept|json_encode|raw }};
-    const fig1DeptColors = ['#0284c7', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#e11d48', '#64748b'];
+        function createSafeChart(elId, config) {
+            const el = document.getElementById(elId);
+            if (!el) return null;
+            const existing = Chart.getChart(el);
+            if (existing) existing.destroy();
+            return new Chart(el, config);
+        }
 
-    const elFig1 = document.getElementById('chartFig1');
-    if (elFig1) {
-        new Chart(elFig1, {
+        // ── Fig 1: Vínculos Departamentais ──
+        const fig1Data = {{ fig1Dept|json_encode|raw }};
+        const fig1DeptColors = ['#0284c7', '#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#e11d48', '#64748b'];
+
+        createSafeChart('chartFig1', {
             type: 'bar',
             data: {
                 labels: fig1Data.map(d => d.deptCode),
@@ -603,7 +609,6 @@
                 }
             }
         });
-    }
 
     // ── Fig 2: Formação de Graduação do Corpo Docente ──
     (function initFig2ObservableChart() {
@@ -1117,11 +1122,9 @@
         }
     })();
 
-    // ── Fig 5: Formação Doutorado ──
-    const fig3Data = {{ fig3Doc|json_encode|raw }};
-    const elFig3 = document.getElementById('chartFig3');
-    if (elFig3) {
-        new Chart(elFig3, {
+        // ── Fig 5: Formação Doutorado ──
+        const fig3Data = {{ fig3Doc|json_encode|raw }};
+        createSafeChart('chartFig3', {
             type: 'polarArea',
             data: {
                 labels: fig3Data.map(d => d.courseName),
@@ -1141,13 +1144,10 @@
                 }
             }
         });
-    }
 
-    // ── Fig 6: Áreas CNPq ──
-    const fig4Data = {{ fig4Cnpq|json_encode|raw }};
-    const elFig4 = document.getElementById('chartFig4');
-    if (elFig4) {
-        new Chart(elFig4, {
+        // ── Fig 6: Áreas CNPq ──
+        const fig4Data = {{ fig4Cnpq|json_encode|raw }};
+        createSafeChart('chartFig4', {
             type: 'bar',
             data: {
                 labels: fig4Data.map(d => d.areaName),
@@ -1169,13 +1169,10 @@
                 }
             }
         });
-    }
 
-    // ── Fig 7: Origem Geográfica ──
-    const fig6Data = {{ fig6Geo|json_encode|raw }};
-    const elFig6 = document.getElementById('chartFig6');
-    if (elFig6) {
-        new Chart(elFig6, {
+        // ── Fig 7: Origem Geográfica ──
+        const fig6Data = {{ fig6Geo|json_encode|raw }};
+        createSafeChart('chartFig6', {
             type: 'bar',
             data: {
                 labels: fig6Data.map(d => d.uf),
@@ -1196,13 +1193,10 @@
                 }
             }
         });
-    }
 
-    // ── Fig 8: Inserção Profissional ──
-    const fig8Data = {{ fig8Experiences|json_encode|raw }};
-    const elFig8 = document.getElementById('chartFig8');
-    if (elFig8) {
-        new Chart(elFig8, {
+        // ── Fig 8: Inserção Profissional ──
+        const fig8Data = {{ fig8Experiences|json_encode|raw }};
+        createSafeChart('chartFig8', {
             type: 'doughnut',
             data: {
                 labels: fig8Data.map(d => d.contractType),
@@ -1219,7 +1213,6 @@
                 }
             }
         });
-    }
 
     // ── Fig 4: Destino Institucional dos Docentes Egressos do CECH (Sankey) ──
     (function initFig17ExitsChart() {
@@ -1602,6 +1595,8 @@
         }
     })();
     }
+
+    window.initTabFaculty = initTabFaculty;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initTabFaculty);

@@ -341,11 +341,17 @@
         const textColor = isDark ? '#cbd5e1' : '#475569';
         const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
 
+        function createSafeChart(elId, config) {
+            const el = document.getElementById(elId);
+            if (!el) return null;
+            const existing = Chart.getChart(el);
+            if (existing) existing.destroy();
+            return new Chart(el, config);
+        }
+
         // ── Fig 13: Qualis vs Sem Qualis (Área) ──
         const fig11Data = {{ fig11QualisTimeline|json_encode|raw }};
-        const elFig11 = document.getElementById('chartFig11');
-    if (elFig11) {
-        new Chart(elFig11, {
+        createSafeChart('chartFig11', {
             type: 'line',
             data: {
                 labels: fig11Data.years,
@@ -383,31 +389,28 @@
                 }
             }
         });
-    }
 
-    // ── Fig 14: Estratos Qualis A1..C (Stacked Bar) ──
-    const fig12Data = {{ fig12QualisStrata|json_encode|raw }};
-    const qualisColors = {
-        'A1': '#065f46',
-        'A2': '#059669',
-        'A3': '#10b981',
-        'A4': '#34d399',
-        'B1': '#0284c7',
-        'B2': '#38bdf8',
-        'B3': '#f59e0b',
-        'B4': '#fb923c',
-        'C':  '#94a3b8'
-    };
-    const fig12Datasets = fig12Data.strata.map(st => ({
-        label: st + ' (' + (fig12Data.strataTotals[st] || 0) + ')',
-        data: Object.values(fig12Data.series[st]),
-        backgroundColor: qualisColors[st] || '#64748b',
-        borderRadius: 2
-    }));
+        // ── Fig 14: Estratos Qualis A1..C (Stacked Bar) ──
+        const fig12Data = {{ fig12QualisStrata|json_encode|raw }};
+        const qualisColors = {
+            'A1': '#065f46',
+            'A2': '#059669',
+            'A3': '#10b981',
+            'A4': '#34d399',
+            'B1': '#0284c7',
+            'B2': '#38bdf8',
+            'B3': '#f59e0b',
+            'B4': '#fb923c',
+            'C':  '#94a3b8'
+        };
+        const fig12Datasets = fig12Data.strata.map(st => ({
+            label: st + ' (' + (fig12Data.strataTotals[st] || 0) + ')',
+            data: Object.values(fig12Data.series[st]),
+            backgroundColor: qualisColors[st] || '#64748b',
+            borderRadius: 2
+        }));
 
-    const elFig12 = document.getElementById('chartFig12');
-    if (elFig12) {
-        new Chart(elFig12, {
+        createSafeChart('chartFig12', {
             type: 'bar',
             data: {
                 labels: fig12Data.years,
@@ -425,89 +428,86 @@
                 }
             }
         });
-    }
 
-    // ── Fig 15: Produção por Base de Indexação Científica (Horizontal Bar) ──
-    const figAcademicDatabasesData = {{ figAcademicDatabases|json_encode|raw }};
-    const elFigDB = document.getElementById('chartFigAcademicDatabases');
-    if (elFigDB && figAcademicDatabasesData.ranking) {
-        new Chart(elFigDB, {
-            type: 'bar',
-            data: {
-                labels: figAcademicDatabasesData.ranking.map(d => d.name),
-                datasets: [{
-                    label: 'Artigos Indexados',
-                    data: figAcademicDatabasesData.ranking.map(d => d.total),
-                    backgroundColor: figAcademicDatabasesData.ranking.map(d => d.color),
-                    borderRadius: 6,
-                    borderWidth: 1,
-                    borderColor: figAcademicDatabasesData.ranking.map(d => d.color)
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const item = figAcademicDatabasesData.ranking[context.dataIndex];
-                                return ` ${item.total.toLocaleString('pt-BR')} artigos (${item.indexedPercentage}% dos indexados / ${item.percentage}% do total)`;
+        // ── Fig 15: Produção por Base de Indexação Científica (Horizontal Bar) ──
+        const figAcademicDatabasesData = {{ figAcademicDatabases|json_encode|raw }};
+        if (figAcademicDatabasesData && figAcademicDatabasesData.ranking) {
+            createSafeChart('chartFigAcademicDatabases', {
+                type: 'bar',
+                data: {
+                    labels: figAcademicDatabasesData.ranking.map(d => d.name),
+                    datasets: [{
+                        label: 'Artigos Indexados',
+                        data: figAcademicDatabasesData.ranking.map(d => d.total),
+                        backgroundColor: figAcademicDatabasesData.ranking.map(d => d.color),
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: figAcademicDatabasesData.ranking.map(d => d.color)
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const item = figAcademicDatabasesData.ranking[context.dataIndex];
+                                    return ` ${item.total.toLocaleString('pt-BR')} artigos (${item.indexedPercentage}% dos indexados / ${item.percentage}% do total)`;
+                                }
                             }
                         }
-                    }
-                },
-                scales: {
-                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
-                    y: { grid: { display: false }, ticks: { color: textColor, font: { size: 11, weight: 'bold' } } }
-                }
-            }
-        });
-    }
-
-    // ── Fig 16: Evolução Temporal das Bases Indexadoras (Multi-Line Chart) ──
-    const elFigDBTimeline = document.getElementById('chartFigAcademicDatabasesTimeline');
-    if (elFigDBTimeline && figAcademicDatabasesData.timelineSeries) {
-        const dbTimelineDatasets = figAcademicDatabasesData.timelineSeries.map(s => ({
-            label: s.name,
-            data: s.data,
-            borderColor: s.color,
-            backgroundColor: s.color + '20',
-            tension: 0.35,
-            borderWidth: 2.5,
-            fill: false,
-            pointRadius: 3,
-            pointHoverRadius: 6
-        }));
-
-        new Chart(elFigDBTimeline, {
-            type: 'line',
-            data: {
-                labels: figAcademicDatabasesData.years,
-                datasets: dbTimelineDatasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: { color: textColor, font: { size: 10, weight: 'bold' }, boxWidth: 12 }
                     },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false
+                    scales: {
+                        x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                        y: { grid: { display: false }, ticks: { color: textColor, font: { size: 11, weight: 'bold' } } }
                     }
-                },
-                scales: {
-                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
-                    y: { grid: { color: gridColor }, ticks: { color: textColor } }
                 }
-            }
-        });
-    }
+            });
+        }
+
+        // ── Fig 16: Evolução Temporal das Bases Indexadoras (Multi-Line Chart) ──
+        if (figAcademicDatabasesData && figAcademicDatabasesData.timelineSeries) {
+            const dbTimelineDatasets = figAcademicDatabasesData.timelineSeries.map(s => ({
+                label: s.name,
+                data: s.data,
+                borderColor: s.color,
+                backgroundColor: s.color + '20',
+                tension: 0.35,
+                borderWidth: 2.5,
+                fill: false,
+                pointRadius: 3,
+                pointHoverRadius: 6
+            }));
+
+            createSafeChart('chartFigAcademicDatabasesTimeline', {
+                type: 'line',
+                data: {
+                    labels: figAcademicDatabasesData.years,
+                    datasets: dbTimelineDatasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { color: textColor, font: { size: 10, weight: 'bold' }, boxWidth: 12 }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                        y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                    }
+                }
+            });
+        }
 
     // ── Lógica Dinâmica do Ranking de Pesquisadores por Estrato Qualis (A1 - A4) & Indexadores (AND) ──
     (function() {
@@ -796,6 +796,8 @@
         updateRanking();
     })();
     }
+
+    window.initTabProduction = initTabProduction;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initTabProduction);

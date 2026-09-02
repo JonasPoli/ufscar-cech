@@ -71,7 +71,7 @@ class MainController extends AbstractController
         $summary = $this->statisticsService->getGlobalSummary();
         $isPrintAll = $request->query->getBoolean('print') || $tab === 'all';
 
-        // Carrega apenas os dados da aba solicitada inicialmente
+        // Carrega apenas os dados da aba inicial solicitada para manter baixo uso de memória
         $tabData = $this->getIndicatorTabData($isPrintAll ? 'all' : $tab);
 
         return $this->render('pub/main/indicadores.html.twig', array_merge([

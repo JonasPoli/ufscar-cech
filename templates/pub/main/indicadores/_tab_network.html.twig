@@ -233,15 +233,21 @@
             return;
         }
 
+        function createSafeChart(elId, config) {
+            const el = document.getElementById(elId);
+            if (!el) return null;
+            const existing = Chart.getChart(el);
+            if (existing) existing.destroy();
+            return new Chart(el, config);
+        }
+
         const isDark = document.documentElement.classList.contains('dark');
         const textColor = isDark ? '#cbd5e1' : '#475569';
         const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
 
         // ── Fig 18: Parcerias Nacionais ──
         const fig14Data = {{ fig14National|json_encode|raw }};
-        const elFig14 = document.getElementById('chartFig14');
-    if (elFig14) {
-        new Chart(elFig14, {
+        createSafeChart('chartFig14', {
             type: 'bar',
             data: {
                 labels: fig14Data.map(d => d.name),
@@ -263,13 +269,10 @@
                 }
             }
         });
-    }
 
-    // ── Fig 19: Parcerias Internacionais ──
-    const fig15Data = {{ fig15International|json_encode|raw }};
-    const elFig15 = document.getElementById('chartFig15');
-    if (elFig15) {
-        new Chart(elFig15, {
+        // ── Fig 19: Parcerias Internacionais ──
+        const fig15Data = {{ fig15International|json_encode|raw }};
+        createSafeChart('chartFig15', {
             type: 'bar',
             data: {
                 labels: fig15Data.map(d => d.name),
@@ -291,99 +294,100 @@
                 }
             }
         });
+
+        // ── Exportador VOSviewer & Busca/Highlight na Matriz N x N de Coautoria Docente ──
+        const coauthorsFullData = {{ fig13CoauthorsFull|json_encode|raw }};
+        const exportVosBtn = document.getElementById('exportVosviewerBtn');
+        const exportCsvBtn = document.getElementById('exportCoauthorsCsvBtn');
+        const matrixSearchInput = document.getElementById('matrixSearchInput');
+        const matrixRows = document.querySelectorAll('.matrix-row');
+        const matrixCols = document.querySelectorAll('.matrix-col-header');
+
+        if (matrixSearchInput) {
+            matrixSearchInput.addEventListener('input', () => {
+                const query = matrixSearchInput.value.trim().toLowerCase();
+                
+                matrixRows.forEach(row => {
+                    const rowName = row.dataset.name || '';
+                    if (query === '' || rowName.includes(query)) {
+                        row.style.opacity = '1';
+                    } else {
+                        row.style.opacity = '0.35';
+                    }
+                });
+
+                matrixCols.forEach(col => {
+                    const colName = col.dataset.name || '';
+                    if (query === '' || colName.includes(query)) {
+                        col.style.opacity = '1';
+                    } else {
+                        col.style.opacity = '0.35';
+                    }
+                });
+            });
+        }
+
+        if (exportVosBtn && Array.isArray(coauthorsFullData)) {
+            exportVosBtn.addEventListener('click', () => {
+                const nodeMap = new Map();
+                let nodeId = 1;
+
+                coauthorsFullData.forEach(pair => {
+                    if (!nodeMap.has(pair.author1)) {
+                        nodeMap.set(pair.author1, nodeId++);
+                    }
+                    if (!nodeMap.has(pair.author2)) {
+                        nodeMap.set(pair.author2, nodeId++);
+                    }
+                });
+
+                let content = `*Vertices ${nodeMap.size}\n`;
+
+                nodeMap.forEach((id, name) => {
+                    content += `${id} "${name}"\n`;
+                });
+
+                content += "*Edges\n";
+                coauthorsFullData.forEach(pair => {
+                    const id1 = nodeMap.get(pair.author1);
+                    const id2 = nodeMap.get(pair.author2);
+                    const weight = pair.collaborations || 1;
+                    content += `${id1} ${id2} ${weight}\n`;
+                });
+
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.setAttribute('download', 'rede_coautoria_cech_vosviewer.txt');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+
+        if (exportCsvBtn && Array.isArray(coauthorsFullData)) {
+            exportCsvBtn.addEventListener('click', () => {
+                let csv = "Docente 1;Departamento 1;Docente 2;Departamento 2;Obras em Parceria\n";
+                coauthorsFullData.forEach(pair => {
+                    const d1 = (pair.dept1 || 'CECH').replace(/;/g, ',');
+                    const d2 = (pair.dept2 || 'CECH').replace(/;/g, ',');
+                    const a1 = pair.author1.replace(/;/g, ',');
+                    const a2 = pair.author2.replace(/;/g, ',');
+                    csv += `"${a1}";"${d1}";"${a2}";"${d2}";${pair.collaborations}\n`;
+                });
+
+                const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.setAttribute('download', 'matriz_coautoria_cech.csv');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
     }
 
-    // ── Exportador VOSviewer & Busca/Highlight na Matriz N x N de Coautoria Docente ──
-    const coauthorsFullData = {{ fig13CoauthorsFull|json_encode|raw }};
-    const exportVosBtn = document.getElementById('exportVosviewerBtn');
-    const exportCsvBtn = document.getElementById('exportCoauthorsCsvBtn');
-    const matrixSearchInput = document.getElementById('matrixSearchInput');
-    const matrixRows = document.querySelectorAll('.matrix-row');
-    const matrixCols = document.querySelectorAll('.matrix-col-header');
-
-    if (matrixSearchInput) {
-        matrixSearchInput.addEventListener('input', () => {
-            const query = matrixSearchInput.value.trim().toLowerCase();
-            
-            matrixRows.forEach(row => {
-                const rowName = row.dataset.name || '';
-                if (query === '' || rowName.includes(query)) {
-                    row.style.opacity = '1';
-                } else {
-                    row.style.opacity = '0.35';
-                }
-            });
-
-            matrixCols.forEach(col => {
-                const colName = col.dataset.name || '';
-                if (query === '' || colName.includes(query)) {
-                    col.style.opacity = '1';
-                } else {
-                    col.style.opacity = '0.35';
-                }
-            });
-        });
-    }
-
-    if (exportVosBtn && Array.isArray(coauthorsFullData)) {
-        exportVosBtn.addEventListener('click', () => {
-            const nodeMap = new Map();
-            let nodeId = 1;
-
-            coauthorsFullData.forEach(pair => {
-                if (!nodeMap.has(pair.author1)) {
-                    nodeMap.set(pair.author1, nodeId++);
-                }
-                if (!nodeMap.has(pair.author2)) {
-                    nodeMap.set(pair.author2, nodeId++);
-                }
-            });
-
-            let content = `*Vertices ${nodeMap.size}\n`;
-
-            nodeMap.forEach((id, name) => {
-                content += `${id} "${name}"\n`;
-            });
-
-            content += "*Edges\n";
-            coauthorsFullData.forEach(pair => {
-                const id1 = nodeMap.get(pair.author1);
-                const id2 = nodeMap.get(pair.author2);
-                const weight = pair.collaborations || 1;
-                content += `${id1} ${id2} ${weight}\n`;
-            });
-
-            const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute('download', 'rede_coautoria_cech_vosviewer.txt');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
-    }
-
-    if (exportCsvBtn && Array.isArray(coauthorsFullData)) {
-        exportCsvBtn.addEventListener('click', () => {
-            let csv = "Docente 1;Departamento 1;Docente 2;Departamento 2;Obras em Parceria\n";
-            coauthorsFullData.forEach(pair => {
-                const d1 = (pair.dept1 || 'CECH').replace(/;/g, ',');
-                const d2 = (pair.dept2 || 'CECH').replace(/;/g, ',');
-                const a1 = pair.author1.replace(/;/g, ',');
-                const a2 = pair.author2.replace(/;/g, ',');
-                csv += `"${a1}";"${d1}";"${a2}";"${d2}";${pair.collaborations}\n`;
-            });
-
-            const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.setAttribute('download', 'matriz_coautoria_cech.csv');
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
-    }
-    }
+    window.initTabNetwork = initTabNetwork;
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initTabNetwork);

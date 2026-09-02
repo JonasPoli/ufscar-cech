@@ -4,13 +4,6 @@
 
 {% block meta_description %}Panorama estatístico e indicadores de auto-avaliação do CECH UFSCar: corpo docente, formações, orientações concluídas, produção científica, estratos Qualis e parcerias nacionais e internacionais.{% endblock %}
 
-{% block javascripts %}
-    {{ parent() }}
-    {# ── D3.js v7 & D3-Sankey Libraries carregadas no Head/Início para garantir disponibilidade aos gráficos ── #}
-    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
-{% endblock %}
-
 {% block body %}
 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
 
@@ -148,17 +141,17 @@
         </div>
     </div>
 
-    {# ── Tab Loading Skeleton (Displayed while fetching fragment asynchronously) ── #}
+    {# ── Async Tab Loading Skeleton ── #}
     <div id="tabLoadingSkeleton" class="hidden py-16 text-center space-y-4">
-        <div class="inline-flex items-center justify-center p-4 rounded-3xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 shadow-inner">
+        <div class="inline-flex items-center justify-center p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 text-sky-600 dark:text-sky-400 animate-pulse">
             <sl-spinner style="font-size: 2.5rem; --track-width: 4px;"></sl-spinner>
         </div>
         <div class="space-y-1">
-            <div class="text-sm font-bold text-slate-800 dark:text-slate-200 font-heading">
-                Carregando indicadores da seção...
+            <div class="text-sm font-bold text-slate-700 dark:text-slate-200">
+                Carregando indicadores...
             </div>
             <div class="text-xs text-slate-400">
-                Processando dados e renderizando visualizações cienciométricas
+                Processando dados cienciométricos
             </div>
         </div>
     </div>
@@ -224,9 +217,30 @@ document.addEventListener('DOMContentLoaded', () => {
         scripts.forEach(oldScript => {
             const newScript = document.createElement('script');
             Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-            oldScript.parentNode.replaceChild(newScript, oldScript);
+            newScript.text = oldScript.textContent;
+            document.body.appendChild(newScript);
+            newScript.parentNode.removeChild(newScript);
         });
+    }
+
+    /**
+     * Executa a inicialização dos gráficos da aba correspondente
+     */
+    function triggerTabInit(tabName) {
+        if (tabName === 'faculty') {
+            if (typeof window.initTabFaculty === 'function') window.initTabFaculty();
+        } else if (tabName === 'training') {
+            if (typeof window.initTabTraining === 'function') window.initTabTraining();
+        } else if (tabName === 'production') {
+            if (typeof window.initTabProduction === 'function') window.initTabProduction();
+        } else if (tabName === 'network') {
+            if (typeof window.initTabNetwork === 'function') window.initTabNetwork();
+        } else if (tabName === 'all') {
+            if (typeof window.initTabFaculty === 'function') window.initTabFaculty();
+            if (typeof window.initTabTraining === 'function') window.initTabTraining();
+            if (typeof window.initTabProduction === 'function') window.initTabProduction();
+            if (typeof window.initTabNetwork === 'function') window.initTabNetwork();
+        }
     }
 
     /**
@@ -278,6 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (pane) pane.classList.remove('hidden');
             }
             skeleton.classList.add('hidden');
+            setTimeout(() => triggerTabInit('all'), 60);
             return;
         }
 
@@ -289,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Se já está em cache no DOM, exibe instantaneamente em 0ms
         if (loadedTabs.has(tabName) && targetPane.innerHTML.trim() !== '') {
             targetPane.classList.remove('hidden');
+            setTimeout(() => triggerTabInit(tabName), 40);
             return;
         }
 
@@ -307,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Inicializar scripts e gráficos do fragmento
             executeScripts(targetPane);
+            setTimeout(() => triggerTabInit(tabName), 50);
         } catch (err) {
             skeleton.classList.add('hidden');
             targetPane.innerHTML = `
@@ -344,6 +361,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const hash = window.location.hash.replace('#', '');
     if (['faculty', 'training', 'production', 'network', 'all'].includes(hash)) {
         switchTab(hash, false);
+    } else {
+        setTimeout(() => triggerTabInit('faculty'), 50);
     }
 });
 </script>
