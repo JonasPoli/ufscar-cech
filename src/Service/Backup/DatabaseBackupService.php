@@ -128,14 +128,21 @@ class DatabaseBackupService
     /**
      * Lists existing backup files.
      */
-    public function listBackups(): array
+    public function listBackups(bool $includeTestBackups = false): array
     {
         $this->ensureBackupDirExists();
         $files = glob($this->backupDir . '/*.{zip,gz,sql}', GLOB_BRACE) ?: [];
         $backups = [];
+        $isTestEnv = ($_ENV['APP_ENV'] ?? $_SERVER['APP_ENV'] ?? 'dev') === 'test';
 
         foreach ($files as $filePath) {
             $filename = basename($filePath);
+
+            // Ignore test suite dumps in development/production unless explicitly requested or running tests
+            if (!$includeTestBackups && !$isTestEnv && (str_contains($filename, '_test_') || str_starts_with($filename, 'test_ctrl_'))) {
+                continue;
+            }
+
             $size = filesize($filePath) ?: 0;
             $mtime = filemtime($filePath) ?: time();
 
