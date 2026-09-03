@@ -112,7 +112,41 @@ class ThematicSearchControllerTest extends WebTestCase
         $this->assertArrayHasKey('researchers', $data);
         $this->assertArrayHasKey('term', $data);
         $this->assertArrayHasKey('hasMore', $data);
+        $this->assertArrayHasKey('timeline', $data);
         $this->assertGreaterThan(0, count($data['researchers']));
+    }
+
+    public function testThematicSearchTimelineApi(): void
+    {
+        $client = static::createClient();
+        $term = $this->createSampleData($client);
+
+        $client->request('GET', '/api/temas/evolucao?slug=' . $term->getSlug());
+
+        $this->assertResponseIsSuccessful();
+        $this->assertResponseHeaderSame('content-type', 'application/json');
+
+        $data = json_decode($client->getResponse()->getContent(), true);
+        $this->assertIsArray($data);
+        $this->assertArrayHasKey('term', $data);
+        $this->assertArrayHasKey('timeline', $data);
+        $this->assertArrayHasKey('endYear', $data['timeline']);
+        $this->assertArrayHasKey('years', $data['timeline']);
+        $this->assertArrayHasKey('totalWorks', $data['timeline']);
+    }
+
+    public function testThematicSearchPageRendersTimelineChartCard(): void
+    {
+        $client = static::createClient();
+        $term = $this->createSampleData($client);
+
+        $client->request('GET', '/temas?t=' . $term->getSlug());
+
+        $this->assertResponseIsSuccessful();
+        $content = (string)$client->getResponse()->getContent();
+        $this->assertStringContainsString('theme-timeline-card', $content);
+        $this->assertStringContainsString('thematicTimelineChart', $content);
+        $this->assertStringContainsString('Evolução da Produção no Tema', $content);
     }
 
     public function testThematicSearchLinksPassTopicToProfessorProfile(): void

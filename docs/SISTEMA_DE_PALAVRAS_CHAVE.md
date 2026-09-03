@@ -114,6 +114,17 @@ A rota [`/temas`](https://cech.wab.com.br/temas) (controlada por `ThematicSearch
      - Botão assíncrono *"Carregar mais docentes"* para paginação de 10 em 10 via `/api/temas/docentes`.
 4. **Distribuição Departamental**:
    - Painel lateral que ilustra o ranking dos departamentos do CECH que mais produzem no tema selecionado.
+5. **Gráfico de Linhas da Evolução Temporal (Linha do Tempo Anual)**:
+   - Apresenta a evolução cronológica contínua de trabalhos que possuem este tema, **desde o primeiro ano registrado até o ano atual** (preenchendo lacunas com 0).
+   - Indicadores-chave rápidos (badges):
+     - **1º Registro**: primeiro ano identificado no acervo (ex.: 1982 para *Educação Especial*).
+     - **Ano de Pico**: ano com maior volume de publicações e respectiva contagem (ex.: 2013 com 176 trabalhos).
+     - **Total Mapeado**: somatório de trabalhos identificados no período.
+   - Alternância interativa de séries:
+     - **Total de Trabalhos**: linha contínua suavizada com área preenchida em degradê celeste (`sky-500`).
+     - **Produções vs. Orientações**: desdobramento em duas séries independentes (Produções Científicas/Técnicas em azul e Orientações/Teses em verde esmeralda).
+   - Tooltips detalhados com informações sobre artigos/livros e teses/dissertações em cada ponto.
+   - Atualização dinâmica instantânea via AJAX ao selecionar qualquer termo sem recarregar a página.
 
 ---
 
@@ -179,9 +190,10 @@ Ao carregar a página com o parâmetro `?tema={termo}`:
 
 | Rota / Serviço | Tipo | Finalidade |
 | :--- | :--- | :--- |
-| `/temas` | Rota Pública (Twig) | Página principal de exploração temática e nuvem de conceitos |
+| `/temas` | Rota Pública (Twig) | Página principal de exploração temática, nuvem de conceitos e evolução temporal |
 | `/api/temas/autocomplete` | API Pública (JSON) | Busca instantânea de termos para o autocomplete |
-| `/api/temas/docentes` | API Pública (JSON) | Retorna docentes paginados (10 por página) e distribuição departamental |
+| `/api/temas/docentes` | API Pública (JSON) | Retorna docentes paginados (10 por página), distribuição departamental e linha do tempo |
+| `/api/temas/evolucao` | API Pública (JSON) | Linha do tempo anual (do primeiro ano ao ano atual) com total de trabalhos no tema |
 | `/professor/{slugOrId}?tema={termo}` | Rota Pública (Twig) | Perfil docente com filtro ativado e redirecionamento inteligente de abas |
 | `ThematicTermIndexService` | Serviço PHP | Serviço de mineração, contagem e ponderação de termos |
 | `app:index:thematic-terms` | Comando Console | CLI para indexação periódica da base temática |

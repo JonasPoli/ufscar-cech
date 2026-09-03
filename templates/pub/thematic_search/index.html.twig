@@ -179,6 +179,97 @@
             </div>
         </div>
 
+        {# ── NOVO CARD: EVOLUÇÃO TEMPORAL DO TEMA (GRÁFICO DE LINHAS) ── #}
+        <div id="theme-timeline-card" class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 border border-slate-200/80 dark:border-white/10">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800/60">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                        <sl-icon name="graph-up"></sl-icon>
+                        <span>Evolução Histórica</span>
+                    </div>
+                    <h3 class="font-heading text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+                        <span>Evolução da Produção no Tema</span>
+                        <span id="timeline-years-range" class="text-xs font-semibold font-mono px-2.5 py-1 rounded-xl bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800">
+                            {% if yearlyTimeline and yearlyTimeline.startYear %}
+                                {{ yearlyTimeline.startYear }} — {{ yearlyTimeline.endYear }}
+                            {% endif %}
+                        </span>
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                        Trajetória cronológica de trabalhos com este tema, do primeiro ano registrado até o ano atual.
+                    </p>
+                </div>
+
+                {# Badges de Estatísticas Rápidas #}
+                <div class="flex flex-wrap items-center gap-2.5 text-xs">
+                    <div class="bg-slate-50 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 rounded-2xl px-3.5 py-2 flex items-center gap-2">
+                        <sl-icon name="calendar-event" class="text-sky-500 text-base"></sl-icon>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block uppercase font-bold leading-tight">1º Registro</span>
+                            <span id="timeline-first-year-badge" class="font-bold text-slate-800 dark:text-slate-200 font-mono">
+                                {{ yearlyTimeline ? yearlyTimeline.startYear|default('—') : '—' }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 rounded-2xl px-3.5 py-2 flex items-center gap-2">
+                        <sl-icon name="trophy" class="text-amber-500 text-base"></sl-icon>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block uppercase font-bold leading-tight">Ano de Pico</span>
+                            <span id="timeline-peak-badge" class="font-bold text-slate-800 dark:text-slate-200 font-mono">
+                                {% if yearlyTimeline and yearlyTimeline.peakYear %}
+                                    {{ yearlyTimeline.peakYear }} ({{ yearlyTimeline.peakCount }})
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 rounded-2xl px-3.5 py-2 flex items-center gap-2">
+                        <sl-icon name="check2-circle" class="text-emerald-500 text-base"></sl-icon>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block uppercase font-bold leading-tight">Total Mapeado</span>
+                            <span id="timeline-total-badge" class="font-bold text-slate-800 dark:text-slate-200 font-mono">
+                                {{ yearlyTimeline ? yearlyTimeline.grandTotal|default(0)|number_format(0, ',', '.') : '0' }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Controles de visualização (Filtros de Séries) #}
+            <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div class="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800/80 p-1 border border-slate-200 dark:border-slate-700/60" role="group">
+                    <button type="button" id="series-btn-all" onclick="setChartSeries('all')" class="chart-series-btn px-3 py-1.5 rounded-lg font-bold text-xs transition-all bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-2xs">
+                        Total de Trabalhos
+                    </button>
+                    <button type="button" id="series-btn-breakdown" onclick="setChartSeries('breakdown')" class="chart-series-btn px-3 py-1.5 rounded-lg font-medium text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">
+                        Produções vs. Orientações
+                    </button>
+                </div>
+                <div class="text-[11px] text-slate-400 flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                    <span>Passe o cursor sobre os pontos para ver o detalhamento anual</span>
+                </div>
+            </div>
+
+            {# Canvas do Gráfico #}
+            <div class="relative w-full h-72 sm:h-80 lg:h-96">
+                <div id="timeline-chart-loading" class="hidden absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/60 dark:bg-slate-900/60 backdrop-blur-xs rounded-2xl">
+                    <sl-spinner class="text-3xl text-sky-600"></sl-spinner>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">Carregando evolução histórica...</p>
+                </div>
+                <div id="timeline-chart-empty" class="{% if yearlyTimeline and yearlyTimeline.years|length > 0 %}hidden{% endif %} absolute inset-0 flex items-center justify-center p-6 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                    <div class="space-y-1">
+                        <sl-icon name="calendar-x" class="text-3xl text-slate-400"></sl-icon>
+                        <p class="text-xs font-semibold text-slate-600 dark:text-slate-300">Sem registros temporais suficientes para este tema.</p>
+                    </div>
+                </div>
+                <canvas id="thematicTimelineChart"></canvas>
+            </div>
+        </div>
+
         {# Subtítulo dos Docentes #}
         <div class="flex items-center justify-between pt-2">
             <h3 class="font-heading text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -264,6 +355,9 @@
 let currentTermId = {% if selectedTerm %}{{ selectedTerm.id }}{% else %}null{% endif %};
 let currentOffset = {% if selectedTerm %}{{ initialResearchers|length }}{% else %}0{% endif %};
 let currentTotal = {% if selectedTerm %}{{ totalResearchersForTerm }}{% else %}0{% endif %};
+let currentTimelineData = {{ yearlyTimeline ? yearlyTimeline|json_encode|raw : 'null' }};
+let timelineChartInstance = null;
+let currentChartMode = 'all';
 let searchDebounceTimer = null;
 
 const searchInput = document.getElementById('topic-search-input');
@@ -412,8 +506,11 @@ async function selectTerm(termId, slug) {
         activeChip.classList.add('ring-4', 'ring-sky-400', 'shadow-lg', 'scale-105');
     }
 
-    // Exibe spinner de carregamento no container de docentes
+    // Exibe spinner de carregamento no container de docentes e no gráfico
     termDetailsSection.classList.remove('hidden');
+    const timelineLoading = document.getElementById('timeline-chart-loading');
+    if (timelineLoading) timelineLoading.classList.remove('hidden');
+
     researchersGrid.innerHTML = `
         <div class="col-span-full p-12 text-center">
             <sl-spinner class="text-3xl text-sky-600 mb-2"></sl-spinner>
@@ -424,6 +521,8 @@ async function selectTerm(termId, slug) {
     try {
         const res = await fetch(`/api/temas/docentes?term_id=${termId}&offset=0&limit=10`);
         const data = await res.json();
+
+        if (timelineLoading) timelineLoading.classList.add('hidden');
 
         if (data.error) {
             alert(data.error);
@@ -440,6 +539,11 @@ async function selectTerm(termId, slug) {
         selectedTermResearchersCount.textContent = data.total;
         currentOffset = data.researchers.length;
         currentTotal = data.total;
+
+        // Atualiza a linha do tempo (gráfico) se disponível
+        if (data.timeline) {
+            updateTimelineUI(data.timeline);
+        }
 
         // Departamentos
         if (data.topDepartments && data.topDepartments.length > 0) {
@@ -469,6 +573,7 @@ async function selectTerm(termId, slug) {
         termDetailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     } catch (err) {
+        if (timelineLoading) timelineLoading.classList.add('hidden');
         console.error(err);
         researchersGrid.innerHTML = `<div class="col-span-full p-6 text-center text-rose-500 text-xs font-semibold">Erro ao carregar dados do tema.</div>`;
     }
@@ -588,6 +693,244 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
 }
+
+// ── Funções para o Gráfico de Evolução Temporal ──
+function updateTimelineUI(timelineData) {
+    currentTimelineData = timelineData;
+    const yearsRangeEl = document.getElementById('timeline-years-range');
+    const firstYearBadge = document.getElementById('timeline-first-year-badge');
+    const peakBadge = document.getElementById('timeline-peak-badge');
+    const totalBadge = document.getElementById('timeline-total-badge');
+    const emptyEl = document.getElementById('timeline-chart-empty');
+
+    if (!timelineData || !timelineData.years || timelineData.years.length === 0) {
+        if (yearsRangeEl) yearsRangeEl.textContent = '';
+        if (firstYearBadge) firstYearBadge.textContent = '—';
+        if (peakBadge) peakBadge.textContent = '—';
+        if (totalBadge) totalBadge.textContent = '0';
+        if (emptyEl) emptyEl.classList.remove('hidden');
+        if (timelineChartInstance) {
+            timelineChartInstance.destroy();
+            timelineChartInstance = null;
+        }
+        return;
+    }
+
+    if (emptyEl) emptyEl.classList.add('hidden');
+    if (yearsRangeEl) yearsRangeEl.textContent = `${timelineData.startYear} — ${timelineData.endYear}`;
+    if (firstYearBadge) firstYearBadge.textContent = timelineData.startYear || '—';
+    if (peakBadge) {
+        peakBadge.textContent = timelineData.peakYear ? `${timelineData.peakYear} (${timelineData.peakCount})` : '—';
+    }
+    if (totalBadge) {
+        totalBadge.textContent = (timelineData.grandTotal || 0).toLocaleString('pt-BR');
+    }
+
+    renderTimelineChart(timelineData);
+}
+
+function setChartSeries(mode) {
+    currentChartMode = mode;
+    const btnAll = document.getElementById('series-btn-all');
+    const btnBreakdown = document.getElementById('series-btn-breakdown');
+
+    if (mode === 'all') {
+        if (btnAll) btnAll.className = 'chart-series-btn px-3 py-1.5 rounded-lg font-bold text-xs transition-all bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-2xs';
+        if (btnBreakdown) btnBreakdown.className = 'chart-series-btn px-3 py-1.5 rounded-lg font-medium text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all';
+    } else {
+        if (btnBreakdown) btnBreakdown.className = 'chart-series-btn px-3 py-1.5 rounded-lg font-bold text-xs transition-all bg-white dark:bg-slate-700 text-sky-600 dark:text-sky-400 shadow-2xs';
+        if (btnAll) btnAll.className = 'chart-series-btn px-3 py-1.5 rounded-lg font-medium text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all';
+    }
+
+    if (currentTimelineData) {
+        renderTimelineChart(currentTimelineData);
+    }
+}
+
+function renderTimelineChart(data) {
+    const canvas = document.getElementById('thematicTimelineChart');
+    if (!canvas) return;
+
+    if (typeof Chart === 'undefined') {
+        setTimeout(() => renderTimelineChart(data), 150);
+        return;
+    }
+
+    if (timelineChartInstance) {
+        timelineChartInstance.destroy();
+        timelineChartInstance = null;
+    }
+
+    const isDark = document.documentElement.classList.contains('dark');
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)';
+    const ctx = canvas.getContext('2d');
+
+    // Gradientes elegantes
+    const gradientSky = ctx.createLinearGradient(0, 0, 0, 320);
+    gradientSky.addColorStop(0, 'rgba(2, 132, 199, 0.30)');
+    gradientSky.addColorStop(1, 'rgba(2, 132, 199, 0.01)');
+
+    const gradientEmerald = ctx.createLinearGradient(0, 0, 0, 320);
+    gradientEmerald.addColorStop(0, 'rgba(16, 185, 129, 0.28)');
+    gradientEmerald.addColorStop(1, 'rgba(16, 185, 129, 0.01)');
+
+    let datasets = [];
+
+    if (currentChartMode === 'all') {
+        datasets.push({
+            label: 'Total de Trabalhos',
+            data: data.totalWorks,
+            borderColor: '#0284c7',
+            backgroundColor: gradientSky,
+            borderWidth: 2.5,
+            tension: 0.35,
+            fill: true,
+            pointRadius: data.years.length > 35 ? 2.5 : 3.5,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#0284c7',
+            pointBorderColor: isDark ? '#0f172a' : '#ffffff',
+            pointBorderWidth: 2,
+        });
+    } else {
+        datasets.push({
+            label: 'Produções Científicas & Técnicas',
+            data: data.productions,
+            borderColor: '#0284c7',
+            backgroundColor: gradientSky,
+            borderWidth: 2,
+            tension: 0.35,
+            fill: true,
+            pointRadius: 2.5,
+            pointHoverRadius: 5,
+            pointBackgroundColor: '#0284c7',
+            pointBorderColor: isDark ? '#0f172a' : '#ffffff',
+            pointBorderWidth: 1.5,
+        });
+        datasets.push({
+            label: 'Orientações & Teses Defendidas',
+            data: data.orientations,
+            borderColor: '#10b981',
+            backgroundColor: gradientEmerald,
+            borderWidth: 2,
+            tension: 0.35,
+            fill: true,
+            pointRadius: 2.5,
+            pointHoverRadius: 5,
+            pointBackgroundColor: '#10b981',
+            pointBorderColor: isDark ? '#0f172a' : '#ffffff',
+            pointBorderWidth: 1.5,
+        });
+    }
+
+    timelineChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: data.years,
+            datasets: datasets,
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    display: currentChartMode === 'breakdown',
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        color: textColor,
+                        boxWidth: 12,
+                        boxHeight: 12,
+                        borderRadius: 3,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        font: {
+                            family: "'Outfit', 'Inter', sans-serif",
+                            size: 11,
+                            weight: '600',
+                        },
+                    },
+                },
+                tooltip: {
+                    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                    titleColor: isDark ? '#f8fafc' : '#0f172a',
+                    bodyColor: isDark ? '#cbd5e1' : '#334155',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                    borderWidth: 1,
+                    padding: 12,
+                    cornerRadius: 12,
+                    boxPadding: 4,
+                    usePointStyle: true,
+                    callbacks: {
+                        title: function(items) {
+                            return 'Ano ' + items[0].label;
+                        },
+                        label: function(context) {
+                            const val = context.raw || 0;
+                            return ` ${context.dataset.label}: ${val} trabalho(s)`;
+                        },
+                        afterBody: function(items) {
+                            if (currentChartMode === 'all') {
+                                const idx = items[0].dataIndex;
+                                const prod = data.productions[idx] || 0;
+                                const orient = data.orientations[idx] || 0;
+                                return [
+                                    ` • Produções (artigos, livros): ${prod}`,
+                                    ` • Orientações (teses, dissertações): ${orient}`
+                                ];
+                            }
+                            return [];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: gridColor,
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        color: textColor,
+                        font: {
+                            family: "'Outfit', 'Inter', sans-serif",
+                            size: 11,
+                        },
+                        maxRotation: 45,
+                        autoSkip: true,
+                        maxTicksLimit: 16,
+                    },
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: gridColor,
+                        drawBorder: false,
+                    },
+                    ticks: {
+                        color: textColor,
+                        precision: 0,
+                        font: {
+                            family: "'Outfit', 'Inter', sans-serif",
+                            size: 11,
+                        },
+                    },
+                },
+            },
+        },
+    });
+}
+
+// Inicializa o gráfico se já houver tema selecionado no carregamento
+document.addEventListener('DOMContentLoaded', function() {
+    if (currentTimelineData) {
+        updateTimelineUI(currentTimelineData);
+    }
+});
 </script>
 
 <style>

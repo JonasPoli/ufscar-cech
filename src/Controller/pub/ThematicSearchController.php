@@ -30,6 +30,7 @@ class ThematicSearchController extends AbstractController
         $initialDepartments = [];
         $hasMore = false;
         $totalResearchersForTerm = 0;
+        $yearlyTimeline = null;
 
         if ($termSlugOrId !== '') {
             $selectedTerm = $this->termRepo->findBySlugOrId($termSlugOrId);
@@ -38,6 +39,7 @@ class ThematicSearchController extends AbstractController
                 $initialResearchers = $this->researcherRepo->getResearchersForTerm($selectedTerm, 0, 10);
                 $initialDepartments = $this->researcherRepo->getTopDepartmentsForTerm($selectedTerm, 4);
                 $hasMore = $totalResearchersForTerm > 10;
+                $yearlyTimeline = $this->termRepo->getYearlyTimelineForTerm($selectedTerm);
             }
         }
 
@@ -52,6 +54,7 @@ class ThematicSearchController extends AbstractController
             'totalResearchersForTerm' => $totalResearchersForTerm,
             'topFeaturedTerms' => $topFeaturedTerms,
             'globalStats' => $globalStats,
+            'yearlyTimeline' => $yearlyTimeline,
         ]);
     }
 
@@ -73,6 +76,36 @@ class ThematicSearchController extends AbstractController
             'query' => $query,
             'count' => count($terms),
             'terms' => $terms,
+        ]);
+    }
+
+    #[Route('/api/temas/evolucao', name: 'app_pub_thematic_search_timeline', methods: ['GET'])]
+    public function getTimeline(Request $request): JsonResponse
+    {
+        $termId = $request->query->getInt('term_id');
+        $termSlug = trim((string)$request->query->get('slug', ''));
+
+        /** @var ThematicTerm|null $term */
+        $term = null;
+        if ($termId > 0) {
+            $term = $this->termRepo->find($termId);
+        } elseif ($termSlug !== '') {
+            $term = $this->termRepo->findBySlugOrId($termSlug);
+        }
+
+        if (!$term) {
+            return new JsonResponse(['error' => 'Termo não encontrado.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $timeline = $this->termRepo->getYearlyTimelineForTerm($term);
+
+        return new JsonResponse([
+            'term' => [
+                'id' => $term->getId(),
+                'term' => $term->getTerm(),
+                'slug' => $term->getSlug(),
+            ],
+            'timeline' => $timeline,
         ]);
     }
 
@@ -99,6 +132,7 @@ class ThematicSearchController extends AbstractController
         $totalResearchers = $this->researcherRepo->countResearchersForTerm($term);
         $researchers = $this->researcherRepo->getResearchersForTerm($term, $offset, $limit);
         $topDepartments = ($offset === 0) ? $this->researcherRepo->getTopDepartmentsForTerm($term, 4) : [];
+        $yearlyTimeline = ($offset === 0) ? $this->termRepo->getYearlyTimelineForTerm($term) : null;
 
         $hasMore = ($offset + count($researchers)) < $totalResearchers;
 
@@ -113,6 +147,7 @@ class ThematicSearchController extends AbstractController
             ],
             'topDepartments' => $topDepartments,
             'researchers' => $researchers,
+            'timeline' => $yearlyTimeline,
             'offset' => $offset,
             'limit' => $limit,
             'total' => $totalResearchers,
