@@ -196,7 +196,7 @@
         <div id="researchers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for r in initialResearchers %}
                 {% set currentTopicName = selectedTerm ? selectedTerm.term : '' %}
-                {% set profUrl = path('app_pub_professor_show', {'slugOrId': r.slug ?: r.idLattes}) ~ (currentTopicName ? ('?tema=' ~ currentTopicName|url_encode ~ '#productions') : '') %}
+                {% set profUrl = path('app_pub_professor_show', {'slugOrId': r.slug ?: r.idLattes}) ~ (currentTopicName ? ('?tema=' ~ currentTopicName|url_encode) : '') %}
                 <a 
                     href="{{ profUrl }}" 
                     class="glass-card rounded-2xl p-5 hover:border-sky-500/50 hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-4 group"
@@ -514,7 +514,7 @@ async function loadMoreResearchers() {
 function renderResearchers(researchers, append) {
     let html = '';
     const currentTopic = selectedTermName ? selectedTermName.textContent.trim() : '';
-    const topicParam = currentTopic ? ('?tema=' + encodeURIComponent(currentTopic) + '#productions') : '';
+    const topicParam = currentTopic ? ('?tema=' + encodeURIComponent(currentTopic)) : '';
 
     researchers.forEach(r => {
         const initials = r.fullName.slice(0, 2).toUpperCase();

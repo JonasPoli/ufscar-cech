@@ -126,7 +126,7 @@ class ThematicSearchControllerTest extends WebTestCase
         $content = (string)$client->getResponse()->getContent();
         // Asserts that researcher cards contain ?tema= with urlencoded topic name
         $this->assertStringContainsString('?tema=', $content);
-        $this->assertStringContainsString('#productions', $content);
+        $this->assertStringContainsString('/professor/', $content);
 
         // Also test that visiting professor profile with ?tema= pre-fills the filter search
         $researcher = $client->getContainer()->get('doctrine.orm.entity_manager')->getRepository(Researcher::class)->findOneBy([]);

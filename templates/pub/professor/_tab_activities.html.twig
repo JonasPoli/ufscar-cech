@@ -1,7 +1,14 @@
 <div class="space-y-8">
+    <!-- Empty State Message for Entire Activities Pane -->
+    <div id="empty-activities" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+        <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
+        <p id="empty-activities-text" class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhuma atividade, projeto ou banca encontrada para o filtro aplicado.</p>
+        <div id="empty-activities-suggestion" class="hidden mt-3.5"></div>
+    </div>
+
     {% if researcher.researchProjects|length > 0 %}
     <!-- 1. PROJETOS DE PESQUISA & EXTENSÃO -->
-    <div class="space-y-4">
+    <div class="act-subsection space-y-4">
                     <!-- Empty State Message for Projects -->
                     <div id="empty-projects" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
                         <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
@@ -55,7 +62,7 @@
 
     {% if researcher.examinationBoards|length > 0 %}
     <!-- 2. BANCAS EXAMINADORAS -->
-    <div class="space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
+    <div class="act-subsection space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
                     <!-- Empty State Message for Boards -->
                     <div id="empty-boards" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
                         <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
@@ -92,7 +99,7 @@
 
     {% if researcher.professionalExperiences|length > 0 %}
     <!-- 3. ATUAÇÃO PROFISSIONAL -->
-    <div class="space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
+    <div class="act-subsection space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
                     <!-- Empty State Message for Experience -->
                     <div id="empty-experience" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
                         <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
@@ -141,7 +148,7 @@
 
     {% if researcher.eventParticipations|length > 0 %}
     <!-- 4. EVENTOS -->
-    <div class="space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
+    <div class="act-subsection space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
                     <!-- Empty State Message for Events -->
                     <div id="empty-events" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
                         <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
@@ -180,7 +187,7 @@
 
     {% if researcher.awards|length > 0 %}
     <!-- 5. PRÊMIOS E TÍTULOS -->
-    <div class="space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
+    <div class="act-subsection space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
                     <!-- Empty State Message for Awards -->
                     <div id="empty-awards" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
                         <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
@@ -208,7 +215,7 @@
 
     {% if researcher.knowledgeAreas|length > 0 %}
     <!-- 6. ÁREAS DO CNPQ -->
-    <div class="space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
+    <div class="act-subsection space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
                     <!-- Empty State Message for Knowledge Areas -->
                     <div id="empty-areas" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
                         <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
