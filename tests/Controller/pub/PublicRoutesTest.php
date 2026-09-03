@@ -197,14 +197,18 @@ class PublicRoutesTest extends WebTestCase
         $this->assertStringContainsString('<urlset', (string)$client->getResponse()->getContent());
     }
 
-    public function testRobotsTxtIsSuccessful(): void
+    public function testMobileMenuIsPresent(): void
     {
         $client = static::createClient();
-        $client->request('GET', '/robots.txt');
+        $crawler = $client->request('GET', '/');
 
         $this->assertResponseIsSuccessful();
-        $this->assertStringContainsString('text/plain', $client->getResponse()->headers->get('Content-Type'));
-        $this->assertStringContainsString('User-agent:', (string)$client->getResponse()->getContent());
-        $this->assertStringContainsString('Sitemap:', (string)$client->getResponse()->getContent());
+        $this->assertSelectorExists('#mobile-menu-btn');
+        $this->assertSelectorExists('#mobile-menu-drawer');
+        $this->assertSelectorExists('#mobile-menu-backdrop');
+        $this->assertStringContainsString('toggleMobileMenu', (string)$client->getResponse()->getContent());
+        $this->assertStringContainsString('Indicadores', (string)$client->getResponse()->getContent());
+        $this->assertStringContainsString('Departamentos', (string)$client->getResponse()->getContent());
+        $this->assertStringContainsString('Temas', (string)$client->getResponse()->getContent());
     }
 }

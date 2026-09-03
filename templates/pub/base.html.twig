@@ -223,8 +223,8 @@
                     </a>
                 </nav>
 
-                <!-- Actions: Theme Toggle & Quick Search & Admin Link -->
-                <div class="flex items-center gap-3">
+                <!-- Actions: Theme Toggle & Quick Search & Admin Link & Hamburger -->
+                <div class="flex items-center gap-2 sm:gap-3">
                     <form action="{{ path('app_pub_search') }}" method="GET" class="relative hidden sm:block">
                         <input type="text" name="q" placeholder="Buscar docente, artigo, DOI..." class="w-48 lg:w-64 rounded-full border border-slate-300 bg-slate-100/80 px-4 py-1.5 pl-9 text-xs text-slate-900 placeholder:text-slate-400 focus:border-cech-blue focus:bg-white focus:outline-none focus:ring-2 focus:ring-cech-blue/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500">
                         <sl-icon name="search" class="absolute left-3 top-2 text-slate-400 text-xs"></sl-icon>
@@ -241,13 +241,224 @@
                     </div>
 
                     {% if is_granted('ROLE_ADMIN') %}
-                        <a href="{{ path('app_admin_dashboard') }}" class="rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 dark:bg-cech-blue dark:hover:bg-cech-blue-dark transition-colors">
+                        <a href="{{ path('app_admin_dashboard') }}" class="hidden sm:inline-flex rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 dark:bg-cech-blue dark:hover:bg-cech-blue-dark transition-colors">
                             Painel Admin
                         </a>
                     {% endif %}
+
+                    <!-- Mobile Hamburger Button -->
+                    <button 
+                        type="button" 
+                        id="mobile-menu-btn" 
+                        onclick="toggleMobileMenu()" 
+                        class="md:hidden flex items-center justify-center p-2 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shadow-2xs" 
+                        aria-label="Abrir Menu" 
+                        aria-expanded="false"
+                    >
+                        <sl-icon name="list" id="mobile-menu-icon" class="text-xl"></sl-icon>
+                    </button>
                 </div>
             </div>
         </header>
+
+        {# ── Mobile Slide-Over Drawer & Backdrop ── #}
+        <div id="mobile-menu-backdrop" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 md:hidden" onclick="closeMobileMenu()" aria-hidden="true"></div>
+
+        <div id="mobile-menu-drawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-xs sm:max-w-sm bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl shadow-2xl border-l border-slate-200 dark:border-slate-800 translate-x-full transition-transform duration-300 ease-in-out md:hidden flex flex-col justify-between overflow-y-auto" role="dialog" aria-modal="true" aria-label="Menu Principal">
+            <!-- Header do Menu -->
+            <div class="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="h-9 px-2 py-1 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 shadow-2xs">
+                        <img src="{{ asset('images/logo-colorido.svg') }}" alt="Logo CECH" class="h-6 w-auto dark:hidden">
+                        <img src="{{ asset('images/logo-colorido-dark.svg') }}" alt="Logo CECH" class="h-6 w-auto hidden dark:block">
+                    </div>
+                    <div>
+                        <span class="font-heading text-sm font-bold tracking-tight text-slate-900 dark:text-white block">
+                            Portal de Produção
+                        </span>
+                        <span class="text-[10px] text-slate-500 dark:text-slate-400 block">
+                            CECH • UFSCar
+                        </span>
+                    </div>
+                </div>
+                <button type="button" onclick="closeMobileMenu()" class="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer" aria-label="Fechar Menu">
+                    <sl-icon name="x-lg" class="text-base"></sl-icon>
+                </button>
+            </div>
+
+            <!-- Corpo do Menu: Busca + Navegação Principal + Atalhos -->
+            <div class="p-5 space-y-6 flex-1">
+                <!-- Busca Rápida Mobile -->
+                <form action="{{ path('app_pub_search') }}" method="GET" class="relative">
+                    <input 
+                        type="text" 
+                        name="q" 
+                        placeholder="Buscar docente, artigo, DOI..." 
+                        class="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 px-4 py-2.5 pl-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-500 focus:bg-white dark:focus:bg-slate-900 focus:outline-none dark:text-white"
+                    >
+                    <sl-icon name="search" class="absolute left-3.5 top-3 text-slate-400 text-sm"></sl-icon>
+                </form>
+
+                <!-- Links Principais -->
+                <div class="space-y-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2">Navegação</span>
+                    
+                    {# Início #}
+                    <a href="{{ path('app_pub_home') }}" class="flex items-center gap-3.5 px-3 py-2.5 rounded-2xl text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-sky-950/50 hover:text-sky-600 dark:hover:text-sky-400 transition-colors group {% if app.request.attributes.get('_route') == 'app_pub_home' %}bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-semibold{% endif %}">
+                        <div class="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                            <sl-icon name="house-fill" class="text-sm"></sl-icon>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-sm font-semibold">Início</div>
+                            <div class="text-[11px] text-slate-400">Página inicial do portal</div>
+                        </div>
+                    </a>
+
+                    {# Indicadores #}
+                    <a href="{{ path('app_pub_indicators') }}" class="flex items-center gap-3.5 px-3 py-2.5 rounded-2xl text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group {% if 'indicators' in app.request.attributes.get('_route') %}bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-semibold{% endif %}">
+                        <div class="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                            <sl-icon name="graph-up-arrow" class="text-sm"></sl-icon>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-semibold">Indicadores</span>
+                                <span class="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Auto-Avaliação</span>
+                            </div>
+                            <div class="text-[11px] text-slate-400">18 figuras e métricas do CECH</div>
+                        </div>
+                    </a>
+
+                    {# Departamentos #}
+                    <a href="{{ path('app_pub_department_list') }}" class="flex items-center gap-3.5 px-3 py-2.5 rounded-2xl text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors group {% if 'department' in app.request.attributes.get('_route') %}bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-semibold{% endif %}">
+                        <div class="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                            <sl-icon name="building" class="text-sm"></sl-icon>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-sm font-semibold">Departamentos</div>
+                            <div class="text-[11px] text-slate-400">Departamentos e docentes vinculados</div>
+                        </div>
+                    </a>
+
+                    {# Temas #}
+                    <a href="{{ path('app_pub_thematic_search') }}" class="flex items-center gap-3.5 px-3 py-2.5 rounded-2xl text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-sky-950/50 hover:text-sky-600 dark:hover:text-sky-400 transition-colors group {% if 'thematic' in app.request.attributes.get('_route') %}bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-semibold{% endif %}">
+                        <div class="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                            <sl-icon name="stars" class="text-sm"></sl-icon>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-semibold">Temas</span>
+                                <span class="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">Descoberta</span>
+                            </div>
+                            <div class="text-[11px] text-slate-400">Palavras-chave e conceitos</div>
+                        </div>
+                    </a>
+
+                    {# Busca #}
+                    <a href="{{ path('app_pub_search') }}" class="flex items-center gap-3.5 px-3 py-2.5 rounded-2xl text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/50 hover:text-purple-600 dark:hover:text-purple-400 transition-colors group {% if app.request.attributes.get('_route') == 'app_pub_search' %}bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 font-semibold{% endif %}">
+                        <div class="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                            <sl-icon name="search" class="text-sm"></sl-icon>
+                        </div>
+                        <div class="flex-1">
+                            <div class="text-sm font-semibold">Busca Geral</div>
+                            <div class="text-[11px] text-slate-400">Pesquisa avançada com filtros</div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Atalhos Rápidos de Pesquisa -->
+                <div class="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2">Temas em Destaque</span>
+                    <div class="flex flex-wrap gap-1.5 px-1">
+                        <a href="{{ path('app_pub_thematic_search', {'t': 'educacao-especial'}) }}" class="text-xs px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-sky-100 hover:text-sky-800 dark:hover:bg-sky-950 dark:hover:text-sky-300 transition">
+                            Educação Especial
+                        </a>
+                        <a href="{{ path('app_pub_thematic_search', {'t': 'inteligencia-artificial'}) }}" class="text-xs px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-sky-100 hover:text-sky-800 dark:hover:bg-sky-950 dark:hover:text-sky-300 transition">
+                            Inteligência Artificial
+                        </a>
+                        <a href="{{ path('app_pub_thematic_search', {'t': 'politicas-publicas'}) }}" class="text-xs px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-sky-100 hover:text-sky-800 dark:hover:bg-sky-950 dark:hover:text-sky-300 transition">
+                            Políticas Públicas
+                        </a>
+                        <a href="{{ path('app_pub_thematic_search', {'t': 'gestao-da-informacao'}) }}" class="text-xs px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-sky-100 hover:text-sky-800 dark:hover:bg-sky-950 dark:hover:text-sky-300 transition">
+                            Gestão da Informação
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rodapé do Menu: Modo Claro/Escuro & Admin -->
+            <div class="p-5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Aparência</span>
+                    <div class="flex items-center rounded-full border border-slate-200 p-1 dark:border-slate-800 bg-white dark:bg-slate-900">
+                        <button type="button" onclick="setDarkMode(false)" title="Modo Claro" class="rounded-full px-2.5 py-1 text-xs flex items-center gap-1.5 text-slate-600 hover:text-amber-500 dark:text-slate-400 transition-colors">
+                            <sl-icon name="sun-fill" class="text-xs"></sl-icon> Claro
+                        </button>
+                        <button type="button" onclick="setDarkMode(true)" title="Modo Escuro" class="rounded-full px-2.5 py-1 text-xs flex items-center gap-1.5 text-slate-600 hover:text-teal-500 dark:text-slate-400 transition-colors">
+                            <sl-icon name="moon-stars-fill" class="text-xs"></sl-icon> Escuro
+                        </button>
+                    </div>
+                </div>
+
+                {% if is_granted('ROLE_ADMIN') %}
+                    <a href="{{ path('app_admin_dashboard') }}" class="block w-full text-center py-2.5 rounded-xl bg-slate-900 dark:bg-sky-600 text-white font-semibold text-xs shadow-sm hover:opacity-90 transition">
+                        Painel Administrativo
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <script>
+            function toggleMobileMenu() {
+                const drawer = document.getElementById('mobile-menu-drawer');
+                if (!drawer) return;
+                const isOpen = !drawer.classList.contains('translate-x-full');
+                if (isOpen) {
+                    closeMobileMenu();
+                } else {
+                    openMobileMenu();
+                }
+            }
+
+            function openMobileMenu() {
+                const backdrop = document.getElementById('mobile-menu-backdrop');
+                const drawer = document.getElementById('mobile-menu-drawer');
+                const btn = document.getElementById('mobile-menu-btn');
+
+                if (backdrop) {
+                    backdrop.classList.remove('opacity-0', 'pointer-events-none');
+                    backdrop.classList.add('opacity-100');
+                }
+                if (drawer) {
+                    drawer.classList.remove('translate-x-full');
+                    drawer.classList.add('translate-x-0');
+                }
+                document.body.classList.add('overflow-hidden');
+                if (btn) btn.setAttribute('aria-expanded', 'true');
+            }
+
+            function closeMobileMenu() {
+                const backdrop = document.getElementById('mobile-menu-backdrop');
+                const drawer = document.getElementById('mobile-menu-drawer');
+                const btn = document.getElementById('mobile-menu-btn');
+
+                if (backdrop) {
+                    backdrop.classList.remove('opacity-100');
+                    backdrop.classList.add('opacity-0', 'pointer-events-none');
+                }
+                if (drawer) {
+                    drawer.classList.remove('translate-x-0');
+                    drawer.classList.add('translate-x-full');
+                }
+                document.body.classList.remove('overflow-hidden');
+                if (btn) btn.setAttribute('aria-expanded', 'false');
+            }
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeMobileMenu();
+                }
+            });
+        </script>
 
         {# ── Main Content ── #}
         <main class="flex-1">
