@@ -4,6 +4,7 @@ namespace App\Controller\pub;
 
 use App\Entity\ProductionItem;
 use App\Entity\Researcher;
+use App\Repository\OrientationRepository;
 use App\Repository\ProductionItemRepository;
 use App\Repository\ResearcherRepository;
 use App\Service\StatisticsService;
@@ -17,6 +18,7 @@ class MainController extends AbstractController
     public function __construct(
         private readonly ResearcherRepository $researcherRepo,
         private readonly ProductionItemRepository $productionRepo,
+        private readonly OrientationRepository $orientationRepo,
         private readonly StatisticsService $statisticsService
     ) {}
 
@@ -176,8 +178,10 @@ class MainController extends AbstractController
 
         $researchers = [];
         $productions = [];
+        $orientations = [];
         $totalResearchers = 0;
         $totalProductions = 0;
+        $totalOrientations = 0;
 
         if ($q !== '' || $department !== '') {
             if ($type === 'all' || $type === 'researchers') {
@@ -187,6 +191,10 @@ class MainController extends AbstractController
             if ($type === 'all' || $type === 'productions') {
                 $productions = $this->productionRepo->searchProductions($q, $department, $page, $limit);
                 $totalProductions = $this->productionRepo->countSearchProductions($q, $department);
+            }
+            if ($type === 'all' || $type === 'orientations') {
+                $orientations = $this->orientationRepo->searchOrientations($q, $department, $page, $limit);
+                $totalOrientations = $this->orientationRepo->countSearchOrientations($q, $department);
             }
         }
 
@@ -200,8 +208,10 @@ class MainController extends AbstractController
             'limit' => $limit,
             'researchers' => $researchers,
             'productions' => $productions,
+            'orientations' => $orientations,
             'totalResearchers' => $totalResearchers,
             'totalProductions' => $totalProductions,
+            'totalOrientations' => $totalOrientations,
             'allDepartments' => $allDepartments,
         ]);
     }

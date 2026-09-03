@@ -35,4 +35,57 @@ class OrientationRepository extends ServiceEntityRepository
 
         return $qb->getQuery()->getResult();
     }
+
+    /**
+     * Searches orientations by title, student name, alternative title, or keywords.
+     *
+     * @return Orientation[]
+     */
+    public function searchOrientations(?string $query = null, ?string $department = null, int $page = 1, int $limit = 15): array
+    {
+        $qb = $this->createQueryBuilder('o')
+            ->leftJoin('o.researcher', 'r')
+            ->addSelect('r')
+            ->orderBy('o.year', 'DESC')
+            ->addOrderBy('o.id', 'DESC');
+
+        if ($query !== null && $query !== '') {
+            $qb->andWhere('o.title LIKE :query OR o.studentName LIKE :query OR o.keywords LIKE :query OR o.alternativeTitle LIKE :query')
+               ->setParameter('query', '%' . $query . '%');
+        }
+
+        if ($department !== null && $department !== '' && $department !== 'all') {
+            $depts = ResearcherRepository::getDepartmentFilterValues($department);
+            $qb->andWhere('r.department IN (:depts) OR r.departmentCode IN (:depts)')
+               ->setParameter('depts', $depts);
+        }
+
+        $qb->setFirstResult(($page - 1) * $limit)
+           ->setMaxResults($limit);
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Counts total search results for orientations.
+     */
+    public function countSearchOrientations(?string $query = null, ?string $department = null): int
+    {
+        $qb = $this->createQueryBuilder('o')
+            ->select('COUNT(o.id)')
+            ->leftJoin('o.researcher', 'r');
+
+        if ($query !== null && $query !== '') {
+            $qb->andWhere('o.title LIKE :query OR o.studentName LIKE :query OR o.keywords LIKE :query OR o.alternativeTitle LIKE :query')
+               ->setParameter('query', '%' . $query . '%');
+        }
+
+        if ($department !== null && $department !== '' && $department !== 'all') {
+            $depts = ResearcherRepository::getDepartmentFilterValues($department);
+            $qb->andWhere('r.department IN (:depts) OR r.departmentCode IN (:depts)')
+               ->setParameter('depts', $depts);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
 }
