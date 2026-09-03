@@ -177,6 +177,37 @@
                     {% endfor %}
                 </div>
             </div>
+
+            {# Conceitos e Palavras-chave Relacionadas (Co-ocorrência) #}
+            <div id="related-concepts-container" class="{% if not relatedConcepts or relatedConcepts|length == 0 %}hidden{% endif %} pt-3 border-t border-slate-100 dark:border-slate-800/60 space-y-2">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <span class="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <sl-icon name="diagram-2" class="text-sky-500"></sl-icon>
+                        <span>Conceitos e Palavras-Chave Frequentemente Associadas:</span>
+                    </span>
+                    <span class="text-[11px] text-slate-400">Clique para alternar o tema pesquisado</span>
+                </div>
+                <div id="related-concepts-list" class="flex flex-wrap gap-2">
+                    {% for rc in relatedConcepts %}
+                        {% if rc.slug %}
+                            <button 
+                                type="button"
+                                onclick="selectTerm({{ rc.id|default('null') }}, '{{ rc.slug|e('js') }}')"
+                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-sky-100 hover:text-sky-800 dark:hover:bg-sky-950/80 dark:hover:text-sky-300 border border-slate-200/80 dark:border-slate-700/60 transition-all cursor-pointer hover:scale-105"
+                                title="{{ rc.count }} trabalhos em conjunto"
+                            >
+                                <span>{{ rc.term }}</span>
+                                <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-400 font-semibold">{{ rc.count }}</span>
+                            </button>
+                        {% else %}
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/60">
+                                <span>{{ rc.term }}</span>
+                                <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-400 font-semibold">{{ rc.count }}</span>
+                            </span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
         </div>
 
         {# ── NOVO CARD: EVOLUÇÃO TEMPORAL DO TEMA (GRÁFICO DE LINHAS) ── #}
@@ -270,6 +301,107 @@
             </div>
         </div>
 
+        {# ── NOVO CARD: QUALIDADE EDITORIAL (QUALIS CAPES) & TOP PERIÓDICOS ── #}
+        <div id="theme-editorial-card" class="{% if not editorialAnalytics or (editorialAnalytics.totalArticlesWithQualis == 0 and editorialAnalytics.topJournals|length == 0) %}hidden{% endif %} glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 border border-slate-200/80 dark:border-white/10">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800/60">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400">
+                        <sl-icon name="journal-check"></sl-icon>
+                        <span>Qualidade Editorial & Veículos</span>
+                    </div>
+                    <h3 class="font-heading text-xl sm:text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+                        <span>Qualis CAPES e Principais Periódicos</span>
+                    </h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">
+                        Classificação de impacto dos artigos do tema e revistas científicas onde os docentes mais publicam.
+                    </p>
+                </div>
+
+                {# Badge de Destaque Qualis Superior #}
+                <div class="flex items-center gap-3">
+                    <div class="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-2xl px-4 py-2.5 flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg font-bold">
+                            <sl-icon name="award"></sl-icon>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block uppercase font-bold leading-tight">Estratos A1 e A2</span>
+                            <div class="flex items-baseline gap-1">
+                                <span id="editorial-top-percentage" class="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
+                                    {{ editorialAnalytics ? editorialAnalytics.topQualisPercentage : '0' }}%
+                                </span>
+                                <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">dos artigos avaliados</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {# Coluna Esquerda: Gráfico Donut Qualis #}
+                <div class="lg:col-span-5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <sl-icon name="pie-chart" class="text-teal-500"></sl-icon>
+                            <span>Distribuição por Estrato Qualis</span>
+                        </h4>
+                        <span id="editorial-total-articles" class="text-[11px] text-slate-400 font-semibold font-mono">
+                            {{ editorialAnalytics ? editorialAnalytics.totalArticlesWithQualis : 0 }} artigos
+                        </span>
+                    </div>
+                    <div class="relative w-full h-64 flex items-center justify-center">
+                        <canvas id="thematicQualisChart"></canvas>
+                    </div>
+                </div>
+
+                {# Coluna Direita: Top Periódicos #}
+                <div class="lg:col-span-7 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                            <sl-icon name="journal-bookmark" class="text-sky-500"></sl-icon>
+                            <span>Periódicos Científicos Mais Frequentes no Tema</span>
+                        </h4>
+                        <span class="text-[11px] text-slate-400">Top revistas</span>
+                    </div>
+
+                    <div id="top-journals-list" class="space-y-2.5">
+                        {% if editorialAnalytics and editorialAnalytics.topJournals|length > 0 %}
+                            {% for j in editorialAnalytics.topJournals %}
+                                {% set qualisBg = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' %}
+                                {% if j.qualis in ['A1', 'A2'] %}
+                                    {% set qualisBg = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800' %}
+                                {% elseif j.qualis in ['A3', 'A4'] %}
+                                    {% set qualisBg = 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-300/80 dark:border-sky-800' %}
+                                {% elseif j.qualis in ['B1', 'B2', 'B3', 'B4'] %}
+                                    {% set qualisBg = 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300/80 dark:border-indigo-800' %}
+                                {% endif %}
+                                <div class="glass-card rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-3 hover:border-sky-400/40 transition-all">
+                                    <div class="min-w-0 flex-1">
+                                        <h5 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate" title="{{ j.journalName }}">
+                                            {{ j.journalName }}
+                                        </h5>
+                                    </div>
+                                    <div class="flex items-center gap-2.5 shrink-0">
+                                        {% if j.qualis %}
+                                            <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-lg {{ qualisBg }}">
+                                                Qualis {{ j.qualis }}
+                                            </span>
+                                        {% endif %}
+                                        <span class="text-xs font-bold font-mono px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                            {{ j.count }} art.
+                                        </span>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="p-6 text-center text-xs text-slate-400 italic">
+                                Nenhum periódico mapeado para este tema.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
         {# Subtítulo dos Docentes #}
         <div class="flex items-center justify-between pt-2">
             <h3 class="font-heading text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -356,7 +488,10 @@ let currentTermId = {% if selectedTerm %}{{ selectedTerm.id }}{% else %}null{% e
 let currentOffset = {% if selectedTerm %}{{ initialResearchers|length }}{% else %}0{% endif %};
 let currentTotal = {% if selectedTerm %}{{ totalResearchersForTerm }}{% else %}0{% endif %};
 let currentTimelineData = {{ yearlyTimeline ? yearlyTimeline|json_encode|raw : 'null' }};
+let currentEditorialData = {{ editorialAnalytics ? editorialAnalytics|json_encode|raw : 'null' }};
+let currentRelatedConcepts = {{ relatedConcepts ? relatedConcepts|json_encode|raw : '[]' }};
 let timelineChartInstance = null;
+let qualisChartInstance = null;
 let currentChartMode = 'all';
 let searchDebounceTimer = null;
 
@@ -544,6 +679,12 @@ async function selectTerm(termId, slug) {
         if (data.timeline) {
             updateTimelineUI(data.timeline);
         }
+
+        // Atualiza Conceitos e Palavras-chave Relacionadas
+        updateRelatedConceptsUI(data.relatedConcepts || []);
+
+        // Atualiza Qualidade Editorial & Top Periódicos
+        updateEditorialUI(data.editorialAnalytics);
 
         // Departamentos
         if (data.topDepartments && data.topDepartments.length > 0) {
@@ -925,10 +1066,209 @@ function renderTimelineChart(data) {
     });
 }
 
+// ── Funções para Conceitos Relacionados e Qualidade Editorial ──
+function updateRelatedConceptsUI(concepts) {
+    const container = document.getElementById('related-concepts-container');
+    const list = document.getElementById('related-concepts-list');
+    if (!container || !list) return;
+
+    if (!concepts || concepts.length === 0) {
+        container.classList.add('hidden');
+        list.innerHTML = '';
+        return;
+    }
+
+    container.classList.remove('hidden');
+    let html = '';
+    concepts.forEach(rc => {
+        if (rc.slug) {
+            html += `
+                <button 
+                    type="button"
+                    onclick="selectTerm(${rc.id || 'null'}, '${escapeHtml(rc.slug)}')"
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-sky-100 hover:text-sky-800 dark:hover:bg-sky-950/80 dark:hover:text-sky-300 border border-slate-200/80 dark:border-slate-700/60 transition-all cursor-pointer hover:scale-105"
+                    title="${rc.count} trabalhos em conjunto"
+                >
+                    <span>${escapeHtml(rc.term)}</span>
+                    <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-400 font-semibold">${rc.count}</span>
+                </button>
+            `;
+        } else {
+            html += `
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/60">
+                    <span>${escapeHtml(rc.term)}</span>
+                    <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-400 font-semibold">${rc.count}</span>
+                </span>
+            `;
+        }
+    });
+    list.innerHTML = html;
+}
+
+function updateEditorialUI(editorialData) {
+    currentEditorialData = editorialData;
+    const card = document.getElementById('theme-editorial-card');
+    const topPercentageEl = document.getElementById('editorial-top-percentage');
+    const totalArticlesEl = document.getElementById('editorial-total-articles');
+    const journalsListEl = document.getElementById('top-journals-list');
+
+    if (!card) return;
+
+    if (!editorialData || (!editorialData.qualisDistribution && (!editorialData.topJournals || editorialData.topJournals.length === 0))) {
+        card.classList.add('hidden');
+        if (qualisChartInstance) {
+            qualisChartInstance.destroy();
+            qualisChartInstance = null;
+        }
+        return;
+    }
+
+    card.classList.remove('hidden');
+
+    if (topPercentageEl) {
+        topPercentageEl.textContent = `${editorialData.topQualisPercentage || 0}%`;
+    }
+    if (totalArticlesEl) {
+        totalArticlesEl.textContent = `${(editorialData.totalArticlesWithQualis || 0).toLocaleString('pt-BR')} artigos avaliados`;
+    }
+
+    // Renderizar Top Periódicos
+    if (journalsListEl) {
+        if (editorialData.topJournals && editorialData.topJournals.length > 0) {
+            let jHtml = '';
+            editorialData.topJournals.forEach(j => {
+                let qualisBg = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+                if (['A1', 'A2'].includes(j.qualis)) {
+                    qualisBg = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-800';
+                } else if (['A3', 'A4'].includes(j.qualis)) {
+                    qualisBg = 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-300/80 dark:border-sky-800';
+                } else if (['B1', 'B2', 'B3', 'B4'].includes(j.qualis)) {
+                    qualisBg = 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-300/80 dark:border-indigo-800';
+                }
+
+                jHtml += `
+                    <div class="glass-card rounded-2xl p-3 sm:p-3.5 flex items-center justify-between gap-3 hover:border-sky-400/40 transition-all">
+                        <div class="min-w-0 flex-1">
+                            <h5 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate" title="${escapeHtml(j.journalName)}">
+                                ${escapeHtml(j.journalName)}
+                            </h5>
+                        </div>
+                        <div class="flex items-center gap-2.5 shrink-0">
+                            ${j.qualis ? `<span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-lg ${qualisBg}">Qualis ${escapeHtml(j.qualis)}</span>` : ''}
+                            <span class="text-xs font-bold font-mono px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                ${j.count} art.
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+            journalsListEl.innerHTML = jHtml;
+        } else {
+            journalsListEl.innerHTML = '<div class="p-6 text-center text-xs text-slate-400 italic">Nenhum periódico mapeado para este tema.</div>';
+        }
+    }
+
+    renderQualisChart(editorialData.qualisDistribution || {});
+}
+
+function renderQualisChart(dist) {
+    const canvas = document.getElementById('thematicQualisChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    if (qualisChartInstance) {
+        qualisChartInstance.destroy();
+        qualisChartInstance = null;
+    }
+
+    const labels = Object.keys(dist);
+    const values = Object.values(dist);
+
+    if (labels.length === 0) return;
+
+    const colorMap = {
+        'A1': '#059669',
+        'A2': '#10b981',
+        'A3': '#06b6d4',
+        'A4': '#0ea5e9',
+        'B1': '#6366f1',
+        'B2': '#8b5cf6',
+        'B3': '#f59e0b',
+        'B4': '#f97316',
+        'C': '#ef4444',
+        'Sem Qualis': '#94a3b8'
+    };
+
+    const backgroundColors = labels.map(l => colorMap[l] || '#cbd5e1');
+
+    const ctx = canvas.getContext('2d');
+    const isDark = document.documentElement.classList.contains('dark') || document.documentElement.classList.contains('sl-theme-dark');
+    const textColor = isDark ? '#94a3b8' : '#475569';
+
+    qualisChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: backgroundColors,
+                borderWidth: 2,
+                borderColor: isDark ? '#1e293b' : '#ffffff',
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '62%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: textColor,
+                        boxWidth: 12,
+                        boxHeight: 12,
+                        borderRadius: 3,
+                        useBorderRadius: true,
+                        padding: 10,
+                        font: {
+                            family: "'Outfit', 'Inter', sans-serif",
+                            size: 11,
+                            weight: '600'
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                    titleColor: isDark ? '#f8fafc' : '#0f172a',
+                    bodyColor: isDark ? '#cbd5e1' : '#334155',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                    borderWidth: 1,
+                    padding: 10,
+                    cornerRadius: 12,
+                    callbacks: {
+                        label: function(context) {
+                            const total = values.reduce((a, b) => a + b, 0);
+                            const val = context.parsed;
+                            const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                            return ` ${context.label}: ${val} artigos (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
 // Inicializa o gráfico se já houver tema selecionado no carregamento
 document.addEventListener('DOMContentLoaded', function() {
     if (currentTimelineData) {
         updateTimelineUI(currentTimelineData);
+    }
+    if (currentEditorialData) {
+        updateEditorialUI(currentEditorialData);
+    }
+    if (currentRelatedConcepts && currentRelatedConcepts.length > 0) {
+        updateRelatedConceptsUI(currentRelatedConcepts);
     }
 });
 </script>

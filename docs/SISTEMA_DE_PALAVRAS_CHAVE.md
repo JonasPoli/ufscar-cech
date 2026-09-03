@@ -123,8 +123,16 @@ A rota [`/temas`](https://cech.wab.com.br/temas) (controlada por `ThematicSearch
    - Alternância interativa de séries:
      - **Total de Trabalhos**: linha contínua suavizada com área preenchida em degradê celeste (`sky-500`).
      - **Produções vs. Orientações**: desdobramento em duas séries independentes (Produções Científicas/Técnicas em azul e Orientações/Teses em verde esmeralda).
-   - Tooltips detalhados com informações sobre artigos/livros e teses/dissertações em cada ponto.
-   - Atualização dinâmica instantânea via AJAX ao selecionar qualquer termo sem recarregar a página.
+    - Tooltips detalhados com informações sobre artigos/livros e teses/dissertações em cada ponto.
+    - Atualização dinâmica instantânea via AJAX ao selecionar qualquer termo sem recarregar a página.
+6. **Conceitos e Palavras-Chave Relacionadas (Análise de Co-ocorrência / *Co-word*)**:
+   - Identifica os termos e palavras-chave que mais aparecem em conjunto com o tema selecionado nas produções e orientações do acervo.
+   - Apresenta badges interativas com contagem de ocorrências conjuntas (ex.: para *Educação Especial* &rarr; *Inclusão Escolar* [349], *Special Education* [302], *Formação de Professores* [169], *Educação Inclusiva* [160]).
+   - Clicar em qualquer conceito relacionado seleciona e transiciona imediatamente para o novo tema sem recarregar a página.
+7. **Qualidade Editorial (Qualis CAPES) & Top Periódicos**:
+   - **Distribuição por Estrato Qualis (Gráfico Donut)**: visualização percentual dos artigos em estratos A1, A2, A3, A4, B1 a B4 e C.
+   - **Indicador de Excelência**: badge em destaque com a porcentagem de artigos concentrados nos estratos de topo (A1 e A2).
+   - **Ranking dos Principais Periódicos**: mini-cards com as revistas científicas mais frequentes no tema, seus respectivos selos Qualis coloridos e contagem de artigos.
 
 ---
 

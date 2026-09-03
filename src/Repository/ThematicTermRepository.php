@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\ThematicTerm;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\Persistence\ManagerRegistry;
 
 use Symfony\Contracts\Cache\CacheInterface;
@@ -266,6 +267,236 @@ class ThematicTermRepository extends ServiceEntityRepository
             'peakYear' => $peakYear,
             'peakCount' => $peakCount,
             'grandTotal' => $grandTotal,
+        ];
+    }
+
+    /**
+     * Retorna os conceitos e palavras-chave que mais co-ocorrem com o termo selecionado.
+     *
+     * @return array<int, array{id: ?int, term: string, slug: ?string, count: int}>
+     */
+    public function getRelatedConcepts(ThematicTerm $term, int $limit = 14): array
+    {
+        $cacheKey = 'thematic_related_' . ($term->getSlug() ?: (string)$term->getId());
+
+        if ($this->cache !== null) {
+            return $this->cache->get($cacheKey, function (ItemInterface $item) use ($term, $limit) {
+                $item->expiresAfter(86400);
+                return $this->computeRelatedConcepts($term, $limit);
+            });
+        }
+
+        return $this->computeRelatedConcepts($term, $limit);
+    }
+
+    /**
+     * @return array<int, array{id: ?int, term: string, slug: ?string, count: int}>
+     */
+    private function computeRelatedConcepts(ThematicTerm $term, int $limit = 14): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $termStr = $term->getTerm() ?? '';
+        $normStr = $term->getNormalizedTerm() ?? '';
+        $searchTerm = $normStr !== '' ? $normStr : $termStr;
+        $termPattern = '%' . $searchTerm . '%';
+        $selfNorm = $this->normalizeString($searchTerm);
+
+        // 1. Palavras-chave das produções que casam com o termo
+        $stmtProd = $conn->executeQuery(
+            "SELECT extra_data FROM production_items WHERE (title LIKE :termPattern OR CAST(extra_data AS CHAR) LIKE :termPattern) AND extra_data LIKE '%keywords%'",
+            ['termPattern' => $termPattern]
+        );
+
+        $kwCounts = [];
+
+        while ($row = $stmtProd->fetchAssociative()) {
+            $extra = json_decode((string)$row['extra_data'], true);
+            if (!empty($extra['keywords']) && is_array($extra['keywords'])) {
+                foreach ($extra['keywords'] as $kw) {
+                    if (!is_string($kw)) continue;
+                    $parts = preg_split('/[;,]/u', $kw) ?: [$kw];
+                    foreach ($parts as $p) {
+                        $pClean = trim(trim($p), " \t\n\r\0\x0B.,;:-/()[]{}\"'");
+                        $pNorm = $this->normalizeString($pClean);
+                        if (mb_strlen($pNorm) < 3 || $pNorm === $selfNorm) continue;
+                        if (!isset($kwCounts[$pNorm])) {
+                            $kwCounts[$pNorm] = ['canonical' => mb_convert_case($pClean, MB_CASE_TITLE, 'UTF-8'), 'count' => 0];
+                        }
+                        $kwCounts[$pNorm]['count']++;
+                    }
+                }
+            }
+        }
+        unset($stmtProd);
+
+        // 2. Palavras-chave das orientações que casam com o termo
+        $stmtOrient = $conn->executeQuery(
+            "SELECT keywords FROM orientations WHERE (title LIKE :termPattern OR alternative_title LIKE :termPattern OR keywords LIKE :termPattern) AND keywords IS NOT NULL AND keywords != ''",
+            ['termPattern' => $termPattern]
+        );
+
+        while ($row = $stmtOrient->fetchAssociative()) {
+            $kwStr = (string)$row['keywords'];
+            $parts = preg_split('/[;,]/u', $kwStr) ?: [];
+            foreach ($parts as $p) {
+                $pClean = trim(trim($p), " \t\n\r\0\x0B.,;:-/()[]{}\"'");
+                $pNorm = $this->normalizeString($pClean);
+                if (mb_strlen($pNorm) < 3 || $pNorm === $selfNorm) continue;
+                if (!isset($kwCounts[$pNorm])) {
+                    $kwCounts[$pNorm] = ['canonical' => mb_convert_case($pClean, MB_CASE_TITLE, 'UTF-8'), 'count' => 0];
+                }
+                $kwCounts[$pNorm]['count']++;
+            }
+        }
+        unset($stmtOrient);
+
+        if (empty($kwCounts)) {
+            return [];
+        }
+
+        uasort($kwCounts, fn($a, $b) => $b['count'] <=> $a['count']);
+        $topList = array_slice($kwCounts, 0, $limit, true);
+
+        // 3. Buscar correspondência em thematic_terms para obter slugs oficiais e IDs
+        $normalizedList = array_keys($topList);
+        $matchedTerms = $conn->fetchAllAssociative(
+            'SELECT id, term, slug, normalized_term FROM thematic_terms WHERE normalized_term IN (?)',
+            [$normalizedList],
+            [ArrayParameterType::STRING]
+        );
+
+        $matchedMap = [];
+        foreach ($matchedTerms as $mt) {
+            $matchedMap[$mt['normalized_term']] = [
+                'id' => (int)$mt['id'],
+                'term' => $mt['term'],
+                'slug' => $mt['slug'],
+            ];
+        }
+
+        $result = [];
+        foreach ($topList as $norm => $item) {
+            $found = $matchedMap[$norm] ?? null;
+            $result[] = [
+                'id' => $found['id'] ?? null,
+                'term' => $found['term'] ?? $item['canonical'],
+                'slug' => $found['slug'] ?? null,
+                'count' => (int)$item['count'],
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Retorna a distribuição Qualis CAPES dos artigos e o ranking dos principais periódicos do tema.
+     *
+     * @return array{
+     *     qualisDistribution: array<string, int>,
+     *     totalArticlesWithQualis: int,
+     *     topQualisPercentage: float,
+     *     topJournals: array<int, array{journalName: string, qualis: ?string, count: int}>
+     * }
+     */
+    public function getEditorialAnalytics(ThematicTerm $term, int $limitJournals = 6): array
+    {
+        $cacheKey = 'thematic_editorial_' . ($term->getSlug() ?: (string)$term->getId());
+
+        if ($this->cache !== null) {
+            return $this->cache->get($cacheKey, function (ItemInterface $item) use ($term, $limitJournals) {
+                $item->expiresAfter(86400);
+                return $this->computeEditorialAnalytics($term, $limitJournals);
+            });
+        }
+
+        return $this->computeEditorialAnalytics($term, $limitJournals);
+    }
+
+    /**
+     * @return array{
+     *     qualisDistribution: array<string, int>,
+     *     totalArticlesWithQualis: int,
+     *     topQualisPercentage: float,
+     *     topJournals: array<int, array{journalName: string, qualis: ?string, count: int}>
+     * }
+     */
+    private function computeEditorialAnalytics(ThematicTerm $term, int $limitJournals = 6): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $termStr = $term->getTerm() ?? '';
+        $normStr = $term->getNormalizedTerm() ?? '';
+        $searchTerm = $normStr !== '' ? $normStr : $termStr;
+        $termPattern = '%' . $searchTerm . '%';
+
+        // 1. Distribuição Qualis dos artigos
+        $sqlQualis = "
+        SELECT COALESCE(qualis, 'Sem Qualis') as stratum, COUNT(*) as total
+        FROM production_items
+        WHERE (title LIKE :termPattern OR CAST(extra_data AS CHAR) LIKE :termPattern)
+          AND item_type = 'artigo'
+        GROUP BY stratum
+        ORDER BY total DESC
+        ";
+
+        $rowsQualis = $conn->fetchAllAssociative($sqlQualis, ['termPattern' => $termPattern]);
+
+        $order = ['A1', 'A2', 'A3', 'A4', 'B1', 'B2', 'B3', 'B4', 'C', 'Sem Qualis'];
+        $qualisMap = array_fill_keys($order, 0);
+        $totalWithQualis = 0;
+        $topCount = 0;
+
+        foreach ($rowsQualis as $r) {
+            $s = (string)$r['stratum'];
+            $c = (int)$r['total'];
+            if (isset($qualisMap[$s])) {
+                $qualisMap[$s] = $c;
+            } else {
+                $qualisMap['Sem Qualis'] += $c;
+            }
+            if ($s !== 'Sem Qualis') {
+                $totalWithQualis += $c;
+            }
+            if ($s === 'A1' || $s === 'A2') {
+                $topCount += $c;
+            }
+        }
+
+        // Remove estratos com 0 para o Donut Chart ficar limpo
+        $qualisDistribution = array_filter($qualisMap, fn($cnt) => $cnt > 0);
+
+        $topQualisPercentage = $totalWithQualis > 0 ? round(($topCount / $totalWithQualis) * 100, 1) : 0.0;
+
+        // 2. Top Periódicos
+        $sqlJournals = "
+        SELECT journal_name, MAX(qualis) as qualis, COUNT(DISTINCT LOWER(TRIM(title))) as total
+        FROM production_items
+        WHERE (title LIKE :termPattern OR CAST(extra_data AS CHAR) LIKE :termPattern)
+          AND journal_name IS NOT NULL AND journal_name != ''
+        GROUP BY journal_name
+        ORDER BY total DESC
+        LIMIT :limit
+        ";
+
+        $rowsJournals = $conn->fetchAllAssociative(
+            $sqlJournals,
+            ['termPattern' => $termPattern, 'limit' => $limitJournals],
+            ['limit' => \PDO::PARAM_INT]
+        );
+
+        $topJournals = [];
+        foreach ($rowsJournals as $rj) {
+            $topJournals[] = [
+                'journalName' => (string)$rj['journal_name'],
+                'qualis' => $rj['qualis'] ? (string)$rj['qualis'] : null,
+                'count' => (int)$rj['total'],
+            ];
+        }
+
+        return [
+            'qualisDistribution' => $qualisDistribution,
+            'totalArticlesWithQualis' => $totalWithQualis,
+            'topQualisPercentage' => $topQualisPercentage,
+            'topJournals' => $topJournals,
         ];
     }
 

@@ -31,6 +31,8 @@ class ThematicSearchController extends AbstractController
         $hasMore = false;
         $totalResearchersForTerm = 0;
         $yearlyTimeline = null;
+        $relatedConcepts = [];
+        $editorialAnalytics = null;
 
         if ($termSlugOrId !== '') {
             $selectedTerm = $this->termRepo->findBySlugOrId($termSlugOrId);
@@ -40,6 +42,8 @@ class ThematicSearchController extends AbstractController
                 $initialDepartments = $this->researcherRepo->getTopDepartmentsForTerm($selectedTerm, 4);
                 $hasMore = $totalResearchersForTerm > 10;
                 $yearlyTimeline = $this->termRepo->getYearlyTimelineForTerm($selectedTerm);
+                $relatedConcepts = $this->termRepo->getRelatedConcepts($selectedTerm, 12);
+                $editorialAnalytics = $this->termRepo->getEditorialAnalytics($selectedTerm, 6);
             }
         }
 
@@ -55,6 +59,8 @@ class ThematicSearchController extends AbstractController
             'topFeaturedTerms' => $topFeaturedTerms,
             'globalStats' => $globalStats,
             'yearlyTimeline' => $yearlyTimeline,
+            'relatedConcepts' => $relatedConcepts,
+            'editorialAnalytics' => $editorialAnalytics,
         ]);
     }
 
@@ -133,6 +139,8 @@ class ThematicSearchController extends AbstractController
         $researchers = $this->researcherRepo->getResearchersForTerm($term, $offset, $limit);
         $topDepartments = ($offset === 0) ? $this->researcherRepo->getTopDepartmentsForTerm($term, 4) : [];
         $yearlyTimeline = ($offset === 0) ? $this->termRepo->getYearlyTimelineForTerm($term) : null;
+        $relatedConcepts = ($offset === 0) ? $this->termRepo->getRelatedConcepts($term, 12) : [];
+        $editorialAnalytics = ($offset === 0) ? $this->termRepo->getEditorialAnalytics($term, 6) : null;
 
         $hasMore = ($offset + count($researchers)) < $totalResearchers;
 
@@ -148,6 +156,8 @@ class ThematicSearchController extends AbstractController
             'topDepartments' => $topDepartments,
             'researchers' => $researchers,
             'timeline' => $yearlyTimeline,
+            'relatedConcepts' => $relatedConcepts,
+            'editorialAnalytics' => $editorialAnalytics,
             'offset' => $offset,
             'limit' => $limit,
             'total' => $totalResearchers,

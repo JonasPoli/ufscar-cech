@@ -113,6 +113,8 @@ class ThematicSearchControllerTest extends WebTestCase
         $this->assertArrayHasKey('term', $data);
         $this->assertArrayHasKey('hasMore', $data);
         $this->assertArrayHasKey('timeline', $data);
+        $this->assertArrayHasKey('relatedConcepts', $data);
+        $this->assertArrayHasKey('editorialAnalytics', $data);
         $this->assertGreaterThan(0, count($data['researchers']));
     }
 
@@ -147,6 +149,9 @@ class ThematicSearchControllerTest extends WebTestCase
         $this->assertStringContainsString('theme-timeline-card', $content);
         $this->assertStringContainsString('thematicTimelineChart', $content);
         $this->assertStringContainsString('Evolução da Produção no Tema', $content);
+        $this->assertStringContainsString('theme-editorial-card', $content);
+        $this->assertStringContainsString('thematicQualisChart', $content);
+        $this->assertStringContainsString('related-concepts-container', $content);
     }
 
     public function testThematicSearchLinksPassTopicToProfessorProfile(): void
