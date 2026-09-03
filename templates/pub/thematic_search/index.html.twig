@@ -20,38 +20,38 @@
 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-10">
 
     {# ── 1. APRESENTAÇÃO E EXPLICAÇÃO ── #}
-    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-sky-950 to-slate-900 p-8 sm:p-12 text-white shadow-xl border border-sky-900/30">
-        <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-sky-500/10 blur-3xl pointer-events-none"></div>
-        <div class="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none"></div>
+    <div class="relative overflow-hidden rounded-3xl glass-card p-8 sm:p-12 shadow-sm dark:shadow-xl border border-slate-200/80 dark:border-white/10">
+        <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-sky-500/5 dark:bg-sky-500/10 blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-indigo-500/5 dark:bg-indigo-500/10 blur-3xl pointer-events-none"></div>
 
         <div class="relative z-10 max-w-3xl space-y-4">
-            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                <sl-icon name="stars" class="text-sm"></sl-icon>
+            <div class="flex items-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                <sl-icon name="stars" class="text-base text-sky-500 dark:text-sky-400"></sl-icon>
                 <span>Descoberta Acadêmica • CECH UFSCar</span>
             </div>
 
-            <h1 class="font-heading text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight text-white">
-                Pesquisa Temática por <span class="bg-gradient-to-r from-sky-400 to-teal-300 bg-clip-text text-transparent">Palavras-Chave</span>
+            <h1 class="font-heading text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight text-slate-900 dark:text-white">
+                Pesquisa Temática por <span class="bg-gradient-to-r from-sky-600 to-teal-600 dark:from-sky-400 dark:to-teal-300 bg-clip-text text-transparent">Palavras-Chave</span>
             </h1>
 
-            <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
+            <p class="text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                 Explore os conceitos, sintagmas e linhas de investigação científica consolidadas pelos docentes do CECH. 
-                O sistema cruza dados oficiais do <strong>Currículo Lattes</strong> e do <strong>Repositório Institucional da UFSCar</strong>, 
+                O sistema cruza dados oficiais do <strong class="font-semibold text-slate-900 dark:text-white">Currículo Lattes</strong> e do <strong class="font-semibold text-slate-900 dark:text-white">Repositório Institucional da UFSCar</strong>, 
                 mapeando milhares de artigos, livros, teses e dissertações orientadas.
             </p>
 
-            <div class="pt-2 flex flex-wrap items-center gap-4 text-xs font-medium text-slate-300">
-                <div class="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10">
-                    <sl-icon name="tags" class="text-sky-400"></sl-icon>
-                    <span><strong>{{ globalStats.totalTerms|number_format(0, ',', '.') }}</strong> temas indexados</span>
+            <div class="pt-2 flex flex-wrap items-center gap-3 text-xs font-medium">
+                <div class="flex items-center gap-2 bg-slate-100/80 dark:bg-white/5 backdrop-blur-sm px-3.5 py-1.5 rounded-xl border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-300 shadow-2xs">
+                    <sl-icon name="tags" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                    <span><strong class="font-bold text-slate-900 dark:text-white">{{ globalStats.totalTerms|number_format(0, ',', '.') }}</strong> temas indexados</span>
                 </div>
-                <div class="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10">
-                    <sl-icon name="people" class="text-teal-400"></sl-icon>
-                    <span><strong>415</strong> docentes analisados</span>
+                <div class="flex items-center gap-2 bg-slate-100/80 dark:bg-white/5 backdrop-blur-sm px-3.5 py-1.5 rounded-xl border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-300 shadow-2xs">
+                    <sl-icon name="people" class="text-teal-600 dark:text-teal-400"></sl-icon>
+                    <span><strong class="font-bold text-slate-900 dark:text-white">415</strong> docentes analisados</span>
                 </div>
-                <div class="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10">
-                    <sl-icon name="journal-bookmark" class="text-indigo-400"></sl-icon>
-                    <span><strong>100.000+</strong> produções e teses</span>
+                <div class="flex items-center gap-2 bg-slate-100/80 dark:bg-white/5 backdrop-blur-sm px-3.5 py-1.5 rounded-xl border border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-slate-300 shadow-2xs">
+                    <sl-icon name="journal-bookmark" class="text-indigo-600 dark:text-indigo-400"></sl-icon>
+                    <span><strong class="font-bold text-slate-900 dark:text-white">100.000+</strong> produções e teses</span>
                 </div>
             </div>
         </div>
