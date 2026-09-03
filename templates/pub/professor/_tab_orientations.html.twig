@@ -30,7 +30,7 @@
                         </h3>
                         <div class="space-y-3">
                             {% for o in completedOrientations %}
-                                <div class="orientation-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2.5 bg-white/50 dark:bg-slate-900/50 hover:border-emerald-300 dark:hover:border-emerald-700/50 transition-colors flex flex-col justify-between">
+                                <div class="orientation-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2.5 bg-white/50 dark:bg-slate-900/50 hover:border-emerald-300 dark:hover:border-emerald-700/50 transition-colors flex flex-col justify-between" data-keywords="{{ (o.keywords ?: '')|e('html_attr') }}" data-alt-title="{{ (o.alternativeTitle ?: '')|e('html_attr') }}">
                                     <div class="space-y-1">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center gap-1.5 flex-wrap">
@@ -59,11 +59,30 @@
                                         {% if o.title %}
                                             <p class="text-xs text-slate-600 dark:text-slate-300 italic">"{{ o.title }}"</p>
                                         {% endif %}
+                                        {% if o.alternativeTitle %}
+                                            <p class="text-xs text-slate-500 dark:text-slate-400 italic">Título alternativo: "{{ o.alternativeTitle }}"</p>
+                                        {% endif %}
                                         <div class="text-[11px] text-slate-400">
                                             {% if o.courseName %}{{ o.courseName }} • {% endif %}
                                             {{ o.institutionName }}
                                             {% if o.campus %} ({{ o.campus }}){% endif %}
                                         </div>
+                                        {% if o.keywords %}
+                                            {% set kwList = o.keywords|split(';') %}
+                                            <div class="flex flex-wrap items-center gap-1.5 pt-1.5 pb-0.5">
+                                                <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                    <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                                </span>
+                                                {% for kw in kwList %}
+                                                    {% set cleanKw = kw|trim %}
+                                                    {% if cleanKw %}
+                                                        <button type="button" onclick="filterByKeyword('{{ cleanKw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105 cursor-pointer" title="Filtrar por '{{ cleanKw }}'">
+                                                            #{{ cleanKw }}
+                                                        </button>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
                                     </div>
 
                                     {# Botão de Busca e Link Direto para o Repositório #}
@@ -130,7 +149,7 @@
                         </h3>
                         <div class="space-y-3">
                             {% for o in ongoingOrientations %}
-                                <div class="orientation-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2.5 bg-white/50 dark:bg-slate-900/50 hover:border-sky-300 dark:hover:border-sky-700/50 transition-colors flex flex-col justify-between">
+                                <div class="orientation-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2.5 bg-white/50 dark:bg-slate-900/50 hover:border-sky-300 dark:hover:border-sky-700/50 transition-colors flex flex-col justify-between" data-keywords="{{ (o.keywords ?: '')|e('html_attr') }}" data-alt-title="{{ (o.alternativeTitle ?: '')|e('html_attr') }}">
                                     <div class="space-y-1">
                                         <div class="flex items-center justify-between">
                                             {% if o.orientationType == 'DOUTORADO' %}
@@ -154,10 +173,29 @@
                                         {% if o.title %}
                                             <p class="text-xs text-slate-600 dark:text-slate-300 italic">"{{ o.title }}"</p>
                                         {% endif %}
+                                        {% if o.alternativeTitle %}
+                                            <p class="text-xs text-slate-500 dark:text-slate-400 italic">Título alternativo: "{{ o.alternativeTitle }}"</p>
+                                        {% endif %}
                                         <div class="text-[11px] text-slate-400">
                                             {% if o.courseName %}{{ o.courseName }} • {% endif %}
                                             {{ o.institutionName }}
                                         </div>
+                                        {% if o.keywords %}
+                                            {% set kwList = o.keywords|split(';') %}
+                                            <div class="flex flex-wrap items-center gap-1.5 pt-1.5 pb-0.5">
+                                                <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                    <sl-icon name="tags-fill" class="text-sky-500 text-[11px]"></sl-icon> Palavras-chave:
+                                                </span>
+                                                {% for kw in kwList %}
+                                                    {% set cleanKw = kw|trim %}
+                                                    {% if cleanKw %}
+                                                        <button type="button" onclick="filterByKeyword('{{ cleanKw|e('js') }}')" class="rounded-md bg-sky-50 hover:bg-sky-100 text-sky-800 dark:bg-sky-950/70 dark:hover:bg-sky-900/80 dark:text-sky-300 border border-sky-200/60 dark:border-sky-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105 cursor-pointer" title="Filtrar por '{{ cleanKw }}'">
+                                                            #{{ cleanKw }}
+                                                        </button>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
                                     </div>
 
                                     {# Botão de Busca do Trabalho no Google e Link Repositório #}

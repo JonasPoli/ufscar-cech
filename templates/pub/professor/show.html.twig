@@ -509,8 +509,17 @@ function toggleOnlyDoi() {
 function filterByKeyword(keyword) {
     const searchInput = document.getElementById('prodSearchInput');
     if (searchInput) searchInput.value = keyword;
-    switchProfessorTab('productions');
     applyGlobalFilter();
+
+    if (lastFilterCounts.productions > 0) {
+        switchProfessorTab('productions');
+    } else if (lastFilterCounts.orientations > 0) {
+        switchProfessorTab('orientations');
+    } else if (lastFilterCounts.activities > 0) {
+        switchProfessorTab('activities');
+    } else {
+        switchProfessorTab('productions');
+    }
 
     const filterBar = document.getElementById('globalFilterBar');
     if (filterBar) {
@@ -759,7 +768,10 @@ function applyGlobalFilter() {
     let orientMatches = 0;
     document.querySelectorAll('#pane-orientations .orientation-item, #pane-orientations .education-item, #pane-orientations .complementary-item').forEach(item => {
         const text = item.textContent.toLowerCase();
-        const matches = (term === '' || text.includes(term) || (normTerm !== '' && normalizeFilterStr(text).includes(normTerm))) && !onlyDoi;
+        const kw = (item.getAttribute('data-keywords') || '').toLowerCase();
+        const altTitle = (item.getAttribute('data-alt-title') || '').toLowerCase();
+        const full = text + ' ' + kw + ' ' + altTitle;
+        const matches = (term === '' || full.includes(term) || (normTerm !== '' && normalizeFilterStr(full).includes(normTerm))) && !onlyDoi;
         if (matches) {
             item.style.display = '';
             orientMatches++;
