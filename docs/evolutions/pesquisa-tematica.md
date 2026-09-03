@@ -119,15 +119,20 @@ Gerenciado pelo [`ThematicSearchController`](file:///Users/jonaspoli/work/html/u
 ## 5. 🔗 Integração e Deep-Linking com o Perfil do Docente
 
 Ao clicar em um docente no resultado da pesquisa temática:
-1. O link do card é gerado incluindo o parâmetro `?tema={nome_do_tema}#productions`:
+1. O link do card é gerado com URL limpa com o parâmetro `?tema={nome_do_tema}`:
    ```html
-   <a href="/professor/joao-silva?tema=Educa%C3%A7%C3%A3o%20Especial#productions">
+   <a href="/professor/joao-silva?tema=Educa%C3%A7%C3%A3o%20Especial">
    ```
 2. Ao abrir o perfil do docente:
-   - O campo de busca rápida (`#prodSearchInput`) já é inicializado com o tema preenchido.
-   - A aba de **Produção Científica & Técnica** é ativada.
-   - O filtro cienciométrico `applyGlobalFilter()` é disparado imediatamente.
-   - Um banner de status visualiza o filtro ativo:
-     `Filtrando por: "Educação Especial"` com botão para limpar busca.
-   - A normalização de acentuação (`normalizeFilterStr`) assegura correspondência precisa mesmo que haja divergências de acentos ortográficos.
-   - A página efetua uma rolagem suave (*smooth scroll*) até a barra de filtros para exibir os resultados pertinentes de imediato.
+   - As abas de **Produções**, **Orientações & Formação** e **Projetos/Atuação** são pré-carregadas para busca e filtragem instantânea unificada no DOM.
+   - Os trabalhos de orientação agora exibem e indexam todas as **palavras-chave** (oriundas tanto do Lattes quanto do TeD-UFSCar) e **títulos alternativos**, formatados como badges `#tag` interativas.
+   - O campo de busca rápida (`#prodSearchInput`) já é inicializado com o tema preenchido e dispara `applyGlobalFilter()`.
+   - **Resolução Inteligente de Abas**: O sistema calcula onde estão as ocorrências e seleciona automaticamente a aba correta:
+     - Se houver ocorrências em Produções, foca a aba de Produções.
+     - Se houver 0 em Produções e ocorrências em Orientações (ex.: teses de doutorado ou dissertações orientadas pelo docente no tema), abre automaticamente a aba **Orientações & Formação**.
+     - Se houver ocorrências em Projetos/Bancas, abre **Projetos, Bancas & Atuação**.
+   - Se o usuário navegar manualmente para uma aba sem registros durante o filtro, um botão de atalho direto é exibido no card de estado vazio (ex: `[ Ver 1 em Orientações & Formação → ]`).
+   - Um banner de status visualiza o detalhamento da busca:
+     `Filtrando por: "Public Research Institutes" • 1 registro(s) encontrado(s) (1 em Orientações)`.
+   - A normalização de acentuação (`normalizeFilterStr`) assegura correspondência precisa em português e inglês.
+   - A página efetua uma rolagem suave (*smooth scroll*) até a barra de filtros.
