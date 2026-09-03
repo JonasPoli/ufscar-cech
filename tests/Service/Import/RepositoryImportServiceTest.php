@@ -20,6 +20,15 @@ class RepositoryImportServiceTest extends KernelTestCase
         $container = static::getContainer();
         $this->importService = $container->get(RepositoryImportService::class);
         $this->em = $container->get('doctrine.orm.entity_manager');
+
+        $existing = $this->em->getRepository(Researcher::class)->findOneBy(['idLattes' => '9999888877776666']);
+        if ($existing) {
+            foreach ($this->em->getRepository(Orientation::class)->findBy(['researcher' => $existing]) as $o) {
+                $this->em->remove($o);
+            }
+            $this->em->remove($existing);
+            $this->em->flush();
+        }
     }
 
     public function testImportWithSampleCsv(): void
@@ -31,10 +40,11 @@ class RepositoryImportServiceTest extends KernelTestCase
         $researcher->setSlug('prof-teste-da-silva');
         $this->em->persist($researcher);
 
-        // 2. Create an existing orientation from Lattes
+        // 2. Create an existing orientation from Lattes (initially EM_ANDAMENTO)
         $existingOrient = new Orientation();
         $existingOrient->setResearcher($researcher);
         $existingOrient->setOrientationType(Orientation::TYPE_MESTRADO);
+        $existingOrient->setNature(Orientation::NATURE_EM_ANDAMENTO);
         $existingOrient->setStudentName('Aluno Teste Existente');
         $existingOrient->setTitle('Trabalho Antigo Teste');
         $existingOrient->setYear(2023);
@@ -71,6 +81,7 @@ class RepositoryImportServiceTest extends KernelTestCase
             $this->assertEquals('20.500.14289/99901', $existingOrient->getHandle());
             $this->assertEquals('uuid-test-01', $existingOrient->getRepositoryUuid());
             $this->assertEquals('Programa de Pós-Graduação em Educação - PPGE', $existingOrient->getCourseName());
+            $this->assertEquals(Orientation::NATURE_CONCLUIDA, $existingOrient->getNature());
 
             // Second run (Idempotency test): 2 skipped, 0 new created
             $stats2 = $this->importService->import($tmpCsv, false);
@@ -79,6 +90,15 @@ class RepositoryImportServiceTest extends KernelTestCase
         } finally {
             if (file_exists($tmpCsv)) {
                 unlink($tmpCsv);
+            }
+            // Cleanup test entities
+            $toClean = $this->em->getRepository(Researcher::class)->findOneBy(['idLattes' => '9999888877776666']);
+            if ($toClean) {
+                foreach ($this->em->getRepository(Orientation::class)->findBy(['researcher' => $toClean]) as $o) {
+                    $this->em->remove($o);
+                }
+                $this->em->remove($toClean);
+                $this->em->flush();
             }
         }
     }

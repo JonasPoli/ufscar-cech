@@ -841,13 +841,25 @@ class LattesHtmlParserService
 
                 $orient = new Orientation();
                 $orient->setResearcher($researcher);
-                $orient->setNature($isAndamento ? Orientation::NATURE_EM_ANDAMENTO : Orientation::NATURE_CONCLUIDA);
 
                 // Find closest preceding sub-header
                 $closestSub = $xpath->query('(preceding::div[contains(@class, "cita-artigos")] | preceding::a[@name])[last()]', $node)->item(0);
                 $subText = $closestSub ? mb_strtolower($closestSub->textContent . ' ' . $closestSub->getAttribute('name')) : '';
                 $itemText = mb_strtolower($text);
                 $combined = $subText . ' ' . $itemText;
+
+                // Determinar Natureza (Concluída vs Em Andamento) com maior precisão
+                $itemNature = $isAndamento ? Orientation::NATURE_EM_ANDAMENTO : Orientation::NATURE_CONCLUIDA;
+                if (str_contains($subText, 'concluid')) {
+                    $itemNature = Orientation::NATURE_CONCLUIDA;
+                } elseif (str_contains($subText, 'andamento')) {
+                    $itemNature = Orientation::NATURE_EM_ANDAMENTO;
+                } elseif (preg_match('/in[íi]cio:\s*(19\d{2}|20\d{2})/iu', $text)) {
+                    $itemNature = Orientation::NATURE_EM_ANDAMENTO;
+                } elseif (preg_match('/\b(19\d{2}|20\d{2})\.\s*(disserta|tese|monografia|trabalho|relat)/iu', $text) || str_contains($itemText, 'orientador:')) {
+                    $itemNature = Orientation::NATURE_CONCLUIDA;
+                }
+                $orient->setNature($itemNature);
 
                 $type = Orientation::TYPE_OUTRA;
                 if (str_contains($subText, 'doutorado') || str_contains($itemText, 'doutorado')) {

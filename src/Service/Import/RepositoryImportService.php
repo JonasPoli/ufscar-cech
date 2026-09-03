@@ -379,7 +379,7 @@ class RepositoryImportService
         if ($handle !== '') {
             foreach ($existingOrientations as $o) {
                 if ($o->getHandle() === $handle) {
-                    $this->updateExistingMetadata($o, $handleUrl, $uuid, $defenseDate, $programName, $centerName, $campus, $abstractText, $keywords, $doi, $studentOrcid, $alternativeTitle);
+                    $this->updateExistingMetadata($o, $handleUrl, $uuid, $defenseDate, $programName, $centerName, $campus, $abstractText, $keywords, $doi, $studentOrcid, $alternativeTitle, $handle);
                     $stats['skippedOrientations']++;
                     $pendingFlushes++;
                     return;
@@ -390,7 +390,7 @@ class RepositoryImportService
         if ($uuid !== '') {
             foreach ($existingOrientations as $o) {
                 if ($o->getRepositoryUuid() === $uuid) {
-                    $this->updateExistingMetadata($o, $handleUrl, $uuid, $defenseDate, $programName, $centerName, $campus, $abstractText, $keywords, $doi, $studentOrcid, $alternativeTitle);
+                    $this->updateExistingMetadata($o, $handleUrl, $uuid, $defenseDate, $programName, $centerName, $campus, $abstractText, $keywords, $doi, $studentOrcid, $alternativeTitle, $handle);
                     $stats['skippedOrientations']++;
                     $pendingFlushes++;
                     return;
@@ -514,6 +514,11 @@ class RepositoryImportService
         string $alternativeTitle,
         string $handle = ''
     ): void {
+        // Obra catalogada no repositório oficial de teses e dissertações atesta conclusão formal da defesa
+        if ($orientation->getNature() !== Orientation::NATURE_CONCLUIDA) {
+            $orientation->setNature(Orientation::NATURE_CONCLUIDA);
+        }
+
         if ($handleUrl && !$orientation->getHandleUrl()) {
             $orientation->setHandleUrl(mb_substr($handleUrl, 0, 255));
         }
