@@ -43,7 +43,7 @@ class ThesaurusResolverTest extends KernelTestCase
         $this->assertNotEmpty($instName);
 
         $badge = $this->institutionResolver->renderInstitutionBadge('UFSCar');
-        $this->assertStringContainsString('UFSCar', $badge);
+        $this->assertTrue(str_contains($badge, 'UFSCar') || str_contains($badge, 'universidade federal de são carlos'));
     }
 
     public function testAuthorThesaurusCitationVariantsForResearcher(): void

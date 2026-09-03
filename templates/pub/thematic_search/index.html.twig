@@ -1,0 +1,597 @@
+{% extends 'pub/base.html.twig' %}
+
+{% block title %}
+    {% if selectedTerm %}
+        {{ selectedTerm.term }} | Pesquisa Temática — CECH UFSCar
+    {% else %}
+        Pesquisa Temática por Palavras-Chave | Portal CECH — UFSCar
+    {% endif %}
+{% endblock %}
+
+{% block meta_description %}
+    {% if selectedTerm %}
+        Conheça os docentes e linhas de pesquisa do CECH/UFSCar associados ao tema "{{ selectedTerm.term }}" com {{ selectedTerm.totalOccurrences }} trabalhos identificados.
+    {% else %}
+        Pesquisa temática e descoberta de palavras-chave acadêmicas dos docentes do CECH/UFSCar. Explore tópicos, conceitos e sintagmas mais investigados.
+    {% endif %}
+{% endblock %}
+
+{% block body %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+
+    {# ── 1. APRESENTAÇÃO E EXPLICAÇÃO ── #}
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-sky-950 to-slate-900 p-8 sm:p-12 text-white shadow-xl border border-sky-900/30">
+        <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-sky-500/10 blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10 max-w-3xl space-y-4">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                <sl-icon name="stars" class="text-sm"></sl-icon>
+                <span>Descoberta Acadêmica • CECH UFSCar</span>
+            </div>
+
+            <h1 class="font-heading text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight text-white">
+                Pesquisa Temática por <span class="bg-gradient-to-r from-sky-400 to-teal-300 bg-clip-text text-transparent">Palavras-Chave</span>
+            </h1>
+
+            <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
+                Explore os conceitos, sintagmas e linhas de investigação científica consolidadas pelos docentes do CECH. 
+                O sistema cruza dados oficiais do <strong>Currículo Lattes</strong> e do <strong>Repositório Institucional da UFSCar</strong>, 
+                mapeando milhares de artigos, livros, teses e dissertações orientadas.
+            </p>
+
+            <div class="pt-2 flex flex-wrap items-center gap-4 text-xs font-medium text-slate-300">
+                <div class="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10">
+                    <sl-icon name="tags" class="text-sky-400"></sl-icon>
+                    <span><strong>{{ globalStats.totalTerms|number_format(0, ',', '.') }}</strong> temas indexados</span>
+                </div>
+                <div class="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10">
+                    <sl-icon name="people" class="text-teal-400"></sl-icon>
+                    <span><strong>415</strong> docentes analisados</span>
+                </div>
+                <div class="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10">
+                    <sl-icon name="journal-bookmark" class="text-indigo-400"></sl-icon>
+                    <span><strong>100.000+</strong> produções e teses</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ── 2. SEARCH GRANDE (CAMPO DE BUSCA AMPLIADO) ── #}
+    <div class="space-y-3">
+        <div class="glass-card rounded-3xl p-3 sm:p-4 shadow-lg border-2 border-slate-200/80 dark:border-white/10 focus-within:border-sky-500 dark:focus-within:border-sky-400 transition-all duration-300">
+            <div class="relative flex items-center">
+                <div class="absolute left-4 flex items-center pointer-events-none text-slate-400 text-xl sm:text-2xl">
+                    <sl-icon name="search" id="search-icon"></sl-icon>
+                    <sl-spinner id="search-spinner" class="hidden text-sky-500 text-lg"></sl-spinner>
+                </div>
+
+                <input 
+                    type="text" 
+                    id="topic-search-input" 
+                    autocomplete="off" 
+                    spellcheck="false"
+                    placeholder="Digite pelo menos 3 caracteres para buscar palavras-chaves (ex: inteligência artificial, educação especial, gestão...)"
+                    value="{% if selectedTerm %}{{ selectedTerm.term }}{% endif %}"
+                    class="w-full bg-transparent pl-12 sm:pl-14 pr-12 py-3 sm:py-4 text-base sm:text-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none font-medium"
+                >
+
+                <button 
+                    type="button" 
+                    id="clear-search-btn" 
+                    onclick="clearSearch()" 
+                    class="absolute right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition {% if not selectedTerm %}hidden{% endif %}"
+                    title="Limpar pesquisa"
+                >
+                    <sl-icon name="x-lg" class="text-sm"></sl-icon>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-2">
+            <span id="search-hint">Digite pelo menos <strong>3 letras</strong> para atualizar a lista automaticamente.</span>
+            <span id="search-count" class="font-semibold text-sky-600 dark:text-sky-400"></span>
+        </div>
+    </div>
+
+    {# ── 3. LISTA DE PALAVRAS-CHAVE (GRADIENTE DE COR CONFORME QUANTIDADE) ── #}
+    <div id="terms-container" class="space-y-3">
+        <div class="flex items-center justify-between">
+            <h2 id="terms-list-title" class="font-heading text-sm sm:text-base font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                <sl-icon name="diagram-3" class="text-sky-500"></sl-icon>
+                <span>Temas Frequentes em Destaque</span>
+            </h2>
+            <span class="text-xs text-slate-400">Cores mais fortes indicam maior volume de trabalhos</span>
+        </div>
+
+        {# Nuvem interativa de termos #}
+        <div id="terms-cloud" class="flex flex-wrap gap-2.5 pt-1">
+            {% set maxOccur = topFeaturedTerms|first.totalOccurrences|default(1) %}
+            {% for t in topFeaturedTerms %}
+                {% set weight = t.weight|default(10) %}
+                <button 
+                    type="button" 
+                    onclick="selectTerm({{ t.id }}, '{{ t.slug|e('js') }}')"
+                    id="term-chip-{{ t.id }}"
+                    data-term-id="{{ t.id }}"
+                    data-slug="{{ t.slug }}"
+                    class="term-chip group relative rounded-2xl px-3.5 py-2 text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 hover:scale-105 cursor-pointer {% if selectedTerm and selectedTerm.id == t.id %}ring-4 ring-sky-400 shadow-lg scale-105{% endif %} {% if weight >= 75 %}bg-indigo-600 dark:bg-indigo-600 text-white font-bold shadow-md shadow-indigo-500/20 hover:bg-indigo-700{% elseif weight >= 45 %}bg-sky-500 text-white font-semibold shadow-sm hover:bg-sky-600{% elseif weight >= 20 %}bg-sky-100 text-sky-900 dark:bg-sky-950/70 dark:text-sky-200 border border-sky-300/80 dark:border-sky-700/60 font-medium hover:bg-sky-200/80{% else %}bg-slate-100 text-slate-700 dark:bg-slate-900/60 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600{% endif %}"
+                    title="{{ t.totalOccurrences }} ocorrências • {{ t.researcherCount }} docentes"
+                >
+                    <span class="font-medium">{{ t.term }}</span>
+                    <span class="text-[10px] sm:text-[11px] px-1.5 py-0.5 rounded-full {% if weight >= 45 %}bg-white/20 text-white{% else %}bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300{% endif %}">
+                        {{ t.totalOccurrences }}
+                    </span>
+                </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# ── 4. DETALHES DO TEMA SELECIONADO & DOCENTES ── #}
+    <div id="term-details-section" class="{% if not selectedTerm %}hidden{% endif %} space-y-6 pt-6 border-t border-slate-200/80 dark:border-white/10">
+
+        {# Cabeçalho do Termo Selecionado #}
+        <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-4 border-l-4 border-sky-500">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+                        <sl-icon name="bookmark-star"></sl-icon>
+                        <span>Tema Selecionado</span>
+                    </div>
+                    <h2 id="selected-term-name" class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+                        {% if selectedTerm %}{{ selectedTerm.term }}{% endif %}
+                    </h2>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="bg-sky-50 dark:bg-sky-950/60 border border-sky-200/80 dark:border-sky-800 px-3.5 py-2 rounded-2xl flex items-center gap-2">
+                        <sl-icon name="layers" class="text-sky-500 text-lg"></sl-icon>
+                        <div>
+                            <div class="text-[10px] uppercase font-bold text-slate-400">Trabalhos</div>
+                            <div id="selected-term-occurrences" class="font-heading text-lg font-bold text-slate-900 dark:text-white leading-none">
+                                {% if selectedTerm %}{{ selectedTerm.totalOccurrences }}{% else %}0{% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-teal-50 dark:bg-teal-950/60 border border-teal-200/80 dark:border-teal-800 px-3.5 py-2 rounded-2xl flex items-center gap-2">
+                        <sl-icon name="people" class="text-teal-500 text-lg"></sl-icon>
+                        <div>
+                            <div class="text-[10px] uppercase font-bold text-slate-400">Docentes</div>
+                            <div id="selected-term-researchers-count" class="font-heading text-lg font-bold text-slate-900 dark:text-white leading-none">
+                                {% if selectedTerm %}{{ totalResearchersForTerm }}{% else %}0{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Departamentos mais frequentes #}
+            <div id="top-departments-container" class="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span class="font-semibold text-slate-700 dark:text-slate-300">Departamentos mais associados:</span>
+                <div id="top-departments-list" class="flex flex-wrap gap-1.5">
+                    {% for dept in initialDepartments %}
+                        <span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-0.5 rounded-lg font-medium">
+                            {{ dept.department }} ({{ dept.total }})
+                        </span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        {# Subtítulo dos Docentes #}
+        <div class="flex items-center justify-between pt-2">
+            <h3 class="font-heading text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="mortarboard" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                <span>Docentes com Maior Produção no Tema</span>
+            </h3>
+            <span id="researchers-pagination-info" class="text-xs text-slate-500 dark:text-slate-400">
+                {% if selectedTerm %}
+                    Exibindo {{ initialResearchers|length }} de {{ totalResearchersForTerm }} docentes
+                {% endif %}
+            </span>
+        </div>
+
+        {# Grid dos 10 Docentes #}
+        <div id="researchers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for r in initialResearchers %}
+                <a 
+                    href="{{ path('app_pub_professor_show', {'slugOrId': r.slug ?: r.idLattes}) }}" 
+                    class="glass-card rounded-2xl p-5 hover:border-sky-500/50 hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-4 group"
+                >
+                    <div class="flex items-start gap-3.5">
+                        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-sm group-hover:scale-105 transition-transform {% if not r.photoUrl %}bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-base{% endif %}">
+                            {% if r.photoUrl %}
+                                <img src="{{ r.photoUrl }}" alt="{{ r.fullName }}" class="h-full w-full object-cover">
+                            {% else %}
+                                {{ r.fullName|slice(0, 2)|upper }}
+                            {% endif %}
+                        </div>
+
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-heading text-base font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                                {{ r.fullName }}
+                            </h4>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                {{ r.department ?: 'CECH / UFSCar' }}
+                            </p>
+                            <div class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800">
+                                <sl-icon name="file-text" class="text-xs"></sl-icon>
+                                <span>{{ r.occurrences }} trabalho(s) neste tema</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if r.sampleTitles and r.sampleTitles|length > 0 %}
+                        <div class="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800/60 text-xs text-slate-500 dark:text-slate-400">
+                            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Exemplo de Trabalho:</span>
+                            <p class="italic line-clamp-2 text-[11px] text-slate-600 dark:text-slate-300">
+                                "{{ r.sampleTitles|first }}"
+                            </p>
+                        </div>
+                    {% endif %}
+
+                    <div class="pt-2 flex items-center justify-between text-xs font-semibold text-sky-600 dark:text-sky-400 group-hover:translate-x-0.5 transition-transform">
+                        <span>Acessar Perfil Completo</span>
+                        <sl-icon name="arrow-right" class="text-xs"></sl-icon>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+
+        {# Botão "Mais" (Carregar mais 10 docentes) #}
+        <div id="load-more-container" class="{% if not hasMore %}hidden{% endif %} pt-4 text-center">
+            <button 
+                type="button" 
+                id="load-more-btn"
+                onclick="loadMoreResearchers()" 
+                class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-white dark:bg-slate-900 hover:bg-sky-50 dark:hover:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-bold text-sm shadow-sm border border-sky-300 dark:border-sky-700/60 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            >
+                <sl-icon name="plus-circle" class="text-base" id="load-more-icon"></sl-icon>
+                <sl-spinner id="load-more-spinner" class="hidden text-sky-600 text-base"></sl-spinner>
+                <span id="load-more-text">Carregar mais docentes (+10)</span>
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+{# ── 5. SCRIPTS INTERATIVOS (AUTOCOMPLETE EM TEMPO REAL E CARREGAMENTO DE 10 EM 10) ── #}
+<script>
+let currentTermId = {% if selectedTerm %}{{ selectedTerm.id }}{% else %}null{% endif %};
+let currentOffset = {% if selectedTerm %}{{ initialResearchers|length }}{% else %}0{% endif %};
+let currentTotal = {% if selectedTerm %}{{ totalResearchersForTerm }}{% else %}0{% endif %};
+let searchDebounceTimer = null;
+
+const searchInput = document.getElementById('topic-search-input');
+const clearSearchBtn = document.getElementById('clear-search-btn');
+const searchIcon = document.getElementById('search-icon');
+const searchSpinner = document.getElementById('search-spinner');
+const searchHint = document.getElementById('search-hint');
+const searchCount = document.getElementById('search-count');
+const termsCloud = document.getElementById('terms-cloud');
+const termsListTitle = document.getElementById('terms-list-title');
+const termDetailsSection = document.getElementById('term-details-section');
+const selectedTermName = document.getElementById('selected-term-name');
+const selectedTermOccurrences = document.getElementById('selected-term-occurrences');
+const selectedTermResearchersCount = document.getElementById('selected-term-researchers-count');
+const topDepartmentsList = document.getElementById('top-departments-list');
+const researchersGrid = document.getElementById('researchers-grid');
+const researchersPaginationInfo = document.getElementById('researchers-pagination-info');
+const loadMoreContainer = document.getElementById('load-more-container');
+const loadMoreBtn = document.getElementById('load-more-btn');
+const loadMoreIcon = document.getElementById('load-more-icon');
+const loadMoreSpinner = document.getElementById('load-more-spinner');
+const loadMoreText = document.getElementById('load-more-text');
+
+// Escuta a cada caractere digitado
+searchInput.addEventListener('input', function() {
+    const val = this.value.trim();
+    if (val.length > 0) {
+        clearSearchBtn.classList.remove('hidden');
+    } else {
+        clearSearchBtn.classList.add('hidden');
+    }
+
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+        performSearch(val);
+    }, 150);
+});
+
+function clearSearch() {
+    searchInput.value = '';
+    clearSearchBtn.classList.add('hidden');
+    performSearch('');
+    searchInput.focus();
+}
+
+// Busca e renderização dinâmica das palavras-chave
+async function performSearch(query) {
+    if (query.length > 0 && query.length < 3) {
+        searchHint.innerHTML = 'Digite pelo menos <strong>3 letras</strong> para pesquisar...';
+        searchCount.textContent = '';
+        return;
+    }
+
+    if (query.length === 0) {
+        searchHint.innerHTML = 'Exibindo temas frequentes do CECH.';
+        searchCount.textContent = '';
+        // Recarregar os temas padrão em destaque
+        fetchDefaultFeaturedTerms();
+        return;
+    }
+
+    searchIcon.classList.add('hidden');
+    searchSpinner.classList.remove('hidden');
+    searchHint.innerHTML = 'Pesquisando palavras-chaves...';
+
+    try {
+        const res = await fetch('/api/temas/autocomplete?q=' + encodeURIComponent(query));
+        const data = await res.json();
+
+        searchIcon.classList.remove('hidden');
+        searchSpinner.classList.add('hidden');
+
+        if (data.terms && data.terms.length > 0) {
+            searchHint.innerHTML = `Resultados para <strong>"${escapeHtml(query)}"</strong>:`;
+            searchCount.textContent = `${data.count} tema(s) encontrado(s)`;
+            termsListTitle.innerHTML = `<sl-icon name="search" class="text-sky-500"></sl-icon><span>Palavras-chave encontradas para "${escapeHtml(query)}"</span>`;
+            renderTermsCloud(data.terms);
+        } else {
+            searchHint.innerHTML = `Nenhuma palavra-chave encontrada para <strong>"${escapeHtml(query)}"</strong>.`;
+            searchCount.textContent = '0 resultados';
+            termsCloud.innerHTML = `
+                <div class="p-6 text-center w-full rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                    <sl-icon name="search" class="text-2xl text-slate-400 mb-1"></sl-icon>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Tente buscar por termos mais genéricos, ex: educação, gestão, história, linguagem...</p>
+                </div>
+            `;
+        }
+    } catch (err) {
+        console.error(err);
+        searchIcon.classList.remove('hidden');
+        searchSpinner.classList.add('hidden');
+    }
+}
+
+// Renderiza a nuvem com gradiente de cor por quantidade
+function renderTermsCloud(terms) {
+    let html = '';
+    terms.forEach(t => {
+        const weight = t.weight || 10;
+        let colorClass = '';
+
+        if (weight >= 75) {
+            colorClass = 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-500/20 hover:bg-indigo-700';
+        } else if (weight >= 45) {
+            colorClass = 'bg-sky-500 text-white font-semibold shadow-sm hover:bg-sky-600';
+        } else if (weight >= 20) {
+            colorClass = 'bg-sky-100 text-sky-900 dark:bg-sky-950/70 dark:text-sky-200 border border-sky-300/80 dark:border-sky-700/60 font-medium hover:bg-sky-200/80';
+        } else {
+            colorClass = 'bg-slate-100 text-slate-700 dark:bg-slate-900/60 dark:text-slate-300 border border-slate-200/80 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600';
+        }
+
+        const isSelected = (currentTermId === t.id);
+        const selectedClass = isSelected ? 'ring-4 ring-sky-400 shadow-lg scale-105' : '';
+        const pillClass = (weight >= 45) ? 'bg-white/20 text-white' : 'bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-300';
+
+        html += `
+            <button 
+                type="button" 
+                onclick="selectTerm(${t.id}, '${escapeHtml(t.slug)}')"
+                id="term-chip-${t.id}"
+                data-term-id="${t.id}"
+                data-slug="${escapeHtml(t.slug)}"
+                class="term-chip group relative rounded-2xl px-3.5 py-2 text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 hover:scale-105 cursor-pointer ${colorClass} ${selectedClass}"
+                title="${t.totalOccurrences} ocorrências • ${t.researcherCount} docentes"
+            >
+                <span class="font-medium">${escapeHtml(t.term)}</span>
+                <span class="text-[10px] sm:text-[11px] px-1.5 py-0.5 rounded-full ${pillClass}">
+                    ${t.totalOccurrences}
+                </span>
+            </button>
+        `;
+    });
+    termsCloud.innerHTML = html;
+}
+
+// Seleciona um termo e carrega seus docentes (10 primeiros)
+async function selectTerm(termId, slug) {
+    currentTermId = termId;
+
+    // Atualiza destaque visual dos chips
+    document.querySelectorAll('.term-chip').forEach(el => {
+        el.classList.remove('ring-4', 'ring-sky-400', 'shadow-lg', 'scale-105');
+    });
+    const activeChip = document.getElementById('term-chip-' + termId);
+    if (activeChip) {
+        activeChip.classList.add('ring-4', 'ring-sky-400', 'shadow-lg', 'scale-105');
+    }
+
+    // Exibe spinner de carregamento no container de docentes
+    termDetailsSection.classList.remove('hidden');
+    researchersGrid.innerHTML = `
+        <div class="col-span-full p-12 text-center">
+            <sl-spinner class="text-3xl text-sky-600 mb-2"></sl-spinner>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Carregando dados do tema e docentes...</p>
+        </div>
+    `;
+
+    try {
+        const res = await fetch(`/api/temas/docentes?term_id=${termId}&offset=0&limit=10`);
+        const data = await res.json();
+
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+
+        // Atualiza URL com permalink amigável
+        const newUrl = '/temas?t=' + encodeURIComponent(data.term.slug);
+        window.history.pushState({ termId: data.term.id, slug: data.term.slug }, '', newUrl);
+
+        // Preenche o painel de detalhes
+        selectedTermName.textContent = data.term.term;
+        selectedTermOccurrences.textContent = data.term.totalOccurrences;
+        selectedTermResearchersCount.textContent = data.total;
+        currentOffset = data.researchers.length;
+        currentTotal = data.total;
+
+        // Departamentos
+        if (data.topDepartments && data.topDepartments.length > 0) {
+            let depHtml = '';
+            data.topDepartments.forEach(d => {
+                depHtml += `<span class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-0.5 rounded-lg font-medium">${escapeHtml(d.department)} (${d.total})</span>`;
+            });
+            topDepartmentsList.innerHTML = depHtml;
+        } else {
+            topDepartmentsList.innerHTML = '<span class="italic text-slate-400">Geral</span>';
+        }
+
+        // Paginação info
+        researchersPaginationInfo.textContent = `Exibindo ${data.researchers.length} de ${data.total} docentes`;
+
+        // Renderiza os 10 primeiros docentes
+        renderResearchers(data.researchers, false);
+
+        // Botão "Mais"
+        if (data.hasMore) {
+            loadMoreContainer.classList.remove('hidden');
+        } else {
+            loadMoreContainer.classList.add('hidden');
+        }
+
+        // Scroll suave até a seção de detalhes
+        termDetailsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    } catch (err) {
+        console.error(err);
+        researchersGrid.innerHTML = `<div class="col-span-full p-6 text-center text-rose-500 text-xs font-semibold">Erro ao carregar dados do tema.</div>`;
+    }
+}
+
+// Carregar mais 10 docentes
+async function loadMoreResearchers() {
+    if (!currentTermId) return;
+
+    loadMoreIcon.classList.add('hidden');
+    loadMoreSpinner.classList.remove('hidden');
+    loadMoreText.textContent = 'Carregando...';
+    loadMoreBtn.disabled = true;
+
+    try {
+        const res = await fetch(`/api/temas/docentes?term_id=${currentTermId}&offset=${currentOffset}&limit=10`);
+        const data = await res.json();
+
+        loadMoreIcon.classList.remove('hidden');
+        loadMoreSpinner.classList.add('hidden');
+        loadMoreText.textContent = 'Carregar mais docentes (+10)';
+        loadMoreBtn.disabled = false;
+
+        if (data.researchers && data.researchers.length > 0) {
+            renderResearchers(data.researchers, true);
+            currentOffset += data.researchers.length;
+            researchersPaginationInfo.textContent = `Exibindo ${currentOffset} de ${currentTotal} docentes`;
+        }
+
+        if (!data.hasMore || currentOffset >= currentTotal) {
+            loadMoreContainer.classList.add('hidden');
+        }
+    } catch (err) {
+        console.error(err);
+        loadMoreIcon.classList.remove('hidden');
+        loadMoreSpinner.classList.add('hidden');
+        loadMoreText.textContent = 'Tentar novamente';
+        loadMoreBtn.disabled = false;
+    }
+}
+
+// Renderiza cards dos docentes no grid
+function renderResearchers(researchers, append) {
+    let html = '';
+    researchers.forEach(r => {
+        const initials = r.fullName.slice(0, 2).toUpperCase();
+        const avatarHtml = r.photoUrl 
+            ? `<img src="${escapeHtml(r.photoUrl)}" alt="${escapeHtml(r.fullName)}" class="h-full w-full object-cover">`
+            : initials;
+        const avatarBg = r.photoUrl ? '' : 'bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-base';
+        const profileUrl = '/professor/' + encodeURIComponent(r.slug || r.idLattes);
+        const dept = r.department || 'CECH / UFSCar';
+
+        let sampleHtml = '';
+        if (r.sampleTitles && r.sampleTitles.length > 0) {
+            sampleHtml = `
+                <div class="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800/60 text-xs text-slate-500 dark:text-slate-400">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Exemplo de Trabalho:</span>
+                    <p class="italic line-clamp-2 text-[11px] text-slate-600 dark:text-slate-300">
+                        "${escapeHtml(r.sampleTitles[0])}"
+                    </p>
+                </div>
+            `;
+        }
+
+        html += `
+            <a 
+                href="${profileUrl}" 
+                class="glass-card rounded-2xl p-5 hover:border-sky-500/50 hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-4 group animate-fadeIn"
+            >
+                <div class="flex items-start gap-3.5">
+                    <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-sm group-hover:scale-105 transition-transform ${avatarBg}">
+                        ${avatarHtml}
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-heading text-base font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                            ${escapeHtml(r.fullName)}
+                        </h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
+                            ${escapeHtml(dept)}
+                        </p>
+                        <div class="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/80 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800">
+                            <sl-icon name="file-text" class="text-xs"></sl-icon>
+                            <span>${r.occurrences} trabalho(s) neste tema</span>
+                        </div>
+                    </div>
+                </div>
+
+                ${sampleHtml}
+
+                <div class="pt-2 flex items-center justify-between text-xs font-semibold text-sky-600 dark:text-sky-400 group-hover:translate-x-0.5 transition-transform">
+                    <span>Acessar Perfil Completo</span>
+                    <sl-icon name="arrow-right" class="text-xs"></sl-icon>
+                </div>
+            </a>
+        `;
+    });
+
+    if (append) {
+        researchersGrid.insertAdjacentHTML('beforeend', html);
+    } else {
+        researchersGrid.innerHTML = html;
+    }
+}
+
+// Utilitário para escapar HTML contra injeções
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+</script>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn {
+    animation: fadeIn 0.25s ease-out forwards;
+}
+</style>
+{% endblock %}
