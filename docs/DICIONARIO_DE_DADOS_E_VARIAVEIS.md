@@ -156,6 +156,35 @@ Orientações acadêmicas concluídas ou em andamento, originadas do Lattes ou d
 
 ---
 
+### 2.8 `ThematicTerm` (Tabela: `thematic_terms`)
+Armazena o vocabulário unificado de palavras-chave, conceitos e temas extraídos das produções e teses.
+
+| Coluna / Propriedade | Tipo PHP / DB | Origem | Descrição e Finalidade |
+|---|---|---|---|
+| `$id` (`id`) | `int` (PK) | Sistema | Identificador primário autoincrementado |
+| `$term` (`term`) | `string(200)` | Mineração | Nome canônico do termo com acentuação oficial (ex: *Educação Especial*) |
+| `$normalizedTerm` (`normalized_term`) | `string(200)` | Índice | Termo em minúsculas e sem acentos para consultas rápidas indexadas |
+| `$slug` (`slug`) | `string(200)` | Índice | Slug para permalinks e URLs amigáveis (`/temas?t=educacao-especial`) |
+| `$totalOccurrences` (`total_occurrences`) | `int` | Agregação | Soma total de ocorrências do termo nas produções e teses do centro |
+| `$researcherCount` (`researcher_count`) | `int` | Agregação | Quantidade de docentes distintos que produzem nessa temática |
+| `$createdAt` (`created_at`) | `DateTimeImmutable` | Sistema | Data de cadastro |
+| `$updatedAt` (`updated_at`) | `DateTimeImmutable` | Sistema | Data da última indexação |
+
+---
+
+### 2.9 `ThematicTermResearcher` (Tabela: `thematic_term_researchers`)
+Tabela de relacionamento e ponderação entre cada termo temático e o pesquisador.
+
+| Coluna / Propriedade | Tipo PHP / DB | Origem | Descrição e Finalidade |
+|---|---|---|---|
+| `$id` (`id`) | `int` (PK) | Sistema | Identificador primário |
+| `$term` (`term_id`) | `ThematicTerm` (FK) | Sistema | Chave estrangeira para `thematic_terms` |
+| `$researcher` (`researcher_id`) | `Researcher` (FK) | Sistema | Chave estrangeira para `researchers` |
+| `$occurrences` (`occurrences`) | `int` | Agregação | Frequência de trabalhos do pesquisador vinculados a este termo |
+| `$sampleTitles` (`sample_titles`) | `array` (`json`) | Mineração | Amostra de até 3 títulos representativos de publicações do docente no tema |
+
+---
+
 ## 3. Variáveis Globais e Contratos de Templates Twig
 
 ### 3.1 Variáveis Injetadas Automaticamente nos Templates
@@ -178,3 +207,16 @@ Orientações acadêmicas concluídas ou em andamento, originadas do Lattes ou d
 - `orientationsCount` (`array<string, int>`): Mapa de contagem de orientações por categoria.
 - `productionTimeline` (`array<int, int>`): Array associativo `[ano => total_producoes]` para renderização de gráficos.
 - `qualisDistribution` (`array<string, int>`): Mapa `[estrato => contagem]` para gráfico de pizza/barras de Qualis.
+- `authorKeywords` (`array<string, int>`): Palavras-chave dos trabalhos declaradas no Lattes exibidas no topo da aba de produções para filtragem rápida.
+- `topKeywords` (`array<string, int>`): Sintagmas e temas mais frequentes nos títulos para filtragem rápida.
+- **Parâmetros de URL**:
+  - `?tema={termo}` / `?keyword={termo}` / `?q={termo}`: Preenche o campo de busca, ativa a aba `#productions`, aplica o filtro com normalização fonética/acentos e aciona o *smooth scroll* até a toolbar.
+
+### 3.3 Variáveis da Pesquisa Temática (`templates/pub/thematic_search/index.html.twig`)
+- `globalStats` (`array{totalTerms: int, totalLinks: int}`): Contadores agregados para o banner de apresentação.
+- `initialTerms` (`array`): Termos mais frequentes carregados na inicialização com `id`, `term`, `slug`, `totalOccurrences`, `researcherCount` e `weight` (0 a 100).
+- `selectedTerm` (`ThematicTerm|null`): Termo selecionado via permalink `?t={slug}`.
+- `initialResearchers` (`array`): Primeiros 10 docentes associados ao tema com `occurrences` e `sampleTitles`.
+- `topDepartments` (`array`): Ranking de departamentos com maior número de produções no tema selecionado.
+- `totalResearchersForTerm` (`int`): Total de docentes associados ao tema.
+- `hasMore` (`bool`): Indicador de paginação para exibição do botão "Mais (+10)".

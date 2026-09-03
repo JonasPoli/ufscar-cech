@@ -10,16 +10,25 @@ Inspirado na arquitetura e design do sistema *Somos UFMG* e integrado ao ecossis
 
 ### 🌐 Portal Público (Sem necessidade de login)
 - **Home Interativa**: Métricas institucionais em tempo real, busca instantânea, departamentos acadêmicos, publicações recentes com links DOI (abertura em nova aba) e destaques docentes.
+- **Menu Mobile Responsivo**: Drawer lateral deslizante com efeito vidro (*glassmorphism*), campo de busca integrado, navegação completa por ícones com badges (*Auto-Avaliação*, *Descoberta*), atalhos de temas frequentes e alternador tátil de tema (Claro / Escuro).
+- **Pesquisa Temática por Palavras-Chave (`/temas`)**:
+  - Motor de descoberta científica baseado no cruzamento de conceitos do **Currículo Lattes** e do **Repositório Institucional TeD-UFSCar**.
+  - Autocomplete em tempo real com debounce (`/api/temas/autocomplete`).
+  - Nuvem de tags ponderada por classes de frequência cienciométrica.
+  - Painel de detalhes com total de ocorrências, quantidade de docentes e distribuição por departamento.
+  - Carregamento de docentes em blocos de 10 em 10 com botão *"Carregar mais docentes"*.
+  - Transição integrada para o perfil do docente com preenchimento automático de busca, ativação da aba de produções, normalização de acentos e rolagem suave.
 - **Painel de Indicadores Cienciométricos (`/indicadores`)**:
-  - **19 Figuras Analíticas e Gráficos Interativos (Chart.js)** divididos em 4 blocos temáticos:
-    1. *Panorama Geral & Produção Científica* (Evolução temporal, distribuição tipológica, produção por departamento, tipologia por departamento, taxa de docentes produtivos e média anual).
-    2. *Formação de Recursos Humanos & Orientações* (Evolução anual, orientações concluídas vs. em andamento, distribuição por nível acadêmico e orientações por departamento).
-    3. *Qualidade, Periódicos & Bases Internacionais* (Estratos Qualis CAPES, periódicos mais frequentes, evolução temporal Qualis, **Figura 15: Produção por Base de Indexação Científica** e **Figura 16: Séries Históricas de Indexação 2010–2026**).
-    4. *Redes de Colaboração & Parcerias Institucionais* (Figura 17: Rede de Coautoria Docente com deduplicação de obras conjuntas, Figura 18: Top Parcerias Nacionais e Figura 19: Parcerias Internacionais).
+  - **18 Figuras Analíticas e Gráficos Interativos (Chart.js)** divididos em 4 blocos temáticos:
+    1. *Corpo Docente & Vínculos* (Figuras 1 a 7).
+    2. *Formação de Recursos Humanos & Orientações* (Figuras 8 a 10).
+    3. *Produção Científica, Qualis & Bases Internacionais* (Figuras 11 a 15).
+    4. *Redes de Colaboração & Parcerias Institucionais* (Figuras 16 a 18).
 - **Busca Avançada no Catálogo (`/busca`)**: Pesquisa por pesquisador, artigo, DOI, ISSN, ISBN, evento ou periódico, com filtros por departamento e tipologia.
 - **Perfil Completo do Pesquisador (`/professor/{slug}`)**:
   - Dados biográficos, foto/avatar, vínculos e afiliações ativas e históricas.
   - Links externos diretos: **Currículo Lattes**, **ORCID** (com badge e link oficial) e e-mail.
+  - **Nuvens de Tags no Topo da Produção**: Posicionadas imediatamente antes das listagens para filtragem instantânea dos trabalhos (*Palavras-chave dos Trabalhos* e *Temas e Termos Frequentes*).
   - **Painel de Gráficos e Inteligência de Produção**:
     - Histórico anual por categoria e distribuição donut.
     - Histórico de orientações concluídas por nível.
@@ -29,7 +38,6 @@ Inspirado na arquitetura e design do sistema *Somos UFMG* e integrado ao ecossis
     - Gráfico de barras horizontais dos trabalhos por base internacional.
     - Gráfico multi-linhas da evolução temporal da indexação por base.
   - **Rede de Coautoria & Principais Colaboradores**: Mapeamento dos parceiros mais frequentes com avatares e links de perfil.
-  - **Temas e Termos Frequentes**: Extração estatística de palavras-chave dos títulos (bigramas com remoção de stopwords acadêmicas).
   - **Busca Direta de Trabalhos e Orientações**: Botão de pesquisa no Google e Google Scholar com ícone estilizado.
   - Formação acadêmica, titulações, prêmios, áreas de atuação e produções em abas interativas com badges Qualis e bases indexadoras.
   - **Exportação Acadêmica Individual**: Download imediato em formatos BibTeX, JSON e CSV.
@@ -174,6 +182,11 @@ php bin/console app:import:photos --zip=caminho/fotos.zip
 php bin/console app:crawl:lattes-photos --limit=50
 ```
 
+### 9. Indexação do Vocabulário Temático (Pesquisa Temática)
+```bash
+php bin/console app:index-thematic-terms
+```
+
 ---
 
 ## 🧪 Testes Automatizados
@@ -193,11 +206,15 @@ php bin/console lint:yaml config
 
 ## 📁 Guias e Documentação Técnica
 
-Para detalhes aprofundados sobre cada módulo, consulte a pasta [`docs/`](file:///Volumes/Dados/work/cech/docs):
-- [docs/ADMIN_GUIDE.md](file:///Volumes/Dados/work/cech/docs/ADMIN_GUIDE.md) — Manual de operações do painel administrativo.
-- [docs/graficos.md](file:///Volumes/Dados/work/cech/docs/graficos.md) — Catálogo detalhado das 19 Figuras de Inteligência Cienciométrica.
-- [docs/ARCHITECTURE.md](file:///Volumes/Dados/work/cech/docs/ARCHITECTURE.md) — Arquitetura de software, fluxo de dados e serviços.
-- [docs/ARQUITETURA_E_PROCESSOS.md](file:///Volumes/Dados/work/cech/docs/ARQUITETURA_E_PROCESSOS.md) — Processos de ingestão, parsing e enriquecimento.
-- [docs/DICIONARIO_DE_DADOS_E_VARIAVEIS.md](file:///Volumes/Dados/work/cech/docs/DICIONARIO_DE_DADOS_E_VARIAVEIS.md) — Dicionário de entidades e colunas do banco de dados.
-- [docs/THESAURUS.md](file:///Volumes/Dados/work/cech/docs/THESAURUS.md) — Modelagem e funcionamento dos tesauros de desambiguação.
-- [docs/LATTES_IMPORT.md](file:///Volumes/Dados/work/cech/docs/LATTES_IMPORT.md) — Especificação dos parsers XML e extração de metadados Lattes.
+Para detalhes aprofundados sobre cada módulo, consulte a pasta [`docs/`](file:///Users/jonaspoli/work/html/ufscar-cech/docs):
+- [docs/evolutions/pesquisa-tematica.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/evolutions/pesquisa-tematica.md) — Especificação completa da Pesquisa Temática por Palavras-Chave.
+- [docs/graficos.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/graficos.md) — Catálogo detalhado das 18 Figuras de Inteligência Cienciométrica.
+- [docs/ARCHITECTURE.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/ARCHITECTURE.md) — Arquitetura de software, fluxo de dados e serviços.
+- [docs/ARQUITETURA_E_PROCESSOS.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/ARQUITETURA_E_PROCESSOS.md) — Processos de ingestão, parsing e enriquecimento.
+- [docs/DICIONARIO_DE_DADOS_E_VARIAVEIS.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/DICIONARIO_DE_DADOS_E_VARIAVEIS.md) — Dicionário de entidades e colunas do banco de dados.
+- [docs/DEPLOY_E_PRODUCAO.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/DEPLOY_E_PRODUCAO.md) — Parâmetros e procedimentos do servidor de produção RunCloud.
+- [docs/ADMIN_GUIDE.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/ADMIN_GUIDE.md) — Manual de operações do painel administrativo.
+- [docs/REPOSITORY_IMPORT.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/REPOSITORY_IMPORT.md) — Ingestão e enriquecimento do Repositório Institucional TeD-UFSCar.
+- [docs/OTIMIZACAO_PERFIL_PROFESSOR.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/OTIMIZACAO_PERFIL_PROFESSOR.md) — Otimização modular do perfil docente.
+- [docs/THESAURUS.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/THESAURUS.md) — Modelagem e funcionamento dos tesauros de desambiguação.
+- [docs/LATTES_IMPORT.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/LATTES_IMPORT.md) — Especificação dos parsers XML e extração de metadados Lattes.

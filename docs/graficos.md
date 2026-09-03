@@ -1,6 +1,6 @@
 # Catálogo de Indicadores & Figuras Cienciométricas — CECH / UFSCar
 
-Este documento cataloga a metodologia, agrupamentos, equações e interpretação de todos os **19 Indicadores Globais** disponíveis em [`/indicadores`](file:///Volumes/Dados/work/cech/templates/pub/main/indicadores.html.twig) e dos **Gráficos de Perfil Docente** em [`/professor/{slug}`](file:///Volumes/Dados/work/cech/templates/pub/professor/show.html.twig).
+Este documento cataloga a metodologia, agrupamentos, equações e interpretação de todos os **18 Indicadores Globais** disponíveis em [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templates/pub/main/indicadores.html.twig) e dos **Gráficos de Perfil Docente** em [`/professor/{slug}`](file:///Users/jonaspoli/work/html/ufscar-cech/templates/pub/professor/show.html.twig).
 
 ---
 
@@ -14,7 +14,7 @@ A página [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templat
 ├───────────────────────┬───────────────────────┬───────────────────┬─────────────────────┤
 │   1. CORPO DOCENTE    │     2. FORMAÇÃO &     │   3. PRODUÇÃO &   │     4. REDES &      │
 │      & VÍNCULOS       │      ORIENTAÇÕES      │   QUALIS / BASES  │     PARCERIAS       │
-│   (Figuras 1 a 8)     │   (Figuras 9 a 11)    │ (Figuras 12 a 16) │  (Figuras 17 a 19)  │
+│   (Figuras 1 a 7)     │   (Figuras 8 a 10)    │ (Figuras 11 a 15) │  (Figuras 16 a 18)  │
 │   `_tab_faculty`      │   `_tab_training`     │ `_tab_production` │   `_tab_network`    │
 └───────────────────────┴───────────────────────┴───────────────────┴─────────────────────┘
 ```
@@ -24,7 +24,7 @@ A página [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templat
 2. **Carregamento Assíncrono sob Demanda**: Ao tocar nas abas subsequentes (*Formação*, *Produção* ou *Redes*), uma requisição assíncrona ao endpoint `/indicadores/fragment/{tab}` busca o HTML parcial já compilado com cabeçalho de cache `Cache-Control: public, max-age=3600`.
 3. **Cache em Memória Local**: Cada aba carregada fica armazenada no DOM do navegador. Ao alternar entre abas já visitadas, a exibição é imediata (**0ms de delay**).
 4. **Sincronização de URL Hash**: A navegação pelas abas atualiza os fragmentos na URL (`#faculty`, `#training`, `#production`, `#network`) sem causar recarregamento de página.
-5. **Modo Completo / Impressão**: O botão *Imprimir Relatório* e o parâmetro `?tab=all` ou `?print=1` carregam todos os 19 indicadores simultaneamente para geração de PDFs ou relatórios em papel.
+5. **Modo Completo / Impressão**: O botão *Imprimir Relatório* e o parâmetro `?tab=all` ou `?print=1` carregam todos os 18 indicadores simultaneamente para geração de PDFs ou relatórios em papel.
 
 ---
 
@@ -207,5 +207,8 @@ Na página individual de cada professor, os seguintes componentes analíticos s�
    - **Figura 16 Individual**: Linha do tempo de indexação do docente ao longo dos anos.
 4. **Rede de Coautoria e Principais Colaboradores**:
    - Cartões com avatar, nome, vínculo e contagem de coautorias com link direto para o perfil do parceiro.
-5. **Nuvem e Termos Frequentes**:
-   - Extração estatística dos termos e bigramas mais frequentes nos títulos das publicações.
+5. **Nuvens de Tags e Termos Frequentes (Topo da Produção)**:
+   - Duas colunas táteis interativas posicionadas estrategicamente no topo da aba *"Produção Científica & Técnica"*:
+     - **Palavras-chave dos Trabalhos**: termos declarados pelos autores nos artigos e livros.
+     - **Temas e Termos Frequentes**: sintagmas e bigramas mais frequentes nos títulos das obras.
+   - O clique em qualquer tag dispara imediatamente o filtro das produções listadas abaixo.

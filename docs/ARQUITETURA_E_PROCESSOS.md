@@ -50,13 +50,17 @@ graph TD
         DB_Qualis --> NormService
         DB_Institutions --> NormService
         NormService --> DB_Indexed[(production_authors.author_identity_id, matched_researcher_id, qualis_journal_id, institution_id)]
+
+        DB_Indexed --> ThematicIndex[ThematicTermIndexService]
+        ThematicIndex --> DB_Thematic[(thematic_terms, thematic_term_researchers)]
     end
 
     subgraph CamadaAplicacao ["5. Camada de Aplicação & Apresentação"]
-        DB_Indexed --> PubControllers[Controllers Públicos: Main, Professor, Department, Seo, PhotoApi]
+        DB_Indexed --> PubControllers[Controllers Públicos: Main, Professor, Department, ThematicSearch, Seo, PhotoApi]
+        DB_Thematic --> PubControllers
         DB_Indexed --> AdminControllers[Controllers Admin: Curriculum, Author, Journal, Institution, Country, Report, Indexing]
         DB_Indexed --> StatsService[StatisticsService: Agregações, Séries Temporais, Métricas]
-        PubControllers --> TwigPub[Templates Twig Públicos]
+        PubControllers --> TwigPub[Templates Twig Públicos + Menu Mobile Drawer]
         AdminControllers --> TwigAdmin[Templates Twig Administrativos]
     end
 ```
@@ -182,18 +186,35 @@ O `StatisticsService` é responsável por consolidar dados analíticos em tempo 
 ### Processo 5: Portais de Visualização e Apresentação (Twig & Controllers)
 
 #### 5.1 Portal Público (`templates/pub/`)
+- **Menu Mobile Responsivo (`#mobile-menu-drawer`)**:
+  - Drawer deslizante lateral com efeito vidro (`backdrop-blur-xl bg-white/95 dark:bg-slate-950/95`).
+  - Campo de busca integrado ao drawer em telas compactas.
+  - Navegação rica com ícones temáticos, legendas e badges (*Auto-Avaliação*, *Descoberta*).
+  - Atalhos diretos para temas em destaque e seletor tátil de tema (Claro / Escuro).
+  - Acessibilidade completa com tecla ESC e bloqueio de rolagem de fundo.
 - **Página Inicial (`templates/pub/main/home.html.twig`)**: Apresentação institucional, busca rápida por docentes, estatísticas resumidas e destaques.
+- **Pesquisa Temática por Palavras-Chave (`/temas`)**:
+  - Catálogo de dezenas de milhares de conceitos indexados de Lattes e Repositório UFSCar.
+  - Autocomplete em tempo real com debounce (`/api/temas/autocomplete`).
+  - Nuvem de tags ponderada por classes de frequência (roxo, azul forte, azul suave e cinza).
+  - Painel de detalhes com total de ocorrências, quantidade de docentes e distribuição por departamento acadêmico.
+  - Grade de docentes associados com paginação assíncrona de 10 em 10 (`/api/temas/docentes`).
+  - Transição integrada para o perfil docente já filtrado na aba de produções.
 - **Página de Pesquisa Geral (`templates/pub/main/search.html.twig`)**: Filtro facetado por departamento, tipo de produção, palavras-chave e estrato Qualis.
-- **Painel de Indicadores (`templates/pub/main/indicadores.html.twig`)**: Gráficos analíticos interativos de produção acadêmica do centro.
+- **Painel de Indicadores (`templates/pub/main/indicadores.html.twig`)**:
+  - 18 Figuras Analíticas e Gráficos Interativos (Chart.js) divididos em 4 blocos temáticos:
+    1. *Corpo Docente & Vínculos* (Figuras 1 a 7)
+    2. *Formação & Orientações* (Figuras 8 a 10)
+    3. *Produção Científica & Qualis* (Figuras 11 a 15)
+    4. *Redes de Colaboração & Parcerias* (Figuras 16 a 18)
 - **Listagem e Detalhe de Departamentos (`templates/pub/department/`)**: Docentes vinculados ao departamento, produção consolidada e contatos.
 - **Perfil Completo do Pesquisador (`templates/pub/professor/show.html.twig`)**:
-  - Dados biográficos e foto oficial.
-  - Resumo Lattes e IDs externos (ORCID, Lattes).
-  - Metadados semânticos para **Google Scholar** (`citation_title`, `citation_author`, `citation_publication_date`, `citation_journal_title`, `citation_doi`, `citation_issn`).
-  - Metadados estruturados **Schema.org** em formato **JSON-LD** (`@type: Person`).
+  - Dados biográficos, foto oficial, IDs externos (ORCID, Lattes).
+  - **Nuvem de Tags no Topo da Produção**: Posicionada no início da aba "Produção Científica & Técnica" com duas colunas (*Palavras-chave dos Trabalhos* e *Temas e Termos Frequentes*) servindo como filtro tátil instantâneo.
+  - **Auto-Filtro por URL**: Acesso com `?tema=...#productions` preenche o campo de busca, ativa a aba de produções, executa o filtro com normalização fonética/acentos e rola a tela suavemente para a barra de filtros.
+  - Metadados semânticos para **Google Scholar** e **Schema.org** (`@type: Person`).
   - Produções organizadas por categoria (Artigos com selo Qualis, Livros, Capítulos, Eventos, Softwares, Patentes, Artes).
   - Orientações concluídas e em andamento divididas por nível (Doutorado, Mestrado, Pós-Doc, TCC, IC).
-  - Linha do tempo de formação e projetos de pesquisa.
   - Botão de exportação de currículo formatado em PDF (`CurriculumExporterService`).
 
 #### 5.2 Painel Administrativo (`templates/admin/`)
@@ -204,3 +225,19 @@ O `StatisticsService` é responsável por consolidar dados analíticos em tempo 
 - **Curadoria Institucional e Geográfica (`templates/admin/institution/`, `templates/admin/country/`)**: Gestão de nomes de universidades e países.
 - **Relatórios Gerenciais (`templates/admin/report/`)**: Exportação de dados e tabelas customizadas.
 - **Configurações de SEO (`templates/admin/seo/`)**: Edição de meta-tags, títulos padrão e configurações do site (`SiteSetting`).
+
+---
+
+### Processo 6: Subsistema de Pesquisa Temática (`ThematicTermIndexService`)
+
+- **Comando CLI**: `php bin/console app:index-thematic-terms`
+- **Tabelas do Banco de Dados**:
+  - `thematic_terms`: Vocabulário de termos, contadores agregados e slugs amigáveis.
+  - `thematic_term_researchers`: Vínculo N:M ponderado entre termo e pesquisador com contagem de ocorrências e amostra de títulos.
+- **Pipeline de Execução**:
+  1. Extração de todas as palavras-chave declaradas nas produções científicas (Lattes).
+  2. Mineração de sintagmas e bigramas mais frequentes nos títulos das obras com remoção de stop-words acadêmicas.
+  3. Extração de assuntos e palavras-chave de teses e dissertações do Repositório Institucional TeD-UFSCar vinculadas aos orientadores.
+  4. Deduplicação, cálculo das matrizes de frequência e persistência nas entidades `ThematicTerm` e `ThematicTermResearcher`.
+- **Documentação Detalhada**: Consulte [`docs/evolutions/pesquisa-tematica.md`](file:///Users/jonaspoli/work/html/ufscar-cech/docs/evolutions/pesquisa-tematica.md).
+

@@ -64,6 +64,9 @@ erDiagram
     AUTHOR_IDENTITIES ||--o{ AUTHOR_EXTERNAL_IDENTIFIERS : "has_identifiers"
 
     THESAURUS_SCHEMES ||--o{ THESAURUS_CONCEPTS : "contains"
+
+    THEMATIC_TERMS ||--o{ THEMATIC_TERM_RESEARCHERS : "matches"
+    RESEARCHERS ||--o{ THEMATIC_TERM_RESEARCHERS : "associated_with"
 ```
 
 ---
@@ -159,6 +162,37 @@ Armazena a autoria detalhada de cada item de produção para possibilitar análi
 
 ---
 
+### 5. `ThematicTerm` (Tabela: `thematic_terms`) & `ThematicTermResearcher` (Tabela: `thematic_term_researchers`)
+Estrutura ontológica para busca e descoberta por palavras-chave, conceitos e sintagmas.
+
+| Tabela | Chave Primária | Relacionamentos | Finalidade |
+|---|---|---|---|
+| `thematic_terms` | `id` | 1:N com `thematic_term_researchers` | Armazena termos canônicos, slug permalink, total de ocorrências e contagem de docentes |
+| `thematic_term_researchers` | `id` | N:1 com `thematic_terms`, N:1 com `researchers` | Matriz de ponderação com ocorrências do docente no tema e amostra de títulos representativos (`sample_titles` JSON) |
+
+---
+
+## 🔍 Arquitetura da Pesquisa Temática: `ThematicTermIndexService`
+
+O subsistema de descoberta temática processa de forma integrada o acervo do Currículo Lattes e do Repositório Institucional TeD-UFSCar:
+1. **Mineração de Conceitos**: Extração de palavras-chave declaradas e bigramas/sintagmas de títulos com remoção de stop-words acadêmicas.
+2. **APIs Otimizadas**:
+   - `/api/temas/autocomplete`: Busca em tempo real com debounce, ponderando termos por classes de frequência (`weight`).
+   - `/api/temas/docentes`: Paginação sob demanda de 10 em 10 docentes associados ao tema com rankings por departamento.
+3. **Deep Linking Bi-direcional**: O clique no card do docente transfere o tema via query string (`?tema={nome}#productions`), aplicando o filtro cienciométrico com normalização de acentos e scroll suave automático.
+
+---
+
+## 📱 Arquitetura de Navegação Mobile Responsiva (*Slide-Over Drawer*)
+
+Para garantir experiência fluida em smartphones e tablets:
+1. **Botão Hambúrguer Touch**: Integrado no header em telas `< md` (`#mobile-menu-btn`).
+2. **Slide-Over Drawer com Backdrop**: Gaveta lateral deslizante com aceleração cúbica (`duration-300 ease-in-out`), efeito de vidro (`backdrop-blur-xl bg-white/95 dark:bg-slate-950/95`) e travamento de rolagem no `body`.
+3. **Barra de Busca Integrada**: Permite pesquisar no acervo diretamente a partir da gaveta em telas estreitas onde a barra do header é oculta.
+4. **Atalhos Rápidos**: Pílulas de temas frequentes e alternador ergonômico de tema (Claro / Escuro).
+
+---
+
 ## 🚀 Arquitetura de Alta Performance: `JournalResolverService`
 
 Para evitar estouro de memória (`memory_limit` de 128MB) decorrente da serialização de 63.000 periódicos no cache Symfony, o serviço implementa uma **Arquitetura Dual**:
@@ -178,3 +212,4 @@ O serviço `DatabaseBackupService` fornece:
 - Geração de superdump MySQL com `CREATE TABLE`, `DROP TABLE IF EXISTS`, restrições de chaves e dados completos.
 - Streaming em tempo real via **Server-Sent Events (SSE)** informando o progresso tabela por tabela.
 - Compressão ZIP integrada gerando arquivos `.sql.zip`.
+

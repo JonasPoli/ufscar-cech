@@ -51,6 +51,13 @@ Reorganização de todas as 10 seções em **4 Abas Temáticas Principais**, com
 ---
 
 ### 📄 Aba 1: Produção Científica & Técnica (`_tab_productions.html.twig`)
+* **Nuvens de Tags Interativas no Topo**:
+  - Posicionadas imediatamente antes das listagens em layout responsivo de 2 colunas:
+    1. **Palavras-chave dos Trabalhos**: termos declarados pelo docente nas publicações.
+    2. **Temas e Termos Frequentes**: sintagmas e conceitos recorrentes extraídos estatisticamente dos títulos.
+  - Ao tocar em qualquer chip, o filtro instantâneo das produções é acionado.
+* **Auto-Filtro por URL e Deep Linking**:
+  - Parâmetro `?tema={termo}#productions` (usado na transição de `/temas`): preenche `#prodSearchInput`, seleciona a aba de produções, ativa o filtro com normalização de acentos e faz scroll suave até a toolbar.
 * **Toolbar de Filtros**:
   - Filtro por Categoria: Todas, Artigos em Periódicos (com estratos Qualis Sucupira e selos de bases de indexação), Livros, Capítulos, Textos em Jornais/Revistas, Trabalhos em Eventos, Produções Técnicas, Softwares, Patentes/Marcas e Produções Artísticas.
   - Filtro Rápido: *"Apenas com DOI"*, busca instantânea por título/ano/periódico.
@@ -84,7 +91,6 @@ Reorganização de todas as 10 seções em **4 Abas Temáticas Principais**, com
   - Cards de ranking por base e percentual indexado.
   - Gráfico de barras comparativo de bases + Gráfico de linha de evolução temporal.
 * **Rede de Coautoria & Colaboradores do CECH**: Cards com fotos dos principais parceiros de publicação e links diretos para seus perfis.
-* **Nuvem de Palavras-Chave**: Termos cadastrados no Lattes + Mineração de sintagmas em títulos com filtragem interativa.
 
 ---
 
@@ -103,19 +109,20 @@ Reorganização de todas as 10 seções em **4 Abas Temáticas Principais**, com
 
 ---
 
-## 5. 📋 Etapas de Implementação
+## 5. 📋 Etapas de Implementação (Concluídas)
 
-1. [ ] **Criar os 4 Templates Parciais**:
+1. [x] **Criar os 4 Templates Parciais**:
    - `templates/pub/professor/_tab_productions.html.twig`
    - `templates/pub/professor/_tab_orientations.html.twig`
    - `templates/pub/professor/_tab_activities.html.twig`
    - `templates/pub/professor/_tab_analytics.html.twig`
-2. [ ] **Atualizar o Controller [`ProfessorController.php`](file:///Users/jonaspoli/work/html/ufscar-cech/src/Controller/pub/ProfessorController.php)**:
-   - Adicionar método `professorFragment(string $slugOrId, string $tab)` com validação e cache.
-   - Modularizar agregação de dados no método `show()` por aba.
-3. [ ] **Refatorar o Template Principal [`templates/pub/professor/show.html.twig`](file:///Users/jonaspoli/work/html/ufscar-cech/templates/pub/professor/show.html.twig)**:
-   - Implementar pills de abas e container dinâmico com skeleton loader.
-4. [ ] **Executar Testes e Validação**:
+2. [x] **Atualizar o Controller [`ProfessorController.php`](file:///Users/jonaspoli/work/html/ufscar-cech/src/Controller/pub/ProfessorController.php)**:
+   - Método `professorFragment(string $slugOrId, string $tab)` com validação e cache HTTP.
+   - Extração compartilhada de `extractKeywords()` para alimentar `show()` e fragmento `productions`.
+3. [x] **Refatorar o Template Principal [`templates/pub/professor/show.html.twig`](file:///Users/jonaspoli/work/html/ufscar-cech/templates/pub/professor/show.html.twig)**:
+   - Pills de abas e container dinâmico com skeleton loader.
+   - Auto-filtro com normalização fonética/acentos ao carregar com `?tema=`.
+4. [x] **Executar Testes e Validação**:
    - `php bin/console lint:twig templates`
    - `APP_ENV=test ./vendor/bin/phpunit --testdox`
    - `./build.sh`
