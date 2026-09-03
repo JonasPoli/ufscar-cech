@@ -195,8 +195,10 @@
         {# Grid dos 10 Docentes #}
         <div id="researchers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for r in initialResearchers %}
+                {% set currentTopicName = selectedTerm ? selectedTerm.term : '' %}
+                {% set profUrl = path('app_pub_professor_show', {'slugOrId': r.slug ?: r.idLattes}) ~ (currentTopicName ? ('?tema=' ~ currentTopicName|url_encode ~ '#productions') : '') %}
                 <a 
-                    href="{{ path('app_pub_professor_show', {'slugOrId': r.slug ?: r.idLattes}) }}" 
+                    href="{{ profUrl }}" 
                     class="glass-card rounded-2xl p-5 hover:border-sky-500/50 hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-4 group"
                 >
                     <div class="flex items-start gap-3.5">
@@ -511,13 +513,16 @@ async function loadMoreResearchers() {
 // Renderiza cards dos docentes no grid
 function renderResearchers(researchers, append) {
     let html = '';
+    const currentTopic = selectedTermName ? selectedTermName.textContent.trim() : '';
+    const topicParam = currentTopic ? ('?tema=' + encodeURIComponent(currentTopic) + '#productions') : '';
+
     researchers.forEach(r => {
         const initials = r.fullName.slice(0, 2).toUpperCase();
         const avatarHtml = r.photoUrl 
             ? `<img src="${escapeHtml(r.photoUrl)}" alt="${escapeHtml(r.fullName)}" class="h-full w-full object-cover">`
             : initials;
         const avatarBg = r.photoUrl ? '' : 'bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-base';
-        const profileUrl = '/professor/' + encodeURIComponent(r.slug || r.idLattes);
+        const profileUrl = '/professor/' + encodeURIComponent(r.slug || r.idLattes) + topicParam;
         const dept = r.department || 'CECH / UFSCar';
 
         let sampleHtml = '';

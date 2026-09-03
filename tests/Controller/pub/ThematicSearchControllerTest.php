@@ -114,4 +114,29 @@ class ThematicSearchControllerTest extends WebTestCase
         $this->assertArrayHasKey('hasMore', $data);
         $this->assertGreaterThan(0, count($data['researchers']));
     }
+
+    public function testThematicSearchLinksPassTopicToProfessorProfile(): void
+    {
+        $client = static::createClient();
+        $term = $this->createSampleData($client);
+
+        $crawler = $client->request('GET', '/temas?t=' . $term->getSlug());
+        $this->assertResponseIsSuccessful();
+
+        $content = (string)$client->getResponse()->getContent();
+        // Asserts that researcher cards contain ?tema= with urlencoded topic name
+        $this->assertStringContainsString('?tema=', $content);
+        $this->assertStringContainsString('#productions', $content);
+
+        // Also test that visiting professor profile with ?tema= pre-fills the filter search
+        $researcher = $client->getContainer()->get('doctrine.orm.entity_manager')->getRepository(Researcher::class)->findOneBy([]);
+        if ($researcher) {
+            $identifier = $researcher->getSlug() ?: $researcher->getIdLattes();
+            $client->request('GET', '/professor/' . $identifier . '?tema=inteligencia');
+            $this->assertResponseIsSuccessful();
+            $profContent = (string)$client->getResponse()->getContent();
+            $this->assertStringContainsString('value="inteligencia"', $profContent);
+            $this->assertStringContainsString('filterTopic', $profContent);
+        }
+    }
 }

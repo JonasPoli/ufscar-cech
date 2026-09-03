@@ -327,7 +327,7 @@
     <div id="globalFilterBar" class="glass-card rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 transition-all duration-300 no-print">
         <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             <div class="relative flex-1">
-                <input type="text" id="prodSearchInput" oninput="applyGlobalFilter()" placeholder="Buscar por termo, título, orientando, projeto, autor, evento, instituição ou ano..." class="w-full rounded-2xl border border-slate-300 bg-white/90 px-4 py-2.5 pl-10 pr-10 text-sm text-slate-900 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900/90 dark:text-white focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/15 transition-all shadow-inner" />
+                <input type="text" id="prodSearchInput" value="{{ app.request.query.get('tema') ?: app.request.query.get('keyword') ?: app.request.query.get('q') }}" oninput="applyGlobalFilter()" placeholder="Buscar por termo, título, orientando, projeto, autor, evento, instituição ou ano..." class="w-full rounded-2xl border border-slate-300 bg-white/90 px-4 py-2.5 pl-10 pr-10 text-sm text-slate-900 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900/90 dark:text-white focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/15 transition-all shadow-inner" />
                 <sl-icon name="search" class="absolute left-3.5 top-3.5 text-slate-400 text-sm"></sl-icon>
                 <button type="button" id="btnClearInputQuick" onclick="clearGlobalFilters()" class="hidden absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs p-1" title="Limpar busca">
                     <sl-icon name="x-circle-fill" class="text-base"></sl-icon>
@@ -577,10 +577,15 @@ function checkPanelEmpty(panelName, count) {
     }
 }
 
+function normalizeFilterStr(str) {
+    return (str || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 function applyGlobalFilter() {
     const searchInput = document.getElementById('prodSearchInput');
     const rawTerm = (searchInput ? searchInput.value : '').trim();
     const term = rawTerm.toLowerCase();
+    const normTerm = normalizeFilterStr(rawTerm);
     const isFiltered = term !== '' || onlyDoi || currentDatabase !== null;
 
     const filterBar = document.getElementById('globalFilterBar');
@@ -630,7 +635,7 @@ function applyGlobalFilter() {
         const text = item.textContent.toLowerCase();
 
         const matchDoi = !onlyDoi || hasDoi;
-        const matchTerm = term === '' || text.includes(term);
+        const matchTerm = term === '' || text.includes(term) || (normTerm !== '' && normalizeFilterStr(text).includes(normTerm));
         const matchDb = !currentDatabase || itemDbs.includes(currentDatabase);
         const matchesCriteria = matchDoi && matchTerm && matchDb;
 
@@ -686,7 +691,7 @@ function applyGlobalFilter() {
         let count = 0;
         document.querySelectorAll(itemSelector).forEach(item => {
             const text = item.textContent.toLowerCase();
-            const matches = (term === '' || text.includes(term)) && !onlyDoi;
+            const matches = (term === '' || text.includes(term) || (normTerm !== '' && normalizeFilterStr(text).includes(normTerm))) && !onlyDoi;
             if (matches) {
                 item.style.display = '';
                 count++;
@@ -731,9 +736,25 @@ function showToast(message) {
 
 // ── Initial Tab Setup on Load ──
 document.addEventListener('DOMContentLoaded', () => {
-    // Check URL Hash for direct deep linking (e.g. #orientations, #activities, #analytics)
+    const urlParams = new URLSearchParams(window.location.search);
+    const filterTopic = urlParams.get('tema') || urlParams.get('keyword') || urlParams.get('q');
     const hash = window.location.hash ? window.location.hash.replace('#', '') : '';
-    if (['productions', 'orientations', 'activities', 'analytics'].includes(hash)) {
+
+    if (filterTopic && filterTopic.trim() !== '') {
+        const searchInput = document.getElementById('prodSearchInput');
+        if (searchInput) {
+            searchInput.value = filterTopic.trim();
+        }
+        switchProfessorTab('productions');
+        applyGlobalFilter();
+
+        const filterBar = document.getElementById('globalFilterBar');
+        if (filterBar) {
+            setTimeout(() => {
+                filterBar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 250);
+        }
+    } else if (['productions', 'orientations', 'activities', 'analytics'].includes(hash)) {
         switchProfessorTab(hash);
     } else {
         switchProfessorTab('productions');
