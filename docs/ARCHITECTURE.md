@@ -213,3 +213,19 @@ O serviço `DatabaseBackupService` fornece:
 - Streaming em tempo real via **Server-Sent Events (SSE)** informando o progresso tabela por tabela.
 - Compressão ZIP integrada gerando arquivos `.sql.zip`.
 
+---
+
+## 🔍 Arquitetura do Sistema de Palavras-Chave e Descoberta Temática
+
+O sistema unifica a inteligência conceitual do CECH a partir de múltiplas fontes:
+1. **Modelagem**: Entidades `ThematicTerm` e `ThematicTermResearcher` alimentadas por `ThematicTermIndexService`.
+2. **Fontes de Dados**:
+   - `ProductionItem.keywords` (Lattes)
+   - `Orientation.keywords` e `Orientation.alternativeTitle` (Lattes + Repositório TeD-UFSCar)
+3. **Frontend Unificado e Resolução Inteligente**:
+   - Renderização no primeiro carregamento das 3 abas principais no DOM.
+   - Detecção instantânea e seleção automática da aba com ocorrências via `switchProfessorTab`.
+   - Exibição de tags clicáveis `#tag` com `filterByKeyword(keyword)`.
+- **Documentação Detalhada**: Consulte [`docs/SISTEMA_DE_PALAVRAS_CHAVE.md`](file:///Users/jonaspoli/work/html/ufscar-cech/docs/SISTEMA_DE_PALAVRAS_CHAVE.md) e [`docs/evolutions/pesquisa-tematica.md`](file:///Users/jonaspoli/work/html/ufscar-cech/docs/evolutions/pesquisa-tematica.md).
+
+

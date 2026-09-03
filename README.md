@@ -207,7 +207,8 @@ php bin/console lint:yaml config
 ## 📁 Guias e Documentação Técnica
 
 Para detalhes aprofundados sobre cada módulo, consulte a pasta [`docs/`](file:///Users/jonaspoli/work/html/ufscar-cech/docs):
-- [docs/evolutions/pesquisa-tematica.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/evolutions/pesquisa-tematica.md) — Especificação completa da Pesquisa Temática por Palavras-Chave.
+- [docs/SISTEMA_DE_PALAVRAS_CHAVE.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/SISTEMA_DE_PALAVRAS_CHAVE.md) — Manual e especificação completa do Sistema de Palavras-Chave e Descoberta Temática.
+- [docs/evolutions/pesquisa-tematica.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/evolutions/pesquisa-tematica.md) — Especificação técnica e evolução da Pesquisa Temática por Palavras-Chave.
 - [docs/graficos.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/graficos.md) — Catálogo detalhado das 18 Figuras de Inteligência Cienciométrica.
 - [docs/ARCHITECTURE.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/ARCHITECTURE.md) — Arquitetura de software, fluxo de dados e serviços.
 - [docs/ARQUITETURA_E_PROCESSOS.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/ARQUITETURA_E_PROCESSOS.md) — Processos de ingestão, parsing e enriquecimento.
