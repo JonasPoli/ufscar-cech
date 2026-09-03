@@ -242,69 +242,6 @@
             </div>
         </div>
     {% endif %}
-
-    <!-- ── 2. Palavras-chave dos Trabalhos & Temas Frequentes (Duas Colunas Lado a Lado) ── -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 no-print">
-        <!-- Coluna 1: Palavras-chave dos Trabalhos (Lattes) -->
-        {% if authorKeywords|length > 0 %}
-            <div class="glass-card rounded-3xl p-6 sm:p-7 shadow-sm space-y-4 border-l-4 border-emerald-500 flex flex-col justify-between">
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
-                        <div>
-                            <h3 class="font-heading text-sm sm:text-base font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                                <sl-icon name="tags-fill" class="text-emerald-500"></sl-icon> Palavras-chave dos Trabalhos
-                            </h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">Cadastradas pelo autor nos artigos e produções no Lattes</p>
-                        </div>
-                        <span class="rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 px-2.5 py-0.5 text-[10px] font-bold shrink-0">Lattes Oficial</span>
-                    </div>
-                    <div class="flex flex-wrap gap-2 pt-1 max-h-64 overflow-y-auto pr-1">
-                        {% set maxAuthCount = authorKeywords|first %}
-                        {% for kw, count in authorKeywords %}
-                            {% set weight = ((count / (maxAuthCount ?: 1)) * 100)|round %}
-                            <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-xl border border-emerald-200/80 dark:border-emerald-900/60 px-3 py-1.5 text-xs transition-all hover:border-emerald-500 hover:scale-105 {% if weight > 70 %}bg-emerald-600 text-white font-bold shadow-sm{% elseif weight > 40 %}bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-semibold{% else %}bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-200{% endif %}" title="Filtrar produções com palavra-chave '{{ kw }}' ({{ count }} ocorrências)">
-                                {{ kw }} <span class="text-[10px] opacity-75">({{ count }})</span>
-                            </button>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>Clique em qualquer termo para filtrar produções</span>
-                    <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ authorKeywords|length }} termos</span>
-                </div>
-            </div>
-        {% endif %}
-
-        <!-- Coluna 2: Temas e Termos Frequentes (Mineração de Títulos) -->
-        {% if topKeywords|length > 0 %}
-            <div class="glass-card rounded-3xl p-6 sm:p-7 shadow-sm space-y-4 border-l-4 border-sky-500 flex flex-col justify-between">
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-3">
-                        <div>
-                            <h3 class="font-heading text-sm sm:text-base font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                                <sl-icon name="diagram-3" class="text-sky-500"></sl-icon> Temas e Termos Frequentes
-                            </h3>
-                            <p class="text-[11px] text-slate-400 mt-0.5">Sintagmas e conceitos mais recorrentes nos títulos</p>
-                        </div>
-                        <span class="rounded-full bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 px-2.5 py-0.5 text-[10px] font-bold shrink-0">Mineração</span>
-                    </div>
-                    <div class="flex flex-wrap gap-2 pt-1 max-h-64 overflow-y-auto pr-1">
-                        {% set maxCount = topKeywords|first %}
-                        {% for word, count in topKeywords %}
-                            {% set weight = ((count / (maxCount ?: 1)) * 100)|round %}
-                            <button type="button" onclick="filterByKeyword('{{ word|e('js') }}')" class="rounded-xl border border-slate-200/80 dark:border-slate-800 px-3 py-1.5 text-xs transition-all hover:border-sky-500 hover:scale-105 {% if weight > 70 %}bg-sky-500 text-white font-bold shadow-sm{% elseif weight > 40 %}bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-semibold{% else %}bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-300{% endif %}" title="Filtrar produções contendo '{{ word }}' ({{ count }} ocorrências)">
-                                {{ word|capitalize }} <span class="text-[10px] opacity-75">({{ count }})</span>
-                            </button>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
-                    <span>Clique em qualquer termo para filtrar produções</span>
-                    <span class="font-semibold text-sky-600 dark:text-sky-400">{{ topKeywords|length }} temas</span>
-                </div>
-            </div>
-        {% endif %}
-    </div>
 </div>
 
 <script>

@@ -91,27 +91,21 @@ A página [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templat
 
 ---
 
-### **Figura 8 — Linha do Tempo de Titulação de Doutorado (1980–2026)**
-* **Tipo**: Gráfico de Linha com gradiente de área preenchida.
-* **Objetivo**: Mostrar a curva histórica de titulação do corpo docente ao longo das décadas, evidenciando o rejuvenescimento e maturidade acadêmica do centro.
-
----
-
 ## 🎓 Bloco 2: Formação de Recursos Humanos & Orientações
 
-### **Figura 9 — Formação de Recursos Humanos: Concluídas vs. Em Andamento**
+### **Figura 8 — Formação de Recursos Humanos: Concluídas vs. Em Andamento**
 * **Tipo**: Gráfico de Barras Empilhadas.
 * **Objetivo**: Comparar o volume total de recursos humanos já formados pelo CECH versus o estoque atual de alunos sob orientação ativa.
 
 ---
 
-### **Figura 10 — Histórico Anual de Orientações Concluídas**
+### **Figura 9 — Histórico Anual de Orientações Concluídas**
 * **Tipo**: Gráfico de Linha Temporal Multi-Série.
 * **Objetivo**: Demonstrar a evolução ano a ano do número de defesas e conclusões de trabalhos orientados pelos docentes.
 
 ---
 
-### **Figura 11 — Orientações Concluídas por Nível Acadêmico**
+### **Figura 10 — Orientações Concluídas por Nível Acadêmico**
 * **Tipo**: Gráfico Donut (Rosca) detalhado com legenda personalizada.
 * **Níveis Analisados**:
   1. **Doutorado** (Teses defendidas)
@@ -126,8 +120,8 @@ A página [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templat
 
 ## 📚 Bloco 3: Produção Intelectual, Qualis & Bases Internacionais
 
-### **Figura 12 — Produção Intelectual Acumulada por Tipo**
-* **Tipo**: Gráfico Donut (Rosca) com contadores em destaque.
+### **Figura 11 — Produção Intelectual Acumulada por Tipo**
+* **Tipo**: Gráfico Donut (Rosca) com contadores em destaque / Tabela Heatmap Anual.
 * **Tipologias Mapeadas**:
   - **Artigos em Periódicos Científicos**
   - **Livros Publicados/Organizados**
@@ -140,13 +134,13 @@ A página [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templat
 
 ---
 
-### **Figura 13 — Evolução Temporal da Produção Científica Anual**
-* **Tipo**: Gráfico de Linha Multi-Camada (Artigos, Livros/Capítulos e Eventos ao longo dos anos).
-* **Objetivo**: Analisar o ritmo de publicação do centro e a estabilidade da produção intelectual anual.
+### **Figura 12 — Evolução Temporal da Produção Científica Anual (Com Qualis vs Sem Qualis)**
+* **Tipo**: Gráfico de Linha Multi-Camada (Artigos com Qualis versus artigos sem Qualis).
+* **Objetivo**: Analisar o ritmo de publicação do centro e a qualificação dos periódicos.
 
 ---
 
-### **Figura 14 — Distribuição de Artigos por Estrato Qualis (CAPES)**
+### **Figura 13 — Distribuição de Artigos por Estrato Qualis (CAPES)**
 * **Tipo**: Gráfico de Barras Verticais coloridas por estrato.
 * **Estratos Oficiais**:
   - `A1`, `A2`, `A3`, `A4` (Excelência Internacional / Nacional)
@@ -157,7 +151,7 @@ A página [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templat
 
 ---
 
-### **Figura 15 — Bases Científicas Internacionais: Trabalhos por Base de Indexação**
+### **Figura 14 — Bases Científicas Internacionais: Trabalhos por Base de Indexação**
 * **Tipo**: Gráfico de Barras Horizontais com a paleta oficial de cores de cada indexador.
 * **Objetivo**: Mostrar a visibilidade global dos artigos do CECH, indicando a quantidade de trabalhos publicados em periódicos indexados nas maiores bases mundiais:
   - **Scopus** (`#ea580c`)
@@ -171,7 +165,7 @@ A página [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templat
 
 ---
 
-### **Figura 16 — Séries Históricas: Evolução Temporal da Indexação por Base (2010–2026)**
+### **Figura 15 — Séries Históricas: Evolução Temporal da Indexação por Base (2010–2026)**
 * **Tipo**: Gráfico Multi-Linhas Interativo com pontos e curvas de suavização.
 * **Objetivo**: Acompanhar o crescimento da presença dos artigos do CECH nas bases científicas internacionais ano a ano.
 
@@ -179,20 +173,20 @@ A página [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templat
 
 ## 🌐 Bloco 4: Redes de Colaboração & Parcerias Institucionais
 
-### **Figura 17 — Rede de Coautoria Docente (Produção Compartilhada CECH)**
-* **Tipo**: Ranking Top 10 e Matriz de Parcerias Internas com Deduplicação.
+### **Figura 16 — Rede de Coautoria Docente (Produção Compartilhada CECH)**
+* **Tipo**: Ranking Top 10 e Matriz de Parcerias Internas com Deduplicação e Exportação para VOSviewer.
 * **Regra Cienciométrica de Ouro**: Obras produzidas em coautoria entre 2 ou mais docentes do CECH são contabilizadas **uma única vez** no cômputo institucional para evitar contagem duplicada.
 * **Objetivo**: Evidenciar os pares de pesquisadores com maior cooperação intra-departamental e inter-departamental.
 
 ---
 
-### **Figura 18 — Top Parcerias Institucionais Nacionais**
+### **Figura 17 — Top Parcerias Institucionais Nacionais**
 * **Tipo**: Gráfico de Barras Horizontais.
 * **Objetivo**: Mapear as universidades, institutos federais e centros de pesquisa nacionais que mais colaboram em coautoria com os docentes do CECH.
 
 ---
 
-### **Figura 19 — Parcerias Internacionais: Coautorias por País**
+### **Figura 18 — Parcerias Internacionais: Coautorias por País**
 * **Tipo**: Gráfico de Barras Horizontais com bandeiras e identificação dos países parceiros (América Latina, Europa, América do Norte, etc.).
 
 ---

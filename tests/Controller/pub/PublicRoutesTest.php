@@ -42,7 +42,7 @@ class PublicRoutesTest extends WebTestCase
         $crawler = $client->request('GET', '/indicadores?tab=all');
 
         $this->assertResponseIsSuccessful();
-        for ($i = 1; $i <= 19; $i++) {
+        for ($i = 1; $i <= 18; $i++) {
             $this->assertStringContainsString("Figura {$i}", $client->getResponse()->getContent());
         }
         $this->assertStringContainsString('chartFigAcademicDatabases', $client->getResponse()->getContent());
@@ -56,25 +56,25 @@ class PublicRoutesTest extends WebTestCase
         // 1. Fragment training
         $client->request('GET', '/indicadores/fragment/training');
         $this->assertResponseIsSuccessful();
+        $this->assertStringContainsString('Figura 8', $client->getResponse()->getContent());
         $this->assertStringContainsString('Figura 9', $client->getResponse()->getContent());
         $this->assertStringContainsString('Figura 10', $client->getResponse()->getContent());
-        $this->assertStringContainsString('Figura 11', $client->getResponse()->getContent());
 
         // 2. Fragment production
         $client->request('GET', '/indicadores/fragment/production');
         $this->assertResponseIsSuccessful();
+        $this->assertStringContainsString('Figura 11', $client->getResponse()->getContent());
         $this->assertStringContainsString('Figura 12', $client->getResponse()->getContent());
         $this->assertStringContainsString('Figura 13', $client->getResponse()->getContent());
         $this->assertStringContainsString('Figura 14', $client->getResponse()->getContent());
         $this->assertStringContainsString('Figura 15', $client->getResponse()->getContent());
-        $this->assertStringContainsString('Figura 16', $client->getResponse()->getContent());
 
         // 3. Fragment network
         $client->request('GET', '/indicadores/fragment/network');
         $this->assertResponseIsSuccessful();
+        $this->assertStringContainsString('Figura 16', $client->getResponse()->getContent());
         $this->assertStringContainsString('Figura 17', $client->getResponse()->getContent());
         $this->assertStringContainsString('Figura 18', $client->getResponse()->getContent());
-        $this->assertStringContainsString('Figura 19', $client->getResponse()->getContent());
 
         // 4. Invalid fragment -> 404
         $client->request('GET', '/indicadores/fragment/invalid-tab');

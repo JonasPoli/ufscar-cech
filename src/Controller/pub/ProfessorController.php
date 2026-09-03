@@ -56,11 +56,12 @@ class ProfessorController extends AbstractController
         $prods = $this->categorizeProductions($researcher, $allYears);
         $orients = $this->categorizeOrientations($researcher, $allYears);
         $kpiStats = $this->calculateKpiStats($researcher, $prods, $orients, $allYears);
+        $keywords = $this->extractKeywords($researcher);
 
         return $this->render('pub/professor/show.html.twig', array_merge([
             'researcher' => $researcher,
             'kpiStats' => $kpiStats,
-        ], $prods, $orients));
+        ], $prods, $orients, $keywords));
     }
 
     /**
@@ -84,7 +85,7 @@ class ProfessorController extends AbstractController
             'productions' => $this->render('pub/professor/_tab_productions.html.twig', array_merge([
                 'researcher' => $researcher,
                 'kpiStats' => $kpiStats,
-            ], $prods)),
+            ], $prods, $this->extractKeywords($researcher))),
             'orientations' => $this->render('pub/professor/_tab_orientations.html.twig', array_merge([
                 'researcher' => $researcher,
                 'kpiStats' => $kpiStats,
@@ -579,7 +580,25 @@ class ProfessorController extends AbstractController
         uasort($collaboratorsMap, fn($a, $b) => $b['count'] <=> $a['count']);
         $topCoauthors = array_slice($collaboratorsMap, 0, 12, true);
 
-        // Keyword & Topic Cloud
+        $keywordsData = $this->extractKeywords($researcher);
+
+        return [
+            'timelineYears' => $continuousYears,
+            'productionTimeline' => $productionTimeline,
+            'orientationsTimeline' => $orientationsTimeline,
+            'yearlyProduction' => $yearlyProduction,
+            'categoryDistribution' => $categoryDistribution,
+            'topCoauthors' => $topCoauthors,
+            'topKeywords' => $keywordsData['topKeywords'],
+            'authorKeywords' => $keywordsData['authorKeywords'],
+        ];
+    }
+
+    /**
+     * Extrai as palavras-chave declaradas pelo autor e mineradas nos títulos das produções.
+     */
+    private function extractKeywords(Researcher $researcher): array
+    {
         $stopWords = [
             'de', 'da', 'do', 'das', 'dos', 'em', 'no', 'na', 'nos', 'nas', 'por', 'para', 'com', 'sem',
             'sob', 'sobre', 'entre', 'até', 'ante', 'após', 'uma', 'um', 'umas', 'uns', 'o', 'a', 'os', 'as',
@@ -690,12 +709,6 @@ class ProfessorController extends AbstractController
         }
 
         return [
-            'timelineYears' => $continuousYears,
-            'productionTimeline' => $productionTimeline,
-            'orientationsTimeline' => $orientationsTimeline,
-            'yearlyProduction' => $yearlyProduction,
-            'categoryDistribution' => $categoryDistribution,
-            'topCoauthors' => $topCoauthors,
             'topKeywords' => $topKeywords,
             'authorKeywords' => $authorKeywords,
         ];
