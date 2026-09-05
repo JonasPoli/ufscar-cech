@@ -944,11 +944,25 @@ class StatisticsService
 
             // Contagens totais base
             $a1 = 0; $a2 = 0; $a3 = 0; $a4 = 0;
+            $dbStrata = [];
             foreach ($articles as $a) {
-                if ($a['qualis'] === 'A1') $a1++;
-                elseif ($a['qualis'] === 'A2') $a2++;
-                elseif ($a['qualis'] === 'A3') $a3++;
-                elseif ($a['qualis'] === 'A4') $a4++;
+                $q = $a['qualis'];
+                if ($q === 'A1') $a1++;
+                elseif ($q === 'A2') $a2++;
+                elseif ($q === 'A3') $a3++;
+                elseif ($q === 'A4') $a4++;
+
+                if (!empty($a['dbIds'])) {
+                    foreach ($a['dbIds'] as $dbId) {
+                        $dbKey = (string)$dbId;
+                        if (!isset($dbStrata[$dbKey])) {
+                            $dbStrata[$dbKey] = ['A1' => 0, 'A2' => 0, 'A3' => 0, 'A4' => 0];
+                        }
+                        if (isset($dbStrata[$dbKey][$q])) {
+                            $dbStrata[$dbKey][$q]++;
+                        }
+                    }
+                }
             }
 
             $researchers[] = [
@@ -963,6 +977,13 @@ class StatisticsService
                 'A2' => $a2,
                 'A3' => $a3,
                 'A4' => $a4,
+                'strata' => [
+                    'A1' => $a1,
+                    'A2' => $a2,
+                    'A3' => $a3,
+                    'A4' => $a4,
+                ],
+                'dbStrata' => $dbStrata,
                 'totalA' => count($articles),
                 'articles' => $articles
             ];

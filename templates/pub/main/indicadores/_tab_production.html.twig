@@ -351,83 +351,87 @@
 
         // ── Fig 13: Qualis vs Sem Qualis (Área) ──
         const fig11Data = {{ fig11QualisTimeline|json_encode|raw }};
-        createSafeChart('chartFig11', {
-            type: 'line',
-            data: {
-                labels: fig11Data.years,
-                datasets: [
-                    {
-                        label: 'Com Qualis CAPES',
-                        data: fig11Data.withQualis,
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
-                        fill: true,
-                        tension: 0.35,
-                        borderWidth: 2.5
-                    },
-                    {
-                        label: 'Sem Qualis',
-                        data: fig11Data.withoutQualis,
-                        borderColor: '#94a3b8',
-                        backgroundColor: 'rgba(148, 163, 184, 0.1)',
-                        fill: true,
-                        tension: 0.35,
-                        borderWidth: 2,
-                        borderDash: [4, 4]
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top', labels: { color: textColor, font: { size: 11 }, boxWidth: 12 } }
+        if (fig11Data && fig11Data.years) {
+            createSafeChart('chartFig11', {
+                type: 'line',
+                data: {
+                    labels: fig11Data.years,
+                    datasets: [
+                        {
+                            label: 'Com Qualis CAPES',
+                            data: fig11Data.withQualis,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                            fill: true,
+                            tension: 0.35,
+                            borderWidth: 2.5
+                        },
+                        {
+                            label: 'Sem Qualis',
+                            data: fig11Data.withoutQualis,
+                            borderColor: '#94a3b8',
+                            backgroundColor: 'rgba(148, 163, 184, 0.1)',
+                            fill: true,
+                            tension: 0.35,
+                            borderWidth: 2,
+                            borderDash: [4, 4]
+                        }
+                    ]
                 },
-                scales: {
-                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
-                    y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: textColor, font: { size: 11 }, boxWidth: 12 } }
+                    },
+                    scales: {
+                        x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                        y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                    }
                 }
-            }
-        });
+            });
+        }
 
         // ── Fig 14: Estratos Qualis A1..C (Stacked Bar) ──
         const fig12Data = {{ fig12QualisStrata|json_encode|raw }};
-        const qualisColors = {
-            'A1': '#065f46',
-            'A2': '#059669',
-            'A3': '#10b981',
-            'A4': '#34d399',
-            'B1': '#0284c7',
-            'B2': '#38bdf8',
-            'B3': '#f59e0b',
-            'B4': '#fb923c',
-            'C':  '#94a3b8'
-        };
-        const fig12Datasets = fig12Data.strata.map(st => ({
-            label: st + ' (' + (fig12Data.strataTotals[st] || 0) + ')',
-            data: Object.values(fig12Data.series[st]),
-            backgroundColor: qualisColors[st] || '#64748b',
-            borderRadius: 2
-        }));
+        if (fig12Data && fig12Data.strata) {
+            const qualisColors = {
+                'A1': '#065f46',
+                'A2': '#059669',
+                'A3': '#10b981',
+                'A4': '#34d399',
+                'B1': '#0284c7',
+                'B2': '#38bdf8',
+                'B3': '#f59e0b',
+                'B4': '#fb923c',
+                'C':  '#94a3b8'
+            };
+            const fig12Datasets = fig12Data.strata.map(st => ({
+                label: st + ' (' + (fig12Data.strataTotals[st] || 0) + ')',
+                data: Object.values(fig12Data.series[st]),
+                backgroundColor: qualisColors[st] || '#64748b',
+                borderRadius: 2
+            }));
 
-        createSafeChart('chartFig12', {
-            type: 'bar',
-            data: {
-                labels: fig12Data.years,
-                datasets: fig12Datasets
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'top', labels: { color: textColor, font: { size: 10 }, boxWidth: 10 } }
+            createSafeChart('chartFig12', {
+                type: 'bar',
+                data: {
+                    labels: fig12Data.years,
+                    datasets: fig12Datasets
                 },
-                scales: {
-                    x: { stacked: true, grid: { display: false }, ticks: { color: textColor } },
-                    y: { stacked: true, grid: { color: gridColor }, ticks: { color: textColor } }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { color: textColor, font: { size: 10 }, boxWidth: 10 } }
+                    },
+                    scales: {
+                        x: { stacked: true, grid: { display: false }, ticks: { color: textColor } },
+                        y: { stacked: true, grid: { color: gridColor }, ticks: { color: textColor } }
+                    }
                 }
-            }
-        });
+            });
+        }
 
         // ── Fig 15: Produção por Base de Indexação Científica (Horizontal Bar) ──
         const figAcademicDatabasesData = {{ figAcademicDatabases|json_encode|raw }};
@@ -554,19 +558,39 @@
                 let displayA3 = 0;
                 let displayA4 = 0;
 
+                const rStrata = r.strata || {
+                    'A1': r.A1 || 0,
+                    'A2': r.A2 || 0,
+                    'A3': r.A3 || 0,
+                    'A4': r.A4 || 0
+                };
+
                 if (isAllDbs) {
-                    displayA1 = r.strata['A1'] || 0;
-                    displayA2 = r.strata['A2'] || 0;
-                    displayA3 = r.strata['A3'] || 0;
-                    displayA4 = r.strata['A4'] || 0;
+                    displayA1 = rStrata['A1'] || 0;
+                    displayA2 = rStrata['A2'] || 0;
+                    displayA3 = rStrata['A3'] || 0;
+                    displayA4 = rStrata['A4'] || 0;
                 } else {
-                    activeDbs.forEach(dbId => {
-                        const dbCounts = r.dbStrata[dbId] || {};
-                        displayA1 += dbCounts['A1'] || 0;
-                        displayA2 += dbCounts['A2'] || 0;
-                        displayA3 += dbCounts['A3'] || 0;
-                        displayA4 += dbCounts['A4'] || 0;
-                    });
+                    if (Array.isArray(r.articles)) {
+                        // Artigos únicos do pesquisador indexados em pelo menos uma das bases selecionadas
+                        const matching = r.articles.filter(a =>
+                            Array.isArray(a.dbIds) && a.dbIds.some(id => activeDbs.has(String(id)) || activeDbs.has(Number(id)))
+                        );
+                        for (const a of matching) {
+                            if (a.qualis === 'A1') displayA1++;
+                            else if (a.qualis === 'A2') displayA2++;
+                            else if (a.qualis === 'A3') displayA3++;
+                            else if (a.qualis === 'A4') displayA4++;
+                        }
+                    } else if (r.dbStrata) {
+                        activeDbs.forEach(dbId => {
+                            const dbCounts = r.dbStrata[dbId] || r.dbStrata[String(dbId)] || {};
+                            displayA1 += dbCounts['A1'] || 0;
+                            displayA2 += dbCounts['A2'] || 0;
+                            displayA3 += dbCounts['A3'] || 0;
+                            displayA4 += dbCounts['A4'] || 0;
+                        });
+                    }
                 }
 
                 if (activeStrata['A1']) score += displayA1;
@@ -584,7 +608,9 @@
                 };
             }).filter(r => {
                 if (r.currentScore <= 0) return false;
-                if (searchQuery !== '' && !r.name.toLowerCase().includes(searchQuery) && !r.department.toLowerCase().includes(searchQuery)) {
+                const nameStr = (r.name || '').toLowerCase();
+                const deptStr = (r.department || '').toLowerCase();
+                if (searchQuery !== '' && !nameStr.includes(searchQuery) && !deptStr.includes(searchQuery)) {
                     return false;
                 }
                 return true;
@@ -699,6 +725,12 @@
                 tbody.appendChild(tr);
             });
         }
+
+        if (tbody.dataset.initialized === 'true') {
+            updateRanking();
+            return;
+        }
+        tbody.dataset.initialized = 'true';
 
         qualisToggleBtns.forEach(btn => {
             btn.addEventListener('click', () => {
