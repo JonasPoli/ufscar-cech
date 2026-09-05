@@ -64,20 +64,25 @@
         {# ── Google Scholar / Academic Citation Meta Tags Block ── #}
         {% block academic_meta %}{% endblock %}
 
-        {# ── PageSpeed Font Optimization: Preconnect & Font-Display Swap ── #}
+        {# ── PageSpeed Optimization: Preconnect to CDNs ── #}
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+
+        {# ── Asynchronous Google Fonts (Non-Render-Blocking) ── #}
+        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" media="print" onload="this.media='all'">
+        <noscript>
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap">
+        </noscript>
 
         {# ── Shoelace Web Components ── #}
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/light.css" />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/dark.css" />
         <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/shoelace-autoloader.js"></script>
 
-        {# ── Data Visualization Libraries (Chart.js & D3.js) ── #}
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/d3-sankey@0.12.3/dist/d3-sankey.min.js"></script>
+        {# ── Optional Vendor Scripts (Chart.js / D3.js) - loaded only on pages that require them ── #}
+        {% block vendor_scripts %}{% endblock %}
 
         {% block javascripts %}{% endblock %}
 
@@ -199,8 +204,8 @@
                 <!-- Brand / Logo -->
                 <a href="{{ path('app_pub_home') }}" class="flex items-center gap-3 group">
                     <div class="h-10 px-2 py-1 flex items-center justify-center rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 shadow-sm group-hover:scale-105 transition-transform">
-                        <img src="{{ asset('images/logo-colorido.svg') }}" alt="Logo CECH UFSCar" class="h-7 w-auto dark:hidden">
-                        <img src="{{ asset('images/logo-colorido-dark.svg') }}" alt="Logo CECH UFSCar" class="h-7 w-auto hidden dark:block">
+                        <img src="{{ asset('images/logo-colorido.svg') }}" alt="Logo CECH UFSCar" width="74" height="28" class="h-7 w-auto dark:hidden">
+                        <img src="{{ asset('images/logo-colorido-dark.svg') }}" alt="Logo CECH UFSCar" width="74" height="28" class="h-7 w-auto hidden dark:block">
                     </div>
                     <div class="flex flex-col">
                         <span class="font-heading text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-cech-blue dark:group-hover:text-cech-teal transition-colors">
@@ -239,12 +244,12 @@
                     </form>
 
                     <!-- Dark/Light Mode Switch -->
-                    <div class="flex items-center rounded-full border border-slate-200 p-1 dark:border-slate-800 bg-slate-100 dark:bg-slate-900">
-                        <button type="button" onclick="setDarkMode(false)" title="Modo Claro" class="rounded-full p-1 text-slate-500 hover:text-amber-500 dark:text-slate-400 dark:hover:text-amber-400 transition-colors">
-                            <sl-icon name="sun-fill" class="text-sm"></sl-icon>
+                    <div class="flex items-center rounded-full border border-slate-200 p-0.5 dark:border-slate-800 bg-slate-100 dark:bg-slate-900">
+                        <button type="button" onclick="setDarkMode(false)" title="Modo Claro" aria-label="Ativar modo claro" class="min-w-[40px] min-h-[40px] rounded-full p-2 flex items-center justify-center text-slate-600 hover:text-amber-500 dark:text-slate-400 dark:hover:text-amber-400 transition-colors">
+                            <sl-icon name="sun-fill" class="text-base"></sl-icon>
                         </button>
-                        <button type="button" onclick="setDarkMode(true)" title="Modo Escuro" class="rounded-full p-1 text-slate-500 hover:text-cech-teal dark:text-slate-400 dark:hover:text-cech-teal transition-colors">
-                            <sl-icon name="moon-stars-fill" class="text-sm"></sl-icon>
+                        <button type="button" onclick="setDarkMode(true)" title="Modo Escuro" aria-label="Ativar modo escuro" class="min-w-[40px] min-h-[40px] rounded-full p-2 flex items-center justify-center text-slate-600 hover:text-cech-teal dark:text-slate-400 dark:hover:text-cech-teal transition-colors">
+                            <sl-icon name="moon-stars-fill" class="text-base"></sl-icon>
                         </button>
                     </div>
 
@@ -277,8 +282,8 @@
             <div class="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="h-9 px-2 py-1 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 shadow-2xs">
-                        <img src="{{ asset('images/logo-colorido.svg') }}" alt="Logo CECH" class="h-6 w-auto dark:hidden">
-                        <img src="{{ asset('images/logo-colorido-dark.svg') }}" alt="Logo CECH" class="h-6 w-auto hidden dark:block">
+                        <img src="{{ asset('images/logo-colorido.svg') }}" alt="Logo CECH" width="64" height="24" class="h-6 w-auto dark:hidden">
+                        <img src="{{ asset('images/logo-colorido-dark.svg') }}" alt="Logo CECH" width="64" height="24" class="h-6 w-auto hidden dark:block">
                     </div>
                     <div>
                         <span class="font-heading text-sm font-bold tracking-tight text-slate-900 dark:text-white block">
@@ -397,12 +402,12 @@
             <div class="p-5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 space-y-3">
                 <div class="flex items-center justify-between">
                     <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Aparência</span>
-                    <div class="flex items-center rounded-full border border-slate-200 p-1 dark:border-slate-800 bg-white dark:bg-slate-900">
-                        <button type="button" onclick="setDarkMode(false)" title="Modo Claro" class="rounded-full px-2.5 py-1 text-xs flex items-center gap-1.5 text-slate-600 hover:text-amber-500 dark:text-slate-400 transition-colors">
-                            <sl-icon name="sun-fill" class="text-xs"></sl-icon> Claro
+                    <div class="flex items-center rounded-full border border-slate-200 p-0.5 dark:border-slate-800 bg-white dark:bg-slate-900">
+                        <button type="button" onclick="setDarkMode(false)" title="Modo Claro" aria-label="Ativar modo claro" class="min-w-[44px] min-h-[44px] rounded-full px-3 py-2 text-xs flex items-center justify-center gap-1.5 text-slate-700 hover:text-amber-500 dark:text-slate-300 transition-colors">
+                            <sl-icon name="sun-fill" class="text-sm"></sl-icon> Claro
                         </button>
-                        <button type="button" onclick="setDarkMode(true)" title="Modo Escuro" class="rounded-full px-2.5 py-1 text-xs flex items-center gap-1.5 text-slate-600 hover:text-teal-500 dark:text-slate-400 transition-colors">
-                            <sl-icon name="moon-stars-fill" class="text-xs"></sl-icon> Escuro
+                        <button type="button" onclick="setDarkMode(true)" title="Modo Escuro" aria-label="Ativar modo escuro" class="min-w-[44px] min-h-[44px] rounded-full px-3 py-2 text-xs flex items-center justify-center gap-1.5 text-slate-700 hover:text-teal-500 dark:text-slate-300 transition-colors">
+                            <sl-icon name="moon-stars-fill" class="text-sm"></sl-icon> Escuro
                         </button>
                     </div>
                 </div>
@@ -475,13 +480,13 @@
 
         {# ── Footer ── #}
         <footer class="border-t border-slate-200/80 bg-white/70 backdrop-blur-md dark:border-white/10 dark:bg-slate-950/70 py-10">
-            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-slate-500 dark:text-slate-400">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-slate-600 dark:text-slate-400">
                 <div class="flex items-center gap-3">
-                    <img src="{{ asset('images/logo-colorido.svg') }}" alt="Logo CECH UFSCar" class="h-8 w-auto dark:hidden">
-                    <img src="{{ asset('images/logo-colorido-dark.svg') }}" alt="Logo CECH UFSCar" class="h-8 w-auto hidden dark:block">
+                    <img src="{{ asset('images/logo-colorido.svg') }}" alt="Logo CECH UFSCar" width="85" height="32" loading="lazy" decoding="async" class="h-8 w-auto dark:hidden">
+                    <img src="{{ asset('images/logo-colorido-dark.svg') }}" alt="Logo CECH UFSCar" width="85" height="32" loading="lazy" decoding="async" class="h-8 w-auto hidden dark:block">
                     <div class="flex flex-col">
-                        <span class="font-bold text-slate-800 dark:text-slate-200 text-sm">Centro de Educação e Ciências Humanas</span>
-                        <span class="text-slate-500 dark:text-slate-400">Universidade Federal de São Carlos (UFSCar)</span>
+                        <span class="font-bold text-slate-900 dark:text-slate-100 text-sm">Centro de Educação e Ciências Humanas</span>
+                        <span class="text-slate-600 dark:text-slate-400">Universidade Federal de São Carlos (UFSCar)</span>
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center justify-center gap-4">
@@ -494,14 +499,14 @@
                 </div>
             </div>
 
-            <div class="mt-8 pt-6 border-t border-slate-200/60 dark:border-white/5 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+            <div class="mt-8 pt-6 border-t border-slate-200/60 dark:border-white/5 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                 <span>Desenvolvido por</span>
                 <a href="https://www.nit.ufscar.br/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity" title="NIT Materiais - Núcleo de Informação Tecnológica em Materiais">
                     <picture class="inline-flex items-center">
                         <source srcset="{{ asset('images/logo-nit.webp') }}" type="image/webp">
-                        <img src="{{ asset('images/logo-nit.png') }}" alt="NIT Materiais" width="57" height="20" loading="lazy" decoding="async" class="h-5 w-auto object-contain">
+                        <img src="{{ asset('images/logo-nit.png') }}" alt="" width="57" height="20" loading="lazy" decoding="async" class="h-5 w-auto object-contain">
                     </picture>
-                    <span class="font-medium text-slate-600 dark:text-slate-300">NIT Materiais</span>
+                    <span class="font-medium text-slate-700 dark:text-slate-300">NIT Materiais</span>
                 </a>
             </div>
         </footer>

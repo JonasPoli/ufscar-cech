@@ -155,7 +155,7 @@ class QualisExtension extends AbstractExtension
 
             $logoHtml = '';
             if ($logo && (str_ends_with($logo, '.svg') || str_ends_with($logo, '.png'))) {
-                $logoHtml = sprintf('<img src="%s" alt="%s" class="h-3 w-auto object-contain shrink-0 inline-block" loading="lazy" />', htmlspecialchars($logo, ENT_QUOTES, 'UTF-8'), $name);
+                $logoHtml = sprintf('<img src="%s" alt="%s" width="16" height="12" class="h-3 w-auto object-contain shrink-0 inline-block" loading="lazy" decoding="async" />', htmlspecialchars($logo, ENT_QUOTES, 'UTF-8'), $name);
             } else {
                 $logoHtml = $icon;
             }
