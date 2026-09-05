@@ -35,6 +35,7 @@ class GenerateWebpPhotosCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         $force = (bool) $input->getOption('force');
+        ini_set('memory_limit', '1024M');
 
         if (!is_dir($this->photosDir)) {
             $io->error(sprintf('Diretório %s não existe.', $this->photosDir));
@@ -112,6 +113,8 @@ class GenerateWebpPhotosCommand extends Command
             }
 
             imagedestroy($src);
+            unset($src);
+            gc_collect_cycles();
             $progressBar->advance();
         }
 
