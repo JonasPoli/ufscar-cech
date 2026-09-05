@@ -5,6 +5,7 @@ namespace App\Controller\pub;
 use App\Repository\ResearcherRepository;
 use App\Repository\SiteSettingRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -17,10 +18,10 @@ class SeoController extends AbstractController
     ) {}
 
     #[Route('/sitemap.xml', name: 'app_pub_sitemap', defaults: ['_format' => 'xml'])]
-    public function sitemap(): Response
+    public function sitemap(Request $request): Response
     {
         $settings = $this->siteSettingRepo->getSettings();
-        $baseUrl = rtrim($settings->getBaseUrl(), '/');
+        $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
 
         $urls = [];
 
@@ -35,6 +36,12 @@ class SeoController extends AbstractController
             'loc' => $baseUrl . $this->generateUrl('app_pub_indicators'),
             'changefreq' => 'weekly',
             'priority' => '0.8',
+            'lastmod' => date('Y-m-d'),
+        ];
+        $urls[] = [
+            'loc' => $baseUrl . $this->generateUrl('app_pub_thematic_search'),
+            'changefreq' => 'weekly',
+            'priority' => '0.9',
             'lastmod' => date('Y-m-d'),
         ];
         $urls[] = [
@@ -92,10 +99,10 @@ class SeoController extends AbstractController
     }
 
     #[Route('/robots.txt', name: 'app_pub_robots', defaults: ['_format' => 'txt'])]
-    public function robots(): Response
+    public function robots(Request $request): Response
     {
         $settings = $this->siteSettingRepo->getSettings();
-        $baseUrl = rtrim($settings->getBaseUrl(), '/');
+        $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
 
         if ($settings->getRobotsTxtContent()) {
             $content = $settings->getRobotsTxtContent();

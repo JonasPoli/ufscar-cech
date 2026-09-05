@@ -16,6 +16,9 @@
     {% endif %}
 {% endblock %}
 
+{% block og_title %}{{ block('title') }}{% endblock %}
+{% block og_description %}{{ block('meta_description') }}{% endblock %}
+
 {% block body %}
 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-10">
 

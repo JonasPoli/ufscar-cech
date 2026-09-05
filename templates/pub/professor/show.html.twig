@@ -5,12 +5,33 @@
 {% extends 'pub/base.html.twig' %}
 
 {% block title %}{{ researcher.fullName }} | Currículo Lattes & Produção Científica — CECH UFSCar{% endblock %}
-{% block meta_description %}{{ researcher.abstractResume ? researcher.abstractResume|slice(0, 155) ~ '...' : 'Perfil acadêmico, produções científicas, orientações e trajetória de ' ~ researcher.fullName ~ ' no CECH - UFSCar.' }}{% endblock %}
+{% block meta_description %}{{ (researcher.abstractResume ? researcher.abstractResume|striptags|replace({"\n": " ", "\r": " ", "\t": " "})|slice(0, 160) ~ '...' : 'Perfil acadêmico, produções científicas, orientações e trajetória de ' ~ researcher.fullName ~ ' no CECH - UFSCar.')|trim }}{% endblock %}
 {% block meta_keywords %}{{ researcher.fullName }}, {{ researcher.department }}, UFSCar, CECH, currículo lattes, produção científica, {{ researcher.citationNames }}{% endblock %}
+
+{% set profPhotoUrl = researcher.photoUrl ? ((researcher.photoUrl starts with 'http') ? researcher.photoUrl : (app.request.schemeAndHttpHost ~ researcher.photoUrl)) : null %}
 
 {% block og_type %}profile{% endblock %}
 {% block og_title %}{{ researcher.fullName }} — Docente e Pesquisador(a) do CECH UFSCar{% endblock %}
-{% block og_description %}{{ researcher.abstractResume ? researcher.abstractResume|slice(0, 155) ~ '...' : 'Currículo e produção científica de ' ~ researcher.fullName ~ ' no CECH - UFSCar.' }}{% endblock %}
+{% block og_description %}{{ (researcher.abstractResume ? researcher.abstractResume|striptags|replace({"\n": " ", "\r": " ", "\t": " "})|slice(0, 160) ~ '...' : 'Currículo e produção científica de ' ~ researcher.fullName ~ ' no CECH - UFSCar.')|trim }}{% endblock %}
+
+{% block og_image %}{{ profPhotoUrl ?: (app.request.schemeAndHttpHost ~ asset('images/og-cech.png')) }}{% endblock %}
+{% block og_image_type %}{{ profPhotoUrl ? 'image/jpeg' : 'image/png' }}{% endblock %}
+{% block og_image_width %}{{ profPhotoUrl ? '800' : '1200' }}{% endblock %}
+{% block og_image_height %}{{ profPhotoUrl ? '800' : '630' }}{% endblock %}
+{% block og_image_alt %}Foto de {{ researcher.fullName }} — Docente do CECH UFSCar{% endblock %}
+
+{% block twitter_card %}summary{% endblock %}
+
+{% block extra_og_tags %}
+    {% set nameParts = researcher.fullName|split(' ') %}
+    <meta property="profile:first_name" content="{{ nameParts|first }}">
+    {% if nameParts|length > 1 %}
+        <meta property="profile:last_name" content="{{ nameParts|slice(1)|join(' ') }}">
+    {% endif %}
+    {% if researcher.department %}
+        <meta property="profile:username" content="{{ researcher.slug ?: researcher.idLattes }}">
+    {% endif %}
+{% endblock %}
 
 {# ── Academic Google Scholar Meta Tags ── #}
 {% block academic_meta %}
@@ -24,44 +45,58 @@
     {% endfor %}
 {% endblock %}
 
-{# ── Schema.org Structured Data (JSON-LD) for Person ── #}
+{# ── Schema.org Structured Data (JSON-LD) for Person & ProfilePage ── #}
 {% block schema_json_ld %}
 <script type="application/ld+json">
 {
     "@context": "https://schema.org",
-    "@type": "Person",
-    "@id": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}{{ path('app_pub_professor_show', {'slugOrId': researcher.slug ?: researcher.idLattes}) }}#person",
-    "name": "{{ researcher.fullName|e('js') }}",
-    {% if researcher.citationNames %}"alternateName": {{ researcher.citationNames|split(';')|map(n => n|trim)|json_encode|raw }},{% endif %}
-    "jobTitle": "Docente e Pesquisador(a)",
-    "worksFor": {
-        "@type": "CollegeOrUniversity",
-        "name": "Centro de Educação e Ciências Humanas — UFSCar",
-        "parentOrganization": {
-            "@type": "CollegeOrUniversity",
-            "name": "Universidade Federal de São Carlos",
-            "url": "https://www.ufscar.br"
+    "@graph": [
+        {
+            "@type": "ProfilePage",
+            "@id": "{{ app.request.schemeAndHttpHost }}{{ path('app_pub_professor_show', {'slugOrId': researcher.slug ?: researcher.idLattes}) }}",
+            "url": "{{ app.request.schemeAndHttpHost }}{{ path('app_pub_professor_show', {'slugOrId': researcher.slug ?: researcher.idLattes}) }}",
+            "name": "{{ researcher.fullName|e('js') }} — Perfil Acadêmico CECH UFSCar",
+            "mainEntity": {
+                "@id": "{{ app.request.schemeAndHttpHost }}{{ path('app_pub_professor_show', {'slugOrId': researcher.slug ?: researcher.idLattes}) }}#person"
+            }
+        },
+        {
+            "@type": "Person",
+            "@id": "{{ app.request.schemeAndHttpHost }}{{ path('app_pub_professor_show', {'slugOrId': researcher.slug ?: researcher.idLattes}) }}#person",
+            "name": "{{ researcher.fullName|e('js') }}",
+            {% if profPhotoUrl %}"image": "{{ profPhotoUrl }}",{% endif %}
+            {% if researcher.citationNames %}"alternateName": {{ researcher.citationNames|split(';')|map(n => n|trim)|json_encode|raw }},{% endif %}
+            "jobTitle": "Docente e Pesquisador(a)",
+            "worksFor": {
+                "@type": "CollegeOrUniversity",
+                "name": "Centro de Educação e Ciências Humanas — UFSCar",
+                "parentOrganization": {
+                    "@type": "CollegeOrUniversity",
+                    "name": "Universidade Federal de São Carlos",
+                    "url": "https://www.ufscar.br"
+                }
+            },
+            {% if researcher.department %}"department": "{{ researcher.department|e('js') }}",{% endif %}
+            {% if researcher.email %}"email": "mailto:{{ researcher.email }}",{% endif %}
+            "sameAs": [
+                "{{ researcher.lattesUrl }}"{% if researcher.orcid %},
+                "{{ researcher.orcidUrl }}"{% endif %}
+            ],
+            {% if researcher.abstractResume %}"description": {{ researcher.abstractResume|striptags|replace({"\n": " ", "\r": " ", "\t": " "})|slice(0, 300)|json_encode|raw }},{% endif %}
+            "alumniOf": [
+                {% for e in researcher.educations %}
+                    {
+                        "@type": "EducationalOrganization",
+                        "name": "{{ e.institutionName|e('js') }}"
+                    }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ],
+            "knowsAbout": [
+                {% for ka in researcher.knowledgeAreas %}
+                    "{{ ka.area|e('js') }}"{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ]
         }
-    },
-    {% if researcher.department %}"department": "{{ researcher.department|e('js') }}",{% endif %}
-    {% if researcher.email %}"email": "mailto:{{ researcher.email }}",{% endif %}
-    "sameAs": [
-        "{{ researcher.lattesUrl }}"{% if researcher.orcid %},
-        "{{ researcher.orcidUrl }}"{% endif %}
-    ],
-    {% if researcher.abstractResume %}"description": "{{ researcher.abstractResume|slice(0, 300)|e('js') }}",{% endif %}
-    "alumniOf": [
-        {% for e in researcher.educations %}
-            {
-                "@type": "EducationalOrganization",
-                "name": "{{ e.institutionName|e('js') }}"
-            }{% if not loop.last %},{% endif %}
-        {% endfor %}
-    ],
-    "knowsAbout": [
-        {% for ka in researcher.knowledgeAreas %}
-            "{{ ka.area|e('js') }}"{% if not loop.last %},{% endif %}
-        {% endfor %}
     ]
 }
 </script>

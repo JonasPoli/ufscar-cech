@@ -29,29 +29,37 @@
         <meta name="robots" content="{% block meta_robots %}index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1{% endblock %}">
         
         {# ── Canonical URL & Favicon ── #}
-        <link rel="canonical" href="{% block canonical_url %}{{ site_settings ? site_settings.baseUrl ~ app.request.pathInfo : app.request.uri }}{% endblock %}">
+        <link rel="canonical" href="{% block canonical_url %}{{ app.request.schemeAndHttpHost ~ app.request.pathInfo }}{% endblock %}">
         <link rel="icon" type="image/svg+xml" href="{{ asset('images/logo-colorido.svg') }}">
         <link rel="alternate icon" href="{{ asset('images/logo-colorido.svg') }}">
+        <link rel="image_src" href="{{ block('og_image') }}">
 
         {# ── Google Search Console Verification ── #}
         {% if site_settings and site_settings.googleSearchConsoleVerification %}
             <meta name="google-site-verification" content="{{ site_settings.googleSearchConsoleVerification }}">
         {% endif %}
 
-        {# ── Open Graph / Facebook Meta Tags ── #}
+        {# ── Open Graph / Facebook / WhatsApp Meta Tags ── #}
+        <meta property="og:site_name" content="Portal de Produção Científica CECH — UFSCar">
         <meta property="og:type" content="{% block og_type %}website{% endblock %}">
         <meta property="og:locale" content="pt_BR">
-        <meta property="og:site_name" content="Portal de Produção Científica CECH — UFSCar">
         <meta property="og:title" content="{% block og_title %}{{ block('title') }}{% endblock %}">
         <meta property="og:description" content="{% block og_description %}{{ block('meta_description') }}{% endblock %}">
         <meta property="og:url" content="{{ block('canonical_url') }}">
-        <meta property="og:image" content="{% block og_image %}{{ (site_settings and site_settings.ogImage) ? site_settings.baseUrl ~ site_settings.ogImage : asset('images/logo-colorido.svg') }}{% endblock %}">
+        <meta property="og:image" content="{% block og_image %}{{ (site_settings and site_settings.ogImage) ? ((site_settings.ogImage starts with 'http') ? site_settings.ogImage : (app.request.schemeAndHttpHost ~ site_settings.ogImage)) : (app.request.schemeAndHttpHost ~ asset('images/og-cech.png')) }}{% endblock %}">
+        <meta property="og:image:secure_url" content="{{ block('og_image') }}">
+        <meta property="og:image:type" content="{% block og_image_type %}image/png{% endblock %}">
+        <meta property="og:image:width" content="{% block og_image_width %}1200{% endblock %}">
+        <meta property="og:image:height" content="{% block og_image_height %}630{% endblock %}">
+        <meta property="og:image:alt" content="{% block og_image_alt %}Portal de Produção Científica CECH — UFSCar{% endblock %}">
+        {% block extra_og_tags %}{% endblock %}
 
         {# ── Twitter Cards Meta Tags ── #}
-        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:card" content="{% block twitter_card %}summary_large_image{% endblock %}">
         <meta name="twitter:title" content="{{ block('og_title') }}">
         <meta name="twitter:description" content="{{ block('og_description') }}">
         <meta name="twitter:image" content="{{ block('og_image') }}">
+        <meta name="twitter:image:alt" content="{{ block('og_image_alt') }}">
 
         {# ── Google Scholar / Academic Citation Meta Tags Block ── #}
         {% block academic_meta %}{% endblock %}
@@ -122,11 +130,11 @@
                 "@graph": [
                     {
                         "@type": "CollegeOrUniversity",
-                        "@id": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}#organization",
+                        "@id": "{{ app.request.schemeAndHttpHost }}#organization",
                         "name": "Centro de Educação e Ciências Humanas — UFSCar",
                         "alternateName": "CECH UFSCar",
-                        "url": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}",
-                        "logo": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}/images/logo-colorido.svg",
+                        "url": "{{ app.request.schemeAndHttpHost }}",
+                        "logo": "{{ app.request.schemeAndHttpHost }}/images/og-cech.png",
                         "parentOrganization": {
                             "@type": "CollegeOrUniversity",
                             "name": "Universidade Federal de São Carlos",
@@ -142,17 +150,17 @@
                     },
                     {
                         "@type": "WebSite",
-                        "@id": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}#website",
-                        "url": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}",
+                        "@id": "{{ app.request.schemeAndHttpHost }}#website",
+                        "url": "{{ app.request.schemeAndHttpHost }}",
                         "name": "Portal de Produção Científica CECH UFSCar",
                         "publisher": {
-                            "@id": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}#organization"
+                            "@id": "{{ app.request.schemeAndHttpHost }}#organization"
                         },
                         "potentialAction": {
                             "@type": "SearchAction",
                             "target": {
                                 "@type": "EntryPoint",
-                                "urlTemplate": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}/busca?q={search_term_string}"
+                                "urlTemplate": "{{ app.request.schemeAndHttpHost }}/busca?q={search_term_string}"
                             },
                             "query-input": "required name=search_term_string"
                         }

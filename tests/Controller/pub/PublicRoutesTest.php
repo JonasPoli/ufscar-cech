@@ -211,4 +211,62 @@ class PublicRoutesTest extends WebTestCase
         $this->assertStringContainsString('Departamentos', (string)$client->getResponse()->getContent());
         $this->assertStringContainsString('Temas', (string)$client->getResponse()->getContent());
     }
+
+    public function testHomePageSeoAndOpenGraphTags(): void
+    {
+        $client = static::createClient();
+        $crawler = $client->request('GET', '/');
+
+        $this->assertResponseIsSuccessful();
+        $content = (string)$client->getResponse()->getContent();
+
+        $this->assertStringContainsString('<meta property="og:site_name" content="Portal de Produção Científica CECH — UFSCar">', $content);
+        $this->assertStringContainsString('property="og:image"', $content);
+        $this->assertStringContainsString('og-cech.png', $content);
+        $this->assertStringContainsString('link rel="image_src"', $content);
+        $this->assertStringContainsString('rel="canonical"', $content);
+        $this->assertStringContainsString('application/ld+json', $content);
+    }
+
+    public function testProfessorProfileSeoAndOpenGraphTags(): void
+    {
+        $client = static::createClient();
+        $em = static::getContainer()->get('doctrine.orm.entity_manager');
+        $researcher = $em->getRepository(\App\Entity\Researcher::class)->findOneBy(['slug' => 'roniberto-morato-do-amaral'])
+            ?: $em->getRepository(\App\Entity\Researcher::class)->findOneBy([]);
+
+        $this->assertNotNull($researcher, 'A researcher should exist in the test database');
+
+        $identifier = $researcher->getSlug() ?: $researcher->getIdLattes();
+        $client->request('GET', '/professor/' . $identifier);
+        $this->assertResponseIsSuccessful();
+        $content = (string)$client->getResponse()->getContent();
+
+        // WhatsApp & OpenGraph checks
+        $this->assertStringContainsString('property="og:image"', $content);
+        if ($researcher->getPhotoUrl()) {
+            $this->assertStringContainsString($researcher->getPhotoUrl(), $content);
+        } else {
+            $this->assertStringContainsString('og-cech.png', $content);
+        }
+        $this->assertStringContainsString('property="og:image:type"', $content);
+        $this->assertStringContainsString('property="og:image:width"', $content);
+        $this->assertStringContainsString('property="og:image:height"', $content);
+        $this->assertStringContainsString('name="twitter:card"', $content);
+        $this->assertStringContainsString('rel="canonical"', $content);
+        $this->assertStringContainsString('link rel="image_src"', $content);
+        $this->assertStringContainsString('"@type": "ProfilePage"', $content);
+        $this->assertStringContainsString('"@type": "Person"', $content);
+    }
+
+    public function testDocentesAliasRedirect(): void
+    {
+        $client = static::createClient();
+        $client->request('GET', '/docentes/roniberto-morato-do-amaral');
+
+        $this->assertResponseStatusCodeSame(301);
+        $this->assertResponseRedirects('/professor/roniberto-morato-do-amaral');
+    }
 }
+
+

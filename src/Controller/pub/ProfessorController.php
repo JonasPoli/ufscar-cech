@@ -65,6 +65,15 @@ class ProfessorController extends AbstractController
     }
 
     /**
+     * Rota de compatibilidade e SEO /docentes/{slugOrId} que redireciona (301) para /professor/{slugOrId}.
+     */
+    #[Route('/docentes/{slugOrId}', name: 'app_pub_docente_alias_show')]
+    public function docenteAlias(string $slugOrId): Response
+    {
+        return $this->redirectToRoute('app_pub_professor_show', ['slugOrId' => $slugOrId], Response::HTTP_MOVED_PERMANENTLY);
+    }
+
+    /**
      * Renderiza o fragmento HTML de uma aba específica sob demanda (Lazy Loading).
      */
     #[Route('/professor/{slugOrId}/fragment/{tab}', name: 'app_pub_professor_fragment')]

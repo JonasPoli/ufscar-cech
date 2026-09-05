@@ -1,8 +1,9 @@
 {% extends 'pub/base.html.twig' %}
 
-{% block title %}Indicadores e Métricas de Auto-Avaliação | Portal CECH{% endblock %}
-
+{% block title %}Indicadores e Métricas de Auto-Avaliação | Portal CECH UFSCar{% endblock %}
 {% block meta_description %}Panorama estatístico e indicadores de auto-avaliação do CECH UFSCar: corpo docente, formações, orientações concluídas, produção científica, estratos Qualis e parcerias nacionais e internacionais.{% endblock %}
+{% block og_title %}Indicadores e Métricas de Auto-Avaliação — CECH UFSCar{% endblock %}
+{% block og_description %}{{ block('meta_description') }}{% endblock %}
 
 {% block body %}
 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">

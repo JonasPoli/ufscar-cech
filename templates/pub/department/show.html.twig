@@ -13,7 +13,7 @@
 {
     "@context": "https://schema.org",
     "@type": "EducationalOrganization",
-    "@id": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}{{ path('app_pub_department_show', {'codeOrSlug': deptCode}) }}#department",
+    "@id": "{{ app.request.schemeAndHttpHost }}{{ path('app_pub_department_show', {'codeOrSlug': deptCode}) }}#department",
     "name": "{{ deptName|e('js') }}",
     "alternateName": "{{ deptCode|e('js') }}",
     "parentOrganization": {
@@ -30,7 +30,7 @@
             {
                 "@type": "Person",
                 "name": "{{ r.fullName|e('js') }}",
-                "url": "{{ site_settings ? site_settings.baseUrl : 'https://cech.ufscar.br' }}{{ path('app_pub_professor_show', {'slugOrId': r.slug ?: r.idLattes}) }}"
+                "url": "{{ app.request.schemeAndHttpHost }}{{ path('app_pub_professor_show', {'slugOrId': r.slug ?: r.idLattes}) }}"
             }{% if not loop.last %},{% endif %}
         {% endfor %}
     ]
