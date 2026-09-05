@@ -35,8 +35,7 @@
 ###< liip/imagine-bundle ###
 
 .idea/
-**/._*
-._*
 docs/banco/
 .DS_Store
 docs/.DS_Store
+public/uploads/photos/*.webp

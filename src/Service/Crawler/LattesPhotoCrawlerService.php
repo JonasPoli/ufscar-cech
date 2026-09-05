@@ -80,6 +80,7 @@ class LattesPhotoCrawlerService
                     $targetPath = $this->photosDir . '/' . $filename;
 
                     file_put_contents($targetPath, $photoBinary);
+                    $this->generateWebpVariants($targetPath);
 
                     $publicUrl = '/uploads/photos/' . $filename;
                     $researcher->setPhotoUrl($publicUrl);
@@ -182,6 +183,7 @@ class LattesPhotoCrawlerService
                 $destFilename = $targetResearcher->getIdLattes() . '.' . $ext;
                 $destPath = $this->photosDir . '/' . $destFilename;
                 copy($sourcePath, $destPath);
+                $this->generateWebpVariants($destPath);
 
                 $publicUrl = '/uploads/photos/' . $destFilename;
                 $targetResearcher->setPhotoUrl($publicUrl);
@@ -291,5 +293,51 @@ class LattesPhotoCrawlerService
             }
         }
         @rmdir($dir);
+    }
+
+    public function generateWebpVariants(string $filePath): void
+    {
+        if (!file_exists($filePath) || !function_exists('imagewebp')) {
+            return;
+        }
+
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        $baseName = pathinfo($filePath, PATHINFO_FILENAME);
+        $dir = pathinfo($filePath, PATHINFO_DIRNAME);
+
+        $src = match ($ext) {
+            'jpg', 'jpeg' => @imagecreatefromjpeg($filePath),
+            'png' => @imagecreatefrompng($filePath),
+            default => null,
+        };
+
+        if (!$src) {
+            return;
+        }
+
+        $width = imagesx($src);
+        $height = imagesy($src);
+
+        $webpFull = $dir . '/' . $baseName . '.webp';
+        @imagewebp($src, $webpFull, 80);
+
+        $webp256 = $dir . '/' . $baseName . '-256.webp';
+        $maxDim = 256;
+        if ($width > $maxDim || $height > $maxDim) {
+            $ratio = min($maxDim / $width, $maxDim / $height);
+            $newW = (int) round($width * $ratio);
+            $newH = (int) round($height * $ratio);
+        } else {
+            $newW = $width;
+            $newH = $height;
+        }
+
+        $thumb = imagecreatetruecolor($newW, $newH);
+        imagealphablending($thumb, false);
+        imagesavealpha($thumb, true);
+        imagecopyresampled($thumb, $src, 0, 0, 0, 0, $newW, $newH, $width, $height);
+        @imagewebp($thumb, $webp256, 82);
+        imagedestroy($thumb);
+        imagedestroy($src);
     }
 }

@@ -18,7 +18,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR" class="h-full">
     <head>
-        <meta charset="UTF-8">
+        <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         {# ── Dynamic SEO Titles & Meta Descriptions ── #}
@@ -78,7 +78,7 @@
 
         {# ── Shoelace Web Components ── #}
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/light.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/dark.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/dark.css" media="(prefers-color-scheme: dark)" id="shoelace-dark-theme" />
         <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/shoelace-autoloader.js"></script>
 
         {# ── Optional Vendor Scripts (Chart.js / D3.js) - loaded only on pages that require them ── #}
@@ -176,22 +176,25 @@
         {% endblock %}
 
         <script>
-            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark');
-                document.documentElement.classList.add('sl-theme-dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-                document.documentElement.classList.remove('sl-theme-dark');
-            }
+            (function() {
+                var darkLink = document.getElementById('shoelace-dark-theme');
+                var isDark = localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                if (isDark) {
+                    document.documentElement.classList.add('dark', 'sl-theme-dark');
+                    if (darkLink) darkLink.media = 'all';
+                } else {
+                    document.documentElement.classList.remove('dark', 'sl-theme-dark');
+                }
+            })();
 
             function setDarkMode(isDark) {
+                var darkLink = document.getElementById('shoelace-dark-theme');
                 if (isDark) {
-                    document.documentElement.classList.add('dark');
-                    document.documentElement.classList.add('sl-theme-dark');
+                    document.documentElement.classList.add('dark', 'sl-theme-dark');
                     localStorage.theme = 'dark';
+                    if (darkLink) darkLink.media = 'all';
                 } else {
-                    document.documentElement.classList.remove('dark');
-                    document.documentElement.classList.remove('sl-theme-dark');
+                    document.documentElement.classList.remove('dark', 'sl-theme-dark');
                     localStorage.theme = 'light';
                 }
             }

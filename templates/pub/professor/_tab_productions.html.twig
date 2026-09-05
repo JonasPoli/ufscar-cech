@@ -134,7 +134,7 @@
                                 {% for db in academicDatabases.ranking %}
                                     <button type="button" onclick="filterByDatabase('{{ db.acronym|lower|e('js') }}')" class="db-filter-btn rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/40 transition-all flex items-center gap-2 shadow-2xs group" data-db-acronym="{{ db.acronym|lower|e('html_attr') }}" title="Filtrar artigos indexados na base '{{ db.name }}' ({{ db.total }} itens)">
                                         {% if db.logo %}
-                                            <img src="{{ db.logo }}" alt="{{ db.name }}" class="h-3.5 w-auto object-contain shrink-0 group-hover:scale-110 transition-transform" onerror="this.style.display='none'" />
+                                            <img src="{{ db.logo }}" alt="{{ db.name }}" width="16" height="14" loading="lazy" decoding="async" class="h-3.5 w-auto object-contain shrink-0 group-hover:scale-110 transition-transform" onerror="this.style.display='none'" />
                                         {% else %}
                                             <sl-icon name="journal-check" class="text-indigo-500 text-xs shrink-0"></sl-icon>
                                         {% endif %}

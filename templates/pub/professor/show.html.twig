@@ -115,9 +115,7 @@
     </style>
 {% endblock %}
 
-{% block vendor_scripts %}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
-{% endblock %}
+{% block vendor_scripts %}{% endblock %}
 
 {% block body %}
 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -142,7 +140,10 @@
                 <!-- Avatar / Photo -->
                 <div class="flex h-28 w-28 sm:h-32 sm:w-32 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-lg shadow-sky-500/20 {% if not researcher.photoUrl %}bg-gradient-to-tr from-sky-600 via-indigo-600 to-purple-600 text-white font-bold text-3xl sm:text-4xl{% endif %}">
                     {% if researcher.photoUrl %}
-                        <img src="{{ researcher.photoUrl }}" alt="{{ researcher.fullName }}" class="h-full w-full object-cover" onerror="this.onerror=null;this.parentElement.innerHTML='{{ researcher.fullName|slice(0, 2)|upper }}';this.parentElement.className='flex h-28 w-28 sm:h-32 sm:w-32 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-lg bg-gradient-to-tr from-sky-600 via-indigo-600 to-purple-600 text-white font-bold text-3xl sm:text-4xl';">
+                        <picture class="h-full w-full">
+                            <source srcset="{{ researcher.photoUrl|replace({'.jpg': '-256.webp', '.jpeg': '-256.webp', '.png': '-256.webp'}) }}" type="image/webp">
+                            <img src="{{ researcher.photoUrl }}" alt="{{ researcher.fullName }}" width="128" height="128" fetchpriority="high" decoding="async" class="h-full w-full object-cover" onerror="this.onerror=null;var p=this.closest('.shrink-0');if(p){p.innerHTML='{{ researcher.fullName|slice(0, 2)|upper }}';p.className='flex h-28 w-28 sm:h-32 sm:w-32 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-lg bg-gradient-to-tr from-sky-600 via-indigo-600 to-purple-600 text-white font-bold text-3xl sm:text-4xl';}">
+                        </picture>
                     {% else %}
                         {{ researcher.fullName|slice(0, 2)|upper }}
                     {% endif %}

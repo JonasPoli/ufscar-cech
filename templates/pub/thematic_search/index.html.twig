@@ -434,7 +434,10 @@
                     <div class="flex items-start gap-3.5">
                         <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl overflow-hidden shadow-sm group-hover:scale-105 transition-transform {% if not r.photoUrl %}bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-base{% endif %}">
                             {% if r.photoUrl %}
-                                <img src="{{ r.photoUrl }}" alt="{{ r.fullName }}" class="h-full w-full object-cover">
+                                <picture class="h-full w-full">
+                                    <source srcset="{{ r.photoUrl|replace({'.jpg': '-256.webp', '.jpeg': '-256.webp', '.png': '-256.webp'}) }}" type="image/webp">
+                                    <img src="{{ r.photoUrl }}" alt="{{ r.fullName }}" width="56" height="56" loading="lazy" decoding="async" class="h-full w-full object-cover">
+                                </picture>
                             {% else %}
                                 {{ r.fullName|slice(0, 2)|upper }}
                             {% endif %}

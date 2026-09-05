@@ -259,7 +259,10 @@
                         <a href="{{ path('app_pub_professor_show', {'slugOrId': r.slug ?: r.idLattes}) }}" class="glass-card rounded-2xl p-4 hover:border-sky-500/50 hover:shadow-md transition-all flex items-center gap-3.5 group">
                             <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-sm group-hover:scale-105 transition-transform {% if not r.photoUrl %}bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-sm{% endif %}">
                                 {% if r.photoUrl %}
-                                    <img src="{{ r.photoUrl }}" alt="{{ r.fullName }}" width="44" height="44" loading="lazy" decoding="async" class="h-full w-full object-cover">
+                                    <picture class="h-full w-full">
+                                        <source srcset="{{ r.photoUrl|replace({'.jpg': '-256.webp', '.jpeg': '-256.webp', '.png': '-256.webp'}) }}" type="image/webp">
+                                        <img src="{{ r.photoUrl }}" alt="{{ r.fullName }}" width="44" height="44" loading="lazy" decoding="async" class="h-full w-full object-cover">
+                                    </picture>
                                 {% else %}
                                     {{ r.fullName|slice(0, 2)|upper }}
                                 {% endif %}

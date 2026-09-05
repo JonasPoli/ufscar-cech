@@ -106,7 +106,7 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-1.5 min-w-0">
                                 {% if item.logo %}
-                                    <img src="{{ item.logo }}" alt="{{ item.name }}" class="h-3.5 w-auto object-contain shrink-0 group-hover:scale-110 transition-transform" onerror="this.style.display='none'" />
+                                    <img src="{{ item.logo }}" alt="{{ item.name }}" width="16" height="14" loading="lazy" decoding="async" class="h-3.5 w-auto object-contain shrink-0 group-hover:scale-110 transition-transform" onerror="this.style.display='none'" />
                                 {% endif %}
                                 <span class="text-[11px] font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate">{{ item.name }}</span>
                             </div>
@@ -191,7 +191,10 @@
                                 <div class="flex items-center gap-2.5 min-w-0">
                                     <div class="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center font-bold text-xs uppercase shrink-0 ring-2 {% if coauthor.researcher and coauthor.researcher.photoUrl %}ring-sky-500/30 bg-slate-100 dark:bg-slate-800 shadow-xs{% elseif coauthor.researcher %}ring-indigo-500/30 bg-gradient-to-tr from-indigo-600 to-sky-600 text-white shadow-xs{% else %}ring-slate-200 dark:ring-slate-800 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300{% endif %}">
                                         {% if coauthor.researcher and coauthor.researcher.photoUrl %}
-                                            <img src="{{ coauthor.researcher.photoUrl }}" alt="{{ coauthor.name }}" class="h-full w-full object-cover" onerror="this.onerror=null;this.parentElement.innerHTML='{{ coauthor.name|slice(0, 2)|upper }}';this.parentElement.className='w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center font-bold text-xs uppercase shrink-0 ring-2 ring-indigo-500/30 bg-gradient-to-tr from-indigo-600 to-sky-600 text-white shadow-xs';" />
+                                            <picture class="h-full w-full">
+                                                <source srcset="{{ coauthor.researcher.photoUrl|replace({'.jpg': '-256.webp', '.jpeg': '-256.webp', '.png': '-256.webp'}) }}" type="image/webp">
+                                                <img src="{{ coauthor.researcher.photoUrl }}" alt="{{ coauthor.name }}" width="40" height="40" loading="lazy" decoding="async" class="h-full w-full object-cover" onerror="this.onerror=null;var p=this.closest('.shrink-0');if(p){p.innerHTML='{{ coauthor.name|slice(0, 2)|upper }}';p.className='w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center font-bold text-xs uppercase shrink-0 ring-2 ring-indigo-500/30 bg-gradient-to-tr from-indigo-600 to-sky-600 text-white shadow-xs';}" />
+                                            </picture>
                                         {% else %}
                                             {{ coauthor.name|slice(0, 2)|upper }}
                                         {% endif %}
@@ -264,10 +267,30 @@ function toggleChartsPanel() {
     }
 }
 
-(function initProfessorAnalytics() {
+function loadChartJs(callback) {
+    if (typeof Chart !== 'undefined') {
+        callback();
+        return;
+    }
+    const existing = document.querySelector('script[src*="chart.umd.min.js"]');
+    if (existing) {
+        existing.addEventListener('load', callback);
+        return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js';
+    script.onload = callback;
+    document.head.appendChild(script);
+}
+
+(function startAnalytics() {
+    loadChartJs(function() {
+        initProfessorAnalytics();
+    });
+})();
+
+function initProfessorAnalytics() {
     if (typeof Chart === "undefined") {
-        console.warn("Chart.js not loaded yet, retrying...");
-        setTimeout(initProfessorAnalytics, 150);
         return;
     }
 
