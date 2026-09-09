@@ -4,6 +4,7 @@ namespace App\Controller\admin;
 
 use App\Entity\AcademicDatabase;
 use App\Repository\AcademicDatabaseRepository;
+use App\Service\Thesaurus\JournalDatabaseExporterService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -18,7 +19,8 @@ class AdminAcademicDatabaseController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $em,
-        private readonly AcademicDatabaseRepository $databaseRepo
+        private readonly AcademicDatabaseRepository $databaseRepo,
+        private readonly JournalDatabaseExporterService $exporter
     ) {}
 
     #[Route('/', name: 'app_admin_academic_database_index', methods: ['GET'])]
@@ -104,6 +106,36 @@ class AdminAcademicDatabaseController extends AbstractController
             'database' => $database,
             'isNew' => true,
         ]);
+    }
+
+    #[Route('/export-thesaurus-all', name: 'app_admin_academic_database_export_thesaurus_all', methods: ['GET'])]
+    public function exportThesaurusAll(Request $request): Response
+    {
+        $format = strtolower((string)$request->query->get('format', 'the'));
+        $keyType = strtolower((string)$request->query->get('key', 'issn'));
+        $includeWithoutIssn = $request->query->getBoolean('include_without_issn', false);
+
+        return $this->exporter->streamThesaurusExport(
+            null,
+            $keyType,
+            $format,
+            $includeWithoutIssn
+        );
+    }
+
+    #[Route('/{id}/export-thesaurus', name: 'app_admin_academic_database_export_thesaurus', methods: ['GET'])]
+    public function exportThesaurus(AcademicDatabase $database, Request $request): Response
+    {
+        $format = strtolower((string)$request->query->get('format', 'the'));
+        $keyType = strtolower((string)$request->query->get('key', 'issn'));
+        $includeWithoutIssn = $request->query->getBoolean('include_without_issn', false);
+
+        return $this->exporter->streamThesaurusExport(
+            $database->getId(),
+            $keyType,
+            $format,
+            $includeWithoutIssn
+        );
     }
 
     #[Route('/{id}/edit', name: 'app_admin_academic_database_edit', methods: ['GET', 'POST'])]

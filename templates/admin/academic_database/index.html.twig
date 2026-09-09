@@ -12,11 +12,53 @@
                 Bases de Indexação Acadêmica
             </h1>
             <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-                Gerencie as bases bibliográficas e indexadores internacionais (Scopus, Web of Science, SciELO, PubMed, DOAJ, OpenAlex, etc.) e acompanhe a quantidade de periódicos vinculados.
+                Gerencie as bases bibliográficas e indexadores internacionais (Scopus, Web of Science, SciELO, PubMed, DOAJ, OpenAlex, etc.) e exporte tesauros padronizados.
             </p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
+            <!-- Exportar Tesauro Geral Dropdown -->
+            <sl-dropdown>
+                <button slot="trigger" type="button" class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors cursor-pointer" title="Exportar Tesauro de todas as revistas cadastradas">
+                    <sl-icon name="diagram-3"></sl-icon> Exportar Tesauro Geral (Chave ISSN) <sl-icon name="chevron-down" class="text-[9px]"></sl-icon>
+                </button>
+                <sl-menu>
+                    <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Chave: ISSN (Todas as Revistas)
+                    </div>
+                    <sl-menu-item>
+                        <a href="{{ path('app_admin_academic_database_export_thesaurus_all', {'format': 'the', 'key': 'issn'}) }}" class="flex items-center gap-2 text-xs w-full py-1">
+                            <sl-icon name="diagram-3" class="text-sky-600"></sl-icon> VantagePoint (.the)
+                        </a>
+                    </sl-menu-item>
+                    <sl-menu-item>
+                        <a href="{{ path('app_admin_academic_database_export_thesaurus_all', {'format': 'csv', 'key': 'issn'}) }}" class="flex items-center gap-2 text-xs w-full py-1">
+                            <sl-icon name="filetype-csv" class="text-emerald-600"></sl-icon> CSV (.csv)
+                        </a>
+                    </sl-menu-item>
+                    <sl-menu-item>
+                        <a href="{{ path('app_admin_academic_database_export_thesaurus_all', {'format': 'json', 'key': 'issn'}) }}" class="flex items-center gap-2 text-xs w-full py-1">
+                            <sl-icon name="code-slash" class="text-amber-600"></sl-icon> JSON (.json)
+                        </a>
+                    </sl-menu-item>
+                    <sl-divider></sl-divider>
+                    <div class="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        Chave: Título da Revista
+                    </div>
+                    <sl-menu-item>
+                        <a href="{{ path('app_admin_academic_database_export_thesaurus_all', {'format': 'the', 'key': 'title'}) }}" class="flex items-center gap-2 text-xs w-full py-1">
+                            <sl-icon name="journal-text" class="text-indigo-600"></sl-icon> VantagePoint (.the)
+                        </a>
+                    </sl-menu-item>
+                    <sl-divider></sl-divider>
+                    <sl-menu-item onclick="openExportModal(null)">
+                        <span class="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
+                            <sl-icon name="sliders"></sl-icon> Opções Avançadas de Exportação...
+                        </span>
+                    </sl-menu-item>
+                </sl-menu>
+            </sl-dropdown>
+
             <a href="{{ path('app_admin_academic_database_new') }}" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 transition-colors">
                 <sl-icon name="plus-lg"></sl-icon> Nova Base
             </a>
@@ -30,7 +72,7 @@
                 <sl-icon name="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></sl-icon>
                 <input type="text" name="search" value="{{ search }}" placeholder="Buscar por nome, sigla ou descrição..." class="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-sky-500 outline-hidden">
             </div>
-            <button type="submit" class="rounded-xl bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 px-4 py-2 text-xs font-semibold hover:opacity-90 transition-opacity">
+            <button type="submit" class="rounded-xl bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 px-4 py-2 text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer">
                 Filtrar
             </button>
             {% if search %}
@@ -91,11 +133,11 @@
                     {% endif %}
                 </div>
 
-                <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div class="flex flex-col gap-1">
                         {% if db.listDownloadUrl %}
                             <a href="{{ db.listDownloadUrl }}" target="_blank" class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800/60 transition-colors" title="Baixar lista oficial de periódicos indexados">
-                                <sl-icon name="cloud-arrow-down" class="text-xs"></sl-icon> Baixar lista de periódicos
+                                <sl-icon name="cloud-arrow-down" class="text-xs"></sl-icon> Baixar lista oficial
                             </a>
                         {% elseif db.url %}
                             <a href="{{ db.url }}" target="_blank" class="text-xs text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1">
@@ -109,11 +151,58 @@
                         {% endif %}
                     </div>
 
-                    <div class="flex items-center gap-2">
-                        <a href="{{ path('app_admin_journal_index', {'database': db.acronym}) }}" class="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Ver revistas desta base">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <!-- Tesauro da Base Dropdown -->
+                        <sl-dropdown>
+                            <button slot="trigger" type="button" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800/60 transition-colors cursor-pointer" title="Exportar Tesauro dos periódicos da base {{ db.name }}">
+                                <sl-icon name="diagram-3"></sl-icon> Tesauro <sl-icon name="chevron-down" class="text-[9px]"></sl-icon>
+                            </button>
+                            <sl-menu>
+                                <div class="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    {{ db.name }} — Chave ISSN
+                                </div>
+                                <sl-menu-item>
+                                    <a href="{{ path('app_admin_academic_database_export_thesaurus', {'id': db.id, 'format': 'the', 'key': 'issn'}) }}" class="flex items-center gap-2 text-xs w-full py-0.5">
+                                        <sl-icon name="diagram-3" class="text-sky-600"></sl-icon> VantagePoint (.the)
+                                    </a>
+                                </sl-menu-item>
+                                <sl-menu-item>
+                                    <a href="{{ path('app_admin_academic_database_export_thesaurus', {'id': db.id, 'format': 'csv', 'key': 'issn'}) }}" class="flex items-center gap-2 text-xs w-full py-0.5">
+                                        <sl-icon name="filetype-csv" class="text-emerald-600"></sl-icon> CSV (.csv)
+                                    </a>
+                                </sl-menu-item>
+                                <sl-menu-item>
+                                    <a href="{{ path('app_admin_academic_database_export_thesaurus', {'id': db.id, 'format': 'json', 'key': 'issn'}) }}" class="flex items-center gap-2 text-xs w-full py-0.5">
+                                        <sl-icon name="code-slash" class="text-amber-600"></sl-icon> JSON (.json)
+                                    </a>
+                                </sl-menu-item>
+                                <sl-divider></sl-divider>
+                                <div class="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Outras Chaves
+                                </div>
+                                <sl-menu-item>
+                                    <a href="{{ path('app_admin_academic_database_export_thesaurus', {'id': db.id, 'format': 'the', 'key': 'title'}) }}" class="flex items-center gap-2 text-xs w-full py-0.5" title="Chave sendo o Título da Revista">
+                                        <sl-icon name="journal-text" class="text-indigo-600"></sl-icon> Chave: Título (.the)
+                                    </a>
+                                </sl-menu-item>
+                                <sl-menu-item>
+                                    <a href="{{ path('app_admin_academic_database_export_thesaurus', {'id': db.id, 'format': 'the', 'key': 'base'}) }}" class="flex items-center gap-2 text-xs w-full py-0.5" title="Chave sendo o Nome da Base ({{ db.name }})">
+                                        <sl-icon name="database" class="text-purple-600"></sl-icon> Chave: Nome da Base (.the)
+                                    </a>
+                                </sl-menu-item>
+                                <sl-divider></sl-divider>
+                                <sl-menu-item onclick="openExportModal({{ db.id }})">
+                                    <span class="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
+                                        <sl-icon name="sliders"></sl-icon> Opções Avançadas...
+                                    </span>
+                                </sl-menu-item>
+                            </sl-menu>
+                        </sl-dropdown>
+
+                        <a href="{{ path('app_admin_journal_index', {'database': db.acronym}) }}" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" title="Ver revistas desta base">
                             <sl-icon name="list-ul"></sl-icon> Revistas
                         </a>
-                        <a href="{{ path('app_admin_academic_database_edit', {'id': db.id}) }}" class="px-2.5 py-1 rounded-lg text-xs font-medium text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 transition-colors">
+                        <a href="{{ path('app_admin_academic_database_edit', {'id': db.id}) }}" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 transition-colors">
                             <sl-icon name="pencil"></sl-icon> Editar
                         </a>
                     </div>
@@ -127,4 +216,111 @@
         {% endfor %}
     </div>
 </div>
+
+<!-- Modal de Exportação Avançada de Tesauros -->
+<sl-dialog id="exportThesaurusDialog" label="Exportador de Tesauros de Periódicos" style="--width: 540px;">
+    <form id="exportThesaurusForm" onsubmit="handleExportThesaurus(event)" class="space-y-4">
+        <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Base de Indexação Acadêmica
+            </label>
+            <select id="modalDatabaseSelect" class="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-3 py-2 outline-hidden">
+                <option value="all">Todas as Revistas (Catálogo Geral Completo)</option>
+                {% for row in results %}
+                    {% set d = row[0] %}
+                    <option value="{{ d.id }}">{{ d.name }} ({{ d.acronym|upper }}) - {{ row.journalCount|number_format(0, ',', '.') }} revistas</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Chave / Termo Preferido (Header)
+            </label>
+            <select id="modalKeySelect" class="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-3 py-2 outline-hidden" onchange="toggleWithoutIssnOption()">
+                <option value="issn" selected>ISSN Canônico (XXXX-XXXX) — Recomendado para VantagePoint</option>
+                <option value="title">Título Canônico da Revista</option>
+                <option value="base">Nome da Base de Indexação (Ex: Scopus, WoS)</option>
+            </select>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Com chave <strong>ISSN</strong>, as variantes incluirão o título da revista, variações de grafia e ISSNs secundários.
+            </p>
+        </div>
+
+        <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Formato do Arquivo
+            </label>
+            <select id="modalFormatSelect" class="w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white px-3 py-2 outline-hidden">
+                <option value="the" selected>VantagePoint (.the) — Interoperabilidade Bibliométrica</option>
+                <option value="csv">CSV (.csv) — Planilha Tabular com BOM UTF-8</option>
+                <option value="json">JSON (.json) — Estrutura de Objetos com Array de Variantes</option>
+            </select>
+        </div>
+
+        <div id="divIncludeWithoutIssn" class="flex items-center gap-2 pt-1">
+            <input type="checkbox" id="modalIncludeWithoutIssn" class="rounded text-sky-600 focus:ring-sky-500">
+            <label for="modalIncludeWithoutIssn" class="text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+                Incluir também revistas sem ISSN (com prefixo <code>[SEM ISSN]</code>)
+            </label>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <button type="button" onclick="document.getElementById('exportThesaurusDialog').hide()" class="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer">
+                Cancelar
+            </button>
+            <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-sky-500 transition-colors cursor-pointer">
+                <sl-icon name="cloud-arrow-down"></sl-icon> Baixar Tesauro
+            </button>
+        </div>
+    </form>
+</sl-dialog>
+
+<script>
+function openExportModal(dbId) {
+    const dialog = document.getElementById('exportThesaurusDialog');
+    const dbSelect = document.getElementById('modalDatabaseSelect');
+    if (dbId) {
+        dbSelect.value = String(dbId);
+    } else {
+        dbSelect.value = 'all';
+    }
+    toggleWithoutIssnOption();
+    dialog.show();
+}
+
+function toggleWithoutIssnOption() {
+    const key = document.getElementById('modalKeySelect').value;
+    const div = document.getElementById('divIncludeWithoutIssn');
+    if (key === 'issn') {
+        div.style.display = 'flex';
+    } else {
+        div.style.display = 'none';
+    }
+}
+
+function handleExportThesaurus(e) {
+    e.preventDefault();
+    const dbVal = document.getElementById('modalDatabaseSelect').value;
+    const key = document.getElementById('modalKeySelect').value;
+    const format = document.getElementById('modalFormatSelect').value;
+    const includeWithoutIssn = document.getElementById('modalIncludeWithoutIssn').checked ? 1 : 0;
+
+    let url;
+    if (dbVal === 'all') {
+        url = '{{ path("app_admin_academic_database_export_thesaurus_all") }}';
+    } else {
+        url = '{{ path("app_admin_academic_database_export_thesaurus", {"id": 999999}) }}'.replace('999999', dbVal);
+    }
+
+    const params = new URLSearchParams({
+        format: format,
+        key: key,
+        include_without_issn: includeWithoutIssn
+    });
+
+    window.location.href = url + '?' + params.toString();
+    document.getElementById('exportThesaurusDialog').hide();
+}
+</script>
 {% endblock %}

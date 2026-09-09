@@ -25,10 +25,12 @@ class ExportJournalThesaurusCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('format', 'f', InputOption::VALUE_OPTIONAL, 'Export format: csv or json', 'csv')
+            ->addOption('format', 'f', InputOption::VALUE_OPTIONAL, 'Export format: csv, json, or the', 'csv')
             ->addOption('output', 'o', InputOption::VALUE_OPTIONAL, 'Output file path (e.g. var/export_journals.csv)')
             ->addOption('qualis', null, InputOption::VALUE_OPTIONAL, 'Filter by Qualis grade (A1, A2, B1, etc., or ALL)')
             ->addOption('base', 'b', InputOption::VALUE_OPTIONAL, 'Filter by Academic Database acronym (scopus, wos, scielo, etc.)')
+            ->addOption('thesaurus', 't', InputOption::VALUE_NONE, 'Export directly as Thesaurus structure (VantagePoint, CSV, JSON)')
+            ->addOption('key', 'k', InputOption::VALUE_OPTIONAL, 'Thesaurus key: issn (default), title, or base', 'issn')
         ;
     }
 
@@ -38,31 +40,58 @@ class ExportJournalThesaurusCommand extends Command
         $io->title('Exportação do Catálogo de Periódicos com Bases e Tesauro');
 
         $format = strtolower((string)$input->getOption('format'));
-        if (!in_array($format, ['csv', 'json'], true)) {
-            $io->error('Formato inválido. Use "csv" ou "json".');
+        $isThesaurus = (bool)$input->getOption('thesaurus') || $format === 'the';
+        if (!in_array($format, ['csv', 'json', 'the'], true)) {
+            $io->error('Formato inválido. Use "the", "csv" ou "json".');
             return Command::FAILURE;
+        }
+
+        $keyType = strtolower((string)$input->getOption('key'));
+        if (!in_array($keyType, ['issn', 'title', 'base'], true)) {
+            $keyType = 'issn';
         }
 
         $outputPath = $input->getOption('output');
         if (!$outputPath) {
-            $outputPath = sprintf('var/journals_thesaurus_export_%s.%s', date('Ymd_His'), $format);
+            $suffix = $isThesaurus ? 'thesaurus_' . $keyType : 'catalog';
+            $outputPath = sprintf('var/journals_%s_%s.%s', $suffix, date('Ymd_His'), $format);
         }
 
         $qualisFilter = $input->getOption('qualis');
         $baseFilter = $input->getOption('base');
 
         $io->text([
+            sprintf('Modo: <info>%s</info>', $isThesaurus ? 'Tesauro Padronizado' : 'Catálogo Completo'),
             sprintf('Formato: <info>%s</info>', strtoupper($format)),
+            sprintf('Chave: <info>%s</info>', strtoupper($keyType)),
             sprintf('Filtro Qualis: <info>%s</info>', $qualisFilter ?: 'Todos'),
             sprintf('Filtro Base: <info>%s</info>', $baseFilter ?: 'Todas'),
             sprintf('Destino: <info>%s</info>', $outputPath),
         ]);
 
-        $result = $this->exporter->export($qualisFilter, $baseFilter, $format, $outputPath);
+        if ($isThesaurus) {
+            // Find base ID if acronym provided
+            $dbId = null;
+            if ($baseFilter && $baseFilter !== 'ALL') {
+                $db = $this->exporter->getEntityManager()->getRepository(\App\Entity\AcademicDatabase::class)->findOneBy(['acronym' => strtolower($baseFilter)]);
+                if ($db) {
+                    $dbId = $db->getId();
+                }
+            }
+
+            $response = $this->exporter->streamThesaurusExport($dbId, $keyType, $format);
+            ob_start();
+            $response->sendContent();
+            $content = ob_get_clean();
+            file_put_contents($outputPath, $content);
+            $totalExported = substr_count($content, "\n");
+        } else {
+            $result = $this->exporter->export($qualisFilter, $baseFilter, $format, $outputPath);
+            $totalExported = $result['totalExported'];
+        }
 
         $io->success([
             'Exportação concluída com sucesso!',
-            sprintf('Total de periódicos exportados: %d', $result['totalExported']),
             sprintf('Arquivo salvo em: %s (%s)', $outputPath, $this->formatBytes(filesize($outputPath))),
         ]);
 
