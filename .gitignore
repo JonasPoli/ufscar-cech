@@ -39,3 +39,6 @@ docs/banco/
 .DS_Store
 docs/.DS_Store
 public/uploads/photos/*.webp
+
+# Arquivos locais e temporários
+scratch_*.html

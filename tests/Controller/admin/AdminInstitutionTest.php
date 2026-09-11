@@ -32,7 +32,11 @@ class AdminInstitutionTest extends WebTestCase
     public function testImportInstitutionThesaurusFile(): void
     {
         $client = $this->getAuthenticatedClient();
-        $theFile = '/Users/jonaspoli/work/html/ufscar-cech/docs/banco/2026-08-12 - Tesauro - nomes padronizados instituições.the';
+        $theFile = dirname(__DIR__, 3) . '/docs/banco/2026-08-12 - Tesauro - nomes padronizados instituições.the';
+
+        if (!file_exists($theFile)) {
+            $this->markTestSkipped('Arquivo de tesauro não disponível em docs/banco (diretório fora do versionamento).');
+        }
 
         $uploadedFile = new UploadedFile(
             $theFile,

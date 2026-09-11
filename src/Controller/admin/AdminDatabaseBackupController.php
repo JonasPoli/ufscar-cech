@@ -7,7 +7,6 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
@@ -218,7 +217,7 @@ class AdminDatabaseBackupController extends AbstractController
         }
 
         try {
-            $result = $this->backupService->importDatabase($uploadedFile->getRealPath());
+            $this->backupService->importDatabase($uploadedFile->getRealPath());
 
             // Invalidate session and logout because user table has been updated
             $request->getSession()->invalidate();
@@ -246,7 +245,7 @@ class AdminDatabaseBackupController extends AbstractController
         }
 
         try {
-            $result = $this->backupService->importDatabase($file->getRealPath());
+            $this->backupService->importDatabase($file->getRealPath());
 
             // Invalidate session and logout because user table has been updated
             $request->getSession()->invalidate();

@@ -20,7 +20,6 @@ class SeoController extends AbstractController
     #[Route('/sitemap.xml', name: 'app_pub_sitemap', defaults: ['_format' => 'xml'])]
     public function sitemap(Request $request): Response
     {
-        $settings = $this->siteSettingRepo->getSettings();
         $baseUrl = rtrim($request->getSchemeAndHttpHost(), '/');
 
         $urls = [];

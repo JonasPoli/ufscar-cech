@@ -32,7 +32,11 @@ class AdminAuthorTest extends WebTestCase
     public function testImportAuthorThesaurusFile(): void
     {
         $client = $this->getAuthenticatedClient();
-        $theFile = '/Users/jonaspoli/work/html/ufscar-cech/docs/banco/2026-08-29 - Tesauro - nomes padronizados docentes do CECH.the';
+        $theFile = dirname(__DIR__, 3) . '/docs/banco/2026-08-29 - Tesauro - nomes padronizados docentes do CECH.the';
+
+        if (!file_exists($theFile)) {
+            $this->markTestSkipped('Arquivo de tesauro não disponível em docs/banco (diretório fora do versionamento).');
+        }
 
         $uploadedFile = new UploadedFile(
             $theFile,

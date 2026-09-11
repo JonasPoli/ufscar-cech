@@ -67,7 +67,15 @@ class ThesaurusFileServiceTest extends TestCase
 
     public function testParseRealTheFiles(): void
     {
-        $authorFile = '/Users/jonaspoli/work/html/ufscar-cech/docs/banco/2026-08-29 - Tesauro - nomes padronizados docentes do CECH.the';
+        $bancoDir = dirname(__DIR__, 2) . '/docs/banco';
+
+        $authorFile = $bancoDir . '/2026-08-29 - Tesauro - nomes padronizados docentes do CECH.the';
+        $instFile = $bancoDir . '/2026-08-12 - Tesauro - nomes padronizados instituições.the';
+
+        if (!file_exists($authorFile) && !file_exists($instFile)) {
+            $this->markTestSkipped('Arquivos de tesauro não disponíveis em docs/banco (diretório fora do versionamento).');
+        }
+
         if (file_exists($authorFile)) {
             $records = $this->service->parseFile($authorFile);
             $this->assertCount(86, $records);
@@ -75,7 +83,6 @@ class ThesaurusFileServiceTest extends TestCase
             $this->assertContains('Ademir Dionizete Caldeira', $records[0]['variants']);
         }
 
-        $instFile = '/Users/jonaspoli/work/html/ufscar-cech/docs/banco/2026-08-12 - Tesauro - nomes padronizados instituições.the';
         if (file_exists($instFile)) {
             $records = $this->service->parseFile($instFile);
             $this->assertCount(2649, $records);
