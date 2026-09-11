@@ -145,7 +145,7 @@ php bin/console app:index:journals
 ### 2. Indexação e Normatização Completa de Currículos
 Executa o cruzamento de coautoria docente do CECH, identidades de autores e instituições:
 ```bash
-php bin/console app:index:curriculums
+php bin/console app:curriculum:normalize
 ```
 
 ### 3. Superdump Completo do Banco de Dados
@@ -184,7 +184,7 @@ php bin/console app:crawl:lattes-photos --limit=50
 
 ### 9. Indexação do Vocabulário Temático (Pesquisa Temática)
 ```bash
-php bin/console app:index-thematic-terms
+php bin/console app:index:topics
 ```
 
 ---
@@ -206,7 +206,9 @@ php bin/console lint:yaml config
 
 ## 📁 Guias e Documentação Técnica
 
-Para detalhes aprofundados sobre cada módulo, consulte a pasta [`docs/`](file:///Users/jonaspoli/work/html/ufscar-cech/docs):
+Para detalhes aprofundados sobre cada módulo, consulte a pasta [`docs/`](docs):
+- [docs/VISAO_GERAL_DO_SISTEMA.md](docs/VISAO_GERAL_DO_SISTEMA.md) — **Comece por aqui**: para que serve o sistema, público, fluxo de dados e regras fixas.
+- [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md) — Achados da revisão de código (11/09/2026), o que foi corrigido e o que está pendente.
 - [docs/SISTEMA_DE_PALAVRAS_CHAVE.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/SISTEMA_DE_PALAVRAS_CHAVE.md) — Manual e especificação completa do Sistema de Palavras-Chave e Descoberta Temática.
 - [docs/evolutions/pesquisa-tematica.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/evolutions/pesquisa-tematica.md) — Especificação técnica e evolução da Pesquisa Temática por Palavras-Chave.
 - [docs/graficos.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/graficos.md) — Catálogo detalhado das 18 Figuras de Inteligência Cienciométrica.
