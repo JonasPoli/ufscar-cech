@@ -16,6 +16,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[Route('/admin/users')]
 class AdminUserController extends AbstractController
 {
+    /** Perfis que podem ser atribuídos pelo formulário de usuários */
+    private const ALLOWED_ROLES = ['ROLE_ADMIN', 'ROLE_USER'];
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly UserRepository $userRepo,
@@ -38,9 +41,14 @@ class AdminUserController extends AbstractController
         $user = new User();
 
         if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('user_form', (string)$request->request->get('_token'))) {
+                $this->addFlash('error', 'Token de segurança inválido.');
+                return $this->redirectToRoute('app_admin_user_index');
+            }
+
             $username = trim((string)$request->request->get('username'));
             $password = (string)$request->request->get('password');
-            $role = (string)$request->request->get('role', 'ROLE_ADMIN');
+            $role = $this->resolveRole($request);
 
             if ($username !== '' && $password !== '') {
                 $user->setUsername($username);
@@ -65,9 +73,14 @@ class AdminUserController extends AbstractController
     public function edit(Request $request, User $user): Response
     {
         if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('user_form', (string)$request->request->get('_token'))) {
+                $this->addFlash('error', 'Token de segurança inválido.');
+                return $this->redirectToRoute('app_admin_user_index');
+            }
+
             $username = trim((string)$request->request->get('username'));
             $password = (string)$request->request->get('password');
-            $role = (string)$request->request->get('role', 'ROLE_ADMIN');
+            $role = $this->resolveRole($request);
 
             if ($username !== '') {
                 $user->setUsername($username);
@@ -88,6 +101,16 @@ class AdminUserController extends AbstractController
             'user' => $user,
             'isNew' => false,
         ]);
+    }
+
+    /**
+     * Lê o perfil enviado no formulário, recusando qualquer valor fora da lista permitida.
+     */
+    private function resolveRole(Request $request): string
+    {
+        $role = (string)$request->request->get('role', 'ROLE_ADMIN');
+
+        return in_array($role, self::ALLOWED_ROLES, true) ? $role : 'ROLE_USER';
     }
 
     #[Route('/{id}/delete', name: 'app_admin_user_delete', requirements: ['id' => '\d+'], methods: ['POST'])]

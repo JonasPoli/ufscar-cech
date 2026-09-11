@@ -1,9 +1,14 @@
 /**
- * CECH - In-Browser Full Lattes Data & Photo Importer (Versão 2.2)
+ * CECH - In-Browser Full Lattes Data & Photo Importer (Versão 2.3)
  * ----------------------------------------------------------------
  * Sincroniza qualquer currículo Lattes aberto no navegador diretamente com o CECH.
  * Exibe relatório detalhado no console F12 (console.table) e no toast flutuante.
+ *
+ * O endpoint de importação exige o token de sincronização da instalação.
+ * Copie o script já preenchido em /admin/curriculum/new (ou cole o token abaixo).
  */
+const CECH_SYNC_TOKEN = 'COLE_AQUI_O_TOKEN_DE_SINCRONIZACAO';
+
 (async function importFullLattesToCech() {
     console.log('%c🚀 [CECH] INICIANDO SINCRONIZAÇÃO DO CURRÍCULO LATTES...', 'color: #0284c7; font-size: 14px; font-weight: bold;');
 
@@ -61,7 +66,7 @@
             console.log(`📡 [CECH] Tentando envio para: ${endpoint}...`);
             const resp = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'X-Cech-Sync-Token': CECH_SYNC_TOKEN },
                 body: JSON.stringify({
                     idLattes: idLattes,
                     html: document.documentElement.outerHTML

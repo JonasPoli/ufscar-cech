@@ -476,6 +476,7 @@ class DatabaseBackupService
 
             // Try fast native mysql client if available
             $nativeExecuted = false;
+            $nativeError = null;
             if (function_exists('proc_open') && !in_array('proc_open', explode(',', (string)ini_get('disable_functions')))) {
                 $mysqlBin = 'mysql';
                 $descriptors = [
@@ -485,18 +486,24 @@ class DatabaseBackupService
                 ];
 
                 $cmd = sprintf(
-                    '%s -h %s -P %d -u %s %s %s',
+                    '%s -h %s -P %d -u %s %s',
                     escapeshellcmd($mysqlBin),
                     escapeshellarg($host),
                     $port,
                     escapeshellarg($user),
-                    $password !== '' ? '-p' . escapeshellarg($password) : '',
                     escapeshellarg($dbName)
                 );
 
-                $process = @proc_open($cmd, $descriptors, $pipes, null, $_ENV);
+                // A senha vai por variável de ambiente: em linha de comando ela ficaria
+                // visível para qualquer usuário do servidor (ps aux) enquanto durar o restore.
+                $env = $_ENV;
+                if ($password !== '') {
+                    $env['MYSQL_PWD'] = $password;
+                }
+
+                $process = @proc_open($cmd, $descriptors, $pipes, null, $env);
                 if (is_resource($process)) {
-                    $stdout = stream_get_contents($pipes[1]);
+                    stream_get_contents($pipes[1]);
                     $stderr = stream_get_contents($pipes[2]);
                     fclose($pipes[1]);
                     fclose($pipes[2]);
@@ -504,6 +511,8 @@ class DatabaseBackupService
 
                     if ($returnCode === 0) {
                         $nativeExecuted = true;
+                    } else {
+                        $nativeError = trim((string)$stderr) ?: "cliente mysql retornou código {$returnCode}";
                     }
                 }
             }
@@ -583,6 +592,7 @@ class DatabaseBackupService
                 'success' => true,
                 'durationSec' => $duration,
                 'nativeExecuted' => $nativeExecuted,
+                'nativeError' => $nativeError,
                 'statementsCount' => $statementsCount,
             ];
         } finally {

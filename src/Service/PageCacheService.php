@@ -41,9 +41,16 @@ class PageCacheService
             return false;
         }
 
+        // Visitante autenticado: a página renderizada contém elementos exclusivos do
+        // administrador (ex.: botão "Painel Admin"), que não podem ser servidos ao público.
+        if ($this->hasSessionCookie($request)) {
+            return false;
+        }
+
         $path = $request->getPathInfo();
 
-        // Ignorar rotas do painel administrativo, autenticação, depuração e APIs de foto/assets
+        // Ignorar painel administrativo, autenticação, depuração, APIs e a busca
+        // (consulta livre geraria um arquivo de cache por termo pesquisado).
         $excludedPrefixes = [
             '/admin',
             '/_wdt',
@@ -52,6 +59,8 @@ class PageCacheService
             '/login',
             '/logout',
             '/photo',
+            '/api',
+            '/busca',
         ];
 
         foreach ($excludedPrefixes as $prefix) {
@@ -61,6 +70,46 @@ class PageCacheService
         }
 
         return true;
+    }
+
+    /**
+     * Retorna se a resposta pode ser gravada em disco e reaproveitada por outros visitantes.
+     */
+    public function isCacheableResponse(Response $response): bool
+    {
+        if ($response->getStatusCode() !== Response::HTTP_OK) {
+            return false;
+        }
+
+        // Uma resposta que cria cookies (sessão, flash, CSRF) é específica daquele visitante
+        if (count($response->headers->getCookies()) > 0) {
+            return false;
+        }
+
+        $contentType = $response->headers->get('Content-Type', '');
+
+        return $contentType === '' || str_contains($contentType, 'text/html');
+    }
+
+    /**
+     * Detecta a presença de um cookie de sessão, indicando visitante com sessão ativa.
+     *
+     * A verificação é feita pelos cookies porque o cache é consultado antes do firewall,
+     * quando a sessão ainda não foi carregada.
+     */
+    private function hasSessionCookie(Request $request): bool
+    {
+        if ($request->hasPreviousSession()) {
+            return true;
+        }
+
+        foreach (array_keys($request->cookies->all()) as $name) {
+            if (str_contains(strtoupper((string)$name), 'SESS')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -121,12 +170,7 @@ class PageCacheService
      */
     public function saveCache(Request $request, Response $response): bool
     {
-        if ($response->getStatusCode() !== Response::HTTP_OK) {
-            return false;
-        }
-
-        $contentType = $response->headers->get('Content-Type', '');
-        if ($contentType !== '' && !str_contains($contentType, 'text/html')) {
+        if (!$this->isCacheableResponse($response)) {
             return false;
         }
 

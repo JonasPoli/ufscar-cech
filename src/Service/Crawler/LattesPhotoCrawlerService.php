@@ -19,6 +19,9 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
  */
 class LattesPhotoCrawlerService
 {
+    /** Tamanho mínimo aceitável para um binário de foto (abaixo disso é página de erro ou imagem vazia) */
+    private const MIN_PHOTO_BYTES = 600;
+
     /** Diretório físico de destino das imagens no servidor */
     private string $photosDir;
 
@@ -69,30 +72,95 @@ class LattesPhotoCrawlerService
 
         foreach ($endpoints as $url) {
             $photoBinary = $this->fetchBinary($url);
-            if ($photoBinary !== null && strlen($photoBinary) > 600) {
-                // Check if it's a valid JPEG/PNG/GIF image binary (not an HTML error page)
-                $finfo = new \finfo(FILEINFO_MIME_TYPE);
-                $mime = $finfo->buffer($photoBinary);
+            if ($photoBinary === null) {
+                continue;
+            }
 
-                if (in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)) {
-                    $ext = ($mime === 'image/png') ? 'png' : 'jpg';
-                    $filename = $idLattes . '.' . $ext;
-                    $targetPath = $this->photosDir . '/' . $filename;
-
-                    file_put_contents($targetPath, $photoBinary);
-                    $this->generateWebpVariants($targetPath);
-
-                    $publicUrl = '/uploads/photos/' . $filename;
-                    $researcher->setPhotoUrl($publicUrl);
-                    $this->em->flush();
-
-                    $this->logger?->info(sprintf('Photo successfully fetched for %s (%s)', $researcher->getFullName(), $idLattes));
-                    return $publicUrl;
-                }
+            // Descarta páginas de erro HTML devolvidas pelos servlets do CNPq
+            $publicUrl = $this->storeBinaryPhoto($researcher, $photoBinary);
+            if ($publicUrl !== null) {
+                $this->logger?->info(sprintf('Photo successfully fetched for %s (%s)', $researcher->getFullName(), $idLattes));
+                return $publicUrl;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Valida e persiste o binário de uma foto (crawler, bookmarklet ou upload) para o pesquisador.
+     *
+     * Só aceita imagens reais: o MIME-type é lido do próprio conteúdo, nunca do nome do arquivo
+     * ou do que o cliente declarou. Formatos sem variante WebP direta (GIF/WebP) são convertidos
+     * para JPEG, de modo que as tags `<picture>` do portal sempre encontrem o arquivo `-256.webp`.
+     *
+     * @param Researcher $researcher Pesquisador que receberá a foto
+     * @param string $binary Conteúdo binário da imagem
+     * @return string|null URL pública salva, ou null se o conteúdo não for uma imagem suportada
+     */
+    public function storeBinaryPhoto(Researcher $researcher, string $binary): ?string
+    {
+        $idLattes = $researcher->getIdLattes();
+        if (empty($idLattes) || strlen($binary) < self::MIN_PHOTO_BYTES) {
+            return null;
+        }
+
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($binary);
+
+        $ext = match ($mime) {
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif', 'image/webp' => 'jpg',
+            default => null,
+        };
+
+        if ($ext === null) {
+            return null;
+        }
+
+        if ($mime === 'image/gif' || $mime === 'image/webp') {
+            $binary = $this->convertToJpeg($binary);
+            if ($binary === null) {
+                return null;
+            }
+        }
+
+        $filename = $idLattes . '.' . $ext;
+        $targetPath = $this->photosDir . '/' . $filename;
+
+        if (@file_put_contents($targetPath, $binary) === false) {
+            return null;
+        }
+
+        $this->generateWebpVariants($targetPath);
+
+        $publicUrl = '/uploads/photos/' . $filename;
+        $researcher->setPhotoUrl($publicUrl);
+        $this->em->flush();
+
+        return $publicUrl;
+    }
+
+    /**
+     * Converte um binário GIF/WebP para JPEG, devolvendo null quando a extensão GD não está disponível.
+     */
+    private function convertToJpeg(string $binary): ?string
+    {
+        if (!function_exists('imagecreatefromstring')) {
+            return null;
+        }
+
+        $image = @imagecreatefromstring($binary);
+        if (!$image) {
+            return null;
+        }
+
+        ob_start();
+        $ok = @imagejpeg($image, null, 90);
+        $jpeg = (string)ob_get_clean();
+        imagedestroy($image);
+
+        return ($ok && $jpeg !== '') ? $jpeg : null;
     }
 
     /**
@@ -237,16 +305,17 @@ class LattesPhotoCrawlerService
 
     /**
      * Uploads and assigns a photo manually to a researcher.
+     *
+     * @throws \InvalidArgumentException Quando o arquivo enviado não é uma imagem suportada
      */
     public function assignUploadedPhoto(Researcher $researcher, UploadedFile $file): string
     {
-        $ext = $file->guessExtension() ?: 'jpg';
-        $filename = $researcher->getIdLattes() . '.' . $ext;
-        $file->move($this->photosDir, $filename);
+        $binary = @file_get_contents($file->getPathname());
+        $publicUrl = is_string($binary) ? $this->storeBinaryPhoto($researcher, $binary) : null;
 
-        $publicUrl = '/uploads/photos/' . $filename;
-        $researcher->setPhotoUrl($publicUrl);
-        $this->em->flush();
+        if ($publicUrl === null) {
+            throw new \InvalidArgumentException('O arquivo enviado não é uma imagem JPEG, PNG, GIF ou WebP válida.');
+        }
 
         return $publicUrl;
     }

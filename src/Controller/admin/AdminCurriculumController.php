@@ -53,8 +53,11 @@ class AdminCurriculumController extends AbstractController
     }
 
     #[Route('/new', name: 'app_admin_curriculum_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, \App\Service\Crawler\LattesPhotoCrawlerService $photoService): Response
-    {
+    public function new(
+        Request $request,
+        \App\Service\Crawler\LattesPhotoCrawlerService $photoService,
+        \App\Service\Security\SyncTokenProvider $syncToken
+    ): Response {
         if (\function_exists('ini_set')) {
             @\ini_set('memory_limit', '512M');
         }
@@ -75,7 +78,7 @@ class AdminCurriculumController extends AbstractController
 
             if (strlen($idLattes) !== 16) {
                 $this->addFlash('error', 'O ID Lattes informado deve conter exatamente 16 dígitos numéricos (ou ser uma URL válida).');
-                return $this->render('admin/curriculum/new.html.twig');
+                return $this->render('admin/curriculum/new.html.twig', ['syncToken' => $syncToken->getToken()]);
             }
 
             $deptCode = null;
@@ -159,7 +162,7 @@ class AdminCurriculumController extends AbstractController
             return $this->redirectToRoute('app_admin_curriculum_show', ['id' => $researcher->getId()]);
         }
 
-        return $this->render('admin/curriculum/new.html.twig');
+        return $this->render('admin/curriculum/new.html.twig', ['syncToken' => $syncToken->getToken()]);
     }
 
     #[Route('/sync-all-photos', name: 'app_admin_curriculum_sync_all_photos', methods: ['POST'])]
@@ -259,8 +262,12 @@ class AdminCurriculumController extends AbstractController
         /** @var \Symfony\Component\HttpFoundation\File\UploadedFile|null $photoFile */
         $photoFile = $request->files->get('photoFile');
         if ($photoFile && $photoFile->isValid()) {
-            $url = $photoService->assignUploadedPhoto($researcher, $photoFile);
-            $this->addFlash('success', "Foto do pesquisador atualizada com sucesso!");
+            try {
+                $photoService->assignUploadedPhoto($researcher, $photoFile);
+                $this->addFlash('success', "Foto do pesquisador atualizada com sucesso!");
+            } catch (\InvalidArgumentException $e) {
+                $this->addFlash('error', $e->getMessage());
+            }
         } else {
             $this->addFlash('error', "Arquivo de foto inválido.");
         }
@@ -282,7 +289,7 @@ class AdminCurriculumController extends AbstractController
     }
 
     #[Route('/api/quick-photo', name: 'app_admin_curriculum_quick_photo', methods: ['POST'])]
-    public function quickPhoto(Request $request): Response
+    public function quickPhoto(Request $request, \App\Service\Crawler\LattesPhotoCrawlerService $photoService): Response
     {
         $data = json_decode($request->getContent(), true) ?: $request->request->all();
         $idLattes = trim((string)($data['idLattes'] ?? ''));
@@ -301,26 +308,17 @@ class AdminCurriculumController extends AbstractController
             $base64 = explode(',', $base64)[1];
         }
 
-        $binary = base64_decode($base64);
-        if (!$binary || strlen($binary) < 500) {
-            return $this->json(['success' => false, 'message' => 'Imagem corrompida ou vazia.'], 400);
+        $binary = base64_decode($base64, true);
+        $photoUrl = $binary !== false ? $photoService->storeBinaryPhoto($researcher, $binary) : null;
+
+        if ($photoUrl === null) {
+            return $this->json(['success' => false, 'message' => 'Imagem corrompida, vazia ou em formato não suportado.'], 400);
         }
-
-        $photosDir = $this->getParameter('kernel.project_dir') . '/public/uploads/photos';
-        if (!is_dir($photosDir)) {
-            @mkdir($photosDir, 0777, true);
-        }
-
-        $filename = $idLattes . '.jpg';
-        file_put_contents($photosDir . '/' . $filename, $binary);
-
-        $researcher->setPhotoUrl('/uploads/photos/' . $filename);
-        $this->em->flush();
 
         return $this->json([
             'success' => true,
             'message' => 'Foto salva com sucesso!',
-            'photoUrl' => '/uploads/photos/' . $filename,
+            'photoUrl' => $photoUrl,
             'researcher' => $researcher->getFullName()
         ]);
     }

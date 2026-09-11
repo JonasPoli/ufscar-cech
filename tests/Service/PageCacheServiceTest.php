@@ -5,6 +5,7 @@ namespace App\Tests\Service;
 use App\Service\PageCacheService;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -61,6 +62,33 @@ class PageCacheServiceTest extends TestCase
 
         $req6 = Request::create('/admin/cache', 'GET');
         $this->assertFalse($service->isCacheableRequest($req6));
+
+        // Endpoints de API e busca livre -> não elegíveis
+        $this->assertFalse($service->isCacheableRequest(Request::create('/api/temas/autocomplete?q=educacao', 'GET')));
+        $this->assertFalse($service->isCacheableRequest(Request::create('/busca?q=educacao', 'GET')));
+    }
+
+    public function testRequestWithSessionCookieIsNotCacheable(): void
+    {
+        $service = new PageCacheService($this->tempDir, true);
+
+        // Visitante logado no painel: a página traz elementos exclusivos do administrador
+        $request = Request::create('/', 'GET', [], ['PHPSESSID' => 'abc123']);
+
+        $this->assertFalse($service->isCacheableRequest($request));
+    }
+
+    public function testResponseWithCookieIsNotSaved(): void
+    {
+        $service = new PageCacheService($this->tempDir, true);
+        $request = Request::create('/departamentos', 'GET');
+
+        $response = new Response('<html>Departamentos</html>', 200, ['Content-Type' => 'text/html']);
+        $response->headers->setCookie(Cookie::create('PHPSESSID', 'abc123'));
+
+        $this->assertFalse($service->isCacheableResponse($response));
+        $this->assertFalse($service->saveCache($request, $response));
+        $this->assertFalse($service->hasValidCache($request));
     }
 
     public function testSaveAndRetrieveCacheInProd(): void
