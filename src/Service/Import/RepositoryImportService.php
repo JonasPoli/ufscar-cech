@@ -48,7 +48,9 @@ class RepositoryImportService
      */
     public function initializeIndex(): void
     {
-        @ini_set('memory_limit', '1024M');
+        if (function_exists('ini_set')) {
+            @ini_set('memory_limit', '1024M');
+        }
 
         $this->researchersByLattes = [];
         $this->researchersByOrcid = [];

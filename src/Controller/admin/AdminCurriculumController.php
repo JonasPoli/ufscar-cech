@@ -305,8 +305,11 @@ class AdminCurriculumController extends AbstractController
             return $this->redirectToRoute('app_admin_curriculum_show', ['id' => $researcher->getId()]);
         }
 
-        // A leitura do CSV completo (~100 MB) pode ultrapassar o limite padrão de execução
-        @set_time_limit(300);
+        // A leitura do CSV completo (~100 MB) pode ultrapassar o limite padrão de execução.
+        // Em produção (RunCloud) set_time_limit() está em disable_functions.
+        if (function_exists('set_time_limit')) {
+            set_time_limit(300);
+        }
 
         try {
             $stats = $repositoryImportService->import(csvFilePath: $csvPath, onlyResearcher: $researcher);
