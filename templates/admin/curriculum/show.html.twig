@@ -11,6 +11,12 @@
         </a>
 
         <div class="flex items-center gap-2">
+            <form method="post" action="{{ path('app_admin_curriculum_import_repository', {'id': researcher.id}) }}" onsubmit="const b = this.querySelector('button'); b.disabled = true; b.querySelector('span').textContent = 'Importando…';">
+                <input type="hidden" name="_token" value="{{ csrf_token('import_repository' ~ researcher.id) }}">
+                <button type="submit" class="inline-flex items-center gap-2 rounded-xl border border-emerald-300 px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 disabled:cursor-wait dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950 transition-colors" title="Vincula as teses e dissertações orientadas por este docente ao Repositório Institucional da UFSCar">
+                    <sl-icon name="journal-bookmark"></sl-icon> <span>Importar do Repositório UFSCar</span>
+                </button>
+            </form>
             <a href="{{ path('app_admin_curriculum_pdf', {'id': researcher.id}) }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 transition-colors">
                 <sl-icon name="file-earmark-pdf"></sl-icon> Baixar PDF
             </a>
@@ -423,6 +429,12 @@
                                     <span>Buscar no Google</span>
                                     <sl-icon name="box-arrow-up-right" class="text-[10px] text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200"></sl-icon>
                                 </a>
+                                {% if o.handleUrl %}
+                                    <a href="{{ o.handleUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 dark:border-emerald-800/60 transition shrink-0" title="Abrir no Repositório Institucional da UFSCar">
+                                        <sl-icon name="journal-bookmark"></sl-icon>
+                                        <span>Repositório UFSCar</span>
+                                    </a>
+                                {% endif %}
                             </div>
                         </div>
                     {% else %}

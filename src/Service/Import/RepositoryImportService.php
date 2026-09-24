@@ -126,6 +126,7 @@ class RepositoryImportService
      * @param int|null $limit Limite de linhas a processar (para testes)
      * @param string|null $centerFilter Filtro opcional de centro acadêmico
      * @param callable|null $progressCallback Callback de progresso function(int $processed, int $total)
+     * @param Researcher|null $onlyResearcher Se informado, processa apenas as obras orientadas/coorientadas por este docente
      * @return array{
      *     totalCsvRows: int,
      *     processedRows: int,
@@ -143,7 +144,8 @@ class RepositoryImportService
         bool $dryRun = false,
         ?int $limit = null,
         ?string $centerFilter = null,
-        ?callable $progressCallback = null
+        ?callable $progressCallback = null,
+        ?Researcher $onlyResearcher = null
     ): array {
         if (!file_exists($csvFilePath) || !is_readable($csvFilePath)) {
             throw new \InvalidArgumentException(sprintf('Arquivo CSV não encontrado ou sem permissão de leitura: %s', $csvFilePath));
@@ -245,14 +247,19 @@ class RepositoryImportService
             // Normalizar URL Handle
             $handleUrl = $urlPersistentRaw ?: ($handleRaw ? sprintf('https://repositorio.ufscar.br/handle/%s', $handleRaw) : null);
 
-            // Identificar Orientador(es)
+            // Identificar Orientador(es) e Coorientador(es)
             $advisors = $this->resolveResearchers($advLattesRaw, $advOrcidRaw, $advNamesRaw);
+            $coadvisors = $this->resolveResearchers($coadvLattesRaw, $coadvOrcidRaw, $coadvNamesRaw);
+
+            // Restringe ao docente solicitado (importação individual)
+            if ($onlyResearcher !== null) {
+                $advisors = $this->filterByResearcher($advisors, $onlyResearcher);
+                $coadvisors = $this->filterByResearcher($coadvisors, $onlyResearcher);
+            }
+
             if (!empty($advisors)) {
                 $stats['matchedAdvisorRows']++;
             }
-
-            // Identificar Coorientador(es)
-            $coadvisors = $this->resolveResearchers($coadvLattesRaw, $coadvOrcidRaw, $coadvNamesRaw);
             if (!empty($coadvisors)) {
                 $stats['matchedCoadvisorRows']++;
             }
@@ -555,6 +562,18 @@ class RepositoryImportService
         if ($alternativeTitle !== '' && !$orientation->getAlternativeTitle()) {
             $orientation->setAlternativeTitle($alternativeTitle);
         }
+    }
+
+    /**
+     * @param Researcher[] $researchers
+     * @return Researcher[]
+     */
+    private function filterByResearcher(array $researchers, Researcher $target): array
+    {
+        return array_values(array_filter(
+            $researchers,
+            static fn (Researcher $r): bool => $r->getId() === $target->getId()
+        ));
     }
 
     /**

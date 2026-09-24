@@ -21,14 +21,21 @@ class RepositoryImportServiceTest extends KernelTestCase
         $this->importService = $container->get(RepositoryImportService::class);
         $this->em = $container->get('doctrine.orm.entity_manager');
 
-        $existing = $this->em->getRepository(Researcher::class)->findOneBy(['idLattes' => '9999888877776666']);
-        if ($existing) {
-            foreach ($this->em->getRepository(Orientation::class)->findBy(['researcher' => $existing]) as $o) {
-                $this->em->remove($o);
+        $this->removeTestResearchers();
+    }
+
+    private function removeTestResearchers(): void
+    {
+        foreach (['9999888877776666', '9999888877775555'] as $idLattes) {
+            $existing = $this->em->getRepository(Researcher::class)->findOneBy(['idLattes' => $idLattes]);
+            if ($existing) {
+                foreach ($this->em->getRepository(Orientation::class)->findBy(['researcher' => $existing]) as $o) {
+                    $this->em->remove($o);
+                }
+                $this->em->remove($existing);
             }
-            $this->em->remove($existing);
-            $this->em->flush();
         }
+        $this->em->flush();
     }
 
     public function testImportWithSampleCsv(): void
@@ -100,6 +107,61 @@ class RepositoryImportServiceTest extends KernelTestCase
                 $this->em->remove($toClean);
                 $this->em->flush();
             }
+        }
+    }
+
+    public function testImportRestrictedToSingleResearcher(): void
+    {
+        $target = new Researcher();
+        $target->setIdLattes('9999888877776666');
+        $target->setFullName('Prof Teste da Silva');
+        $target->setSlug('prof-teste-da-silva');
+        $this->em->persist($target);
+
+        $other = new Researcher();
+        $other->setIdLattes('9999888877775555');
+        $other->setFullName('Prof Outro Docente');
+        $other->setSlug('prof-outro-docente');
+        $this->em->persist($other);
+
+        $this->em->flush();
+
+        $header = 'Tipo,Título,Títulos alternativos,Autores (Nome Sobrenome),Lattes dos autores,ORCID dos autores,Orientadores (Nome Sobrenome),Lattes dos orientadores,ORCID dos orientadores,Coorientadores (Nome Sobrenome),Lattes dos coorientadores,ORCID dos coorientadores,Membros da banca (Nome Sobrenome),Lattes dos membros da banca,ORCID dos membros da banca,Programas de pós-graduação,Centros,Campus,Comunidades,Coleções,Caminhos completos no repositório,Datas de publicação/defesa,Resumos,Assuntos,Idiomas,Direitos e licenças,DOI,URI(s) registrada(s),URL persistente,Handle,UUID do item,Última modificação';
+        $csvContent = implode("\n", [
+            $header,
+            // Orientada pelo docente alvo
+            'Dissertação,Trabalho do Docente Alvo,,Aluno Alvo,,,Prof Teste da Silva,http://lattes.cnpq.br/9999888877776666,,,,,,,,PPGE,CECH,Campus São Carlos,,,,2023-05-15,,,por,,,,https://repositorio.ufscar.br/handle/20.500.14289/99911,20.500.14289/99911,uuid-test-11,',
+            // Orientada por outro docente, coorientada pelo alvo
+            'Tese,Trabalho Coorientado pelo Alvo,,Aluno Coorientado,,,Prof Outro Docente,http://lattes.cnpq.br/9999888877775555,,Prof Teste da Silva,http://lattes.cnpq.br/9999888877776666,,,,,PPGE,CECH,Campus São Carlos,,,,2024-03-10,,,por,,,,https://repositorio.ufscar.br/handle/20.500.14289/99912,20.500.14289/99912,uuid-test-12,',
+            // Somente do outro docente
+            'Dissertação,Trabalho de Outro Docente,,Aluno Outro,,,Prof Outro Docente,http://lattes.cnpq.br/9999888877775555,,,,,,,,PPGE,CECH,Campus São Carlos,,,,2022-01-20,,,por,,,,https://repositorio.ufscar.br/handle/20.500.14289/99913,20.500.14289/99913,uuid-test-13,',
+        ]);
+
+        $tmpCsv = sys_get_temp_dir() . '/test_ted_ufscar_' . uniqid() . '.csv';
+        file_put_contents($tmpCsv, $csvContent);
+
+        try {
+            $stats = $this->importService->import($tmpCsv, false, onlyResearcher: $target);
+
+            $this->assertSame(3, $stats['totalCsvRows']);
+            $this->assertSame(1, $stats['matchedAdvisorRows']);
+            $this->assertSame(1, $stats['matchedCoadvisorRows']);
+            $this->assertSame(1, $stats['unmatchedRows']);
+            $this->assertSame(2, $stats['newOrientationsCreated']);
+
+            $targetOrientations = $this->em->getRepository(Orientation::class)->findBy(['researcher' => $target]);
+            $this->assertCount(2, $targetOrientations);
+            $coadvised = array_values(array_filter($targetOrientations, static fn (Orientation $o) => $o->isCoadvising()));
+            $this->assertCount(1, $coadvised);
+            $this->assertSame('20.500.14289/99912', $coadvised[0]->getHandle());
+
+            // O outro docente não deve ter sido alterado
+            $this->assertCount(0, $this->em->getRepository(Orientation::class)->findBy(['researcher' => $other]));
+        } finally {
+            if (file_exists($tmpCsv)) {
+                unlink($tmpCsv);
+            }
+            $this->removeTestResearchers();
         }
     }
 }

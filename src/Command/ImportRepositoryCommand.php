@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Entity\Researcher;
+use App\Repository\ResearcherRepository;
 use App\Service\Import\RepositoryImportService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -22,7 +24,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class ImportRepositoryCommand extends Command
 {
     public function __construct(
-        private readonly RepositoryImportService $importService
+        private readonly RepositoryImportService $importService,
+        private readonly ResearcherRepository $researcherRepository
     ) {
         parent::__construct();
     }
@@ -32,6 +35,7 @@ class ImportRepositoryCommand extends Command
         $this
             ->addOption('file', 'f', InputOption::VALUE_OPTIONAL, 'Caminho do arquivo CSV de Teses e Dissertações', 'docs/banco/TeD-UFSCar.csv')
             ->addOption('center', 'c', InputOption::VALUE_OPTIONAL, 'Filtrar por centro acadêmico (ex: CECH)')
+            ->addOption('researcher', 'r', InputOption::VALUE_REQUIRED, 'Processar apenas um docente (ID Lattes de 16 dígitos, ID interno ou slug)')
             ->addOption('limit', 'l', InputOption::VALUE_OPTIONAL, 'Limitar o número de registros processados')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Executa em modo de simulação sem alterar o banco de dados');
     }
@@ -46,6 +50,16 @@ class ImportRepositoryCommand extends Command
         $limit = $input->getOption('limit') !== null ? (int)$input->getOption('limit') : null;
         $dryRun = (bool)$input->getOption('dry-run');
 
+        $researcher = null;
+        $researcherOpt = $input->getOption('researcher');
+        if ($researcherOpt !== null) {
+            $researcher = $this->findResearcher((string)$researcherOpt);
+            if ($researcher === null) {
+                $io->error(sprintf('Docente não encontrado: %s', $researcherOpt));
+                return Command::FAILURE;
+            }
+        }
+
         $io->title('Importação do Repositório Institucional da UFSCar (TeD-UFSCar)');
 
         if (!file_exists($filePath)) {
@@ -58,6 +72,7 @@ class ImportRepositoryCommand extends Command
             sprintf('Arquivo CSV: <info>%s</info> (%s)', $filePath, $this->formatBytes((int)filesize($filePath))),
             sprintf('Modo Simulação (--dry-run): <info>%s</info>', $dryRun ? 'SIM (Nenhuma alteração será gravada)' : 'NÃO (Gravação em banco ativa)'),
             sprintf('Filtro de Centro: <info>%s</info>', $centerFilter ?: 'Nenhum (Todos os docentes cadastrados no sistema)'),
+            sprintf('Docente: <info>%s</info>', $researcher !== null ? $researcher->getFullName() : 'Todos'),
             sprintf('Limite de Registros: <info>%s</info>', $limit !== null ? (string)$limit : 'Sem limite (Arquivo completo)'),
         ]);
 
@@ -72,6 +87,7 @@ class ImportRepositoryCommand extends Command
                 dryRun: $dryRun,
                 limit: $limit,
                 centerFilter: $centerFilter,
+                onlyResearcher: $researcher,
                 progressCallback: function (int $processed, int $total) use ($progressBar) {
                     $progressBar->advance();
                 }
@@ -120,6 +136,19 @@ class ImportRepositoryCommand extends Command
             }
             return Command::FAILURE;
         }
+    }
+
+    private function findResearcher(string $value): ?Researcher
+    {
+        $value = trim($value);
+        if (preg_match('/^\d{16}$/', $value)) {
+            return $this->researcherRepository->findOneBy(['idLattes' => $value]);
+        }
+        if (ctype_digit($value)) {
+            return $this->researcherRepository->find((int)$value);
+        }
+
+        return $this->researcherRepository->findOneBy(['slug' => $value]);
     }
 
     private function formatBytes(int $bytes): string

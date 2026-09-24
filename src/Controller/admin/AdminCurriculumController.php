@@ -7,6 +7,7 @@ use App\Repository\ResearcherRepository;
 use App\Service\Export\CurriculumExporterService;
 use App\Service\Import\LattesHtmlParserService;
 use App\Service\Import\LattesXmlParserService;
+use App\Service\Import\RepositoryImportService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -19,6 +20,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[Route('/admin/curriculum')]
 class AdminCurriculumController extends AbstractController
 {
+    private const REPOSITORY_CSV_PATH = 'docs/banco/TeD-UFSCar.csv';
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly ResearcherRepository $researcherRepo,
@@ -283,6 +286,45 @@ class AdminCurriculumController extends AbstractController
             $this->addFlash('success', "Foto obtida com sucesso da plataforma Lattes/CNPq!");
         } else {
             $this->addFlash('warning', "Não foi possível recuperar a foto automaticamente do CNPq (proteção contra robôs). Recomendamos o envio manual pelo formulário.");
+        }
+
+        return $this->redirectToRoute('app_admin_curriculum_show', ['id' => $researcher->getId()]);
+    }
+
+    #[Route('/{id}/import-repository', name: 'app_admin_curriculum_import_repository', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function importRepository(Request $request, Researcher $researcher, RepositoryImportService $repositoryImportService): Response
+    {
+        if (!$this->isCsrfTokenValid('import_repository' . $researcher->getId(), (string)$request->request->get('_token'))) {
+            $this->addFlash('error', 'Token de segurança inválido. Recarregue a página e tente novamente.');
+            return $this->redirectToRoute('app_admin_curriculum_show', ['id' => $researcher->getId()]);
+        }
+
+        $csvPath = $this->getParameter('kernel.project_dir') . '/' . self::REPOSITORY_CSV_PATH;
+        if (!is_readable($csvPath)) {
+            $this->addFlash('error', sprintf('Arquivo do Repositório Institucional não encontrado no servidor (%s).', self::REPOSITORY_CSV_PATH));
+            return $this->redirectToRoute('app_admin_curriculum_show', ['id' => $researcher->getId()]);
+        }
+
+        // A leitura do CSV completo (~100 MB) pode ultrapassar o limite padrão de execução
+        @set_time_limit(300);
+
+        try {
+            $stats = $repositoryImportService->import(csvFilePath: $csvPath, onlyResearcher: $researcher);
+            $found = $stats['enrichedOrientations'] + $stats['newOrientationsCreated'] + $stats['skippedOrientations'];
+
+            if ($found === 0) {
+                $this->addFlash('warning', 'Nenhuma tese ou dissertação deste docente foi encontrada no Repositório Institucional da UFSCar.');
+            } else {
+                $this->addFlash('success', sprintf(
+                    'Repositório UFSCar: %d trabalho(s) encontrado(s) — %d orientação(ões) enriquecida(s), %d nova(s) cadastrada(s) e %d já vinculada(s).',
+                    $found,
+                    $stats['enrichedOrientations'],
+                    $stats['newOrientationsCreated'],
+                    $stats['skippedOrientations']
+                ));
+            }
+        } catch (\Throwable $e) {
+            $this->addFlash('error', 'Erro ao importar do Repositório Institucional: ' . $e->getMessage());
         }
 
         return $this->redirectToRoute('app_admin_curriculum_show', ['id' => $researcher->getId()]);
