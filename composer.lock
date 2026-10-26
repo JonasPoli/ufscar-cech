@@ -8885,12 +8885,12 @@
             "version": "1.0.14",
             "source": {
                 "type": "git",
-                "url": "https://bitbucket.org/wab-ninjas/wmailer-transport.git",
+                "url": "https://github.com/JonasPoli/wmailer-transport.git",
                 "reference": "c23eff7aa249df7f1fbad28f9aa1ce9f287c71e3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://bitbucket.org/wab-ninjas/wmailer-transport/get/c23eff7aa249df7f1fbad28f9aa1ce9f287c71e3.zip",
+                "url": "https://api.github.com/repos/JonasPoli/wmailer-transport/zipball/c23eff7aa249df7f1fbad28f9aa1ce9f287c71e3",
                 "reference": "c23eff7aa249df7f1fbad28f9aa1ce9f287c71e3",
                 "shasum": ""
             },
@@ -8909,9 +8909,9 @@
                 "MIT"
             ],
             "description": "Mailer Transport personalizado para Symfony usando API WAB",
-            "homepage": "https://bitbucket.org/wab-ninjas/wmailer-transport",
+            "homepage": "https://github.com/JonasPoli/wmailer-transport",
             "support": {
-                "source": "https://bitbucket.org/wab-ninjas/wmailer-transport/src/c23eff7aa249df7f1fbad28f9aa1ce9f287c71e3/?at=1.0.14"
+                "source": "https://github.com/JonasPoli/wmailer-transport/tree/1.0.14"
             },
             "time": "2025-07-04T15:00:36+00:00"
         },
