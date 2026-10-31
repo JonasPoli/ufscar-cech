@@ -30,7 +30,8 @@ class ImportLattesCommand extends Command
     {
         $this
             ->addOption('dir', null, InputOption::VALUE_OPTIONAL, 'Diretório com os arquivos XML', 'docs/banco/CECH')
-            ->addOption('file', null, InputOption::VALUE_OPTIONAL, 'Arquivo XML específico para importar');
+            ->addOption('file', null, InputOption::VALUE_OPTIONAL, 'Arquivo XML específico para importar')
+            ->addOption('dept', null, InputOption::VALUE_REQUIRED, 'Departamento dos currículos, que o XML não traz: "CODIGO|Nome do departamento"');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -40,6 +41,16 @@ class ImportLattesCommand extends Command
 
         // Disable SQL logging to avoid memory exhaustion during bulk imports
         $this->em->getConnection()->getConfiguration()->setMiddlewares([]);
+
+        $department = null;
+        if ($input->getOption('dept') !== null) {
+            $department = array_map('trim', explode('|', (string)$input->getOption('dept'), 2));
+            if (count($department) !== 2 || $department[0] === '' || $department[1] === '') {
+                $io->error('Use --dept="CODIGO|Nome do departamento".');
+
+                return Command::FAILURE;
+            }
+        }
 
         $singleFile = $input->getOption('file');
         $dir = $input->getOption('dir');
@@ -77,7 +88,12 @@ class ImportLattesCommand extends Command
 
         foreach ($files as $index => $file) {
             try {
-                $this->parserService->parseAndSave($file->getRealPath());
+                $researcher = $this->parserService->parseAndSave($file->getRealPath());
+                if ($department !== null) {
+                    $researcher->setDepartmentCode($department[0]);
+                    $researcher->setDepartment($department[1]);
+                    $this->em->flush();
+                }
                 $this->em->clear();
                 $successCount++;
             } catch (\Throwable $e) {
@@ -100,6 +116,8 @@ class ImportLattesCommand extends Command
         if ($errorCount > 0) {
             $io->warning(sprintf('%d arquivos apresentaram erros durante a importação:', $errorCount));
             $io->listing(array_slice($errors, 0, 10));
+
+            return Command::FAILURE;
         }
 
         return Command::SUCCESS;

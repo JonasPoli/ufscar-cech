@@ -23,7 +23,7 @@ use Symfony\Component\Console\Tester\CommandTester;
  * Famílias de periódicos e nome exibido (docs/evolutions/periodicos-por-base.md, A4).
  *
  * Os testes de `plan()` são puros (sem banco) e cobrem a regra com os casos medidos nos dados reais. Os de `build()` rodam
- * em `cech_testp` dentro de uma transação revertida no tearDown: nada fica gravado e as outras linhas do banco de teste
+ * em `cech_test` dentro de uma transação revertida no tearDown: nada fica gravado e as outras linhas do banco de teste
  * só entram nas contagens globais, nunca nas afirmações sobre as linhas criadas aqui.
  */
 class JournalFamilyBuilderTest extends KernelTestCase

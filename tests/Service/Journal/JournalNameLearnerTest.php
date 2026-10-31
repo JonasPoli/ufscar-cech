@@ -24,7 +24,7 @@ use Symfony\Component\Console\Tester\CommandTester;
  * comandos `app:journals:names:learn` e `app:journals:names:queue`.
  *
  * Os dados são criados com sufixo único dentro de uma transação revertida no tearDown: nada fica gravado em
- * `cech_testp`, que outros testes usam ao mesmo tempo. Cada chamada de `learn()` é restrita aos nomes do cenário
+ * `cech_test`, que outros testes usam ao mesmo tempo. Cada chamada de `learn()` é restrita aos nomes do cenário
  * (`$onlyNames`), para não mexer nos dados dos outros testes, e nada aqui chama `JournalNameQueueService::rebuild()`
  * de verdade (ele apaga candidatos pendentes de todo o banco).
  */

@@ -16,7 +16,7 @@ use Symfony\Component\DomCrawler\Crawler;
  *
  * Os testes de rota e de texto não dependem de dados: as cinco seções aparecem sempre (com o estado vazio quando a base
  * não tem periódicos). Os que precisam de periódicos, bases, docentes e artigos os criam dentro de uma transação que é
- * revertida no tearDown, de modo que nada fica gravado em `cech_testp`; as asserções olham só para as linhas criadas
+ * revertida no tearDown, de modo que nada fica gravado em `cech_test`; as asserções olham só para as linhas criadas
  * aqui (nomes com sufixo único), porque o banco de testes é compartilhado.
  *
  * Todas as requisições levam um cookie de sessão: o `PageCacheService` não lê nem grava páginas de quem tem sessão, e

@@ -107,6 +107,64 @@ class JournalOverridesImporterTest extends KernelTestCase
         $this->assertSame('overrides:import', $row['reviewed_by']);
     }
 
+    public function testNameRejectOverrideClosesTheCandidateAndRepeatsSafely(): void
+    {
+        $name = 'Nome Sem Revista ' . $this->token();
+        $candidate = $this->createCandidate($name);
+        $line = ['type' => 'name_reject', 'name' => $name];
+
+        $first = $this->importOverrides([$line]);
+        $second = $this->importOverrides([$line]);
+        $this->em->clear();
+        $stored = $this->em->getRepository(JournalNameCandidate::class)->find($candidate->getId());
+
+        $this->assertSame(1, $first['applied'], $this->describe($first));
+        $this->assertSame(1, $second['applied'], $this->describe($second));
+        $this->assertSame(JournalNameCandidate::STATUS_REJECTED, $stored->getStatus());
+        $this->assertNotNull($stored->getReviewedAt());
+    }
+
+    public function testHowTheNameWasDecidedIsRecorded(): void
+    {
+        $t = $this->token();
+        $title = "REVISTA MOTIVO $t";
+        $this->createJournal($title);
+        $accepted = $this->createCandidate("Nome Aceito Com Motivo $t");
+        $rejected = $this->createCandidate("Nome Rejeitado Com Motivo $t");
+
+        $report = $this->importOverrides([
+            ['type' => 'name', 'name' => "Nome Aceito Com Motivo $t", 'journal' => ['title' => $title], 'how' => 'Regra: ISSN confirma e título parecido'],
+            ['type' => 'name_reject', 'name' => "Nome Rejeitado Com Motivo $t", 'how' => 'Regra: DOI ou URL no lugar do nome'],
+        ]);
+        $this->em->clear();
+        $repository = $this->em->getRepository(JournalNameCandidate::class);
+
+        $this->assertSame(2, $report['applied'], $this->describe($report));
+        $this->assertSame('Regra: ISSN confirma e título parecido', $repository->find($accepted->getId())->getReviewedBy());
+        $this->assertSame('Regra: DOI ou URL no lugar do nome', $repository->find($rejected->getId())->getReviewedBy());
+    }
+
+    public function testNameRejectOverrideKeepsAcceptedNamesAndSkipsUnknownOnes(): void
+    {
+        $name = 'Nome Aceito ' . $this->token();
+        $candidate = $this->createCandidate($name);
+        $candidate->setStatus(JournalNameCandidate::STATUS_ACCEPTED);
+        $this->em->flush();
+
+        $report = $this->importOverrides([
+            ['type' => 'name_reject', 'name' => $name],
+            ['type' => 'name_reject', 'name' => 'Nome Fora Da Fila ' . $this->token()],
+        ]);
+        $this->em->clear();
+
+        $this->assertSame(0, $report['applied'], $this->describe($report));
+        $this->assertSame(2, $report['skipped'], $this->describe($report));
+        $this->assertSame(
+            JournalNameCandidate::STATUS_ACCEPTED,
+            $this->em->getRepository(JournalNameCandidate::class)->find($candidate->getId())->getStatus()
+        );
+    }
+
     public function testNameOverrideIsSkippedWhenTheNameBelongsToAnotherFamily(): void
     {
         $t = $this->token();

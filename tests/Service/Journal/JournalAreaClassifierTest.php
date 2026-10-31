@@ -18,7 +18,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 /**
  * Gravação da classificação de áreas (A6.4 "Gravação" e A3 de docs/evolutions/periodicos-por-base.md).
  *
- * Cada teste roda numa transação revertida no tearDown: nada fica gravado em `cech_testp`. As asserções olham os ids
+ * Cada teste roda numa transação revertida no tearDown: nada fica gravado em `cech_test`. As asserções olham os ids
  * criados aqui; `classifyAll` processa o banco de testes inteiro, e os testes dele comparam diferenças (antes e depois
  * de criar as famílias) em vez de totais.
  */

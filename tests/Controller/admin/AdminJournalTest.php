@@ -21,7 +21,7 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
  * Admin de periódicos: formulário (áreas CAPES, conflitos de variantes, nome de exibição), índice, exportações e
  * importações (docs/evolutions/periodicos-por-base.md, A5.3 e A6.8).
  *
- * Os dados usam sufixo único e saem no tearDown: `cech_testp` é compartilhado com outros testes e agentes.
+ * Os dados usam sufixo único e saem no tearDown: `cech_test` é compartilhado com outros testes e agentes.
  */
 class AdminJournalTest extends WebTestCase
 {

@@ -37,11 +37,12 @@ final class JournalOverridesImporter
 {
     public const TYPE_AREA = 'area';
     public const TYPE_NAME = 'name';
+    public const TYPE_NAME_REJECT = 'name_reject';
     public const TYPE_FAMILY = 'family';
     public const TYPE_DISPLAY_TITLE = 'display_title';
 
     /** @var list<string> */
-    public const TYPES = [self::TYPE_AREA, self::TYPE_NAME, self::TYPE_FAMILY, self::TYPE_DISPLAY_TITLE];
+    public const TYPES = [self::TYPE_AREA, self::TYPE_NAME, self::TYPE_NAME_REJECT, self::TYPE_FAMILY, self::TYPE_DISPLAY_TITLE];
 
     public const STATUS_APPLIED = 'aplicado';
     public const STATUS_SKIPPED = 'pulado';
@@ -142,6 +143,7 @@ final class JournalOverridesImporter
             $message = match ($type) {
                 self::TYPE_AREA => $this->applyArea($data),
                 self::TYPE_NAME => $this->applyName($data),
+                self::TYPE_NAME_REJECT => $this->applyNameReject($data),
                 self::TYPE_FAMILY => $this->applyFamily($data),
                 self::TYPE_DISPLAY_TITLE => $this->applyDisplayTitle($data),
             };
@@ -216,6 +218,46 @@ final class JournalOverridesImporter
     }
 
     /**
+     * Como o nome foi decidido, gravado em `reviewed_by` e mostrado na tela da fila: campo opcional `how` da linha.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function reviewerOf(array $data): string
+    {
+        $how = is_string($data['how'] ?? null) ? trim($data['how']) : '';
+
+        return $how !== '' ? mb_substr($how, 0, 100) : self::REVIEWER;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function applyNameReject(array $data): string
+    {
+        $name = $this->requiredText($data, 'name', 'nome');
+        $key = StringNormalizer::normalizeString($name, true);
+        $candidate = $key !== '' ? $this->candidates->findOneBy(['normalizedName' => $key]) : null;
+        if ($candidate === null) {
+            throw new \InvalidArgumentException('o nome não está na fila');
+        }
+
+        if ($candidate->getStatus() === JournalNameCandidate::STATUS_ACCEPTED) {
+            throw new \InvalidArgumentException('o nome já foi aceito; desfazer um aceite é outra operação');
+        }
+        if ($candidate->getStatus() === JournalNameCandidate::STATUS_REJECTED) {
+            return 'o nome já estava rejeitado';
+        }
+
+        $candidate
+            ->setStatus(JournalNameCandidate::STATUS_REJECTED)
+            ->setReviewedAt(new \DateTimeImmutable())
+            ->setReviewedBy($this->reviewerOf($data));
+        $this->em->flush();
+
+        return 'nome rejeitado na fila';
+    }
+
+    /**
      * @param array<string, mixed> $data
      */
     private function applyName(array $data): string
@@ -240,8 +282,10 @@ final class JournalOverridesImporter
         $canonical = $this->loadFamily($familyId);
         $candidate = $this->candidates->findOneBy(['normalizedName' => $key]);
 
+        $reviewer = $this->reviewerOf($data);
+
         [$created, $relinked, $accepted] = $this->em->wrapInTransaction(
-            function () use ($canonical, $name, $key, $candidate): array {
+            function () use ($canonical, $name, $key, $candidate, $reviewer): array {
                 // A variante é gravada antes da revinculação: o resolver lê o cadastro pelo banco
                 $created = $this->variants->addVariant($canonical, $name, 'curated') !== null;
                 $this->em->flush();
@@ -254,7 +298,7 @@ final class JournalOverridesImporter
                         ->setStatus(JournalNameCandidate::STATUS_ACCEPTED)
                         ->setResolvedJournal($canonical)
                         ->setReviewedAt(new \DateTimeImmutable())
-                        ->setReviewedBy(self::REVIEWER);
+                        ->setReviewedBy($reviewer);
                     $this->em->flush();
                     $accepted = true;
                 }

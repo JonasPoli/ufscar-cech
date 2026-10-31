@@ -19,7 +19,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  * Merge físico de periódicos (docs/evolutions/periodicos-por-base.md, A5.3): apagar a linha de um periódico não pode
  * levar junto artigos, famílias, variantes, evidências nem bases.
  *
- * Os dados usam sufixo único e saem no tearDown (cech_testp é compartilhado com outros testes e agentes). Gravam de
+ * Os dados usam sufixo único e saem no tearDown (cech_test é compartilhado com outros testes e agentes). Gravam de
  * verdade (sem transação de teste) para que o commit e o rollback da mesclagem sejam os reais.
  */
 class EntityMergeServiceTest extends KernelTestCase

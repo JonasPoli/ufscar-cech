@@ -20,7 +20,7 @@ use Symfony\Component\DomCrawler\Crawler;
 /**
  * Tela admin da fila de revisão de nomes de periódicos (docs/evolutions/periodicos-por-base.md, A5.4).
  *
- * Os dados usam sufixo único e são removidos no tearDown, porque `cech_testp` é compartilhado com outros agentes.
+ * Os dados usam sufixo único e são removidos no tearDown, porque `cech_test` é compartilhado com outros agentes.
  * Não se chama JournalNameQueueService::rebuild(): ele apagaria os pendentes dos outros.
  */
 class AdminJournalNameTest extends WebTestCase

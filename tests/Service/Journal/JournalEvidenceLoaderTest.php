@@ -22,7 +22,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
- * Cada teste roda numa transação revertida no tearDown: nada fica gravado em `cech_testp`. Os periódicos de teste têm
+ * Cada teste roda numa transação revertida no tearDown: nada fica gravado em `cech_test`. Os periódicos de teste têm
  * ISSNs 99xxxxxx (inexistentes) e títulos com sufixo único; as asserções olham só para os ids criados aqui, porque o
  * banco de testes é compartilhado e pode ter outras linhas.
  */

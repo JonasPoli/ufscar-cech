@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Service\Journal\Issn;
 use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -52,6 +53,7 @@ class JournalsNormalizeTitlesCommand extends Command
         $startedAt = microtime(true);
 
         $journals = $this->normalizeColumn($conn, 'qualis_journals', 'title', 'normalized_title', '', $onlyMissing);
+        $repairedIssns = $this->repairGluedIssns($conn);
         $articles = $this->normalizeColumn($conn, 'production_items', 'journal_name', 'journal_name_normalized', 'journal_name IS NOT NULL', $onlyMissing);
 
         $io->table(
@@ -61,6 +63,7 @@ class JournalsNormalizeTitlesCommand extends Command
                 ['production_items.journal_name_normalized', $articles['read'], $articles['written'], $articles['empty']],
             ]
         );
+        $io->text(sprintf('Linhas com ISSNs colados corrigidas nas colunas de busca: %d.', $repairedIssns));
         $io->success(sprintf(
             'Normalização concluída em %s s%s.',
             number_format(microtime(true) - $startedAt, 1, ',', '.'),
@@ -68,6 +71,49 @@ class JournalsNormalizeTitlesCommand extends Command
         ));
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Linhas com dois ISSNs no mesmo campo ("1984-6444, 0102-5473") têm os dois colados na coluna normalizada
+     * ("1984644401025473"), e a busca por igualdade do resolver não acha nenhum deles. Aqui cada coluna normalizada passa
+     * a ter um ISSN só; o texto original (`issn`, `issn_imp`...) não muda. Idempotente.
+     *
+     * @return int linhas corrigidas
+     */
+    private function repairGluedIssns(Connection $conn): int
+    {
+        $columns = ['normalized_issn', 'normalized_issn_imp', 'normalized_issn_e', 'normalized_issn_l'];
+        $rows = $conn->fetchAllAssociative(
+            'SELECT id, normalized_issn, normalized_issn_imp, normalized_issn_e, normalized_issn_l
+               FROM qualis_journals
+              WHERE CHAR_LENGTH(normalized_issn) > 8 OR CHAR_LENGTH(normalized_issn_imp) > 8
+                 OR CHAR_LENGTH(normalized_issn_e) > 8 OR CHAR_LENGTH(normalized_issn_l) > 8'
+        );
+
+        foreach ($rows as $row) {
+            $issns = [];
+            $values = [];
+            foreach ($columns as $column) {
+                $value = (string) $row[$column];
+                $values[$column] = strlen($value) === 8 ? $value : null;
+                foreach (Issn::extractAll($value, false) as $issn) {
+                    if (!in_array($issn, $issns, true)) {
+                        $issns[] = $issn;
+                    }
+                }
+            }
+
+            $missing = array_values(array_diff($issns, array_filter($values)));
+            foreach ($columns as $column) {
+                if ($values[$column] === null && $missing !== []) {
+                    $values[$column] = array_shift($missing);
+                }
+            }
+
+            $conn->update('qualis_journals', $values, ['id' => $row['id']]);
+        }
+
+        return count($rows);
     }
 
     /**

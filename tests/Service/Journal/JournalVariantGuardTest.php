@@ -17,7 +17,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  * Trava de integridade das variantes de periódicos (docs/evolutions/periodicos-por-base.md, A5.3).
  *
  * Os dados são criados com sufixo único dentro de uma transação revertida no tearDown: nada fica gravado em
- * `cech_testp`, que outros testes usam ao mesmo tempo.
+ * `cech_test`, que outros testes usam ao mesmo tempo.
  */
 class JournalVariantGuardTest extends KernelTestCase
 {

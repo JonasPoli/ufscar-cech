@@ -16,7 +16,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  * Curadoria manual das áreas CAPES (docs/evolutions/periodicos-por-base.md, A3 e A6.8): `replaceManual`, `clearManual`
  * e as consultas do admin.
  *
- * Os dados usam sufixo único e saem no tearDown (`cech_testp` é compartilhado com outros testes e agentes).
+ * Os dados usam sufixo único e saem no tearDown (`cech_test` é compartilhado com outros testes e agentes).
  */
 class JournalAreaRepositoryTest extends KernelTestCase
 {
