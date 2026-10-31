@@ -7,11 +7,11 @@ Análise de 31/10/2026. Até 41,5 mil currículos os números são medidos; acim
 | Pergunta | Resposta |
 |---|---|
 | Quantos currículos este servidor aguenta? | Cerca de **800** sem nada quebrar. Hoje são 416. Corrigindo o código, sem trocar de máquina, cerca de **5 mil**, com páginas lentas |
-| Chega a 10 milhões? | **Não.** Nem este servidor nem um servidor maior com o código atual. Seriam de 4,4 a 5,6 TB, e cada abertura da página inicial leria dezenas de bilhões de linhas |
-| Tem que mudar o banco? | **Não trocar o MySQL agora.** Ele não é o gargalo: abrir o perfil de um docente custa o mesmo com 415 ou 41,5 mil currículos. O problema são as consultas que varrem tudo. Em algum ponto entre 100 mil e 1 milhão, precisa de sistemas ao lado dele, para busca e para indicadores |
+| Chega a 10 milhões? | **Não.** Nem este servidor nem um servidor maior com o código atual. Seriam até cerca de 1 TB (estimativa), e cada abertura da página inicial leria bilhões de linhas. Com as mudanças de [ARQUITETURA_DE_ESCALA.md](ARQUITETURA_DE_ESCALA.md), chega |
+| Tem que mudar o banco? | **Não trocar o MySQL.** Ele não é o gargalo: abrir o perfil de um docente custa o mesmo com 415 ou 41,5 mil currículos. O problema são as consultas que varrem tudo. A busca e os indicadores precisam sair dele |
 | Tem que pôr mais memória? | **Sozinha, não resolve.** Com 41,5 mil currículos, 16 GB para o MySQL reduziram o tempo em 13% a 40% e não consertaram nenhuma página que falhava. Mais memória e CPU só valem junto com as mudanças de código |
 
-**O limite de 10 milhões não é só técnico.** Uma coluna de jornal sem data fala em [mais de 8 milhões de currículos](https://tribunademinas.com.br/colunas/maistendencias/?p=14663) em todo o Lattes, então a meta pode ser maior que a própria plataforma. A extração institucional, segundo a [UFRGS](https://www.ufrgs.br/saberviver/plataforma-lattes-o-que-e-e-como-participar/), cobre os currículos da própria instituição. Antes de investir em máquina, é preciso saber de onde esses XML viriam e se há base legal, pela LGPD, para guardar dados de milhões de pessoas.
+**O limite de 10 milhões não é só técnico.** O Lattes tem cerca de 10 milhões de currículos, número informado pelo coordenador em 31/10/2026. A extração institucional, segundo a [UFRGS](https://www.ufrgs.br/saberviver/plataforma-lattes-o-que-e-e-como-participar/), cobre os currículos da própria instituição. Antes de investir em máquina, é preciso saber de onde esses XML viriam e se há base legal, pela LGPD, para guardar dados de milhões de pessoas.
 
 ## O servidor hoje
 
@@ -97,21 +97,13 @@ Estimativas a partir das medidas. Currículos reais variam de tamanho.
 
 ## Caminho por etapas
 
-Preços: [lista de Droplets da DigitalOcean](https://www.digitalocean.com/pricing/droplets), consultada em 31/10/2026, sem contar backups nem disco extra. A página não traz o preço de volumes adicionais.
+O plano completo, com a arquitetura, as máquinas da DigitalOcean e os custos de cada etapa, está em [ARQUITETURA_DE_ESCALA.md](ARQUITETURA_DE_ESCALA.md). Ele substitui a tabela que existia aqui.
 
-| Etapa | Currículos | O que muda | Máquina | Custo por mês |
-|---|---:|---|---|---:|
-| Hoje | até ~800 | nada | 2 GB, 1 vCPU | US$ 12 |
-| 1 | até ~10 mil | Limitar a aba de rede aos maiores nós e guardar o resultado; paginar departamentos; gerar o sitemap sem carregar tudo; `app:index:topics` sem guardar tudo em memória; tirar n8n e Bibliomap da máquina | 8 GB, 4 vCPUs, 160 GB | US$ 48 |
-| 2 | até ~100 mil (estimativa) | Tabelas de resumo para início, indicadores e `/periodicos`, atualizadas por comando; índice FULLTEXT para `/busca` e temas; importação em fila; MySQL em máquina própria | Banco com 32 GB, 8 vCPUs dedicadas, e aplicação com 8 GB; 56 GB de dados | US$ 300 |
-| 3 | até ~1 milhão (estimativa) | Motor de busca (OpenSearch ou Meilisearch); indicadores em banco analítico (ClickHouse) ou resumos incrementais; réplica de leitura; 560 GB | 64 a 128 GB para o banco, mais máquinas de busca e aplicação | US$ 1.000 a 2.000, mais disco |
-| 4 | 10 milhões (estimativa) | Tudo isso, com o banco particionado ou dividido em várias máquinas, importação paralela e backup próprio; 5,6 TB | Vários servidores | vários milhares |
+A primeira etapa é sobretudo código. Só ela já multiplica a capacidade por 10.
 
-A etapa 1 é sobretudo código. Só ela já multiplica a capacidade por 10.
+**Importar 10 milhões** com o código atual levaria cerca de 390 dias em um processo só, no Mac, e 4,7 anos neste servidor, se todo currículo custasse como os do CECH. Exigiria processos em paralelo e uma revisão da normalização, que hoje faz milhares de consultas por currículo.
 
-**Importar 10 milhões** levaria cerca de 390 dias em um processo só, no Mac, e 4,7 anos neste servidor. Exigiria dezenas de processos em paralelo e uma revisão da normalização, que hoje faz milhares de consultas por currículo.
-
-**O currículo médio pode ser menor.** Os 0,56 MB são de docentes do CECH, com mediana de 140 produções. Se a base incluir muitos currículos curtos, de estudantes por exemplo, o total em disco cai. Não medimos isso, e o custo das consultas que somam tudo cairia na mesma proporção, sem mudar a conclusão.
+**O currículo médio é menor.** Os 0,56 MB são de docentes do CECH, com mediana de 140 produções. A primeira versão desta análise multiplicava esse valor por 10 milhões e chegava a 5,6 TB. A estimativa corrigida é de até cerca de 1 TB, e a conta está em [ARQUITETURA_DE_ESCALA.md](ARQUITETURA_DE_ESCALA.md).
 
 ## Limites desta análise
 
