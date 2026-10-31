@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\QualisJournalRepository;
+use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -15,6 +16,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(columns: ['normalized_issn_imp'], name: 'idx_journal_norm_issn_imp')]
 #[ORM\Index(columns: ['qualis'], name: 'idx_journal_qualis')]
 #[ORM\Index(columns: ['title'], name: 'idx_journal_title')]
+#[ORM\Index(columns: ['normalized_title'], name: 'idx_journal_norm_title')]
+#[ORM\Index(columns: ['canonical_journal_id'], name: 'idx_journal_canonical')]
 class QualisJournal
 {
     #[ORM\Id]
@@ -68,6 +71,48 @@ class QualisJournal
     private ?string $area = null;
 
     /**
+     * Valor original de `area`, guardado antes de o campo receber o rótulo canônico da classificação.
+     */
+    #[ORM\Column(name: 'area_raw', type: 'text', nullable: true)]
+    private ?string $areaRaw = null;
+
+    /**
+     * Título na forma do tesauro (StringNormalizer::normalizeString($title, true)); mantido por setTitle().
+     */
+    #[ORM\Column(name: 'normalized_title', length: 500, nullable: true)]
+    private ?string $normalizedTitle = null;
+
+    /**
+     * Linha canônica da família; null quando esta própria linha é a canônica.
+     */
+    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\JoinColumn(name: 'canonical_journal_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    private ?self $canonical = null;
+
+    /** issn | title | manual */
+    #[ORM\Column(name: 'canonical_method', length: 20, nullable: true)]
+    private ?string $canonicalMethod = null;
+
+    #[ORM\Column(name: 'display_title', length: 500, nullable: true)]
+    private ?string $displayTitle = null;
+
+    /** scielo | doaj | latindex | scopus | wos | openalex | pubmed | lattes | title | manual */
+    #[ORM\Column(name: 'display_title_source', length: 30, nullable: true)]
+    private ?string $displayTitleSource = null;
+
+    /**
+     * Quando verdadeiro, a curadoria manual das áreas não é sobrescrita pela classificação automática.
+     */
+    #[ORM\Column(name: 'areas_locked', type: 'boolean', options: ['default' => false])]
+    private bool $areasLocked = false;
+
+    /**
+     * @var Collection<int, JournalArea>
+     */
+    #[ORM\OneToMany(mappedBy: 'journal', targetEntity: JournalArea::class, cascade: ['remove'])]
+    private Collection $areas;
+
+    /**
      * @var Collection<int, JournalVariation>
      */
     #[ORM\OneToMany(mappedBy: 'journal', targetEntity: JournalVariation::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
@@ -84,6 +129,7 @@ class QualisJournal
     {
         $this->variations = new ArrayCollection();
         $this->academicDatabases = new ArrayCollection();
+        $this->areas = new ArrayCollection();
     }
 
     public static function normalizeIssnString(?string $issn): ?string
@@ -106,6 +152,7 @@ class QualisJournal
     public function setTitle(string $title): self
     {
         $this->title = $title;
+        $this->normalizedTitle = StringNormalizer::normalizeString($title, true) ?: null;
         return $this;
     }
 
@@ -285,6 +332,130 @@ class QualisJournal
     {
         $this->area = $area;
         return $this;
+    }
+
+    public function getAreaRaw(): ?string
+    {
+        return $this->areaRaw;
+    }
+
+    public function setAreaRaw(?string $areaRaw): self
+    {
+        $this->areaRaw = $areaRaw;
+        return $this;
+    }
+
+    public function getNormalizedTitle(): ?string
+    {
+        return $this->normalizedTitle;
+    }
+
+    public function setNormalizedTitle(?string $normalizedTitle): self
+    {
+        $this->normalizedTitle = $normalizedTitle;
+        return $this;
+    }
+
+    public function getCanonical(): ?self
+    {
+        return $this->canonical;
+    }
+
+    public function setCanonical(?self $canonical): self
+    {
+        $this->canonical = $canonical;
+        return $this;
+    }
+
+    public function getCanonicalMethod(): ?string
+    {
+        return $this->canonicalMethod;
+    }
+
+    public function setCanonicalMethod(?string $canonicalMethod): self
+    {
+        $this->canonicalMethod = $canonicalMethod;
+        return $this;
+    }
+
+    public function getDisplayTitle(): ?string
+    {
+        return $this->displayTitle;
+    }
+
+    public function setDisplayTitle(?string $displayTitle): self
+    {
+        $this->displayTitle = $displayTitle;
+        return $this;
+    }
+
+    public function getDisplayTitleSource(): ?string
+    {
+        return $this->displayTitleSource;
+    }
+
+    public function setDisplayTitleSource(?string $displayTitleSource): self
+    {
+        $this->displayTitleSource = $displayTitleSource;
+        return $this;
+    }
+
+    public function isAreasLocked(): bool
+    {
+        return $this->areasLocked;
+    }
+
+    public function setAreasLocked(bool $areasLocked): self
+    {
+        $this->areasLocked = $areasLocked;
+        return $this;
+    }
+
+    /**
+     * Id da família do periódico: o da linha canônica, ou o da própria linha quando ela é a canônica
+     * (COALESCE(canonical_journal_id, id)). Vale 0 enquanto a linha ainda não foi gravada.
+     */
+    public function getFamilyId(): int
+    {
+        return $this->canonical?->getId() ?? $this->id ?? 0;
+    }
+
+    /**
+     * Título para exibição: o `display_title` escolhido para a família ou, na falta dele, o título da linha.
+     */
+    public function getDisplayTitleOrTitle(): string
+    {
+        return ($this->displayTitle !== null && $this->displayTitle !== '') ? $this->displayTitle : $this->title;
+    }
+
+    /**
+     * @return Collection<int, JournalArea>
+     */
+    public function getAreas(): Collection
+    {
+        return $this->areas;
+    }
+
+    public function addArea(JournalArea $area): self
+    {
+        if (!$this->areas->contains($area)) {
+            $this->areas->add($area);
+            $area->setJournal($this);
+        }
+        return $this;
+    }
+
+    /**
+     * Área principal (is_primary) desta linha, ou null quando ainda não foi classificada.
+     */
+    public function getPrimaryArea(): ?JournalArea
+    {
+        foreach ($this->areas as $area) {
+            if ($area->isPrimary()) {
+                return $area;
+            }
+        }
+        return null;
     }
 
     /**

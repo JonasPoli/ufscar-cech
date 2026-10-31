@@ -1,0 +1,19 @@
+{
+    "_meta": {
+        "source": "scielo_area",
+        "version": "2026-10",
+        "notes": [
+            "Transcrição de C.5 (SciELO v441, nível 1). A versão v854 usa crosswalk_wos.json, com comparação insensível a caixa."
+        ]
+    },
+    "map": {
+        "Health Sciences": "ciencias-da-saude",
+        "Human Sciences": "ciencias-humanas",
+        "Applied Social Sciences": "ciencias-sociais-aplicadas",
+        "Agricultural Sciences": "ciencias-agrarias",
+        "Biological Sciences": "ciencias-biologicas",
+        "Engineering": "engenharias",
+        "Exact and Earth Sciences": "ciencias-exatas-terra",
+        "Linguistics, Letters and Arts": "linguistica-letras-artes"
+    }
+}

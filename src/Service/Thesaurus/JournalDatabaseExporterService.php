@@ -2,6 +2,8 @@
 
 namespace App\Service\Thesaurus;
 
+use App\Entity\JournalArea;
+use App\Repository\JournalAreaRepository;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use League\Csv\Writer;
@@ -34,7 +36,11 @@ class JournalDatabaseExporterService
     }
 
     /**
-     * Exports journals, their Qualis ratings, indexed databases, and thesaurus variants.
+     * Exports journals, their Qualis ratings, indexed databases, thesaurus variants and CAPES areas.
+     *
+     * As colunas de áreas CAPES (`area_capes_primary` e `areas_capes`) ficam no fim, depois das que já existiam, para
+     * não quebrar quem consome o arquivo. No CSV, `areas_capes` traz os nomes separados por `;` (a principal primeiro);
+     * no JSON, uma lista.
      *
      * @param string|null $qualisFilter Optional Qualis filter (e.g. 'A1', 'B2', 'ALL')
      * @param string|null $databaseFilter Optional Academic Database acronym (e.g. 'scopus', 'wos')
@@ -68,6 +74,11 @@ class JournalDatabaseExporterService
             $databasesByJournal[$jid][] = $dbr['name'];
         }
 
+        // 2b. CAPES areas (principal e demais, por linha de periódico)
+        /** @var JournalAreaRepository $areaRepo */
+        $areaRepo = $this->em->getRepository(JournalArea::class);
+        $areasByJournal = $areaRepo->namesByJournal();
+
         // 3. Build query for journals
         $sql = 'SELECT j.id, j.title, j.issn, j.normalized_issn, j.issn_imp, j.issn_e, j.issn_l, j.qualis, j.area FROM qualis_journals j WHERE 1=1';
         $params = [];
@@ -97,6 +108,7 @@ class JournalDatabaseExporterService
                 $jid = (int)$row['id'];
                 $variants = $variantsByJournal[$jid] ?? [];
                 $dbs = $databasesByJournal[$jid] ?? [];
+                $capes = $areasByJournal[$jid] ?? ['primary' => null, 'all' => []];
 
                 $data[] = [
                     'id' => $jid,
@@ -111,6 +123,8 @@ class JournalDatabaseExporterService
                     'databases' => $dbs,
                     'thesaurus_variants_count' => count($variants),
                     'thesaurus_variants' => $variants,
+                    'area_capes_primary' => $capes['primary'],
+                    'areas_capes' => $capes['all'],
                 ];
                 $totalExported++;
             }
@@ -149,12 +163,15 @@ class JournalDatabaseExporterService
             'Bases de Indexação',
             'Total Variantes Tesauro',
             'Variantes Tesauro (separadas por |)',
+            'area_capes_primary',
+            'areas_capes',
         ]);
 
         while ($row = $stmt->fetchAssociative()) {
             $jid = (int)$row['id'];
             $variants = $variantsByJournal[$jid] ?? [];
             $dbs = $databasesByJournal[$jid] ?? [];
+            $capes = $areasByJournal[$jid] ?? ['primary' => null, 'all' => []];
 
             $csv->insertOne([
                 $jid,
@@ -169,6 +186,8 @@ class JournalDatabaseExporterService
                 implode('; ', $dbs),
                 count($variants),
                 implode(' | ', $variants),
+                $capes['primary'] ?? '',
+                implode(';', $capes['all']),
             ]);
             $totalExported++;
         }

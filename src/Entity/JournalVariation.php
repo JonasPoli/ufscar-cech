@@ -10,6 +10,7 @@ use DateTimeImmutable;
 #[ORM\Table(name: 'journal_name_variants')]
 #[ORM\Index(columns: ['normalized_name'], name: 'idx_journal_var_norm_name')]
 #[ORM\Index(columns: ['variation_name'], name: 'idx_journal_var_name')]
+#[ORM\UniqueConstraint(name: 'uniq_journal_variant_norm', columns: ['normalized_name'])]
 class JournalVariation
 {
     #[ORM\Id]

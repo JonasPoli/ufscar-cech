@@ -1,0 +1,128 @@
+{
+    "rules": [
+        {
+            "pattern": "\\b(ensino|educacao matematica|educacao em ciencias|ciencia e educacao|ciencias e educacao|science education|mathematics education|physics education|chemistry education|educacion matematica|ensenanza)\\b",
+            "slug": "ensino"
+        },
+        {
+            "pattern": "\\b(educacao|education|educational|educativa|educacional|pedagogia|pedagogica|pedagogy|pedagogical|docencia|escola|escolar)\\b",
+            "slug": "educacao"
+        },
+        {
+            "pattern": "\\b(psicologia|psychology|psicologica|psychological|psychologie|psicologico|psicanalise|psychoanalysis)\\b",
+            "slug": "psicologia"
+        },
+        {
+            "pattern": "\\b(linguistic|linguistics|linguistica|letras|literatura|literature|filologia|linguagem|linguagens|discurso|literary)\\b",
+            "slug": "linguistica-literatura"
+        },
+        {
+            "pattern": "\\b(filosofia|philosophy|philosophie|philosophical|filosofica|filosofico)\\b",
+            "slug": "filosofia"
+        },
+        {
+            "pattern": "\\b(historia|history|historica|historico|historical)\\b",
+            "slug": "historia"
+        },
+        {
+            "pattern": "\\b(sociologia|sociology|sociologica|sociedade e estado)\\b",
+            "slug": "sociologia"
+        },
+        {
+            "pattern": "\\b(antropologia|anthropology|antropologica|etnografia|arqueologia|archaeology)\\b",
+            "slug": "antropologia-arqueologia"
+        },
+        {
+            "pattern": "\\b(ciencia politica|political science|politica e sociedade|relacoes internacionais|international relations)\\b",
+            "slug": "ciencia-politica-relacoes-internacionais"
+        },
+        {
+            "pattern": "\\b(geografia|geography|geografica)\\b",
+            "slug": "geografia"
+        },
+        {
+            "pattern": "\\b(teologia|theology|religiao|religion|religious)\\b",
+            "slug": "ciencias-da-religiao-teologia"
+        },
+        {
+            "pattern": "\\b(biblioteconomia|ciencia da informacao|information science|library|documentacao|comunicacao|communication|jornalismo|midia|museologia|museum)\\b",
+            "slug": "comunicacao-informacao-museologia"
+        },
+        {
+            "pattern": "\\b(direito|law|juridica|juridico|jus)\\b",
+            "slug": "direito"
+        },
+        {
+            "pattern": "\\b(economia|economics|economic|economica)\\b",
+            "slug": "economia"
+        },
+        {
+            "pattern": "\\b(administracao|management|business|gestao|contabil|accounting|turismo|tourism)\\b",
+            "slug": "administracao-contabeis-turismo"
+        },
+        {
+            "pattern": "\\b(arquitetura|architecture|urbanismo|design)\\b",
+            "slug": "arquitetura-urbanismo-design"
+        },
+        {
+            "pattern": "\\b(servico social|social work|assistencia social)\\b",
+            "slug": "servico-social"
+        },
+        {
+            "pattern": "\\b(artes|arte|art|music|musica|teatro|theatre|theater|cinema|danca|dance)\\b",
+            "slug": "artes"
+        },
+        {
+            "pattern": "\\b(saude coletiva|public health|saude publica|epidemiologia|epidemiology)\\b",
+            "slug": "saude-coletiva"
+        },
+        {
+            "pattern": "\\b(educacao fisica|physical education|fisioterapia|physiotherapy|fonoaudiologia|terapia ocupacional|esporte|sport|motricidade|kinesiology)\\b",
+            "slug": "educacao-fisica"
+        },
+        {
+            "pattern": "\\b(enfermagem|nursing)\\b",
+            "slug": "enfermagem"
+        },
+        {
+            "pattern": "\\b(odontologia|dental|dentistry)\\b",
+            "slug": "odontologia"
+        },
+        {
+            "pattern": "\\b(nutricao|nutrition)\\b",
+            "slug": "nutricao"
+        },
+        {
+            "pattern": "\\b(farmacia|pharmacy|farmacologia|pharmacology)\\b",
+            "slug": "farmacia"
+        },
+        {
+            "pattern": "\\b(materiais|materials)\\b",
+            "slug": "materiais"
+        },
+        {
+            "pattern": "\\b(meio ambiente|ambiental|environmental|environment|sustentabilidade|sustainability)\\b",
+            "slug": "ciencias-ambientais"
+        },
+        {
+            "pattern": "\\b(computacao|computing|computer|informatica|software)\\b",
+            "slug": "computacao"
+        },
+        {
+            "pattern": "\\b(matematica|mathematics|mathematical|estatistica|statistics)\\b",
+            "slug": "matematica-estatistica"
+        },
+        {
+            "pattern": "\\b(fisica|physics)\\b",
+            "slug": "astronomia-fisica"
+        },
+        {
+            "pattern": "\\b(quimica|chemistry|chemical)\\b",
+            "slug": "quimica"
+        },
+        {
+            "pattern": "\\b(interdisciplinar|interdisciplinary|multidisciplinar|multidisciplinary|transdisciplinar)\\b",
+            "slug": "interdisciplinar"
+        }
+    ]
+}

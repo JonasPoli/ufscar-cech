@@ -1,0 +1,51 @@
+{
+  "0103-863X": {
+    "title": "Paidéia (Ribeirão Preto)",
+    "short": "Paidéia (Ribeirão Preto)",
+    "issns": [
+      {
+        "issn": "0103-863X",
+        "type": "PRINT"
+      },
+      {
+        "issn": "1982-4327",
+        "type": "ONLIN"
+      }
+    ],
+    "area": [
+      "Human Sciences"
+    ],
+    "wos": [
+      "PSYCHOLOGY, MULTIDISCIPLINARY"
+    ],
+    "desc": [
+      "PSICOLOGIA"
+    ],
+    "status": "C"
+  },
+  "1517-9702": {
+    "title": "Educação e Pesquisa",
+    "short": "Educ. Pesqui.",
+    "issns": [
+      {
+        "issn": "1517-9702",
+        "type": "PRINT"
+      },
+      {
+        "issn": "1678-4634",
+        "type": "ONLIN"
+      }
+    ],
+    "area": [
+      "Human Sciences"
+    ],
+    "wos": [
+      "EDUCATION & EDUCATIONAL RESEARCH"
+    ],
+    "desc": [
+      "EDUCAÇÃO",
+      "EDUCAÇÃO E PESQUISA"
+    ],
+    "status": "C"
+  }
+}

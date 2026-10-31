@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\ProductionItemRepository;
+use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -19,6 +20,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(columns: ['item_type'], name: 'idx_prod_type')]
 #[ORM\Index(columns: ['year'], name: 'idx_prod_year')]
 #[ORM\Index(columns: ['doi'], name: 'idx_prod_doi')]
+#[ORM\Index(columns: ['journal_name_normalized'], name: 'idx_prod_journal_name_norm')]
 #[ORM\HasLifecycleCallbacks]
 class ProductionItem
 {
@@ -66,6 +68,13 @@ class ProductionItem
 
     #[ORM\Column(name: 'journal_name', length: 500, nullable: true)]
     private ?string $journalName = null;
+
+    /**
+     * Coluna DERIVADA: journal_name na forma do tesauro (StringNormalizer::normalizeString(..., true)).
+     * O journal_name vindo do Lattes permanece intacto; esta coluna só serve para o vínculo com os periódicos.
+     */
+    #[ORM\Column(name: 'journal_name_normalized', length: 500, nullable: true)]
+    private ?string $journalNameNormalized = null;
 
     #[ORM\Column(length: 50, nullable: true)]
     private ?string $issn = null;
@@ -179,7 +188,15 @@ class ProductionItem
     public function setCountry(?string $v): static { $this->country = $v; return $this; }
 
     public function getJournalName(): ?string { return $this->journalName; }
-    public function setJournalName(?string $v): static { $this->journalName = $v; return $this; }
+    public function setJournalName(?string $v): static
+    {
+        $this->journalName = $v;
+        $this->journalNameNormalized = StringNormalizer::normalizeString($v, true) ?: null;
+        return $this;
+    }
+
+    public function getJournalNameNormalized(): ?string { return $this->journalNameNormalized; }
+    public function setJournalNameNormalized(?string $v): static { $this->journalNameNormalized = $v; return $this; }
 
     public function getIssn(): ?string { return $this->issn; }
     public function setIssn(?string $v): static { $this->issn = $v; return $this; }

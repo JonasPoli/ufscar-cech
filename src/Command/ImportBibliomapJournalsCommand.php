@@ -107,7 +107,7 @@ class ImportBibliomapJournalsCommand extends Command
         $varValues = [];
         $varParams = [];
         $varCount = 0;
-        $varInsertSql = 'INSERT INTO journal_name_variants (journal_id, variation_name, normalized_name, variation_type, status, created_at, updated_at) VALUES ';
+        $varInsertSql = 'INSERT IGNORE INTO journal_name_variants (journal_id, variation_name, normalized_name, variation_type, status, created_at, updated_at) VALUES ';
 
         foreach ($rawVars as $vRow) {
             $jId = (int)$vRow['journal_id'];

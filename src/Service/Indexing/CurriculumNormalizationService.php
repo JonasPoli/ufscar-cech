@@ -11,18 +11,22 @@ use App\Entity\ProfessionalExperience;
 use App\Entity\QualisJournal;
 use App\Entity\Researcher;
 use App\Repository\ResearcherRepository;
+use App\Service\Journal\JournalNameQueueService;
 use App\Service\Thesaurus\AuthorResolverService;
 use App\Service\Thesaurus\AuthorThesaurusService;
 use App\Service\Thesaurus\InstitutionResolverService;
 use App\Service\Thesaurus\JournalResolverService;
+use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Serviço responsável pela normalização, enriquecimento e indexação das relações de um pesquisador.
  *
  * Executa as seguintes etapas sem alterar os dados brutos do Lattes:
  * 1. Sincroniza nomes e citações bibliográficas com o Tesauro de Autores (author_identities / variants).
- * 2. Resolve o periódico e atribui o melhor estrato Qualis CAPES para cada artigo científico.
+ * 2. Resolve o periódico e atribui o melhor estrato Qualis CAPES para cada artigo científico. Nome de periódico
+ *    sem vínculo seguro (desconhecido ou ambíguo) não recebe vínculo: entra na fila de revisão de nomes.
  * 3. Resolve todos os coautores de cada produção, identificando docentes internos do CECH (matched_researcher_id, is_cech_researcher).
  * 4. Resolve e vincula instituições de formação acadêmica (Education) e atuação profissional (ProfessionalExperience).
  * 5. Analisa vínculos com a UFSCar para determinar anos de admissão, desligamento e status ativo/aposentado.
@@ -37,6 +41,8 @@ class CurriculumNormalizationService
      * @param JournalResolverService $journalResolver Serviço de resolução de periódicos e Qualis
      * @param InstitutionResolverService $institutionResolver Serviço de resolução de instituições
      * @param AuthorThesaurusService $authorThesaurusService Serviço de gerenciamento do tesauro de autores
+     * @param JournalNameQueueService $queue Fila de revisão dos nomes de periódicos sem vínculo
+     * @param LoggerInterface|null $logger Registro de falhas não fatais (fila de nomes)
      */
     public function __construct(
         private readonly EntityManagerInterface $em,
@@ -44,7 +50,9 @@ class CurriculumNormalizationService
         private readonly AuthorResolverService $authorResolver,
         private readonly JournalResolverService $journalResolver,
         private readonly InstitutionResolverService $institutionResolver,
-        private readonly AuthorThesaurusService $authorThesaurusService
+        private readonly AuthorThesaurusService $authorThesaurusService,
+        private readonly JournalNameQueueService $queue,
+        private readonly ?LoggerInterface $logger = null
     ) {}
 
     /**
@@ -85,11 +93,18 @@ class CurriculumNormalizationService
             // Qualis & Journal resolution
             $journalName = $prod->getJournalName();
             $issn = $prod->getIssn();
+
+            // Coluna derivada (o journal_name do Lattes não é alterado): chave de agrupamento da fila de nomes
+            $normalizedJournalName = $this->normalizeJournalName($journalName);
+            if ($prod->getJournalNameNormalized() !== $normalizedJournalName) {
+                $prod->setJournalNameNormalized($normalizedJournalName);
+            }
+
             if ($journalName || $issn) {
                 $res = $this->journalResolver->resolveJournalIdAndQualis($journalName, $issn);
                 if ($res) {
+                    $prod->setQualis($res['qualis']);
                     if ($res['qualis']) {
-                        $prod->setQualis($res['qualis']);
                         $stats['qualisResolved']++;
                     }
                     /** @var QualisJournal $journalRef */
@@ -99,11 +114,11 @@ class CurriculumNormalizationService
                     $dbs = $this->journalResolver->resolveDatabasesForJournalId($res['id']);
                     $prod->setIndexedDatabases(!empty($dbs) ? $dbs : null);
                 } else {
-                    $qualis = $this->journalResolver->resolveQualis($journalName, $issn);
-                    if ($qualis) {
-                        $prod->setQualis($qualis);
-                        $stats['qualisResolved']++;
-                    }
+                    // Sem vínculo seguro (nome desconhecido ou ambíguo): remove o que uma indexação anterior tenha
+                    // gravado, como faz a indexação em lote. O nome vai para a fila de revisão.
+                    $prod->setQualis(null);
+                    $prod->setQualisJournal(null);
+                    $prod->setIndexedDatabases(null);
                 }
             }
 
@@ -228,6 +243,14 @@ class CurriculumNormalizationService
 
         $this->em->flush();
 
+        // Fila de revisão de nomes de periódicos sem vínculo. Só os nomes novos são resolvidos (modo on-demand);
+        // uma falha aqui nunca deve impedir a importação do currículo.
+        try {
+            $this->queue->rebuild(false);
+        } catch (\Throwable $e) {
+            $this->logger?->warning('Não foi possível atualizar a fila de nomes de periódicos: ' . $e->getMessage(), ['exception' => $e]);
+        }
+
         $stats['admissionYear'] = $researcher->getAdmissionYear();
         $stats['leaveYear'] = $researcher->getLeaveYear();
         $stats['isActiveInCech'] = $researcher->isActiveInCech();
@@ -318,8 +341,11 @@ class CurriculumNormalizationService
      * Executa a indexação em lote ultra-rápida de todos os artigos científicos, vinculando
      * qualis_journal_id, qualis e indexed_databases diretamente em production_items.
      *
+     * Grava também a coluna derivada journal_name_normalized (o journal_name do Lattes não é alterado) e, ao final,
+     * reconstrói a fila de revisão de nomes de periódicos sem vínculo.
+     *
      * @param callable|null $progressCallback Callback opcional de progresso
-     * @return array{totalProcessed: int, qualisResolved: int, journalsMatched: int, databasesLinked: int, durationSec: float}
+     * @return array{totalProcessed: int, qualisResolved: int, journalsMatched: int, databasesLinked: int, queue: array{pending: int, ambiguous: int, removed: int}, durationSec: float}
      */
     public function indexAllProductionsJournalAndDatabases(?callable $progressCallback = null): array
     {
@@ -341,42 +367,24 @@ class CurriculumNormalizationService
         $batch = [];
 
         foreach ($articles as $index => $art) {
-            $artId = (int)$art['id'];
-            $journalName = $art['journal_name'];
-            $issn = $art['issn'];
+            $link = $this->resolveArticleLink($art['journal_name'], $art['issn']);
 
-            $journalId = null;
-            $qualis = null;
-            $dbsJson = null;
-
-            if ($journalName || $issn) {
-                $res = $this->journalResolver->resolveJournalIdAndQualis($journalName, $issn);
-                if ($res) {
-                    $journalId = $res['id'];
-                    $qualis = $res['qualis'];
-                    $stats['journalsMatched']++;
-                    if ($qualis) {
-                        $stats['qualisResolved']++;
-                    }
-
-                    $dbs = $this->journalResolver->resolveDatabasesForJournalId($journalId);
-                    if (!empty($dbs)) {
-                        $dbsJson = json_encode($dbs, JSON_UNESCAPED_UNICODE);
-                        $stats['databasesLinked']++;
-                    }
-                } else {
-                    $qualis = $this->journalResolver->resolveQualis($journalName, $issn);
-                    if ($qualis) {
-                        $stats['qualisResolved']++;
-                    }
+            if ($link['matched']) {
+                $stats['journalsMatched']++;
+                if ($link['q'] !== null) {
+                    $stats['qualisResolved']++;
+                }
+                if ($link['dbs'] !== null) {
+                    $stats['databasesLinked']++;
                 }
             }
 
             $batch[] = [
-                'id' => $artId,
-                'jid' => $journalId,
-                'q' => $qualis,
-                'dbs' => $dbsJson,
+                'id' => (int)$art['id'],
+                'jid' => $link['jid'],
+                'q' => $link['q'],
+                'dbs' => $link['dbs'],
+                'nn' => $this->normalizeJournalName($art['journal_name']),
             ];
 
             $stats['totalProcessed']++;
@@ -385,11 +393,12 @@ class CurriculumNormalizationService
                 // Execute updates
                 foreach ($batch as $row) {
                     $conn->executeStatement(
-                        'UPDATE production_items SET qualis = :q, qualis_journal_id = :jid, indexed_databases = :dbs WHERE id = :id',
+                        'UPDATE production_items SET qualis = :q, qualis_journal_id = :jid, indexed_databases = :dbs, journal_name_normalized = :nn WHERE id = :id',
                         [
                             'q' => $row['q'],
                             'jid' => $row['jid'],
                             'dbs' => $row['dbs'],
+                            'nn' => $row['nn'],
                             'id' => $row['id'],
                         ]
                     );
@@ -403,9 +412,88 @@ class CurriculumNormalizationService
             }
         }
 
+        // Nomes sem vínculo (desconhecidos ou ambíguos) vão para a fila de revisão
+        $stats['queue'] = $this->queue->rebuild();
+
         $duration = round(microtime(true) - $startTime, 2);
         $stats['durationSec'] = $duration;
 
         return $stats;
+    }
+
+    /**
+     * Revincula os artigos de um nome de periódico (forma do tesauro, como em production_items.journal_name_normalized
+     * e journal_name_candidates.normalized_name), por exemplo depois de aceitar o nome na fila de revisão.
+     * Aplica o resolver a cada artigo e grava qualis, qualis_journal_id e indexed_databases.
+     *
+     * @return int Quantidade de artigos que ficaram vinculados a um periódico
+     */
+    public function reindexArticlesByNormalizedJournalName(string $normalizedName): int
+    {
+        // O cadastro (variantes) acabou de mudar: descarta o que o resolver memorizou
+        $this->journalResolver->clearCache();
+
+        $conn = $this->em->getConnection();
+        $articles = $conn->fetchAllAssociative(
+            "SELECT id, journal_name, issn FROM production_items WHERE item_type = 'ARTIGO' AND journal_name_normalized = :name ORDER BY id ASC",
+            ['name' => $normalizedName]
+        );
+
+        $linked = 0;
+        foreach ($articles as $art) {
+            $link = $this->resolveArticleLink($art['journal_name'], $art['issn']);
+            if ($link['matched']) {
+                $linked++;
+            }
+
+            $conn->executeStatement(
+                'UPDATE production_items SET qualis = :q, qualis_journal_id = :jid, indexed_databases = :dbs WHERE id = :id',
+                [
+                    'q' => $link['q'],
+                    'jid' => $link['jid'],
+                    'dbs' => $link['dbs'],
+                    'id' => (int)$art['id'],
+                ]
+            );
+        }
+
+        return $linked;
+    }
+
+    /**
+     * Resolve o vínculo de um artigo: periódico, estrato Qualis e bases de indexação (JSON).
+     *
+     * @return array{matched: bool, jid: ?int, q: ?string, dbs: ?string}
+     */
+    private function resolveArticleLink(?string $journalName, ?string $issn): array
+    {
+        $none = ['matched' => false, 'jid' => null, 'q' => null, 'dbs' => null];
+        if (!$journalName && !$issn) {
+            return $none;
+        }
+
+        $res = $this->journalResolver->resolveJournalIdAndQualis($journalName, $issn);
+        if (!$res) {
+            return $none;
+        }
+
+        $dbs = $this->journalResolver->resolveDatabasesForJournalId($res['id']);
+
+        return [
+            'matched' => true,
+            'jid' => $res['id'],
+            'q' => $res['qualis'],
+            'dbs' => !empty($dbs) ? json_encode($dbs, JSON_UNESCAPED_UNICODE) : null,
+        ];
+    }
+
+    /**
+     * Forma do tesauro do nome do periódico (valor de production_items.journal_name_normalized); null se vazio.
+     */
+    private function normalizeJournalName(?string $journalName): ?string
+    {
+        $normalized = StringNormalizer::normalizeString($journalName, true);
+
+        return $normalized !== '' ? $normalized : null;
     }
 }

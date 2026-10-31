@@ -1,0 +1,363 @@
+Accounting & Finance
+Acoustics
+Aerospace Engineering
+Agricultural Chemistry
+Agricultural Economics & Policy
+Agricultural Engineering
+Agricultural Sciences
+Agriculture, Dairy & Animal Science
+Agriculture, Multidisciplinary
+Agriculture/Agronomy
+Agronomy
+Ai, Robotics, And Automatic Control
+Allergy
+Analytical, Inorganic & Nuclear Chemistry
+Anatomy & Morphology
+Andrology
+Anesthesia & Intensive Care
+Anesthesiology
+Animal & Plant Sciences
+Animal Sciences
+Anthropology
+Applied Physics/Condensed Matter/Materials Science
+Aquatic Sciences
+Archaeology
+Architecture
+Area Studies
+Art
+Art & Architecture
+Asian Studies
+Astronomy & Astrophysics
+Audiology & Speech-Language Pathology
+Automation & Control Systems
+Behavioral Sciences
+Biochemical Research Methods
+Biochemistry & Biophysics
+Biochemistry & Molecular Biology
+Biodiversity Conservation
+Biology
+Biology & Biochemistry
+Biophysics
+Biotechnology & Applied Microbiology
+Business
+Business & Economics
+Business Law & Reviews
+Business, Finance
+Cardiac & Cardiovascular System
+Cardiovascular & Hematology Research
+Cardiovascular & Respiratory Systems
+Cell & Developmental Biology
+Cell & Tissue Engineering
+Cell Biology
+Chemical Engineering
+Chemistry
+Chemistry & Analysis
+Chemistry & Physics, Pure & Applied
+Chemistry, Analytical
+Chemistry, Applied
+Chemistry, Inorganic & Nuclear
+Chemistry, Medicinal
+Chemistry, Multidisciplinary
+Chemistry, Organic
+Chemistry, Physical
+Civil Engineering
+Classical Studies
+Classics
+Clinical Immunology & Infectious Disease
+Clinical Medicine
+Clinical Neurology
+Clinical Psychology & Psychiatry
+Communication
+Computer Science
+Computer Science & Engineering
+Computer Science, Artificial Intelligence
+Computer Science, Cybernetics
+Computer Science, Hardware & Architecture
+Computer Science, Information Systems
+Computer Science, Interdisciplinary Applications
+Computer Science, Software Engineering
+Computer Science, Technology & Applications
+Computer Science, Theory & Methods
+Computer Technology & Information Systems
+Construction & Building Technology
+Criminology & Penology
+Critical Care Medicine
+Crystallography
+Cultural Studies
+Dance
+Demography
+Dentistry, Oral Surgery & Medicine
+Dentistry/Oral Surgery & Medicine
+Dermatology
+Development Studies
+Developmental Biology
+Earth Sciences
+Ecology
+Economics
+Economics & Business
+Education
+Education & Educational Research
+Education, Scientific Disciplines
+Education, Special
+Electrical & Electronics Engineering
+Electrochemistry
+Electronics & Electrical Engineering
+Emergency Medicine
+Employee Relations & Human Resources
+Endocrinology & Metabolism
+Endocrinology, Metabolism & Nutrition
+Endocrinology, Nutrition & Metabolism
+Energy & Fuels
+Engineering
+Engineering Management/General
+Engineering Mathematics
+Engineering, Aerospace
+Engineering, Biomedical
+Engineering, Chemical
+Engineering, Civil
+Engineering, Electrical & Electronic
+Engineering, Environmental
+Engineering, Geological
+Engineering, Industrial
+Engineering, Manufacturing
+Engineering, Marine
+Engineering, Mechanical
+Engineering, Multidisciplinary
+Engineering, Ocean
+Engineering, Petroleum
+Entomology
+Entomology/Pest Control
+Environment/Ecology
+Environmental Engineering & Energy
+Environmental Medicine & Public Health
+Environmental Sciences
+Environmental Studies
+Environmental Studies, Geography & Development
+Environmental/Civil
+Ergonomics
+Ethics
+Ethnic Studies
+Evolutionary Biology
+Experimental Biology
+Family Studies
+Film, Radio, Television
+Fisheries
+Folklore
+Food Science & Technology
+Food Science/Nutrition
+Forestry
+Gastroenterology & Hepatology
+Gastroenterology And Hepatology
+General
+General & Internal Medicine
+Genetics & Heredity
+Geochemistry & Geophysics
+Geography
+Geography, Physical
+Geological, Petroleum & Mining Engineering
+Geology
+Geosciences
+Geosciences, Multidisciplinary
+Geriatrics & Gerontology
+Gerontology
+Green & Sustainable Science & Technology
+Health Care Sciences & Services
+Health Policy & Services
+Hematology
+History
+History & Philosophy Of Science
+History Of Social Sciences
+Horticulture
+Hospitality, Leisure, Sport & Tourism
+Humanities, Multidisciplinary
+Imaging Science & Photographic Technology
+Immunology
+Industrial Relations & Labor
+Infectious Diseases
+Information Science & Library Science
+Information Technology & Communication Systems
+Inorganic & Nuclear Chemistry
+Instrumentation & Measurement
+Instruments & Instrumentation
+Integrative & Complementary Medicine
+International Relations
+Language & Linguistics
+Law
+Library & Information Science
+Limnology
+Linguistics
+Literary Reviews
+Literary Theory & Criticism
+Literature
+Literature, African, Australian, Canadian
+Literature, American
+Literature, British Isles
+Literature, German, Dutch, Scandinavian
+Literature, Romance
+Literature, Slavic
+Logic
+Management
+Management & Organization
+Marine & Freshwater Biology
+Marketing & Business Communication
+Materials Science
+Materials Science & Engineering
+Materials Science, Biomaterials
+Materials Science, Ceramics
+Materials Science, Characterization, Testing
+Materials Science, Coatings & Films
+Materials Science, Composites
+Materials Science, Multidisciplinary
+Materials Science, Paper & Wood
+Materials Science, Textiles
+Mathematical & Computational Biology
+Mathematics
+Mathematics, Applied
+Mathematics, Interdisciplinary Applications
+Mechanical Engineering
+Mechanics
+Medical Ethics
+Medical Informatics
+Medical Laboratory Technology
+Medical Research, Diagnosis & Treatment
+Medical Research, General Topics
+Medical Research, Organs & Systems
+Medicine, General & Internal
+Medicine, Legal
+Medicine, Research & Experimental
+Medieval & Renaissance Studies
+Metallurgy
+Metallurgy & Metallurgical Engineering
+Meteorology & Atmospheric Sciences
+Microbiology
+Microscopy
+Mineralogy
+Mining & Mineral Processing
+Molecular Biology & Genetics
+Multidisciplinary
+Multidisciplinary Sciences
+Music
+Mycology
+Nanoscience & Nanotechnology
+Neuroimaging
+Neurology
+Neuroscience & Behavior
+Neurosciences
+Neurosciences & Behavior
+Nuclear Engineering
+Nuclear Science & Technology
+Nursing
+Nutrition & Dietetics
+Obstetrics & Gynecology
+Oceanography
+Oncogenesis & Cancer Research
+Oncology
+Operations Research & Management Science
+Ophthalmology
+Optics
+Optics & Acoustics
+Optics & Laser Research & Technology
+Organic Chemistry/Polymer Science
+Ornithology
+Orthopedics
+Orthopedics, Rehabilitation & Sports Medicine
+Otolaryngology
+Otorhinolaryngology
+Paleontology
+Parasitology
+Pathology
+Pediatrics
+Performing Arts
+Peripheral Vascular Diseases
+Pharmacology & Pharmacy
+Pharmacology & Toxicology
+Pharmacology/Toxicology
+Philosophy
+Physical Chemistry/Chemical Physics
+Physics
+Physics, Applied
+Physics, Atomic, Molecular & Chemical
+Physics, Condensed Matter
+Physics, Fluids & Plasmas
+Physics, Mathematical
+Physics, Multidisciplinary
+Physics, Nuclear
+Physics, Particles & Fields
+Physiology
+Plant & Animal Science
+Plant Sciences
+Poetry
+Political Science
+Political Science & Public Administration
+Political Science, Public Admin. & Development
+Polymer Science
+Primary Health Care
+Psychiatry
+Psychiatry/Psychology
+Psychology
+Psychology, Applied
+Psychology, Biological
+Psychology, Clinical
+Psychology, Development
+Psychology, Educational
+Psychology, Experimental
+Psychology, Mathematical
+Psychology, Multidisciplinary
+Psychology, Psychoanalysis
+Psychology, Social
+Public Administration
+Public Health & Health Care Science
+Public, Environmental & Occupational Health
+Quantum Science & Technology
+Radiology, Nuclear Medicine & Imaging
+Radiology, Nuclear Medicine & Medical Imaging
+Regional & Urban Planning
+Rehabilitation
+Religion
+Religion & Theology
+Remote Sensing
+Reproductive Biology
+Reproductive Medicine
+Research/Laboratory Medicine & Medical Technology
+Respiratory System
+Rheumatology
+Robotics
+Semiconductors & Solid State Materials Technology
+Signal Processing/Circuits & Systems
+Social Issues
+Social Sciences, Biomedical
+Social Sciences, General
+Social Sciences, Interdisciplinary
+Social Sciences, Mathematical Methods
+Social Work
+Social Work & Social Policy
+Sociology
+Sociology & Social Sciences
+Sociology/Social Sciences
+Soil Science
+Space Science
+Space Sciences
+Spectroscopy
+Spectroscopy/Instrumentation/Analytical Sciences
+Sport Sciences
+Statistics & Probability
+Substance Abuse
+Surgery
+Technology R&D Management
+Telecommunications
+Telecommunications Technology
+Theater
+Thermodynamics
+Toxicology
+Transplantation
+Transportation
+Transportation Science & Technology
+Tropical Medicine
+Urban Studies
+Urology & Nephrology
+Veterinary Medicine/Animal Health
+Veterinary Sciences
+Virology
+Water Resources
+Women'S Studies
+Zoology

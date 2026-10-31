@@ -137,7 +137,14 @@
                             </td>
                             <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white">
                                 {{ journal.title }}
-                                {% if journal.area %}
+                                {% set primaryArea = primaryAreas[journal.id] ?? null %}
+                                {% if primaryArea %}
+                                    {# Área principal CAPES; o ponto mostra a confiança: verde alta, âmbar média, cinza baixa, azul manual #}
+                                    <span class="mt-0.5 flex items-center gap-1.5 text-[11px] font-normal text-slate-500 dark:text-slate-400" title="{{ journal.area ?: primaryArea.name }} · confiança {{ {'high': 'alta', 'medium': 'média', 'low': 'baixa', 'manual': 'manual'}[primaryArea.confidence]|default(primaryArea.confidence) }}">
+                                        <span class="inline-block h-2 w-2 shrink-0 rounded-full {{ {'high': 'bg-emerald-500', 'medium': 'bg-amber-500', 'low': 'bg-slate-400', 'manual': 'bg-sky-500'}[primaryArea.confidence]|default('bg-slate-400') }}"></span>
+                                        {{ primaryArea.name }}
+                                    </span>
+                                {% elseif journal.area %}
                                     <span class="block text-[11px] font-normal text-slate-400">{{ journal.area }}</span>
                                 {% endif %}
                             </td>
@@ -266,7 +273,7 @@
             <div>
                 <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Arquivo CSV</label>
                 <input type="file" name="csv_file" accept=".csv" required class="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100">
-                <p class="text-[11px] text-slate-400 mt-1">Colunas aceitas: title, issn, qualis, area</p>
+                <p class="text-[11px] text-slate-400 mt-1">Colunas aceitas: title, issn, qualis, area e, opcional, areas_capes (áreas CAPES separadas por «;», a primeira é a principal: grava como curadoria manual travada). Separador «;» ou «,».</p>
             </div>
             <div class="flex justify-end gap-2 pt-2">
                 <button type="button" onclick="closeModal('importCsvModal')" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl">Cancelar</button>

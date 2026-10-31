@@ -1,0 +1,25 @@
+{#
+    Textos de metodologia da página de periódicos (A1.4 de docs/evolutions/periodicos-por-base.md): as palavras são as
+    do documento, sem alteração.
+    Parâmetros: part ("box" para a caixa "Como esta página é feita", acima das listas; "sources" para a seção
+    "Metodologia e fontes", no fim da página) e, em "sources", updatedAt (data dos dados).
+#}
+{% if part == 'box' %}
+    <section class="rounded-2xl border border-sky-200/70 bg-sky-50/70 p-4 sm:p-5 dark:border-sky-900/50 dark:bg-sky-950/30" aria-labelledby="como-esta-pagina-e-feita">
+        <h2 id="como-esta-pagina-e-feita" class="font-heading flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
+            <sl-icon name="info-circle" class="text-sky-600 dark:text-sky-400"></sl-icon> Como esta página é feita
+        </h2>
+        <p class="mt-2 text-sm leading-relaxed text-slate-700 dark:text-slate-300">Cada linha é um periódico em que docentes do CECH publicaram artigos registrados no Currículo Lattes. Os números são a quantidade de <strong>artigos distintos</strong> (coautorias entre docentes do Centro contam uma vez) e de <strong>docentes</strong> que publicaram nele. A ordem é apenas decrescente de quantidade de artigos, com empates em ordem alfabética, e <strong>não representa avaliação de qualidade, prestígio ou impacto</strong> dos periódicos. A presença em cada base foi verificada nas listas públicas de títulos das próprias bases e pode conter omissões; a área de conhecimento é atribuída automaticamente a partir das categorias informadas pelas bases, segundo a taxonomia da CAPES, e pode conter imprecisões (ver "<a href="#metodologia" class="font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200">Metodologia e fontes</a>", no fim da página).</p>
+    </section>
+{% else %}
+    <section id="metodologia" class="glass-card rounded-3xl p-5 sm:p-6" aria-labelledby="metodologia-e-fontes">
+        <h2 id="metodologia-e-fontes" class="font-heading text-xl font-bold text-slate-900 dark:text-white">Metodologia e fontes</h2>
+        <div class="mt-3 space-y-3 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            <p><strong class="text-slate-800 dark:text-slate-100">Fonte dos artigos:</strong> Currículos Lattes dos docentes do CECH importados neste portal; são considerados os itens do tipo "artigo em periódico".</p>
+            <p><strong class="text-slate-800 dark:text-slate-100">Identificação do periódico:</strong> pelo ISSN informado no currículo e, na sua falta, pelo título, com um tesauro de variações de nomes mantido pela equipe do portal.</p>
+            <p><strong class="text-slate-800 dark:text-slate-100">Listas das bases:</strong> Scopus (lista de títulos de julho de 2026), SciELO (coleção Brasil, agosto de 2026), Web of Science (listas de periódicos da Clarivate, agosto de 2026), PubMed (lista de periódicos da NLM, agosto de 2026), Latindex (catálogo, agosto de 2026).</p>
+            <p><strong class="text-slate-800 dark:text-slate-100">Área de conhecimento:</strong> taxonomia de áreas de avaliação da CAPES (9 grandes áreas, 50 áreas), atribuída automaticamente a partir das categorias das próprias bases (Web of Science, Scopus/ASJC, DOAJ, Latindex, OpenAlex e SciELO) e, quando elas faltam, pelo título do periódico, inclusive com apoio de inteligência artificial; por ser automática, pode conter imprecisões. Um periódico pode ter mais de uma área e recebe "Interdisciplinar" quando suas categorias se distribuem por mais de uma grande área.</p>
+            <p><strong class="text-slate-800 dark:text-slate-100">Correções:</strong> envie para o contato do portal. Dados atualizados em {{ updatedAt|date('d/m/Y') }}.</p>
+        </div>
+    </section>
+{% endif %}

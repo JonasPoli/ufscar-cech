@@ -3,6 +3,8 @@
 {% block title %}{{ isNew ? 'Novo Periódico' : 'Editar Periódico' }} | Admin CECH{% endblock %}
 
 {% block body %}
+{# Ponto de confiança da classificação de área: verde alta, âmbar média, cinza baixa, azul manual #}
+{% set confidenceDot = {'high': 'bg-emerald-500', 'medium': 'bg-amber-500', 'low': 'bg-slate-400', 'manual': 'bg-sky-500'} %}
 <div class="max-w-4xl mx-auto space-y-6">
     <!-- Top Nav -->
     <div class="flex items-center justify-between">
@@ -23,7 +25,7 @@
             </p>
         </div>
 
-        <form method="POST" class="space-y-6">
+        <form method="POST" id="journalForm" class="space-y-6">
             <input type="hidden" name="_token" value="{{ csrf_token(isNew ? 'journal_new' : 'journal_edit') }}">
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -32,7 +34,19 @@
                     <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                         Título Padronizado do Periódico <span class="text-rose-500">*</span>
                     </label>
-                    <input type="text" name="title" value="{{ journal.title }}" required placeholder="Ex: REVISTA BRASILEIRA DE EDUCAÇÃO" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-medium">
+                    <input type="text" name="title" value="{{ values.title }}" required placeholder="Ex: REVISTA BRASILEIRA DE EDUCAÇÃO" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-medium">
+                </div>
+
+                <!-- Nome de exibição -->
+                <div class="sm:col-span-2 space-y-1">
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                        <span>Nome de exibição (Opcional)</span>
+                        <span class="text-[10px] text-slate-400 font-mono">display_title{% if journal.displayTitleSource %} · fonte: {{ journal.displayTitleSource }}{% endif %}</span>
+                    </label>
+                    <input type="text" name="display_title" value="{{ values.display_title }}" maxlength="500" placeholder="Ex: Educação & Sociedade" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                        Nome mostrado na página pública de periódicos, para toda a família. Preenchido aqui, vale como manual e não é trocado pelo cálculo automático; em branco, é calculado a partir das fontes (SciELO, DOAJ, Latindex...).
+                    </p>
                 </div>
 
                 <!-- 3 Campos de ISSN -->
@@ -41,7 +55,7 @@
                         <span>ISSN Impresso (Print)</span>
                         <span class="text-[10px] text-slate-400 font-mono">issn_imp</span>
                     </label>
-                    <input type="text" name="issn_imp" value="{{ journal.issnImp }}" placeholder="Ex: 1413-2478" class="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                    <input type="text" name="issn_imp" value="{{ values.issn_imp }}" placeholder="Ex: 1413-2478" class="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
                 </div>
 
                 <div class="space-y-1">
@@ -49,7 +63,7 @@
                         <span>ISSN Eletrônico (Online)</span>
                         <span class="text-[10px] text-slate-400 font-mono">issn_e</span>
                     </label>
-                    <input type="text" name="issn_e" value="{{ journal.issnE }}" placeholder="Ex: 1984-0462" class="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                    <input type="text" name="issn_e" value="{{ values.issn_e }}" placeholder="Ex: 1984-0462" class="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
                 </div>
 
                 <div class="space-y-1">
@@ -57,7 +71,7 @@
                         <span>ISSN Linking (ISSN-L)</span>
                         <span class="text-[10px] text-slate-400 font-mono">issn_l</span>
                     </label>
-                    <input type="text" name="issn_l" value="{{ journal.issnL }}" placeholder="Ex: 1413-2478" class="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                    <input type="text" name="issn_l" value="{{ values.issn_l }}" placeholder="Ex: 1413-2478" class="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
                 </div>
 
                 <!-- Qualis -->
@@ -67,16 +81,16 @@
                     </label>
                     <select name="qualis" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500 font-bold">
                         <option value="">Sem Qualis / Não Avaliado</option>
-                        <option value="A1" {% if journal.qualis == 'A1' %}selected{% endif %}>A1 (Excelente)</option>
-                        <option value="A2" {% if journal.qualis == 'A2' %}selected{% endif %}>A2 (Excelente)</option>
-                        <option value="A3" {% if journal.qualis == 'A3' %}selected{% endif %}>A3 (Muito Bom)</option>
-                        <option value="A4" {% if journal.qualis == 'A4' %}selected{% endif %}>A4 (Muito Bom)</option>
-                        <option value="B1" {% if journal.qualis == 'B1' %}selected{% endif %}>B1 (Bom)</option>
-                        <option value="B2" {% if journal.qualis == 'B2' %}selected{% endif %}>B2 (Bom)</option>
-                        <option value="B3" {% if journal.qualis == 'B3' %}selected{% endif %}>B3 (Regular)</option>
-                        <option value="B4" {% if journal.qualis == 'B4' %}selected{% endif %}>B4 (Regular)</option>
-                        <option value="C"  {% if journal.qualis == 'C' %}selected{% endif %}>C (Baixo impacto / Outros)</option>
-                        <option value="NP" {% if journal.qualis == 'NP' %}selected{% endif %}>NP (Não Periódico)</option>
+                        <option value="A1" {% if values.qualis == 'A1' %}selected{% endif %}>A1 (Excelente)</option>
+                        <option value="A2" {% if values.qualis == 'A2' %}selected{% endif %}>A2 (Excelente)</option>
+                        <option value="A3" {% if values.qualis == 'A3' %}selected{% endif %}>A3 (Muito Bom)</option>
+                        <option value="A4" {% if values.qualis == 'A4' %}selected{% endif %}>A4 (Muito Bom)</option>
+                        <option value="B1" {% if values.qualis == 'B1' %}selected{% endif %}>B1 (Bom)</option>
+                        <option value="B2" {% if values.qualis == 'B2' %}selected{% endif %}>B2 (Bom)</option>
+                        <option value="B3" {% if values.qualis == 'B3' %}selected{% endif %}>B3 (Regular)</option>
+                        <option value="B4" {% if values.qualis == 'B4' %}selected{% endif %}>B4 (Regular)</option>
+                        <option value="C"  {% if values.qualis == 'C' %}selected{% endif %}>C (Baixo impacto / Outros)</option>
+                        <option value="NP" {% if values.qualis == 'NP' %}selected{% endif %}>NP (Não Periódico)</option>
                     </select>
                 </div>
 
@@ -85,8 +99,154 @@
                     <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                         Área de Avaliação / Conhecimento (Opcional)
                     </label>
-                    <input type="text" name="area" value="{{ journal.area }}" placeholder="Ex: EDUCAÇÃO / CIÊNCIAS HUMANAS" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                    <input type="text" name="area" value="{{ values.area }}" {% if familyHasAreas %}readonly aria-readonly="true"{% endif %} placeholder="Ex: EDUCAÇÃO / CIÊNCIAS HUMANAS" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500 {% if familyHasAreas %}bg-slate-100 dark:bg-slate-800 cursor-not-allowed{% else %}bg-white dark:bg-slate-900{% endif %}">
+                    {% if familyHasAreas %}
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Preenchido pela classificação CAPES da família: para mudar, use o bloco logo abaixo.
+                        </p>
+                    {% endif %}
+                    {% if journal.areaRaw %}
+                        <p class="text-[11px] text-slate-400">Valor original importado: {{ journal.areaRaw }}</p>
+                    {% endif %}
                 </div>
+            </div>
+
+            <!-- Área CAPES: seleção manual, resultado automático e evidências -->
+            <div id="capesAreasBlock" class="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+                <div>
+                    <h3 class="font-heading text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <sl-icon name="mortarboard" class="text-sky-600"></sl-icon> Área de Avaliação / Conhecimento (CAPES)
+                    </h3>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                        A classificação é da família do periódico (a linha canônica e as que estão agrupadas sob ela). Marcar áreas aqui vale como curadoria manual: a classificação automática deixa de alterá-las até o botão «Voltar ao automático».
+                    </p>
+                </div>
+
+                {# Situação atual da classificação #}
+                <div class="rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 p-3 space-y-2">
+                    {% if areaState.rows %}
+                        <p class="text-[11px] font-semibold text-slate-700 dark:text-slate-300">
+                            {% if areaState.has_manual %}
+                                Curadoria manual vigente{% if areaState.locked %} (travada){% endif %}.
+                            {% else %}
+                                Resultado automático{% if areaState.run_id %} da execução {{ areaState.run_id }}{% endif %}{% if areaState.updated_at %} em {{ areaState.updated_at|date('d/m/Y H:i') }}{% endif %}{% if areaState.locked %} (travado){% endif %}.
+                            {% endif %}
+                        </p>
+                        <ul class="flex flex-wrap gap-2">
+                            {% for row in areaState.rows %}
+                                <li class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-2 py-1 text-[11px] text-slate-700 dark:text-slate-300" title="{{ row.label }}">
+                                    <span class="inline-block h-2 w-2 rounded-full {{ confidenceDot[row.confidence]|default('bg-slate-400') }}"></span>
+                                    <span class="font-semibold">{{ row.name }}</span>
+                                    <span class="text-slate-400">{% if row.primary %}principal{% else %}secundária{% endif %} · confiança {{ confidenceLabels[row.confidence]|default(row.confidence) }}{% if row.method == 'auto' %} · {{ (row.score * 100)|round }}%{% endif %}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Sem classificação: não há evidência suficiente nas fontes ou a classificação automática ainda não rodou para este periódico.
+                        </p>
+                    {% endif %}
+                </div>
+
+                {% if isMember %}
+                    <div class="rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 p-3 text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-2">
+                        <sl-icon name="diagram-3" class="mt-0.5 shrink-0"></sl-icon>
+                        <span>
+                            Agrupado sob #{{ canonical.id }} «{{ canonical.title }}» — edite as áreas
+                            <a href="{{ path('app_admin_journal_edit', {'id': canonical.id}) }}" class="font-bold underline hover:no-underline">lá</a>.
+                        </span>
+                    </div>
+                {% else %}
+                    {# Checkboxes por grande área (a grande área sozinha também pode ser marcada) #}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {% for groupSlug, group in capesGroups %}
+                            <fieldset class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/40 p-3 space-y-1.5">
+                                <legend class="px-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{{ group.area.name }}</legend>
+                                <label class="flex items-center gap-2 text-[11px] italic text-slate-500 dark:text-slate-400 cursor-pointer">
+                                    <input type="checkbox" name="areas[]" value="{{ group.area.slug }}" {% if group.area.slug in values.areas %}checked{% endif %} class="rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                                    <span>— grande área, sem especificar</span>
+                                </label>
+                                {% for child in group.children %}
+                                    <label class="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
+                                        <input type="checkbox" name="areas[]" value="{{ child.slug }}" {% if child.slug in values.areas %}checked{% endif %} class="rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                                        <span>{{ child.name }}</span>
+                                    </label>
+                                {% endfor %}
+                            </fieldset>
+                        {% endfor %}
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                        <div class="space-y-1">
+                            <label for="areaPrimary" class="block text-xs font-semibold text-slate-700 dark:text-slate-300">Área principal</label>
+                            <select name="area_primary" id="areaPrimary" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                                <option value="">A primeira marcada</option>
+                                {% for groupSlug, group in capesGroups %}
+                                    <optgroup label="{{ group.area.name }}">
+                                        <option value="{{ group.area.slug }}" {% if values.area_primary == group.area.slug %}selected{% endif %}>{{ group.area.name }} — grande área, sem especificar</option>
+                                        {% for child in group.children %}
+                                            <option value="{{ child.slug }}" {% if values.area_primary == child.slug %}selected{% endif %}>{{ child.name }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                {% endfor %}
+                            </select>
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">A principal precisa estar entre as áreas marcadas; se não estiver, vale a primeira marcada.</p>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 {% if not areaState.locked %}cursor-pointer{% endif %}">
+                                <input type="checkbox" name="areas_locked" value="1" {% if values.areas_locked %}checked{% endif %} {% if areaState.locked %}disabled{% endif %} class="rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                                <span>Travar (curadoria manual)</span>
+                            </label>
+                            {% if areaState.locked %}
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">Travada: a classificação automática não altera estas áreas.</p>
+                            {% else %}
+                                <p class="text-[11px] text-slate-500 dark:text-slate-400">Ao salvar com áreas marcadas, a escolha já é gravada como manual e travada.</p>
+                            {% endif %}
+                            {% if not isNew and (areaState.locked or areaState.has_manual) %}
+                                <button type="submit" form="unlockAreasForm" class="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/40 px-3 py-1.5 text-[11px] font-semibold text-amber-800 dark:text-amber-300 hover:bg-amber-100 transition-colors">
+                                    <sl-icon name="arrow-counterclockwise"></sl-icon> Voltar ao automático
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                {# Evidências das fontes (só leitura) #}
+                {% if not isNew %}
+                    <div class="space-y-1.5">
+                        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300">Evidências</h4>
+                        {% if evidences %}
+                            <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                                <table class="w-full text-left text-[11px] text-slate-700 dark:text-slate-300">
+                                    <thead class="bg-slate-50 dark:bg-slate-900/60 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                                        <tr>
+                                            <th class="py-2 px-3">Fonte</th>
+                                            <th class="py-2 px-3">Rótulo</th>
+                                            <th class="py-2 px-3 w-20 text-right">Peso</th>
+                                            <th class="py-2 px-3">Lote</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                                        {% for evidence in evidences %}
+                                            <tr>
+                                                <td class="py-1.5 px-3 font-mono">{{ evidence.source }}</td>
+                                                <td class="py-1.5 px-3" title="{{ evidence.sourceTitle }}">{{ evidence.label }}</td>
+                                                <td class="py-1.5 px-3 text-right font-mono">{{ evidence.weightAsFloat|number_format(2, ',', '.') }}</td>
+                                                <td class="py-1.5 px-3 text-slate-500">{{ evidence.batch ?: '—' }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% if evidenceTotal > evidences|length %}
+                                <p class="text-[11px] text-slate-400">Mostrando {{ evidences|length }} de {{ evidenceTotal|number_format(0, ',', '.') }} evidências.</p>
+                            {% endif %}
+                        {% else %}
+                            <p class="text-[11px] text-slate-500 dark:text-slate-400">Nenhuma evidência de área carregada para este periódico.</p>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
 
             <!-- Bases de Indexação Acadêmica -->
@@ -103,7 +263,7 @@
 
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                         {% for db in databases %}
-                            {% set isChecked = journal.hasAcademicDatabase(db.acronym) %}
+                            {% set isChecked = (db.id ~ '') in values.academic_databases %}
                             <label class="flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all {% if isChecked %}border-sky-500 bg-sky-50/50 dark:bg-sky-950/40 text-sky-900 dark:text-sky-200 font-semibold shadow-2xs{% else %}border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 hover:border-slate-300{% endif %}">
                                 <input type="checkbox" name="academic_databases[]" value="{{ db.id }}" {% if isChecked %}checked{% endif %} class="rounded border-slate-300 text-sky-600 focus:ring-sky-500">
                                 {% if db.logo %}
@@ -124,8 +284,13 @@
                             <sl-icon name="diagram-3" class="text-sky-600"></sl-icon> Variações de Nomes e Sinônimos (Tesauro)
                         </h3>
                         <p class="text-[11px] text-slate-500 dark:text-slate-400">
-                            Insira um sinônimo ou variação por linha. O sistema usará estas variações para mapear automaticamente produções importadas do Lattes ou bases externas.
+                            Insira um sinônimo ou variação por linha. O sistema usará estas variações para mapear automaticamente produções importadas do Lattes ou bases externas. Um nome só pode pertencer a um periódico.
                         </p>
+                        {% if isMember %}
+                            <p class="text-[11px] text-amber-700 dark:text-amber-300">
+                                Este periódico está agrupado sob #{{ canonical.id }}: as variações novas são gravadas nele e aparecem no formulário dele.
+                            </p>
+                        {% endif %}
                     </div>
                 </div>
 
@@ -142,6 +307,12 @@
                 </button>
             </div>
         </form>
+
+        {% if not isNew and not isMember and (areaState.locked or areaState.has_manual) %}
+            <form id="unlockAreasForm" method="POST" action="{{ path('app_admin_journal_areas_unlock', {'id': journal.id}) }}" onsubmit="return confirm('Remover a curadoria manual das áreas e voltar à classificação automática?');">
+                <input type="hidden" name="_token" value="{{ csrf_token('unlock_areas_' ~ journal.id) }}">
+            </form>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

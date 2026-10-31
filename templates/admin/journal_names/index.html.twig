@@ -1,0 +1,187 @@
+{% extends 'admin/base.html.twig' %}
+
+{% block title %}Fila de nomes de periódicos | Admin CECH{% endblock %}
+
+{% block body %}
+{% set methods = {'issn': 'ISSN confirmado', 'keywords': 'palavras-chave', 'none': 'sem método'} %}
+<div class="space-y-6">
+    <!-- Header Section -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="font-heading text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <sl-icon name="inbox" class="text-sky-600 dark:text-sky-400"></sl-icon>
+                Fila de nomes de periódicos
+            </h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400">
+                Nomes dos artigos do Lattes sem vínculo seguro com o cadastro: {{ pendingCount|number_format(0, ',', '.') }} aguardando revisão.
+                Aceitar cria uma variação no periódico escolhido e revincula os artigos com esse nome; rejeitar mantém os artigos sem vínculo.
+            </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ path('app_admin_journal_index') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <sl-icon name="journal-bookmark"></sl-icon> Periódicos & Qualis
+            </a>
+        </div>
+    </div>
+
+    <!-- Abas por status -->
+    <div class="flex flex-wrap gap-2 pt-1">
+        {% for key, label in tabs %}
+            <a href="{{ path('app_admin_journal_name_index', {'status': key, 'q': q ?: null}) }}" class="px-3 py-1 rounded-xl text-xs font-bold transition-all {% if status == key %}bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300{% endif %}">
+                {{ label }} ({{ counts[key]|number_format(0, ',', '.') }})
+            </a>
+        {% endfor %}
+    </div>
+    {% if status == 'ambiguous' %}
+        <p class="text-xs text-amber-700 dark:text-amber-300">
+            Estes nomes casam com periódicos de famílias diferentes. Confira o ISSN e os títulos de amostra antes de escolher o periódico.
+        </p>
+    {% endif %}
+
+    <!-- Busca -->
+    <div class="glass-card rounded-2xl p-4 shadow-sm">
+        <form method="GET" action="{{ path('app_admin_journal_name_index') }}" class="flex flex-col sm:flex-row gap-3">
+            <input type="hidden" name="status" value="{{ status }}">
+            <div class="flex-1 relative">
+                <sl-icon name="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></sl-icon>
+                <input type="text" name="q" value="{{ q }}" placeholder="Buscar pelo nome como aparece no Lattes..." class="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+            </div>
+            <button type="submit" class="rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2 text-xs font-semibold hover:opacity-90 transition-opacity">
+                Buscar
+            </button>
+
+            {% if q != '' %}
+                <a href="{{ path('app_admin_journal_name_index', {'status': status}) }}" class="rounded-xl border border-slate-300 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center">
+                    Limpar
+                </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Data Table -->
+    <div class="glass-card rounded-2xl overflow-hidden shadow-sm">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                <thead class="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="py-3 px-4">Nome no Lattes</th>
+                        <th class="py-3 px-4 w-32">ISSN visto</th>
+                        <th class="py-3 px-4 w-32 text-center">Artigos / docentes</th>
+                        <th class="py-3 px-4">Amostra de títulos</th>
+                        <th class="py-3 px-4">Periódico</th>
+                        <th class="py-3 px-4">Revisão</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800 font-normal">
+                    {% for c in items %}
+                        <tr class="align-top hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+                            <td class="py-3 px-4 font-semibold text-slate-900 dark:text-white break-words">
+                                {{ c.rawName }}
+                            </td>
+                            <td class="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-400">
+                                {{ c.issnRaw ?: '-' }}
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                <span class="font-semibold text-slate-900 dark:text-white">{{ c.articlesCount|number_format(0, ',', '.') }}</span>
+                                <span class="block text-[11px] text-slate-400">{{ c.researchersCount }} docente{{ c.researchersCount == 1 ? '' : 's' }}</span>
+                            </td>
+                            <td class="py-3 px-4">
+                                <ul class="space-y-1 text-[11px] text-slate-500 dark:text-slate-400">
+                                    {% for sample in c.sampleTitles ?? [] %}
+                                        <li title="{{ sample }}">{{ sample|slice(0, 90) }}{% if sample|length > 90 %}...{% endif %}</li>
+                                    {% else %}
+                                        <li class="italic text-slate-400">Sem títulos de amostra</li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                            <td class="py-3 px-4">
+                                {% if c.status == 'accepted' and c.resolvedJournal %}
+                                    <span class="block text-[11px] text-slate-400">Vinculado a</span>
+                                    <a href="{{ path('app_admin_journal_edit', {'id': c.resolvedJournal.id}) }}" class="font-semibold text-sky-700 dark:text-sky-400 hover:underline">{{ c.resolvedJournal.title }}</a>
+                                    <span class="block text-[11px] text-slate-400">#{{ c.resolvedJournal.id }}</span>
+                                {% elseif c.suggestedJournal %}
+                                    <span class="block text-[11px] text-slate-400">Sugestão</span>
+                                    <a href="{{ path('app_admin_journal_edit', {'id': c.suggestedJournal.id}) }}" class="font-semibold text-sky-700 dark:text-sky-400 hover:underline">{{ c.suggestedJournal.title }}</a>
+                                    <span class="block text-[11px] text-slate-400">#{{ c.suggestedJournal.id }} · {{ methods[c.suggestionMethod] ?? 'método desconhecido' }}</span>
+                                {% else %}
+                                    <span class="italic text-slate-400">Sem sugestão</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4">
+                                {% if c.status in ['pending', 'ambiguous'] %}
+                                    <form method="POST" action="{{ path('app_admin_journal_name_accept', {'id': c.id}) }}" class="flex flex-wrap items-center gap-1.5">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('name_accept_' ~ c.id) }}">
+                                        <input type="hidden" name="status" value="{{ status }}">
+                                        <input type="hidden" name="q" value="{{ q }}">
+                                        <input type="hidden" name="page" value="{{ currentPage }}">
+                                        <label for="journal-id-{{ c.id }}" class="sr-only">ID do periódico</label>
+                                        <input id="journal-id-{{ c.id }}" type="number" name="journal_id" min="1" required placeholder="ID" value="{{ c.suggestedJournal ? c.suggestedJournal.id : '' }}" class="w-24 px-2 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                                        <button type="submit" class="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-500 transition-colors">Aceitar</button>
+                                    </form>
+                                    <div class="mt-2 flex flex-wrap items-center gap-3 text-[11px]">
+                                        <form method="POST" action="{{ path('app_admin_journal_name_reject', {'id': c.id}) }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token('name_reject_' ~ c.id) }}">
+                                            <input type="hidden" name="status" value="{{ status }}">
+                                            <input type="hidden" name="q" value="{{ q }}">
+                                            <input type="hidden" name="page" value="{{ currentPage }}">
+                                            <button type="submit" class="font-semibold text-rose-600 hover:text-rose-500 dark:text-rose-400">Rejeitar</button>
+                                        </form>
+                                        <a href="{{ path('app_admin_journal_index', {'search': c.rawName}) }}" target="_blank" rel="noopener" class="font-semibold text-slate-600 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-400">Procurar no cadastro</a>
+                                    </div>
+                                {% elseif c.status == 'rejected' %}
+                                    <form method="POST" action="{{ path('app_admin_journal_name_reopen', {'id': c.id}) }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('name_reopen_' ~ c.id) }}">
+                                        <input type="hidden" name="status" value="{{ status }}">
+                                        <input type="hidden" name="q" value="{{ q }}">
+                                        <input type="hidden" name="page" value="{{ currentPage }}">
+                                        <button type="submit" class="rounded-lg border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Reabrir</button>
+                                    </form>
+                                    <span class="block mt-1 text-[11px] text-slate-400">Rejeitado em {{ c.reviewedAt ? c.reviewedAt|date('d/m/Y H:i') : '-' }} por {{ c.reviewedBy ?: '-' }}</span>
+                                {% else %}
+                                    <span class="text-[11px] text-slate-400">Aceito em {{ c.reviewedAt ? c.reviewedAt|date('d/m/Y H:i') : '-' }} por {{ c.reviewedBy ?: '-' }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="py-8 text-center text-slate-400">
+                                Nenhum nome nesta aba{% if q != '' %} com a busca «{{ q }}»{% endif %}.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if totalPages > 1 %}
+            {% set pageParams = {'status': status, 'q': q ?: null} %}
+            <div class="px-4 py-3 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-xs text-slate-500">
+                    Página {{ currentPage }} de {{ totalPages }} ({{ total|number_format(0, ',', '.') }} nomes)
+                </span>
+                <div class="flex items-center gap-1">
+                    {% if currentPage > 1 %}
+                        <a href="{{ path('app_admin_journal_name_index', pageParams|merge({'page': 1})) }}" class="px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">« Primeira</a>
+                        <a href="{{ path('app_admin_journal_name_index', pageParams|merge({'page': currentPage - 1})) }}" class="px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">‹ Anterior</a>
+                    {% endif %}
+
+                    {% set startPage = max(1, currentPage - 2) %}
+                    {% set endPage = min(totalPages, currentPage + 2) %}
+                    {% for p in startPage..endPage %}
+                        <a href="{{ path('app_admin_journal_name_index', pageParams|merge({'page': p})) }}" class="px-2.5 py-1 text-xs rounded-lg border {% if p == currentPage %}bg-sky-600 text-white border-sky-600 font-bold{% else %}border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %}">
+                            {{ p }}
+                        </a>
+                    {% endfor %}
+
+                    {% if currentPage < totalPages %}
+                        <a href="{{ path('app_admin_journal_name_index', pageParams|merge({'page': currentPage + 1})) }}" class="px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Próxima ›</a>
+                        <a href="{{ path('app_admin_journal_name_index', pageParams|merge({'page': totalPages})) }}" class="px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">Última »</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

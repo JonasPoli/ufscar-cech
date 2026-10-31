@@ -30,7 +30,7 @@ class JournalDatabaseImporterService
      * @param string $filePath Caminho absoluto do arquivo (.csv, .xlsx, .txt, .json)
      * @param string|null $targetDatabaseAcronym Sigla da base de destino (ex: 'scopus', 'wos', 'latindex', 'doaj')
      * @param callable|null $progressCallback Callback opcional: fn(int $current, int $total, string $msg)
-     * @return array{success: bool, database: ?string, databaseName: ?string, totalRead: int, inserted: int, updated: int, linksCreated: int, errors: array<string>}
+     * @return array{success: bool, database: ?string, databaseName: ?string, totalRead: int, inserted: int, updated: int, linksCreated: int, variationsSkipped: int, errors: array<string>}
      */
     public function import(string $filePath, ?string $targetDatabaseAcronym = null, ?callable $progressCallback = null): array
     {
@@ -48,6 +48,7 @@ class JournalDatabaseImporterService
                 'inserted' => 0,
                 'updated' => 0,
                 'linksCreated' => 0,
+                'variationsSkipped' => 0,
                 'errors' => ['Arquivo não encontrado: ' . $filePath],
             ];
         }
@@ -86,6 +87,7 @@ class JournalDatabaseImporterService
                 'inserted' => 0,
                 'updated' => 0,
                 'linksCreated' => 0,
+                'variationsSkipped' => 0,
                 'errors' => ['Não foi possível identificar a Base de Indexação. Por favor selecione a base manualmente.'],
             ];
         }
@@ -111,6 +113,7 @@ class JournalDatabaseImporterService
                 'inserted' => 0,
                 'updated' => 0,
                 'linksCreated' => 0,
+                'variationsSkipped' => 0,
                 'errors' => ['Nenhum arquivo válido encontrado para processar.'],
             ];
         }
@@ -143,6 +146,7 @@ class JournalDatabaseImporterService
                 'inserted' => 0,
                 'updated' => 0,
                 'linksCreated' => 0,
+                'variationsSkipped' => 0,
                 'errors' => ['Nenhum registro encontrado nos arquivos processados.'],
             ];
         }
@@ -155,7 +159,10 @@ class JournalDatabaseImporterService
         $issnToId = [];
         $titleToId = [];
 
-        $stmt = $conn->executeQuery('SELECT id, normalized_issn, normalized_issn_e, normalized_issn_l, normalized_issn_imp, title FROM qualis_journals');
+        // id => título normalizado do próprio periódico, só para quem ainda não tem normalized_title (preenchido no UPDATE)
+        $normTitleToFill = [];
+
+        $stmt = $conn->executeQuery('SELECT id, normalized_issn, normalized_issn_e, normalized_issn_l, normalized_issn_imp, title, normalized_title FROM qualis_journals');
         while ($r = $stmt->fetchAssociative()) {
             $jid = (int)$r['id'];
             foreach (['normalized_issn', 'normalized_issn_e', 'normalized_issn_l', 'normalized_issn_imp'] as $col) {
@@ -166,6 +173,9 @@ class JournalDatabaseImporterService
             $normTitle = StringNormalizer::normalizeString($r['title']);
             if ($normTitle !== '' && !isset($titleToId[$normTitle])) {
                 $titleToId[$normTitle] = $jid;
+            }
+            if (empty($r['normalized_title'])) {
+                $normTitleToFill[$jid] = $normTitle !== '' ? $normTitle : null;
             }
         }
 
@@ -191,6 +201,7 @@ class JournalDatabaseImporterService
         $updated = 0;
         $linksCreated = 0;
         $variationsAdded = 0;
+        $variationsSkipped = 0;
         $errors = [];
 
         $batchSize = 250;
@@ -254,7 +265,8 @@ class JournalDatabaseImporterService
                         normalized_issn_l = COALESCE(NULLIF(normalized_issn_l, ""), ?),
                         issn = COALESCE(NULLIF(issn, ""), ?),
                         normalized_issn = COALESCE(NULLIF(normalized_issn, ""), ?),
-                        area = COALESCE(NULLIF(area, ""), ?)
+                        area = COALESCE(NULLIF(area, ""), ?),
+                        normalized_title = COALESCE(NULLIF(normalized_title, ""), ?)
                      WHERE id = ?',
                     [
                         $issnImp ?: null,
@@ -266,6 +278,7 @@ class JournalDatabaseImporterService
                         $displayIssn ?: null,
                         $primaryNorm ?: null,
                         $area ?: null,
+                        $normTitleToFill[$journalId] ?? null,
                         $journalId,
                     ]
                 );
@@ -286,10 +299,12 @@ class JournalDatabaseImporterService
                 if ($title === '') {
                     $title = 'Periódico ISSN ' . ($displayIssn ?: 'desconhecido');
                 }
+                $normTitleDb = mb_substr(StringNormalizer::normalizeString($title, true), 0, 500, 'UTF-8') ?: null;
                 $conn->executeStatement(
-                    'INSERT INTO qualis_journals (title, issn, normalized_issn, issn_imp, normalized_issn_imp, issn_e, normalized_issn_e, issn_l, normalized_issn_l, area, qualis) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    'INSERT INTO qualis_journals (title, normalized_title, issn, normalized_issn, issn_imp, normalized_issn_imp, issn_e, normalized_issn_e, issn_l, normalized_issn_l, area, qualis) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                     [
                         mb_substr($title, 0, 500, 'UTF-8'),
+                        $normTitleDb,
                         $displayIssn ?: null,
                         $primaryNorm ?: null,
                         $issnImp ?: null,
@@ -325,14 +340,25 @@ class JournalDatabaseImporterService
                     $varName = trim((string)$varName);
                     if ($varName === '' || mb_strlen($varName) < 2) continue;
                     $normVar = StringNormalizer::normalizeString($varName);
-                    if ($normVar === '' || isset($titleToId[$normVar])) continue;
+                    if ($normVar === '') continue;
 
-                    $conn->executeStatement(
+                    // Mesmo normalized_name já existente em qualquer periódico (como título ou variante): pula
+                    if (isset($titleToId[$normVar])) {
+                        $variationsSkipped++;
+                        continue;
+                    }
+
+                    // Com o índice único uniq_journal_variant_norm, INSERT IGNORE afeta 0 linhas quando a variante já existe
+                    $affected = $conn->executeStatement(
                         'INSERT IGNORE INTO journal_name_variants (journal_id, variation_name, normalized_name, variation_type, status, created_at, updated_at) VALUES (?, ?, ?, ?, 1, NOW(), NOW())',
                         [$journalId, mb_substr($varName, 0, 500, 'UTF-8'), mb_substr($normVar, 0, 500, 'UTF-8'), 'alternative']
                     );
-                    $titleToId[$normVar] = $journalId;
-                    $variationsAdded++;
+                    if ($affected > 0) {
+                        $titleToId[$normVar] = $journalId;
+                        $variationsAdded++;
+                    } else {
+                        $variationsSkipped++;
+                    }
                 }
             }
 
@@ -376,6 +402,7 @@ class JournalDatabaseImporterService
             'inserted' => $inserted,
             'updated' => $updated,
             'linksCreated' => $linksCreated,
+            'variationsSkipped' => $variationsSkipped,
             'errors' => $errors,
         ];
     }
@@ -706,15 +733,16 @@ class JournalDatabaseImporterService
                 $map['issn_idx'] = $idx;
             }
 
-            // Area / Categories / Subtemas
+            // Area / Categories / Subtemas (ASJC do Scopus). A coluna "Top level: Social Sciences" é só um sinalizador e não entra.
             if ($map['area'] === null && (
                 $norm === 'webofsciencecategories' ||
                 $norm === 'asjcclassificationcodes' ||
+                $norm === 'allsciencejournalclassificationcodesasjc' ||
+                $norm === 'asjc' ||
                 $norm === 'subjectarea' ||
                 $norm === 'area' ||
                 $norm === 'subjects' ||
-                $norm === 'subtemas' ||
-                $norm === 'toplevelsocialsciences'
+                $norm === 'subtemas'
             )) {
                 $map['area'] = $header;
                 $map['area_idx'] = $idx;

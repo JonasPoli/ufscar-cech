@@ -140,3 +140,30 @@ Ferramenta para exportação completa, migração e segurança do banco de dados
 - **Google Search Console**: Verificação de propriedade do domínio.
 - **Meta Tags & Open Graph**: Personalização de títulos, descrições e imagem de compartilhamento social.
 - **Sitemap XML & Robots.txt**: Controle de indexação pelos motores de busca.
+
+---
+
+## 🎓 9. Áreas CAPES no cadastro de periódicos (`/admin/journals`)
+
+- **Preenchimento automático**: o campo **Área de Avaliação / Conhecimento** recebe o nome CAPES em maiúsculas, no formato `EDUCAÇÃO / CIÊNCIAS HUMANAS` (área / grande área). Quando a família do periódico já tem áreas, o campo fica somente leitura e a dica manda editar no bloco logo abaixo.
+- **Texto livre e valor original**: enquanto a família não tem áreas CAPES, o campo aceita texto livre. Se o texto não for um nome CAPES, ele fica guardado e aparece abaixo do campo como *Valor original importado*. A classificação automática não apaga esse texto.
+- **Edição**: no bloco **Área de Avaliação / Conhecimento (CAPES)**, marque as áreas, escolha a *área principal* e salve. Se a seleção mudou, ela vira curadoria manual e fica travada: a classificação automática deixa de alterar a família. Salvar sem mexer nas áreas não trava nada.
+- **Travar (curadoria manual)**: impede a classificação automática de alterar a família, mesmo sem áreas marcadas.
+- **Voltar ao automático**: aparece quando há curadoria manual ou trava. Apaga a curadoria manual da família, destrava e roda a classificação automática só para ela. Sem evidência suficiente, a área volta ao valor original importado.
+- **Situação e evidências**: o bloco mostra se a curadoria é manual ou automática, a execução que a gerou, a confiança de cada área (alta, média, baixa ou manual) e a tabela de evidências das fontes, só para leitura.
+- **Periódicos agrupados**: impressos e online de uma mesma revista formam uma família. A linha agrupada mostra *Agrupado sob #id*; as áreas se editam na linha canônica, pelo link do aviso.
+- **Nome de exibição**: campo logo abaixo do título, é o nome mostrado em `/periodicos` para a família inteira. Preenchido, vale como manual e não é recalculado; em branco, volta ao cálculo a partir das fontes (SciELO, DOAJ, Latindex e demais bases).
+
+---
+
+## 🗂️ 10. Fila de nomes de periódicos (`/admin/journal-names`)
+
+- **Por que um nome cai na fila**: o nome de periódico de um artigo do Lattes entra na fila quando não tem vínculo seguro com o cadastro. O sistema não adivinha pelas palavras-chave: elas geram só uma sugestão, que nunca vincula sozinha.
+- **Quando entra**: ao importar um currículo, os nomes sem vínculo que ainda não estavam na fila entram nela, e os que já estavam têm contagens e títulos de amostra atualizados. A reindexação completa recalcula a fila inteira. Um nome novo cai como *Pendente* ou, se casar com periódicos de famílias diferentes, como *Ambíguo*.
+- **Sugestão**: a coluna mostra o periódico provável e o método usado. *ISSN confirmado* quer dizer que o ISSN de um artigo confirmou o periódico, mas ainda não há artigos suficientes para criar a variação sem revisão. Pode ser aceito com um clique.
+- **Aceitar**: informe o ID do periódico (qualquer linha da família serve) e clique em *Aceitar*. O nome vira variação desse periódico, os artigos com esse nome são revinculados e o nome sai da fila.
+- **Rejeitar**: os artigos continuam sem vínculo, e o nome vai para *Rejeitados*.
+- **Reabrir**: só para nomes rejeitados, que voltam a *Pendentes*. Nomes aceitos não voltam, porque a variação e os vínculos já foram gravados.
+- **Ambíguos**: o nome casa com periódicos de famílias diferentes, e o sistema não escolhe entre eles. Só o ISSN do artigo resolve esse caso. Antes de informar um ID, confira o ISSN e os títulos de amostra; se o nome já pertence a outra família, a tela mostra o conflito e nada muda.
+- **Abas e contagens**: *Pendentes*, *Ambíguos*, *Aceitos* e *Rejeitados* separam os casos, e o topo da tela mostra quantos nomes aguardam revisão. Nomes pendentes e ambíguos têm o link *Procurar no cadastro*, que abre a busca de periódicos em outra aba.
+- **Atualização**: um nome pendente que deixa de aparecer nos artigos (porque ganhou vínculo, por exemplo) sai da fila na próxima atualização. Nomes já decididos não mudam.

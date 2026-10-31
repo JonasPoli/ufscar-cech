@@ -124,8 +124,12 @@
                             Tesauros & Autoridades
                         </div>
 
-                        <a href="{{ path('app_admin_journal_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current starts with 'app_admin_journal' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                        <a href="{{ path('app_admin_journal_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if (current starts with 'app_admin_journal') and not (current starts with 'app_admin_journal_name') %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
                             <sl-icon name="journal-bookmark"></sl-icon> Periódicos & Qualis
+                        </a>
+
+                        <a href="{{ path('app_admin_journal_name_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current starts with 'app_admin_journal_name' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
+                            <sl-icon name="inbox"></sl-icon> Fila de nomes
                         </a>
 
                         <a href="{{ path('app_admin_academic_database_index') }}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl transition-colors {% if current starts with 'app_admin_academic_database' %}bg-cech-blue/10 text-cech-blue dark:bg-cech-blue/20 dark:text-cech-teal font-semibold{% else %}text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900{% endif %}">
@@ -198,9 +202,9 @@
                 <!-- Flash Messages -->
                 {% for label, messages in app.flashes %}
                     {% for message in messages %}
-                        <div class="rounded-2xl p-4 text-xs font-semibold flex items-center justify-between shadow-sm {% if label == 'error' %}bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60{% elseif label == 'success' %}bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60{% else %}bg-sky-100 text-sky-800 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/60{% endif %}">
+                        <div class="rounded-2xl p-4 text-xs font-semibold flex items-center justify-between shadow-sm {% if label in ['error', 'danger'] %}bg-rose-100 text-rose-800 border border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800/60{% elseif label == 'success' %}bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800/60{% else %}bg-sky-100 text-sky-800 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800/60{% endif %}">
                             <div class="flex items-center gap-2">
-                                <sl-icon name="{% if label == 'error' %}exclamation-octagon{% elseif label == 'success' %}check2-circle{% else %}info-circle{% endif %}"></sl-icon>
+                                <sl-icon name="{% if label in ['error', 'danger'] %}exclamation-octagon{% elseif label == 'success' %}check2-circle{% else %}info-circle{% endif %}"></sl-icon>
                                 <span>{{ message }}</span>
                             </div>
                             <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">

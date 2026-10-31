@@ -123,3 +123,9 @@ Quando o administrador identifica registros duplicados na base (por exemplo, doi
    - Transfere todas as variações existentes dos registros secundários para o registro principal.
    - Remove duplicatas de variantes idênticas.
    - Deleta os registros secundários do banco de dados com segurança transacional.
+
+---
+
+## 📰 Variantes de Periódicos (`JournalVariantGuard`)
+
+Os nomes de periódicos ficam em `journal_name_variants`, e o tipo de cada variante está em `variation_type`: `alternative` são as importadas (listas de bases e arquivos de tesauro) e as que vêm da fusão de periódicos; `lattes` são as grafias aprendidas dos artigos do Lattes quando pelo menos dois artigos confirmam pelo ISSN o mesmo periódico (padrão); `curated` são as aceitas na fila de nomes ou por arquivo de overrides; e `manual` são as digitadas no formulário do periódico. A coluna `normalized_name` é única nessa tabela, e o `JournalVariantGuard` confere essa trava antes de cada gravação: um nome que já é variante ou título de outra família é recusado, e dentro da mesma família ele não é gravado de novo. A regra de resolução completa a trava: um nome usado por mais de uma família nunca resolve sozinho. Nas etapas por nome, o resolvedor o marca como ambíguo e o envia para a fila de revisão, e sem decisão manual só o ISSN do artigo o vincula.

@@ -4,6 +4,7 @@ namespace App\Controller\pub;
 
 use App\Repository\ResearcherRepository;
 use App\Repository\SiteSettingRepository;
+use App\Service\JournalsByDatabaseService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -49,6 +50,20 @@ class SeoController extends AbstractController
             'priority' => '0.8',
             'lastmod' => date('Y-m-d'),
         ];
+        $urls[] = [
+            'loc' => $baseUrl . $this->generateUrl('app_pub_journals_index'),
+            'changefreq' => 'weekly',
+            'priority' => '0.8',
+            'lastmod' => date('Y-m-d'),
+        ];
+        foreach (JournalsByDatabaseService::BASES as $base) {
+            $urls[] = [
+                'loc' => $baseUrl . $this->generateUrl('app_pub_journals_database', ['base' => $base]),
+                'changefreq' => 'weekly',
+                'priority' => '0.8',
+                'lastmod' => date('Y-m-d'),
+            ];
+        }
 
         // Departments
         $departments = $this->researcherRepo->findTopDepartments(100);
