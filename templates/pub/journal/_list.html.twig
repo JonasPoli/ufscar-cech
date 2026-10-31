@@ -33,7 +33,7 @@
 <div class="flex items-start justify-between gap-4">
 <div class="min-w-0 flex-1">
 <p class="font-heading text-sm font-semibold leading-snug text-slate-900 break-words dark:text-white">{{ journal.name }}</p>
-{% if journal.issns %}<p class="mt-0.5">ISSN {{ journal.issns|join(', ') }}</p>{% endif %}
+{% if journal.issns or journal.qualis %}<p class="mt-0.5 flex flex-wrap items-center gap-1.5">{% if journal.issns %}<span>ISSN {{ journal.issns|join(', ') }}</span>{% endif %}{{ qualis_badge(null, null, journal.qualis) }}</p>{% endif %}
 {% if journal.areas %}<span class="journal-areas mt-1.5 flex flex-wrap gap-1">{% for area in journal.areas %}<span class="inline-flex max-w-full rounded-full px-2 py-0.5 text-[11px] font-medium break-words {{ area.is_primary ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }}">{{ area.name }}</span>{% endfor %}</span>{% endif %}
 </div>
 <p class="journal-count shrink-0 whitespace-nowrap text-right"><strong class="block text-sm font-bold text-slate-900 dark:text-white">{{ articlesLabel }}</strong> {{ journal.n_researchers|number_format(0, ',', '.') }} {{ journal.n_researchers == 1 ? 'docente' : 'docentes' }}</p>

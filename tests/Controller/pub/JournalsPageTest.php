@@ -97,7 +97,7 @@ class JournalsPageTest extends WebTestCase
     /**
      * @dataProvider publicUrls
      */
-    public function testPublicMarkupHasNoRankingVocabularyNorQualisSeal(string $url): void
+    public function testPublicMarkupHasNoRankingVocabulary(string $url): void
     {
         $crawler = $this->get($url);
         $this->assertResponseIsSuccessful();
@@ -109,7 +109,7 @@ class JournalsPageTest extends WebTestCase
         // Dentro do <main> (sem os nomes de classe utilitária, como top-0 do layout) valem também as demais palavras
         // proibidas de A1.1: classes próprias, data-*, ids e textos.
         $main = (string) preg_replace('/\sclass="[^"]*"/', '', $crawler->filter('main')->outerHtml());
-        foreach (['/\btop\b/i', '/melhores/i', '/posi(ç|c)ão/iu', '/classificação de periódicos/iu', '/#1\b/', '/qualis/i', '/loop\.index/'] as $forbidden) {
+        foreach (['/\btop\b/i', '/melhores/i', '/posi(ç|c)ão/iu', '/classificação de periódicos/iu', '/#1\b/', '/loop\.index/'] as $forbidden) {
             $this->assertDoesNotMatchRegularExpression($forbidden, $main);
         }
 
@@ -483,6 +483,86 @@ class JournalsPageTest extends WebTestCase
         $this->assertStringNotContainsString('1234-5678', (string) $this->client->getResponse()->getContent());
     }
 
+    public function testQualisSealShowsTheStratumOfTheArticlesWithTheSystemIconAndColor(): void
+    {
+        $this->beginSeed();
+        $u = $this->uniq;
+        $researcher = $this->insertResearcher("Docente $u");
+
+        $canonical = $this->insertJournal("Revista Estrato $u");
+        $online = $this->insertJournal("Revista Estrato Online $u", $canonical);
+        $this->linkToBase($canonical, 'scopus');
+        // Dois artigos A3 na linha impressa e um A1 na online: vale o estrato de mais artigos, em toda a família
+        $this->insertArticle($researcher, $canonical, 'Artigo 1', 2024, null, 'ARTIGO', 'A3');
+        $this->insertArticle($researcher, $canonical, 'Artigo 2', 2023, null, 'ARTIGO', 'A3');
+        $this->insertArticle($researcher, $online, 'Artigo 3', 2022, null, 'ARTIGO', 'A1');
+
+        $empate = $this->insertJournal("Revista Empate $u");
+        $this->linkToBase($empate, 'scopus');
+        $this->insertArticle($researcher, $empate, 'Artigo B1', 2024, null, 'ARTIGO', 'B1');
+        $this->insertArticle($researcher, $empate, 'Artigo A4', 2023, null, 'ARTIGO', 'A4');
+
+        // O mesmo artigo em dois currículos conta uma vez: um A2 repetido não vence dois artigos B2
+        $coautoria = $this->insertJournal("Revista Coautoria Estrato $u");
+        $this->linkToBase($coautoria, 'scopus');
+        $outro = $this->insertResearcher("Outro Docente $u");
+        $this->insertArticle($researcher, $coautoria, 'Artigo repetido', 2024, "10.5555/estrato-$u", 'ARTIGO', 'A2');
+        $this->insertArticle($outro, $coautoria, 'Artigo repetido', 2024, "10.5555/estrato-$u", 'ARTIGO', 'A2');
+        $this->insertArticle($outro, $coautoria, 'Artigo repetido', 2024, "10.5555/estrato-$u", 'ARTIGO', 'A2');
+        $this->insertArticle($researcher, $coautoria, 'Artigo B2 um', 2023, null, 'ARTIGO', 'B2');
+        $this->insertArticle($researcher, $coautoria, 'Artigo B2 dois', 2022, null, 'ARTIGO', 'B2');
+
+        $semEstrato = $this->insertJournal("Revista Sem Estrato $u");
+        $this->linkToBase($semEstrato, 'scopus');
+        $this->insertArticle($researcher, $semEstrato, 'Artigo sem estrato', 2024, null);
+
+        // Capítulo com estrato não conta: a página é só de artigos
+        $capitulo = $this->insertJournal("Revista Capítulo $u");
+        $this->linkToBase($capitulo, 'scopus');
+        $this->insertArticle($researcher, $capitulo, 'Artigo sem estrato da revista', 2024, null);
+        $this->insertArticle($researcher, $capitulo, 'Capítulo', 2023, null, 'CAPITULO', 'A1');
+
+        $rows = $this->service()->getDatabaseList('scopus')['rows'];
+        $this->assertSame('A3', $this->rowOf($rows, $canonical)['qualis']);
+        $this->assertSame('A4', $this->rowOf($rows, $empate)['qualis'], 'No empate, o estrato mais alto.');
+        $this->assertSame('B2', $this->rowOf($rows, $coautoria)['qualis']);
+        $this->assertNull($this->rowOf($rows, $semEstrato)['qualis']);
+        $this->assertNull($this->rowOf($rows, $capitulo)['qualis']);
+
+        $crawler = $this->get('/periodicos/scopus');
+        $badge = $this->itemOf($crawler, "Revista Estrato $u")->filter('span[title="Estrato Qualis CAPES: A3"]');
+        $this->assertCount(1, $badge);
+        $this->assertSame('Qualis A3', trim($badge->text()));
+        $this->assertCount(1, $badge->filter('sl-icon[name="award"]'));
+        // A mesma cor dos selos dos artigos (`QualisExtension::renderQualisBadge`)
+        $this->assertStringContainsString('bg-teal-100 text-teal-800', $badge->attr('class'));
+        $this->assertCount(0, $this->itemOf($crawler, "Revista Sem Estrato $u")->filter('sl-icon[name="award"]'));
+        $this->assertStringNotContainsString('Qualis', $this->itemOf($crawler, "Revista Sem Estrato $u")->text());
+    }
+
+    public function testQualisSealAlsoAppearsInTheOverviewAndMethodologyExplainsIt(): void
+    {
+        $this->beginSeed();
+        $u = $this->uniq;
+        $journal = $this->insertJournal("Revista Visão Geral $u");
+        $this->linkToBase($journal, 'scopus');
+        $researcher = $this->insertResearcher("Docente $u");
+        // Artigos suficientes para entrar nos primeiros 25 da Scopus
+        for ($i = 1; $i <= 500; $i++) {
+            $this->insertArticle($researcher, $journal, "Artigo $i", 1900 + ($i % 120), null, 'ARTIGO', 'A1');
+        }
+
+        $crawler = $this->get('/periodicos');
+
+        $badge = $this->itemOf($crawler, "Revista Visão Geral $u")->filter('span[title="Estrato Qualis CAPES: A1"]');
+        $this->assertCount(1, $badge);
+        $this->assertStringContainsString('bg-emerald-100 text-emerald-800', $badge->attr('class'));
+        $this->assertStringContainsString(
+            'Qualis: estrato da CAPES registrado nos artigos do periódico neste portal; se houver mais de um, aparece o de mais artigos. O selo é informativo e não define a ordem da lista.',
+            $crawler->filter('#metodologia')->text()
+        );
+    }
+
     public function testDisplayNameIsTheDisplayTitleOrTheTitleInTitleCase(): void
     {
         $this->beginSeed();
@@ -743,7 +823,7 @@ class JournalsPageTest extends WebTestCase
         return (int) $this->conn->lastInsertId();
     }
 
-    private function insertArticle(int $researcherId, int $journalId, string $title, ?int $year, ?string $doi, string $type = 'ARTIGO'): void
+    private function insertArticle(int $researcherId, int $journalId, string $title, ?int $year, ?string $doi, string $type = 'ARTIGO', ?string $qualis = null): void
     {
         $now = date('Y-m-d H:i:s');
         $this->conn->insert('production_items', [
@@ -752,6 +832,7 @@ class JournalsPageTest extends WebTestCase
             'title' => $title,
             'year' => $year,
             'doi' => $doi,
+            'qualis' => $qualis,
             'qualis_journal_id' => $journalId,
             'is_scientific_dissemination' => 0,
             'created_at' => $now,

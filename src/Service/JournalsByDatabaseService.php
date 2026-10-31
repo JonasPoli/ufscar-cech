@@ -24,7 +24,7 @@ use Doctrine\DBAL\Connection;
  *
  * @phpstan-type Area array{id: int, slug: string, name: string, level: int, parent_id: int|null}
  * @phpstan-type Chip array{slug: string, name: string, is_primary: bool}
- * @phpstan-type Row array{id: int, name: string, issns: list<string>, n_articles: int, n_researchers: int, year_min: int|null, year_max: int|null, pct: float, areas: list<Chip>}
+ * @phpstan-type Row array{id: int, name: string, issns: list<string>, qualis: string|null, n_articles: int, n_researchers: int, year_min: int|null, year_max: int|null, pct: float, areas: list<Chip>}
  * @phpstan-type Section array{db: array{id: int|null, name: string, acronym: string, url: string|null, logo: string|null}, note: string|null, total_journals: int, total_articles: int, rows: list<Row>}
  */
 class JournalsByDatabaseService
@@ -97,11 +97,12 @@ class JournalsByDatabaseService
         }
 
         $chips = $this->fetchAreaChips($previewIds);
+        $qualis = $this->fetchQualis($previewIds);
 
         $bases = [];
         foreach (self::BASES as $acronym) {
             [$all, $preview] = $fetched[$acronym];
-            $bases[$acronym] = $this->buildSection($acronym, $databases[$acronym], $all, $preview, $chips);
+            $bases[$acronym] = $this->buildSection($acronym, $databases[$acronym], $all, $preview, $chips, $qualis);
         }
 
         return [
@@ -126,9 +127,11 @@ class JournalsByDatabaseService
         }
 
         $all = $this->fetchBaseRows($acronym, $areaId);
-        $chips = $this->fetchAreaChips(array_map(static fn (array $raw): int => (int) $raw['id'], $all));
+        $ids = array_map(static fn (array $raw): int => (int) $raw['id'], $all);
+        $chips = $this->fetchAreaChips($ids);
+        $qualis = $this->fetchQualis($ids);
 
-        $section = $this->buildSection($acronym, $this->fetchDatabases()[$acronym], $all, $all, $chips);
+        $section = $this->buildSection($acronym, $this->fetchDatabases()[$acronym], $all, $all, $chips, $qualis);
         $section['total_researchers'] = $this->fetchBaseResearchers($acronym, $areaId);
         $section['updatedAt'] = $this->getUpdatedAt();
 
@@ -354,6 +357,46 @@ class JournalsByDatabaseService
     }
 
     /**
+     * Estrato Qualis de cada família, o mesmo que o site mostra nos artigos dela (`production_items.qualis`). Linhas da
+     * família com estratos diferentes (impresso e online, por exemplo): vale o de mais artigos distintos e, no empate, o
+     * mais alto. Chave: id da família; família sem estrato nos artigos não entra.
+     *
+     * @param list<int> $journalIds
+     *
+     * @return array<int, string>
+     */
+    private function fetchQualis(array $journalIds): array
+    {
+        $journalIds = array_values(array_unique($journalIds));
+        if ($journalIds === []) {
+            return [];
+        }
+
+        $key = self::ARTICLE_KEY;
+
+        $rows = $this->connection->fetchAllAssociative(
+            <<<SQL
+            SELECT COALESCE(j.canonical_journal_id, j.id) AS fid, pi.qualis, COUNT(DISTINCT {$key}) AS n_articles
+            FROM production_items pi
+            JOIN qualis_journals j ON j.id = pi.qualis_journal_id
+            WHERE pi.item_type = 'ARTIGO' AND pi.qualis IS NOT NULL AND pi.qualis <> ''
+              AND COALESCE(j.canonical_journal_id, j.id) IN (:ids)
+            GROUP BY fid, pi.qualis
+            ORDER BY n_articles DESC, pi.qualis ASC
+            SQL,
+            ['ids' => $journalIds],
+            ['ids' => ArrayParameterType::INTEGER]
+        );
+
+        $qualis = [];
+        foreach ($rows as $row) {
+            $qualis[(int) $row['fid']] ??= (string) $row['qualis'];
+        }
+
+        return $qualis;
+    }
+
+    /**
      * Uma linha de `academic_database` por base, com valores padrão para as que ainda não existem na tabela.
      *
      * @return array<string, array{id: int|null, name: string, acronym: string, url: string|null, logo: string|null}>
@@ -396,10 +439,11 @@ class JournalsByDatabaseService
      * @param list<array<string, mixed>>                                                              $all      todas as linhas da base
      * @param list<array<string, mixed>>                                                              $shown    as linhas que a página exibe
      * @param array<int, list<Chip>>                                                                  $chips
+     * @param array<int, string>                                                                      $qualis
      *
      * @return Section
      */
-    private function buildSection(string $acronym, array $database, array $all, array $shown, array $chips): array
+    private function buildSection(string $acronym, array $database, array $all, array $shown, array $chips, array $qualis): array
     {
         // A lista vem ordenada por artigos: a primeira linha é o maior valor da seção, referência das barras
         $max = $all === [] ? 0 : (int) $all[0]['n_articles'];
@@ -411,7 +455,7 @@ class JournalsByDatabaseService
 
         $rows = [];
         foreach ($shown as $raw) {
-            $rows[] = $this->buildRow($raw, $max, $chips[(int) $raw['id']] ?? []);
+            $rows[] = $this->buildRow($raw, $max, $chips[(int) $raw['id']] ?? [], $qualis[(int) $raw['id']] ?? null);
         }
 
         return [
@@ -429,7 +473,7 @@ class JournalsByDatabaseService
      *
      * @return Row
      */
-    private function buildRow(array $raw, int $max, array $areas): array
+    private function buildRow(array $raw, int $max, array $areas, ?string $qualis): array
     {
         $articles = (int) $raw['n_articles'];
 
@@ -437,6 +481,7 @@ class JournalsByDatabaseService
             'id' => (int) $raw['id'],
             'name' => $this->displayName($raw['display_title'] ?? null, (string) $raw['title']),
             'issns' => $this->issnsOf($raw),
+            'qualis' => $qualis,
             'n_articles' => $articles,
             'n_researchers' => (int) $raw['n_researchers'],
             'year_min' => $raw['year_min'] === null ? null : (int) $raw['year_min'],
