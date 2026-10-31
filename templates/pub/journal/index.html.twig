@@ -27,6 +27,8 @@
 
     {% include 'pub/journal/_filter.html.twig' with {'action': path('app_pub_journals_index'), 'areaOptions': areaOptions, 'selectedArea': selectedArea} only %}
 
+    {% include 'pub/journal/_list.html.twig' with {'acronym': 'geral', 'base': overview.general, 'selectedArea': selectedArea, 'fullList': false} only %}
+
     <div class="grid grid-cols-1 items-start gap-6 xl:grid-cols-2">
         {% for acronym, base in overview.bases %}
             {% include 'pub/journal/_list.html.twig' with {'acronym': acronym, 'base': base, 'selectedArea': selectedArea, 'fullList': false} only %}

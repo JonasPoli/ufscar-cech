@@ -12,7 +12,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * Página pública com os periódicos em que o CECH publica, por base de indexação e por área CAPES
  * (docs/evolutions/periodicos-por-base.md, A1).
  *
- * As URLs válidas são em número finito (1 página + 5 bases, cada uma com "sem filtro" ou uma das áreas), e é isso que
+ * As URLs válidas são em número finito (visão geral, bases somadas + 5 bases, cada uma com "sem filtro" ou uma das áreas), e é isso que
  * limita o cache de páginas: `area` inválido responde 404 e parâmetros extras redirecionam, e o `PageCacheService` não grava nenhum dos dois.
  */
 class JournalController extends AbstractController
@@ -33,6 +33,21 @@ class JournalController extends AbstractController
 
         return $this->render('pub/journal/index.html.twig', [
             'overview' => $this->journals->getOverview($area['id'] ?? null),
+            'areaOptions' => $this->journals->getAreaOptions(),
+            'selectedArea' => $area['slug'] ?? '',
+        ]);
+    }
+
+    #[Route('/periodicos/geral', name: 'app_pub_journals_general', methods: ['GET'])]
+    public function general(Request $request): Response
+    {
+        $area = $this->resolveArea($request);
+        if ($redirect = $this->redirectToCanonical($request, $area, 'app_pub_journals_general')) {
+            return $redirect;
+        }
+
+        return $this->render('pub/journal/general.html.twig', [
+            'section' => $this->journals->getGeneralList($area['id'] ?? null),
             'areaOptions' => $this->journals->getAreaOptions(),
             'selectedArea' => $area['slug'] ?? '',
         ]);

@@ -16,6 +16,7 @@ use Twig\TwigFunction;
  * item sem esses valores não ganha selo, porque resolver de novo por nome e ISSN na hora de renderizar divergiria dos
  * indicadores (e pintaria Qualis em capítulo de livro cujo título é igual ao de uma revista). Só quem passa um texto
  * avulso (nome e ISSN, sem item) recebe a resolução pelo `JournalResolverService`; nenhum template faz isso hoje.
+ * Uma lista já pronta de bases (`database_badges(bases)`) é desenhada como veio, sem consulta.
  */
 class QualisExtension extends AbstractExtension
 {
@@ -109,6 +110,8 @@ class QualisExtension extends AbstractExtension
         $databases = null;
         if ($target instanceof ProductionItem) {
             $databases = $target->getIndexedDatabases();
+        } elseif (is_array($target)) {
+            $databases = $target;
         } elseif (is_string($target)) {
             $databases = $this->resolver->resolveDatabases($target, $issn);
         }

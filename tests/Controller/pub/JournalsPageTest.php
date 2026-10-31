@@ -71,6 +71,9 @@ class JournalsPageTest extends WebTestCase
             }
         }
         $this->assertCount(5, $crawler->filter('section[data-base]'));
+
+        $this->assertCount(1, $crawler->filter('section[data-general]'));
+        $this->assertLessThan($positions[0], strpos($html, 'data-general'), 'As bases somadas vêm antes das cinco bases.');
     }
 
     public function testPublicTextsAreTheOnesFromTheDocument(): void
@@ -91,6 +94,7 @@ class JournalsPageTest extends WebTestCase
         $this->assertStringContainsString('Fonte dos artigos: Currículos Lattes dos docentes do CECH importados neste portal; são considerados os itens do tipo "artigo em periódico".', $text);
         $this->assertStringContainsString('taxonomia de áreas de avaliação da CAPES (9 grandes áreas, 50 áreas)', $text);
         $this->assertMatchesRegularExpression('#Correções: envie para o contato do portal\. Dados atualizados em \d{2}/\d{2}/\d{4}\.#', $text);
+        $this->assertStringContainsString('Todas as bases somadas: reúne os periódicos presentes em pelo menos uma das cinco bases. Cada periódico aparece uma vez, e os artigos não são contados de novo por ele estar em mais de uma base.', $text);
         $this->assertSelectorExists('#metodologia');
     }
 
@@ -129,6 +133,8 @@ class JournalsPageTest extends WebTestCase
         yield 'visão geral com área' => ['/periodicos?area=educacao'];
         yield 'base' => ['/periodicos/scopus'];
         yield 'base com grande área' => ['/periodicos/wos?area=ciencias-humanas'];
+        yield 'bases somadas' => ['/periodicos/geral'];
+        yield 'bases somadas com área' => ['/periodicos/geral?area=educacao'];
     }
 
     public function testAreaFilterIsAcceptedForEvaluationAreaAndMajorArea(): void
@@ -160,6 +166,10 @@ class JournalsPageTest extends WebTestCase
         $this->assertSame('Ciências Humanas — todas', trim($group->filter('option')->first()->text()));
         $this->assertSame('educacao', $group->filter('option')->eq(4)->attr('value'));
         $this->assertCount(9, $form->filter('select optgroup'));
+
+        // O carregamento fica pronto e escondido; o select envia pelo mesmo caminho do botão, que dispara o bloqueio
+        $this->assertStringContainsString('hidden', $form->filter('button[type="submit"] [data-filter-spinner]')->attr('class'));
+        $this->assertStringContainsString('requestSubmit', $form->filter('select[name="area"]')->attr('onchange'));
     }
 
     /**
@@ -171,6 +181,9 @@ class JournalsPageTest extends WebTestCase
         $this->assertResponseStatusCodeSame(404);
 
         $this->get('/periodicos/scopus?' . $query);
+        $this->assertResponseStatusCodeSame(404);
+
+        $this->get('/periodicos/geral?' . $query);
         $this->assertResponseStatusCodeSame(404);
     }
 
@@ -205,6 +218,8 @@ class JournalsPageTest extends WebTestCase
             'parâmetros desconhecidos' => ['/periodicos?foo=bar&page=9', '/periodicos'],
             'área e parâmetro desconhecido' => ['/periodicos?area=educacao&utm_source=x', '/periodicos?area=educacao'],
             'página de base' => ['/periodicos/scielo?foo=bar', '/periodicos/scielo'],
+            'bases somadas' => ['/periodicos/geral?foo=bar', '/periodicos/geral'],
+            'bases somadas com área' => ['/periodicos/geral?area=educacao&utm_source=x', '/periodicos/geral?area=educacao'],
         ];
     }
 
@@ -253,6 +268,8 @@ class JournalsPageTest extends WebTestCase
         $this->assertSame('/periodicos/{base}', $database->getPath());
         $this->assertSame(implode('|', JournalsByDatabaseService::BASES), $database->getRequirement('base'));
         $this->assertSame(self::BASES, JournalsByDatabaseService::BASES);
+        $this->assertNotContains(JournalsByDatabaseService::GENERAL, JournalsByDatabaseService::BASES);
+        $this->assertSame('/periodicos/geral', $routes->get('app_pub_journals_general')->getPath());
         $this->assertSame(25, JournalsByDatabaseService::PREVIEW_LIMIT);
     }
 
@@ -263,6 +280,7 @@ class JournalsPageTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $xml = (string) $this->client->getResponse()->getContent();
         $this->assertStringContainsString('/periodicos</loc>', $xml);
+        $this->assertStringContainsString('/periodicos/geral</loc>', $xml);
         foreach (self::BASES as $base) {
             $this->assertStringContainsString('/periodicos/' . $base . '</loc>', $xml);
         }
@@ -312,6 +330,7 @@ class JournalsPageTest extends WebTestCase
         $this->assertCount(0, $crawler->filter('li.journal-item'));
         $this->assertCount(0, $crawler->filter('main ol'));
         $this->assertCount(5, $crawler->filter('section[data-base]'));
+        $this->assertStringContainsString('Nenhum periódico das bases com artigos na área selecionada.', $crawler->filter('section[data-general]')->text());
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -554,13 +573,136 @@ class JournalsPageTest extends WebTestCase
 
         $crawler = $this->get('/periodicos');
 
-        $badge = $this->itemOf($crawler, "Revista Visão Geral $u")->filter('span[title="Estrato Qualis CAPES: A1"]');
+        $badge = $this->itemOf($crawler->filter('section[data-base="scopus"]'), "Revista Visão Geral $u")->filter('span[title="Estrato Qualis CAPES: A1"]');
         $this->assertCount(1, $badge);
         $this->assertStringContainsString('bg-emerald-100 text-emerald-800', $badge->attr('class'));
         $this->assertStringContainsString(
             'Qualis: estrato da CAPES registrado nos artigos do periódico neste portal; se houver mais de um, aparece o de mais artigos. O selo é informativo e não define a ordem da lista.',
             $crawler->filter('#metodologia')->text()
         );
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Bases somadas
+    // ------------------------------------------------------------------------------------------------------------
+
+    public function testGeneralListShowsEachJournalOnceWithItsBasesAndDoesNotCountArticlesTwice(): void
+    {
+        $this->beginSeed();
+        $u = $this->uniq;
+        $researcher = $this->insertResearcher("Docente $u");
+
+        // Gravada na ordem inversa: as bases saem na ordem fixa da página
+        $duasBases = $this->insertJournal("Revista Duas Bases $u");
+        $this->linkToBase($duasBases, 'wos');
+        $this->linkToBase($duasBases, 'scopus');
+        $this->insertArticle($researcher, $duasBases, 'Artigo 1', 2024, null, 'ARTIGO', 'A1');
+        $this->insertArticle($researcher, $duasBases, 'Artigo 2', 2023, null, 'ARTIGO', 'A1');
+
+        // Cada linha da família está em uma base: a família inteira aparece uma vez, com as duas
+        $canonical = $this->insertJournal("Revista Família Bases $u");
+        $member = $this->insertJournal("Revista Membro Bases $u", $canonical);
+        $this->linkToBase($canonical, 'latindex');
+        $this->linkToBase($member, 'pubmed');
+        $this->insertArticle($researcher, $member, 'Artigo 3', 2022, null);
+
+        $outside = $this->insertJournal("Revista Fora das Bases $u");
+        $this->insertArticle($researcher, $outside, 'Artigo 4', 2021, null);
+
+        $onlyDoaj = $this->insertJournal("Revista Só Doaj $u");
+        $this->linkToBase($onlyDoaj, 'doaj');
+        $this->insertArticle($researcher, $onlyDoaj, 'Artigo 5', 2020, null);
+
+        $general = $this->service()->getGeneralList();
+        $rows = $general['rows'];
+
+        $row = $this->rowOf($rows, $duasBases);
+        $this->assertSame(2, $row['n_articles'], 'Estar em duas bases não dobra os artigos.');
+        $this->assertSame(['scopus', 'wos'], array_column($row['bases'], 'acronym'));
+        $this->assertSame(['pubmed', 'latindex'], array_column($this->rowOf($rows, $canonical)['bases'], 'acronym'));
+
+        $ids = array_column($rows, 'id');
+        $this->assertSame($ids, array_values(array_unique($ids)), 'Cada periódico aparece uma vez.');
+        foreach ([$member, $outside, $onlyDoaj] as $absent) {
+            $this->assertNotContains($absent, $ids);
+        }
+        $this->assertSame(array_sum(array_column($rows, 'n_articles')), $general['total_articles']);
+        $this->assertSame(count($rows), $general['total_journals']);
+        $this->assertGreaterThanOrEqual(1, $general['total_researchers']);
+
+        // As listas de uma base não repetem as bases nas linhas
+        $this->assertSame([], $this->rowOf($this->service()->getDatabaseList('scopus')['rows'], $duasBases)['bases']);
+
+        $crawler = $this->get('/periodicos/geral');
+        $item = $this->itemOf($crawler, "Revista Duas Bases $u");
+        $this->assertCount(2, $item->filter('span[title^="Indexado na base científica"]'));
+        $this->assertCount(1, $item->filter('span[title="Estrato Qualis CAPES: A1"]'));
+        $this->assertStringContainsString('2 artigos', $item->text());
+
+        $crawler = $this->get('/periodicos/scopus');
+        $this->assertCount(0, $this->itemOf($crawler, "Revista Duas Bases $u")->filter('span[title^="Indexado na base científica"]'));
+    }
+
+    public function testGeneralListFollowsTheOrderOfArticlesAndTheAreaFilter(): void
+    {
+        $this->beginSeed();
+        $u = $this->uniq;
+        $researcher = $this->insertResearcher("Docente $u");
+        $small = $this->insertJournal("Revista Geral Menor $u");
+        $large = $this->insertJournal("Revista Geral Maior $u");
+        $this->linkToBase($small, 'scielo');
+        $this->linkToBase($large, 'pubmed');
+        $this->insertArticle($researcher, $small, 'Artigo menor', 2024, null);
+        foreach ([2021, 2022, 2023] as $year) {
+            $this->insertArticle($researcher, $large, "Artigo maior $year", $year, null);
+        }
+        $this->assignArea($small, 'educacao', true);
+        $this->assignArea($large, 'historia', true);
+
+        $ids = array_column($this->service()->getGeneralList()['rows'], 'id');
+        $this->assertLessThan(array_search($small, $ids, true), array_search($large, $ids, true));
+
+        $filtered = array_column($this->service()->getGeneralList($this->areaId('educacao'))['rows'], 'id');
+        $this->assertContains($small, $filtered);
+        $this->assertNotContains($large, $filtered);
+    }
+
+    public function testOverviewShowsTheFirstJournalsOfTheGeneralListAndLinksToTheFullOneKeepingTheArea(): void
+    {
+        $this->beginSeed();
+        $researcher = $this->insertResearcher("Docente {$this->uniq}");
+        for ($i = 1; $i <= 27; $i++) {
+            $id = $this->insertJournal(sprintf('Revista Geral Prévia %s %02d', $this->uniq, $i));
+            $this->linkToBase($id, 'latindex');
+            $this->insertArticle($researcher, $id, "Artigo $i", 2024, null);
+            $this->assignArea($id, 'educacao', true);
+        }
+
+        $overview = $this->service()->getOverview();
+        $this->assertCount(JournalsByDatabaseService::PREVIEW_LIMIT, $overview['general']['rows']);
+        $this->assertGreaterThanOrEqual(27, $overview['general']['total_journals']);
+        $this->assertSame(['latindex'], array_column($this->lastRowWithBases($overview['general']['rows']), 'acronym'));
+
+        $crawler = $this->get('/periodicos');
+        $section = $crawler->filter('section[data-general]');
+        $this->assertSame('Todas as bases somadas', trim($section->filter('h2')->text()));
+        $this->assertCount(25, $section->filter('li.journal-item'));
+        $this->assertSame('/periodicos/geral', $section->filter('a[href^="/periodicos/geral"]')->attr('href'));
+
+        $crawler = $this->get('/periodicos?area=educacao');
+        $this->assertSame('/periodicos/geral?area=educacao', $crawler->filter('section[data-general] a[href^="/periodicos/geral"]')->attr('href'));
+
+        $crawler = $this->get('/periodicos/geral?area=educacao');
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextSame('h1', 'Periódicos das cinco bases com artigos do CECH');
+        $this->assertPageTitleSame('Periódicos das cinco bases de indexação | Portal CECH UFSCar');
+        $this->assertCount(1, $crawler->filter('section[data-general]'));
+        $this->assertCount(0, $crawler->filter('section[data-base]'));
+        $this->assertGreaterThanOrEqual(27, $crawler->filter('li.journal-item')->count());
+        $this->assertSame('/periodicos/geral', $crawler->filter('main form')->attr('action'));
+        $this->assertSame('/periodicos?area=educacao', $crawler->selectLink('Voltar aos periódicos')->attr('href'));
+        $this->assertSelectorExists('select[name="area"] option[value="educacao"][selected]');
+        $this->assertCount(0, $crawler->filter('main a')->reduce(static fn (Crawler $a): bool => str_starts_with(trim($a->text()), 'Ver todos')));
     }
 
     public function testDisplayNameIsTheDisplayTitleOrTheTitleInTitleCase(): void
@@ -783,6 +925,18 @@ class JournalsPageTest extends WebTestCase
         }
 
         $this->fail(sprintf('O periódico %d não está na lista.', $journalId));
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function lastRowWithBases(array $rows): array
+    {
+        $this->assertNotSame([], end($rows)['bases'], 'Toda linha das bases somadas tem ao menos uma base.');
+
+        return end($rows)['bases'];
     }
 
     private function itemOf(Crawler $crawler, string $name): Crawler

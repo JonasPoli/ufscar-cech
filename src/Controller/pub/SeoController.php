@@ -56,6 +56,12 @@ class SeoController extends AbstractController
             'priority' => '0.8',
             'lastmod' => date('Y-m-d'),
         ];
+        $urls[] = [
+            'loc' => $baseUrl . $this->generateUrl('app_pub_journals_general'),
+            'changefreq' => 'weekly',
+            'priority' => '0.8',
+            'lastmod' => date('Y-m-d'),
+        ];
         foreach (JournalsByDatabaseService::BASES as $base) {
             $urls[] = [
                 'loc' => $baseUrl . $this->generateUrl('app_pub_journals_database', ['base' => $base]),

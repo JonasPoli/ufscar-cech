@@ -3,10 +3,12 @@
     completa. A lista é uma <ol> sem marcadores numéricos (list-none); a ordem é a de artigos, mas nada na linha
     numera ou compara os periódicos.
     Parâmetros: acronym, base (db, note, total_journals, total_articles, rows), selectedArea e fullList (true na
-    página de uma base, que já mostra todos os periódicos).
+    página de uma base, que já mostra todos os periódicos). Com acronym "geral", é a lista das bases somadas: as linhas
+    mostram as bases de cada periódico, e o link leva a /periodicos/geral.
 #}
+{% set isGeneral = acronym == 'geral' %}
 {% set accent = {'scopus': 'bg-orange-500', 'pubmed': 'bg-blue-500', 'scielo': 'bg-rose-500', 'wos': 'bg-violet-500', 'latindex': 'bg-teal-500'}[acronym]|default('bg-sky-500') %}
-<section class="glass-card min-w-0 rounded-3xl p-5 sm:p-6" data-base="{{ acronym }}" aria-labelledby="base-{{ acronym }}">
+<section class="glass-card min-w-0 rounded-3xl p-5 sm:p-6" {% if isGeneral %}data-general{% else %}data-base="{{ acronym }}"{% endif %} aria-labelledby="base-{{ acronym }}">
     <header class="flex items-center gap-3 border-b border-slate-200/60 pb-4 dark:border-white/10">
         {% if base.db.logo %}
             <span class="flex h-10 w-24 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white px-2 dark:border-white/10">
@@ -23,7 +25,7 @@
     </header>
 
     {% if base.rows is empty %}
-        <p class="py-8 text-center text-sm text-slate-500 dark:text-slate-400">Nenhum periódico desta base com artigos na área selecionada.</p>
+        <p class="py-8 text-center text-sm text-slate-500 dark:text-slate-400">{{ isGeneral ? 'Nenhum periódico das bases com artigos na área selecionada.' : 'Nenhum periódico desta base com artigos na área selecionada.' }}</p>
     {% else %}
         {# O corpo do laço fica sem indentação de propósito: a página de uma base tem centenas de linhas e cada espaço se repete em todas. O texto cinza fica na <ol> e as linhas herdam. #}
         <ol class="journal-list m-0 list-none divide-y divide-slate-200/70 p-0 text-xs text-slate-500 dark:divide-white/10 dark:text-slate-400">
@@ -33,7 +35,7 @@
 <div class="flex items-start justify-between gap-4">
 <div class="min-w-0 flex-1">
 <p class="font-heading text-sm font-semibold leading-snug text-slate-900 break-words dark:text-white">{{ journal.name }}</p>
-{% if journal.issns or journal.qualis %}<p class="mt-0.5 flex flex-wrap items-center gap-1.5">{% if journal.issns %}<span>ISSN {{ journal.issns|join(', ') }}</span>{% endif %}{{ qualis_badge(null, null, journal.qualis) }}</p>{% endif %}
+{% if journal.issns or journal.qualis or journal.bases %}<p class="mt-0.5 flex flex-wrap items-center gap-1.5">{% if journal.issns %}<span>ISSN {{ journal.issns|join(', ') }}</span>{% endif %}{{ qualis_badge(null, null, journal.qualis) }}{{ database_badges(journal.bases) }}</p>{% endif %}
 {% if journal.areas %}<span class="journal-areas mt-1.5 flex flex-wrap gap-1">{% for area in journal.areas %}<span class="inline-flex max-w-full rounded-full px-2 py-0.5 text-[11px] font-medium break-words {{ area.is_primary ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' }}">{{ area.name }}</span>{% endfor %}</span>{% endif %}
 </div>
 <p class="journal-count shrink-0 whitespace-nowrap text-right"><strong class="block text-sm font-bold text-slate-900 dark:text-white">{{ articlesLabel }}</strong> {{ journal.n_researchers|number_format(0, ',', '.') }} {{ journal.n_researchers == 1 ? 'docente' : 'docentes' }}</p>
@@ -44,7 +46,7 @@
         </ol>
 
         {% if not fullList and base.total_journals > base.rows|length %}
-            <a href="{{ path('app_pub_journals_database', {'base': acronym, 'area': selectedArea ?: null}) }}" class="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300">Ver todos os {{ base.total_journals|number_format(0, ',', '.') }} periódicos <sl-icon name="arrow-right"></sl-icon></a>
+            <a href="{{ isGeneral ? path('app_pub_journals_general', {'area': selectedArea ?: null}) : path('app_pub_journals_database', {'base': acronym, 'area': selectedArea ?: null}) }}" class="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300">Ver todos os {{ base.total_journals|number_format(0, ',', '.') }} periódicos <sl-icon name="arrow-right"></sl-icon></a>
         {% endif %}
     {% endif %}
 </section>

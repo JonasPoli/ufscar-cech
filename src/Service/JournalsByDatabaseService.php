@@ -24,7 +24,8 @@ use Doctrine\DBAL\Connection;
  *
  * @phpstan-type Area array{id: int, slug: string, name: string, level: int, parent_id: int|null}
  * @phpstan-type Chip array{slug: string, name: string, is_primary: bool}
- * @phpstan-type Row array{id: int, name: string, issns: list<string>, qualis: string|null, n_articles: int, n_researchers: int, year_min: int|null, year_max: int|null, pct: float, areas: list<Chip>}
+ * @phpstan-type BaseBadge array{name: string, acronym: string, logo: string|null}
+ * @phpstan-type Row array{id: int, name: string, issns: list<string>, qualis: string|null, bases: list<BaseBadge>, n_articles: int, n_researchers: int, year_min: int|null, year_max: int|null, pct: float, areas: list<Chip>}
  * @phpstan-type Section array{db: array{id: int|null, name: string, acronym: string, url: string|null, logo: string|null}, note: string|null, total_journals: int, total_articles: int, rows: list<Row>}
  */
 class JournalsByDatabaseService
@@ -34,6 +35,13 @@ class JournalsByDatabaseService
 
     /** Quantidade de periódicos por base na visão geral; a lista completa fica em `/periodicos/{base}`. */
     public const PREVIEW_LIMIT = 25;
+
+    /** Lista que reúne as cinco bases, em `/periodicos/geral`. Não é uma base: fica fora de BASES e de `academic_database`. */
+    public const GENERAL = 'geral';
+
+    private const GENERAL_NAME = 'Todas as bases somadas';
+
+    private const GENERAL_NOTE = 'Periódicos presentes em pelo menos uma das cinco bases. Cada periódico e cada artigo contam uma vez.';
 
     /**
      * Data da lista de títulos de cada base (A1.1). A visão geral mostra a nota ao lado do nome da base; a nota do DOAJ
@@ -74,12 +82,13 @@ class JournalsByDatabaseService
     }
 
     /**
-     * Visão geral: as cinco bases na ordem fixa, cada uma com os primeiros PREVIEW_LIMIT periódicos, mais os totais.
+     * Visão geral: a lista das bases somadas e as cinco bases na ordem fixa, cada uma com os primeiros PREVIEW_LIMIT
+     * periódicos, mais os totais.
      *
      * Com `$areaId`, só entram periódicos que têm alguma área sob a seleção (a área de avaliação ou, quando é uma grande
      * área, qualquer uma das suas áreas) e os totais do cabeçalho passam a valer só para eles.
      *
-     * @return array{bases: array<string, Section>, totals: array{journals: int, articles: int, researchers: int}, updatedAt: \DateTimeImmutable}
+     * @return array{general: Section, bases: array<string, Section>, totals: array{journals: int, articles: int, researchers: int}, updatedAt: \DateTimeImmutable}
      */
     public function getOverview(?int $areaId = null): array
     {
@@ -88,12 +97,18 @@ class JournalsByDatabaseService
         $fetched = [];
         $previewIds = [];
         foreach (self::BASES as $acronym) {
-            $all = $this->fetchBaseRows($acronym, $areaId);
+            $all = $this->fetchBaseRows([$acronym], $areaId);
             $preview = array_slice($all, 0, self::PREVIEW_LIMIT);
             foreach ($preview as $raw) {
                 $previewIds[] = (int) $raw['id'];
             }
             $fetched[$acronym] = [$all, $preview];
+        }
+
+        $generalAll = $this->fetchBaseRows(self::BASES, $areaId);
+        $generalPreview = array_slice($generalAll, 0, self::PREVIEW_LIMIT);
+        foreach ($generalPreview as $raw) {
+            $previewIds[] = (int) $raw['id'];
         }
 
         $chips = $this->fetchAreaChips($previewIds);
@@ -106,6 +121,7 @@ class JournalsByDatabaseService
         }
 
         return [
+            'general' => $this->buildGeneralSection($databases, $generalAll, $generalPreview, $chips, $qualis),
             'bases' => $bases,
             'totals' => $this->fetchTotals($areaId),
             'updatedAt' => $this->getUpdatedAt(),
@@ -126,13 +142,31 @@ class JournalsByDatabaseService
             throw new \InvalidArgumentException(sprintf('Base de indexação desconhecida: "%s".', $acronym));
         }
 
-        $all = $this->fetchBaseRows($acronym, $areaId);
+        $all = $this->fetchBaseRows([$acronym], $areaId);
         $ids = array_map(static fn (array $raw): int => (int) $raw['id'], $all);
         $chips = $this->fetchAreaChips($ids);
         $qualis = $this->fetchQualis($ids);
 
         $section = $this->buildSection($acronym, $this->fetchDatabases()[$acronym], $all, $all, $chips, $qualis);
-        $section['total_researchers'] = $this->fetchBaseResearchers($acronym, $areaId);
+        $section['total_researchers'] = $this->fetchBaseResearchers([$acronym], $areaId);
+        $section['updatedAt'] = $this->getUpdatedAt();
+
+        return $section;
+    }
+
+    /**
+     * Lista completa das bases somadas: cada família que está em pelo menos uma das cinco bases aparece uma vez, com as
+     * bases em que está. Os artigos não são somados base a base, porque o mesmo artigo seria contado de novo em cada uma.
+     *
+     * @return Section&array{total_researchers: int, updatedAt: \DateTimeImmutable}
+     */
+    public function getGeneralList(?int $areaId = null): array
+    {
+        $all = $this->fetchBaseRows(self::BASES, $areaId);
+        $ids = array_map(static fn (array $raw): int => (int) $raw['id'], $all);
+
+        $section = $this->buildGeneralSection($this->fetchDatabases(), $all, $all, $this->fetchAreaChips($ids), $this->fetchQualis($ids));
+        $section['total_researchers'] = $this->fetchBaseResearchers(self::BASES, $areaId);
         $section['updatedAt'] = $this->getUpdatedAt();
 
         return $section;
@@ -200,13 +234,15 @@ class JournalsByDatabaseService
     }
 
     /**
-     * Todas as famílias com artigos que pertencem à base, ordenadas por artigos (decrescente), nome exibido e id.
+     * Todas as famílias com artigos que pertencem a alguma das bases, ordenadas por artigos (decrescente), nome exibido e id.
+     *
+     * @param list<string> $acronyms
      *
      * @return list<array<string, mixed>>
      */
-    private function fetchBaseRows(string $acronym, ?int $areaId): array
+    private function fetchBaseRows(array $acronyms, ?int $areaId): array
     {
-        $params = ['acronym' => $acronym];
+        $params = ['acronyms' => $acronyms];
         $areaFilter = '';
         if ($areaId !== null) {
             $areaFilter = ' WHERE a.fid IN (' . self::AREA_FAMILIES . ')';
@@ -234,23 +270,26 @@ class JournalsByDatabaseService
             JOIN (
                 SELECT DISTINCT f.fid
                 FROM qualis_journal_academic_database qb
-                JOIN academic_database ad ON ad.id = qb.academic_database_id AND ad.acronym = :acronym
+                JOIN academic_database ad ON ad.id = qb.academic_database_id AND ad.acronym IN (:acronyms)
                 JOIN {$families} f ON f.id = qb.qualis_journal_id
             ) d ON d.fid = a.fid
             JOIN qualis_journals q ON q.id = a.fid
             {$areaFilter}
             ORDER BY a.n_articles DESC, COALESCE(NULLIF(q.display_title, ''), q.title) ASC, q.id ASC
             SQL,
-            $params
+            $params,
+            ['acronyms' => ArrayParameterType::STRING]
         );
     }
 
     /**
-     * Docentes distintos que publicaram em periódicos da base (não é a soma das linhas: um docente publica em vários).
+     * Docentes distintos que publicaram em periódicos das bases (não é a soma das linhas: um docente publica em vários).
+     *
+     * @param list<string> $acronyms
      */
-    private function fetchBaseResearchers(string $acronym, ?int $areaId): int
+    private function fetchBaseResearchers(array $acronyms, ?int $areaId): int
     {
-        $params = ['acronym' => $acronym];
+        $params = ['acronyms' => $acronyms];
         $areaFilter = '';
         if ($areaId !== null) {
             $areaFilter = ' WHERE x.fid IN (' . self::AREA_FAMILIES . ')';
@@ -274,11 +313,12 @@ class JournalsByDatabaseService
             JOIN (
                 SELECT DISTINCT f.fid
                 FROM qualis_journal_academic_database qb
-                JOIN academic_database ad ON ad.id = qb.academic_database_id AND ad.acronym = :acronym
+                JOIN academic_database ad ON ad.id = qb.academic_database_id AND ad.acronym IN (:acronyms)
                 JOIN {$families} f ON f.id = qb.qualis_journal_id
             ) d ON d.fid = x.fid{$areaFilter}
             SQL,
-            $params
+            $params,
+            ['acronyms' => ArrayParameterType::STRING]
         );
 
         return (int) $count;
@@ -397,6 +437,52 @@ class JournalsByDatabaseService
     }
 
     /**
+     * Bases de cada família, na ordem fixa de BASES. Chave: id da família.
+     *
+     * @param list<int>                                                                                         $journalIds
+     * @param array<string, array{id: int|null, name: string, acronym: string, url: string|null, logo: string|null}> $databases
+     *
+     * @return array<int, list<BaseBadge>>
+     */
+    private function fetchFamilyBases(array $journalIds, array $databases): array
+    {
+        $journalIds = array_values(array_unique($journalIds));
+        if ($journalIds === []) {
+            return [];
+        }
+
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT DISTINCT COALESCE(j.canonical_journal_id, j.id) AS fid, LOWER(ad.acronym) AS acronym '
+            . 'FROM qualis_journal_academic_database qb '
+            . 'JOIN academic_database ad ON ad.id = qb.academic_database_id AND ad.acronym IN (:acronyms) '
+            . 'JOIN qualis_journals j ON j.id = qb.qualis_journal_id '
+            . 'WHERE COALESCE(j.canonical_journal_id, j.id) IN (:ids)',
+            ['acronyms' => self::BASES, 'ids' => $journalIds],
+            ['acronyms' => ArrayParameterType::STRING, 'ids' => ArrayParameterType::INTEGER]
+        );
+
+        $found = [];
+        foreach ($rows as $row) {
+            $found[(int) $row['fid']][(string) $row['acronym']] = true;
+        }
+
+        $bases = [];
+        foreach ($found as $familyId => $acronyms) {
+            foreach (self::BASES as $acronym) {
+                if (isset($acronyms[$acronym])) {
+                    $bases[$familyId][] = [
+                        'name' => $databases[$acronym]['name'],
+                        'acronym' => $acronym,
+                        'logo' => $databases[$acronym]['logo'],
+                    ];
+                }
+            }
+        }
+
+        return $bases;
+    }
+
+    /**
      * Uma linha de `academic_database` por base, com valores padrão para as que ainda não existem na tabela.
      *
      * @return array<string, array{id: int|null, name: string, acronym: string, url: string|null, logo: string|null}>
@@ -440,10 +526,11 @@ class JournalsByDatabaseService
      * @param list<array<string, mixed>>                                                              $shown    as linhas que a página exibe
      * @param array<int, list<Chip>>                                                                  $chips
      * @param array<int, string>                                                                      $qualis
+     * @param array<int, list<BaseBadge>>                                                             $bases    vazio nas listas de uma base só
      *
      * @return Section
      */
-    private function buildSection(string $acronym, array $database, array $all, array $shown, array $chips, array $qualis): array
+    private function buildSection(string $acronym, array $database, array $all, array $shown, array $chips, array $qualis, array $bases = []): array
     {
         // A lista vem ordenada por artigos: a primeira linha é o maior valor da seção, referência das barras
         $max = $all === [] ? 0 : (int) $all[0]['n_articles'];
@@ -455,7 +542,7 @@ class JournalsByDatabaseService
 
         $rows = [];
         foreach ($shown as $raw) {
-            $rows[] = $this->buildRow($raw, $max, $chips[(int) $raw['id']] ?? [], $qualis[(int) $raw['id']] ?? null);
+            $rows[] = $this->buildRow($raw, $max, $chips[(int) $raw['id']] ?? [], $qualis[(int) $raw['id']] ?? null, $bases[(int) $raw['id']] ?? []);
         }
 
         return [
@@ -468,12 +555,35 @@ class JournalsByDatabaseService
     }
 
     /**
+     * Seção das bases somadas: mesmo formato de uma base, com as bases de cada periódico nas linhas.
+     *
+     * @param array<string, array{id: int|null, name: string, acronym: string, url: string|null, logo: string|null}> $databases
+     * @param list<array<string, mixed>>                                                                             $all
+     * @param list<array<string, mixed>>                                                                             $shown
+     * @param array<int, list<Chip>>                                                                                 $chips
+     * @param array<int, string>                                                                                     $qualis
+     *
+     * @return Section
+     */
+    private function buildGeneralSection(array $databases, array $all, array $shown, array $chips, array $qualis): array
+    {
+        $ids = array_map(static fn (array $raw): int => (int) $raw['id'], $shown);
+        $database = ['id' => null, 'name' => self::GENERAL_NAME, 'acronym' => self::GENERAL, 'url' => null, 'logo' => null];
+
+        $section = $this->buildSection(self::GENERAL, $database, $all, $shown, $chips, $qualis, $this->fetchFamilyBases($ids, $databases));
+        $section['note'] = self::GENERAL_NOTE;
+
+        return $section;
+    }
+
+    /**
      * @param array<string, mixed> $raw
      * @param list<Chip>           $areas
+     * @param list<BaseBadge>      $bases
      *
      * @return Row
      */
-    private function buildRow(array $raw, int $max, array $areas, ?string $qualis): array
+    private function buildRow(array $raw, int $max, array $areas, ?string $qualis, array $bases = []): array
     {
         $articles = (int) $raw['n_articles'];
 
@@ -482,6 +592,7 @@ class JournalsByDatabaseService
             'name' => $this->displayName($raw['display_title'] ?? null, (string) $raw['title']),
             'issns' => $this->issnsOf($raw),
             'qualis' => $qualis,
+            'bases' => $bases,
             'n_articles' => $articles,
             'n_researchers' => (int) $raw['n_researchers'],
             'year_min' => $raw['year_min'] === null ? null : (int) $raw['year_min'],
