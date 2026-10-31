@@ -120,10 +120,14 @@ final class JournalAreaScorer
 
     /**
      * Pode ser instanciado direto (`new JournalAreaScorer()`, com os arquivos de `config/journal_areas`) ou injetado
-     * pelo container, que passa os dois serviços.
+     * pelo container, que passa os serviços. Sem o tesauro de categorias, a evidência `legacy` só reconhece o nome de uma
+     * área CAPES.
      */
-    public function __construct(?AreaCrosswalk $crosswalk = null, ?CapesTaxonomy $taxonomy = null)
-    {
+    public function __construct(
+        ?AreaCrosswalk $crosswalk = null,
+        ?CapesTaxonomy $taxonomy = null,
+        private readonly ?JournalAreaThesaurus $thesaurus = null,
+    ) {
         $this->taxonomy = $taxonomy ?? new CapesTaxonomy();
         $this->crosswalk = $crosswalk ?? new AreaCrosswalk(null, $this->taxonomy);
     }
@@ -444,7 +448,10 @@ final class JournalAreaScorer
     }
 
     /**
-     * `legacy` traz o nome de uma área ou grande área CAPES em texto: compara sem acento e sem caixa com a taxonomia.
+     * `legacy` traz o texto de `area` original que o {@see JournalEvidenceLoader} reconheceu: o nome de uma área ou grande
+     * área CAPES, que aqui se compara com a taxonomia sem acento e sem caixa, ou, havendo o tesauro de categorias, um
+     * rótulo que o `capes`, o `cnpq` ou uma linha manual dão a exatamente uma área (`Lingüística`, um sinônimo corrigido
+     * no admin). O texto já passou pela regra de grafia do carregador; aqui só se descobre o slug.
      */
     private function legacySlug(string $label): ?string
     {
@@ -455,7 +462,14 @@ final class JournalAreaScorer
             }
         }
 
-        return $this->namesToSlug[StringNormalizer::normalizeString($label, false)] ?? null;
+        $slug = $this->namesToSlug[StringNormalizer::normalizeString($label, false)] ?? null;
+        if ($slug !== null || $this->thesaurus === null) {
+            return $slug;
+        }
+
+        $slugs = $this->thesaurus->lookup($label, true);
+
+        return $slugs !== null && count($slugs) === 1 ? $slugs[0] : null;
     }
 
     // ------------------------------------------------------------------------------------------------------------

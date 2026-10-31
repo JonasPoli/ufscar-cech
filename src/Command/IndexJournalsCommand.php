@@ -62,6 +62,7 @@ class IndexJournalsCommand extends Command
                 ['Periódicos Canônicos Vinculados', number_format($stats['journalsMatched'], 0, ',', '.')],
                 ['Estratos Qualis Atribuídos', number_format($stats['qualisResolved'], 0, ',', '.')],
                 ['Artigos com Bases Indexadoras (Scopus, WoS, etc.)', number_format($stats['databasesLinked'], 0, ',', '.')],
+                ['Itens que não são artigo, com vínculo limpo', number_format($stats['nonArticlesCleared'], 0, ',', '.')],
                 ['Tempo de Execução', $stats['durationSec'] . ' s'],
             ]
         );

@@ -6,6 +6,7 @@ use App\Entity\ProductionItem;
 use App\Entity\Researcher;
 use App\Repository\OrientationRepository;
 use App\Repository\ProductionItemRepository;
+use App\Repository\QualisJournalRepository;
 use App\Repository\ResearcherRepository;
 use App\Service\StatisticsService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -19,7 +20,8 @@ class MainController extends AbstractController
         private readonly ResearcherRepository $researcherRepo,
         private readonly ProductionItemRepository $productionRepo,
         private readonly OrientationRepository $orientationRepo,
-        private readonly StatisticsService $statisticsService
+        private readonly StatisticsService $statisticsService,
+        private readonly QualisJournalRepository $journalRepo
     ) {}
 
     #[Route('/', name: 'app_pub_home')]
@@ -189,8 +191,11 @@ class MainController extends AbstractController
                 $totalResearchers = $this->researcherRepo->countSearchResearchers($q, $department);
             }
             if ($type === 'all' || $type === 'productions') {
-                $productions = $this->productionRepo->searchProductions($q, $department, $page, $limit);
-                $totalProductions = $this->productionRepo->countSearchProductions($q, $department);
+                // A revista também é achada por qualquer nome da sua família (título, nome de exibição, variantes),
+                // não só pela grafia que o docente escreveu; os ids são buscados uma vez para a lista e a contagem
+                $journalRowIds = $q !== '' ? $this->journalRepo->findFamilyRowIdsByName($q) : [];
+                $productions = $this->productionRepo->searchProductions($q, $department, $page, $limit, $journalRowIds);
+                $totalProductions = $this->productionRepo->countSearchProductions($q, $department, $journalRowIds);
             }
             if ($type === 'all' || $type === 'orientations') {
                 $orientations = $this->orientationRepo->searchOrientations($q, $department, $page, $limit);

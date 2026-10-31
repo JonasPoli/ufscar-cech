@@ -11,9 +11,12 @@ use App\Entity\Researcher;
 use App\Service\Journal\AreaCrosswalk;
 use App\Service\Journal\CapesTaxonomy;
 use App\Service\Journal\Issn;
+use App\Service\Journal\JournalAreaScorer;
+use App\Service\Journal\JournalAreaThesaurus;
 use App\Service\Journal\JournalEvidenceArtifactBuilder;
 use App\Service\Journal\JournalEvidenceLoader;
 use App\Service\Thesaurus\JournalResolverService;
+use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -414,6 +417,56 @@ class JournalEvidenceLoaderTest extends KernelTestCase
         $this->assertSame(['legacy' => 1, 'scopus' => 1], $this->countBySource($journal));
         $this->assertSame($result['legacy_rows'], $result['by_source']['legacy']);
         $this->assertSame('SOCIOLOGIA', $this->rowsOf($this->evidence([$journal]), $journal, 'legacy')[0]['label']);
+    }
+
+    public function testLegacyAcceptsWhatTheTrustedThesaurusKnowsLikeAManualSynonym(): void
+    {
+        $u = $this->uniq;
+        $taxonomy = new CapesTaxonomy();
+        $synonym = "Ciência Sinônima $u";
+        // Correção manual do admin: o texto livre vale a área Sociologia
+        $this->conn->executeStatement(
+            "INSERT INTO capes_area_variants (area_id, vocabulary, variation_name, normalized_name, origin, status, occurrences, created_at, updated_at) VALUES (?, 'livre', ?, ?, 'manual', 'active', 0, NOW(), NOW())",
+            [$taxonomy->bySlug('sociologia')['id'], $synonym, StringNormalizer::normalizeString($synonym, true)]
+        );
+        $thesaurus = static::getContainer()->get(JournalAreaThesaurus::class);
+        $thesaurus->reset();
+
+        $exact = $this->createJournal("Legado Sinônimo $u", null, null, $synonym);
+        $upper = $this->createJournal("Legado Sinônimo Caixa Alta $u", null, null, mb_strtoupper($synonym, 'UTF-8'));
+        $folded = $this->createJournal("Legado Sinônimo Sem Acento $u", null, null, strtolower("Ciencia Sinonima $u"));
+        $social = $this->createJournal("Legado Social Sciences Sinônimo $u", null, null, 'Social Sciences');
+        $latindex = $this->createJournal("Legado Latindex Sinônimo $u", null, null, 'Psicología');
+        $english = $this->createJournal("Legado Inglês Sinônimo $u", null, null, 'Mathematics');
+        $ids = [$exact, $upper, $folded, $social, $latindex, $english];
+        $areasBefore = $this->areasOf($ids);
+
+        $this->loader->loadLegacy();
+
+        $this->assertSame(
+            [$exact => $synonym, $upper => mb_strtoupper($synonym, 'UTF-8')],
+            $this->labelsByJournal($this->evidence($ids)),
+            'Entram a grafia exata e a caixa alta do sinônimo; a variante sem acento, o lixo do importador, o rótulo do Latindex e o inglês, não'
+        );
+        foreach ($this->evidence($ids) as $row) {
+            $this->assertSame('legacy', $row['source']);
+            $this->assertSame('area', $row['record_key']);
+            $this->assertSame('1.0000', $row['weight']);
+        }
+        $this->assertSame($areasBefore, $this->areasOf($ids), 'a carga não altera area');
+
+        // O classificador entende o rótulo: o legacy do sinônimo dá a área da correção
+        $scorer = new JournalAreaScorer(new AreaCrosswalk(null, $taxonomy), $taxonomy, $thesaurus);
+        $score = $scorer->score([['source' => 'legacy', 'record_key' => 'area', 'label' => $synonym, 'weight' => 1]]);
+        $this->assertSame('sociologia', $score['primary']['slug'] ?? null);
+        // Sem o serviço do tesauro o escorer só conhece o nome de uma área (comportamento antigo)
+        $this->assertNull((new JournalAreaScorer(new AreaCrosswalk(null, $taxonomy), $taxonomy))->score([['source' => 'legacy', 'record_key' => 'area', 'label' => $synonym, 'weight' => 1]])['primary']);
+
+        // Excluída a correção, o sinônimo deixa de valer na próxima carga
+        $this->conn->executeStatement("DELETE FROM capes_area_variants WHERE vocabulary = 'livre' AND variation_name = ?", [$synonym]);
+        $thesaurus->reset();
+        $this->loader->loadLegacy();
+        $this->assertSame([], $this->labelsByJournal($this->evidence($ids)));
     }
 
     // ------------------------------------------------------------------------------------------------------------

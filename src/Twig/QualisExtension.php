@@ -12,7 +12,10 @@ use Twig\TwigFunction;
  * Extensão Twig responsável por resolver estratos Qualis CAPES e bases científicas de indexação (Scopus, WoS, PubMed, etc.)
  * e renderizar badges coloridos e responsivos nos templates.
  *
- * Suporta passagem direta de objetos ProductionItem pré-indexados ($O(1)$ sem overhead de memória) ou strings avulsas.
+ * Um ProductionItem mostra só o que a indexação gravou nele (`qualis` e `indexed_databases`, $O(1)$ sem consulta):
+ * item sem esses valores não ganha selo, porque resolver de novo por nome e ISSN na hora de renderizar divergiria dos
+ * indicadores (e pintaria Qualis em capítulo de livro cujo título é igual ao de uma revista). Só quem passa um texto
+ * avulso (nome e ISSN, sem item) recebe a resolução pelo `JournalResolverService`; nenhum template faz isso hoje.
  */
 class QualisExtension extends AbstractExtension
 {
@@ -45,7 +48,7 @@ class QualisExtension extends AbstractExtension
     public function resolveQualis(mixed $target, ?string $issn = null): ?string
     {
         if ($target instanceof ProductionItem) {
-            return $target->getQualis() ?: $this->resolver->resolveQualis($target->getJournalName(), $target->getIssn());
+            return $target->getQualis() ?: null;
         }
 
         return is_string($target) ? $this->resolver->resolveQualis($target, $issn) : null;
@@ -57,11 +60,7 @@ class QualisExtension extends AbstractExtension
     public function resolveDatabases(mixed $target, ?string $issn = null): array
     {
         if ($target instanceof ProductionItem) {
-            $dbs = $target->getIndexedDatabases();
-            if ($dbs !== null) {
-                return $dbs;
-            }
-            return $this->resolver->resolveDatabases($target->getJournalName(), $target->getIssn());
+            return $target->getIndexedDatabases() ?? [];
         }
 
         return is_string($target) ? $this->resolver->resolveDatabases($target, $issn) : [];
@@ -72,9 +71,6 @@ class QualisExtension extends AbstractExtension
         $qualis = null;
         if ($target instanceof ProductionItem) {
             $qualis = $target->getQualis();
-            if (!$qualis) {
-                $qualis = $this->resolver->resolveQualis($target->getJournalName(), $target->getIssn());
-            }
         } elseif (is_string($target)) {
             $qualis = $this->resolver->resolveQualis($target, $issn);
         }
@@ -113,9 +109,6 @@ class QualisExtension extends AbstractExtension
         $databases = null;
         if ($target instanceof ProductionItem) {
             $databases = $target->getIndexedDatabases();
-            if ($databases === null) {
-                $databases = $this->resolver->resolveDatabases($target->getJournalName(), $target->getIssn());
-            }
         } elseif (is_string($target)) {
             $databases = $this->resolver->resolveDatabases($target, $issn);
         }

@@ -40,7 +40,8 @@ class JournalDatabaseExporterService
      *
      * As colunas de áreas CAPES (`area_capes_primary` e `areas_capes`) ficam no fim, depois das que já existiam, para
      * não quebrar quem consome o arquivo. No CSV, `areas_capes` traz os nomes separados por `;` (a principal primeiro);
-     * no JSON, uma lista.
+     * no JSON, uma lista. Depois delas vêm `display_title` (o nome de exibição da família) e `canonical_journal_id` (a
+     * linha canônica da família; vazio na própria canônica), que dizem a que revista cada linha pertence.
      *
      * @param string|null $qualisFilter Optional Qualis filter (e.g. 'A1', 'B2', 'ALL')
      * @param string|null $databaseFilter Optional Academic Database acronym (e.g. 'scopus', 'wos')
@@ -80,7 +81,7 @@ class JournalDatabaseExporterService
         $areasByJournal = $areaRepo->namesByJournal();
 
         // 3. Build query for journals
-        $sql = 'SELECT j.id, j.title, j.issn, j.normalized_issn, j.issn_imp, j.issn_e, j.issn_l, j.qualis, j.area FROM qualis_journals j WHERE 1=1';
+        $sql = 'SELECT j.id, j.title, j.issn, j.normalized_issn, j.issn_imp, j.issn_e, j.issn_l, j.qualis, j.area, j.display_title, j.canonical_journal_id FROM qualis_journals j WHERE 1=1';
         $params = [];
 
         if ($qualisFilter && $qualisFilter !== 'ALL' && $qualisFilter !== '') {
@@ -125,6 +126,8 @@ class JournalDatabaseExporterService
                     'thesaurus_variants' => $variants,
                     'area_capes_primary' => $capes['primary'],
                     'areas_capes' => $capes['all'],
+                    'display_title' => $row['display_title'],
+                    'canonical_journal_id' => $row['canonical_journal_id'] !== null ? (int)$row['canonical_journal_id'] : null,
                 ];
                 $totalExported++;
             }
@@ -165,6 +168,8 @@ class JournalDatabaseExporterService
             'Variantes Tesauro (separadas por |)',
             'area_capes_primary',
             'areas_capes',
+            'display_title',
+            'canonical_journal_id',
         ]);
 
         while ($row = $stmt->fetchAssociative()) {
@@ -188,6 +193,8 @@ class JournalDatabaseExporterService
                 implode(' | ', $variants),
                 $capes['primary'] ?? '',
                 implode(';', $capes['all']),
+                $row['display_title'] ?? '',
+                $row['canonical_journal_id'] ?? '',
             ]);
             $totalExported++;
         }
@@ -211,7 +218,55 @@ class JournalDatabaseExporterService
     }
 
     /**
+     * Uma entrada de tesauro por família de periódicos (e não por linha do cadastro), para o `.the`, o CSV, o JSON e o XML
+     * do admin: o cabeçalho é o nome de exibição da canônica, `COALESCE(display_title, title)`, e as variantes são todos os
+     * outros nomes da família: os títulos das linhas e as variantes do tesauro de todas elas. Nomes que só diferem na
+     * caixa ou nos acentos contam uma vez; o cabeçalho não se repete entre as variantes.
+     *
+     * @return list<array{header: string, preferred_name: string, variations: list<string>, variants: list<string>}>
+     */
+    public function familyThesaurusRecords(): array
+    {
+        $groups = [];
+        foreach ($this->loadFamilies($this->em->getConnection(), null) as $family) {
+            $headerKey = StringNormalizer::normalizeString($family['header'], true);
+            $groupKey = $headerKey !== '' ? $headerKey : 'FAMILIA ' . $family['id'];
+
+            $group = &$groups[$groupKey];
+            $group ??= ['header' => $family['header'], 'names' => [], 'headerKey' => $headerKey];
+            foreach ($family['names'] as $key => $name) {
+                if ($key !== $headerKey) {
+                    $group['names'][$key] ??= $name;
+                }
+            }
+            unset($group);
+        }
+
+        $records = [];
+        foreach (self::sortedByHeader($groups) as $group) {
+            $variants = array_values($group['names']);
+            $records[] = [
+                'header' => $group['header'],
+                'preferred_name' => $group['header'],
+                'variations' => $variants,
+                'variants' => $variants,
+            ];
+        }
+
+        return $records;
+    }
+
+    /**
      * Streams a high-performance thesaurus export for all journals or filtered by an academic database.
+     *
+     * O tesauro é por família de periódicos: as linhas de uma mesma revista (impresso e online, por exemplo) formam uma
+     * entrada só, com todos os seus nomes. O cabeçalho depende da chave:
+     *  - `title`: o nome de exibição da canônica, `COALESCE(display_title, title)`;
+     *  - `issn`: o ISSN principal da família (o da canônica; sem ele, o do primeiro membro que tem um);
+     *  - `base`: o nome da base, com os nomes e ISSNs de toda a família de cada periódico.
+     * As variantes são todas as da família: títulos das linhas, variantes do tesauro e, nas chaves `issn` e `title`, as
+     * formas do ISSN de cada linha. No `.the` as variantes saem em minúsculas, que é o formato. Com `$databaseId`, entram
+     * as famílias em que alguma linha está ligada à base (a presença numa base vale para a família toda).
      *
      * @param int|null $databaseId Academic Database ID (null for all journals)
      * @param string $keyType 'issn', 'title', or 'base'
@@ -265,50 +320,8 @@ class JournalDatabaseExporterService
 
             $out = fopen('php://output', 'w');
 
-            // 1. Fetch variations
-            $varsByJournal = [];
-            if ($databaseId !== null) {
-                $vSql = 'SELECT v.journal_id, v.variation_name 
-                         FROM journal_name_variants v 
-                         INNER JOIN qualis_journal_academic_database qb ON qb.qualis_journal_id = v.journal_id 
-                         WHERE qb.academic_database_id = ?';
-                $vStmt = $conn->executeQuery($vSql, [$databaseId]);
-            } else {
-                $vStmt = $conn->executeQuery('SELECT journal_id, variation_name FROM journal_name_variants');
-            }
-            while ($vr = $vStmt->fetchAssociative()) {
-                $varsByJournal[(int)$vr['journal_id']][] = $vr['variation_name'];
-            }
-
-            // 2. Build journals query according to keyType
-            $params = [];
-            if ($keyType === 'issn') {
-                $sql = 'SELECT j.id, j.title, j.issn, j.issn_e, j.issn_l, j.issn_imp,
-                               COALESCE(NULLIF(j.issn, ""), NULLIF(j.issn_l, ""), NULLIF(j.issn_e, ""), NULLIF(j.issn_imp, "")) as primary_issn
-                        FROM qualis_journals j';
-                if ($databaseId !== null) {
-                    $sql .= ' INNER JOIN qualis_journal_academic_database qb ON qb.qualis_journal_id = j.id WHERE qb.academic_database_id = ?';
-                    $params[] = $databaseId;
-                    if (!$includeWithoutIssn) {
-                        $sql .= ' AND COALESCE(NULLIF(j.issn, ""), NULLIF(j.issn_l, ""), NULLIF(j.issn_e, ""), NULLIF(j.issn_imp, "")) IS NOT NULL';
-                    }
-                } else {
-                    if (!$includeWithoutIssn) {
-                        $sql .= ' WHERE COALESCE(NULLIF(j.issn, ""), NULLIF(j.issn_l, ""), NULLIF(j.issn_e, ""), NULLIF(j.issn_imp, "")) IS NOT NULL';
-                    }
-                }
-                $sql .= ' ORDER BY primary_issn ASC, j.title ASC';
-            } else {
-                // keyType 'title' or 'base'
-                $sql = 'SELECT j.id, j.title, j.issn, j.issn_e, j.issn_l, j.issn_imp FROM qualis_journals j';
-                if ($databaseId !== null) {
-                    $sql .= ' INNER JOIN qualis_journal_academic_database qb ON qb.qualis_journal_id = j.id WHERE qb.academic_database_id = ?';
-                    $params[] = $databaseId;
-                }
-                $sql .= ' ORDER BY j.title ASC';
-            }
-
-            $stmt = $conn->executeQuery($sql, $params);
+            // Famílias (uma por revista) com todos os nomes e ISSNs das suas linhas
+            $families = $this->loadFamilies($conn, $databaseId);
 
             // Setup format output headers
             if ($format === 'csv') {
@@ -367,80 +380,46 @@ class JournalDatabaseExporterService
                 // All journals under a single database header
                 $header = $dbName ?: 'Base Acadêmica';
                 $allVariants = [];
-                while ($row = $stmt->fetchAssociative()) {
-                    $allVariants[$row['title']] = true;
-                    $jid = (int)$row['id'];
-                    foreach ($varsByJournal[$jid] ?? [] as $v) {
-                        $allVariants[$v] = true;
+                foreach ($families as $family) {
+                    foreach ($family['names'] as $name) {
+                        $allVariants[$name] = true;
                     }
-                    foreach (['issn', 'issn_e', 'issn_l', 'issn_imp'] as $f) {
-                        if (!empty($row[$f])) {
-                            $fmt = self::formatIssn($row[$f]);
-                            if ($fmt) {
-                                $allVariants[$fmt] = true;
-                                $raw = str_replace('-', '', $fmt);
-                                if ($raw !== $fmt) {
-                                    $allVariants[$raw] = true;
-                                }
-                            }
-                        }
+                    foreach ($family['issnForms'] as $form) {
+                        $allVariants[$form] = true;
                     }
                 }
                 $writeItem($header, array_keys($allVariants), $isFirstJson);
             } else {
-                // Grouping by ISSN or Title
-                $currentGroupKey = null;
-                $currentVariants = [];
-
-                while ($row = $stmt->fetchAssociative()) {
+                // Uma entrada por família, agrupando as famílias que acabam com o mesmo cabeçalho
+                $groups = [];
+                foreach ($families as $family) {
                     if ($keyType === 'issn') {
-                        $rawPrimary = $row['primary_issn'] ?? null;
-                        $formattedIssn = self::formatIssn($rawPrimary);
-                        if ($formattedIssn === null) {
+                        if ($family['primaryIssn'] === null) {
                             if (!$includeWithoutIssn) {
                                 continue;
                             }
-                            $groupKey = '[SEM ISSN] ' . $row['title'];
+                            $header = '[SEM ISSN] ' . $family['header'];
                         } else {
-                            $groupKey = $formattedIssn;
+                            $header = $family['primaryIssn'];
                         }
                     } else {
-                        $groupKey = trim($row['title']);
+                        $header = $family['header'];
                     }
 
-                    if ($currentGroupKey !== null && $groupKey !== $currentGroupKey) {
-                        $writeItem($currentGroupKey, array_keys($currentVariants), $isFirstJson);
-                        $currentVariants = [];
+                    $groupKey = StringNormalizer::normalizeString($header, true) ?: 'FAMILIA ' . $family['id'];
+                    $group = &$groups[$groupKey];
+                    $group ??= ['header' => $header, 'names' => [], 'headerKey' => $groupKey];
+                    foreach ($family['names'] as $key => $name) {
+                        $group['names'][$key] ??= $name;
                     }
-                    $currentGroupKey = $groupKey;
-
-                    // Collect variants for this journal
-                    // 1. Title (crucial when key is ISSN)
-                    $currentVariants[$row['title']] = true;
-
-                    // 2. Name variations from journal_name_variants
-                    $jid = (int)$row['id'];
-                    foreach ($varsByJournal[$jid] ?? [] as $v) {
-                        $currentVariants[$v] = true;
+                    foreach ($family['issnForms'] as $form) {
+                        $group['names'][$form] ??= $form;
                     }
-
-                    // 3. Alternative ISSNs
-                    foreach (['issn', 'issn_e', 'issn_l', 'issn_imp'] as $f) {
-                        if (!empty($row[$f])) {
-                            $fmt = self::formatIssn($row[$f]);
-                            if ($fmt) {
-                                $currentVariants[$fmt] = true;
-                                $raw = str_replace('-', '', $fmt);
-                                if ($raw !== $fmt) {
-                                    $currentVariants[$raw] = true;
-                                }
-                            }
-                        }
-                    }
+                    unset($group);
                 }
 
-                if ($currentGroupKey !== null) {
-                    $writeItem($currentGroupKey, array_keys($currentVariants), $isFirstJson);
+                foreach (self::sortedByHeader($groups) as $group) {
+                    $writeItem($group['header'], array_values($group['names']), $isFirstJson);
                 }
             }
 
@@ -462,5 +441,122 @@ class JournalDatabaseExporterService
         $response->headers->set('X-Accel-Buffering', 'no');
 
         return $response;
+    }
+
+    /**
+     * Lê o cadastro e junta as linhas em famílias (`COALESCE(canonical_journal_id, id)`), com os nomes e os ISSNs de todas.
+     *
+     * @param int|null $databaseId só as famílias em que alguma linha está ligada à base (null = todas)
+     *
+     * @return array<int, array{id: int, header: string, names: array<string, string>, issnForms: list<string>, primaryIssn: ?string}>
+     *         por família: o nome de exibição da canônica (`header`); os nomes (`names`, forma do tesauro => grafia, sem
+     *         repetição: o nome de exibição, os títulos das linhas e as variantes, a canônica primeiro); as formas dos
+     *         ISSNs (com e sem hífen) e o ISSN principal formatado (o da canônica; sem ele, o do primeiro membro que tem)
+     */
+    private function loadFamilies(Connection $conn, ?int $databaseId): array
+    {
+        $variantsByRow = [];
+        $stmt = $conn->executeQuery('SELECT journal_id, variation_name FROM journal_name_variants ORDER BY id ASC');
+        while (($vr = $stmt->fetchAssociative()) !== false) {
+            $variantsByRow[(int)$vr['journal_id']][] = (string)$vr['variation_name'];
+        }
+
+        $inBase = null;
+        if ($databaseId !== null) {
+            $inBase = [];
+            foreach ($conn->fetchFirstColumn(
+                'SELECT DISTINCT COALESCE(q.canonical_journal_id, q.id)
+                   FROM qualis_journals q
+                   JOIN qualis_journal_academic_database qb ON qb.qualis_journal_id = q.id
+                  WHERE qb.academic_database_id = ?',
+                [$databaseId]
+            ) as $familyId) {
+                $inBase[(int)$familyId] = true;
+            }
+        }
+
+        // Linhas por família; a canônica é a de id igual ao da família
+        $rowsByFamily = [];
+        $stmt = $conn->executeQuery('SELECT id, canonical_journal_id, title, display_title, issn, issn_e, issn_l, issn_imp FROM qualis_journals ORDER BY id ASC');
+        while (($row = $stmt->fetchAssociative()) !== false) {
+            $id = (int)$row['id'];
+            $familyId = $row['canonical_journal_id'] !== null ? (int)$row['canonical_journal_id'] : $id;
+            if ($inBase !== null && !isset($inBase[$familyId])) {
+                continue;
+            }
+            $rowsByFamily[$familyId][$id] = $row;
+        }
+
+        $families = [];
+        foreach ($rowsByFamily as $familyId => $rows) {
+            $head = $rows[$familyId] ?? reset($rows);
+            $display = trim((string)($head['display_title'] ?? ''));
+            $header = $display !== '' ? $display : trim((string)$head['title']);
+
+            // A canônica primeiro, depois os membros por id
+            $ordered = [$head['id'] => $head] + $rows;
+
+            $names = [];
+            $addName = static function (string $name) use (&$names): void {
+                $name = trim($name);
+                $key = StringNormalizer::normalizeString($name, true);
+                if ($key !== '') {
+                    $names[$key] ??= $name;
+                }
+            };
+            // O nome de exibição também é um nome da revista (quem procura por ele precisa achá-la), mesmo quando não é
+            // o título de nenhuma linha
+            $addName($header);
+            foreach ($ordered as $row) {
+                $addName((string)$row['title']);
+            }
+            foreach ($ordered as $row) {
+                foreach ($variantsByRow[(int)$row['id']] ?? [] as $variant) {
+                    $addName($variant);
+                }
+            }
+
+            $issnForms = [];
+            $primaryIssn = null;
+            foreach ($ordered as $row) {
+                $rowPrimary = null;
+                foreach (['issn', 'issn_l', 'issn_e', 'issn_imp'] as $column) {
+                    $formatted = self::formatIssn($row[$column] ?? null);
+                    if ($formatted === null) {
+                        continue;
+                    }
+                    $rowPrimary ??= $formatted;
+                    $issnForms[$formatted] = $formatted;
+                    $raw = str_replace('-', '', $formatted);
+                    $issnForms[$raw] = $raw;
+                }
+                $primaryIssn ??= $rowPrimary;
+            }
+
+            $families[(int)$familyId] = [
+                'id' => (int)$familyId,
+                'header' => $header,
+                'names' => $names,
+                'issnForms' => array_values($issnForms),
+                'primaryIssn' => $primaryIssn,
+            ];
+        }
+
+        return $families;
+    }
+
+    /**
+     * Grupos em ordem alfabética do cabeçalho (sem caixa nem acento: o que as telas esperam de um tesauro).
+     *
+     * @param array<string, array{header: string, headerKey: string}> $groups
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function sortedByHeader(array $groups): array
+    {
+        $sorted = array_values($groups);
+        usort($sorted, static fn (array $a, array $b): int => strnatcmp($a['headerKey'], $b['headerKey']) ?: strcmp($a['header'], $b['header']));
+
+        return $sorted;
     }
 }

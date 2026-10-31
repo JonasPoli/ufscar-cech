@@ -6,12 +6,15 @@ namespace App\Tests\Service\Journal;
 
 use App\Service\Journal\AreaCrosswalk;
 use App\Service\Journal\CapesTaxonomy;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DriverManager;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Garante os crosswalks de área: os 334 códigos ASJC contra o vocabulário versionado (com os exemplos de C.1),
- * as 31 regras de título (C.6), os 8 pares SciELO por área (C.5) e o comportamento do serviço com arquivos
- * temporários. Não usa banco nem kernel.
+ * as 31 regras de título (C.6), os 8 pares SciELO por área (C.5), as áreas do CNPq e o comportamento do serviço com
+ * arquivos temporários. Não usa o MySQL nem o kernel: as correções manuais do tesauro de categorias são testadas com
+ * um SQLite em memória, que só tem as duas tabelas lidas pelo serviço.
  */
 class AreaCrosswalkTest extends TestCase
 {
@@ -148,6 +151,124 @@ class AreaCrosswalkTest extends TestCase
         }
     }
 
+    public function testCnpqEhFonteAceitaEMapeiaAsAreasDoLattes(): void
+    {
+        $crosswalk = new AreaCrosswalk(self::projectDirectory());
+        $taxonomy = new CapesTaxonomy();
+
+        $this->assertContains('cnpq', AreaCrosswalk::SOURCES);
+        $this->assertSame(['linguistica-literatura'], $crosswalk->map('cnpq', 'Lingüística'), 'A grafia antiga que o Lattes ainda usa.');
+        $this->assertSame(['linguistica-literatura'], $crosswalk->map('cnpq', 'LINGUÍSTICA'));
+        $this->assertSame(['medicina-i', 'medicina-ii', 'medicina-iii'], $crosswalk->map('cnpq', 'Medicina'));
+        $this->assertTrue($crosswalk->isKnown('cnpq', 'Outros'), 'Outros é decisão explícita.');
+        $this->assertSame([], $crosswalk->map('cnpq', 'Outros'));
+        $this->assertFalse($crosswalk->isKnown('cnpq', 'Divulgação Científica'));
+
+        foreach ($crosswalk->knownLabels('cnpq') as $label) {
+            foreach ($crosswalk->map('cnpq', $label) as $slug) {
+                $this->assertTrue($taxonomy->isValidSlug($slug), sprintf('cnpq: "%s" aponta para "%s".', $label, $slug));
+            }
+        }
+    }
+
+    public function testFileEntriesTrazOQueOArquivoTemSemAsCorrecoesManuais(): void
+    {
+        $dir = $this->diretorioComArquivos([
+            'crosswalk_wos.json' => $this->json(['map' => ['Acoustics' => 'engenharias-iv', 'Sem área temática' => null, 'Sociology' => ['sociologia', 'educacao']]]),
+            'crosswalk_asjc.json' => $this->json(['map' => ['1702' => 'computacao']]),
+        ]);
+        $conn = $this->conexaoComTabelas();
+        $this->inserirCorrecao($conn, 'wos', 'Acoustics', 'ACOUSTICS', 'direito', 'manual', 'active');
+        $crosswalk = new AreaCrosswalk($dir, null, $conn);
+
+        $this->assertSame(['direito'], $crosswalk->map('wos', 'Acoustics'), 'A correção vale na consulta.');
+        $this->assertSame(
+            [
+                ['label' => 'Acoustics', 'slugs' => ['engenharias-iv']],
+                ['label' => 'Sem área temática', 'slugs' => null],
+                ['label' => 'Sociology', 'slugs' => ['sociologia', 'educacao']],
+            ],
+            $crosswalk->fileEntries('wos'),
+            'fileEntries ignora a correção e devolve o valor null do arquivo como null.'
+        );
+        $this->assertSame([['label' => '1702', 'slugs' => ['computacao']]], $crosswalk->fileEntries('asjc'), 'O rótulo 1702 continua texto.');
+        $this->assertSame([], $crosswalk->fileEntries('doaj'));
+
+        $this->expectException(\InvalidArgumentException::class);
+        $crosswalk->fileEntries('scopus');
+    }
+
+    public function testCorrecaoManualSubstituiOMapaEIgnoradoViraVazioMasConhecido(): void
+    {
+        $dir = $this->diretorioComArquivos([
+            'crosswalk_wos.json' => $this->json(['map' => [
+                'Acoustics' => 'engenharias-iv',
+                'Sociology' => 'sociologia',
+                'Law' => 'direito',
+                'History' => 'historia',
+                'Education' => 'educacao',
+            ]]),
+        ]);
+        $conn = $this->conexaoComTabelas();
+        // Duas linhas ativas do mesmo rótulo: os dois slugs, na ordem das linhas
+        $this->inserirCorrecao($conn, 'wos', 'Acoustics', 'ACOUSTICS', 'educacao', 'manual', 'active');
+        $this->inserirCorrecao($conn, 'wos', 'Acoustics', 'ACOUSTICS', 'psicologia', 'manual', 'active');
+        // Ignorado: decisão explícita sem área
+        $this->inserirCorrecao($conn, 'wos', 'Sociology', 'SOCIOLOGY', null, 'manual', 'ignored');
+        // Rótulo que o arquivo não tem: passa a existir
+        $this->inserirCorrecao($conn, 'wos', 'Nova Categoria', 'NOVA CATEGORIA', 'filosofia', 'manual', 'active');
+        // Não valem: semente, pendente, fonte que o serviço não conhece e vocabulário que não é fonte (livre)
+        $this->inserirCorrecao($conn, 'wos', 'Law', 'LAW', 'economia', 'seed', 'active');
+        $this->inserirCorrecao($conn, 'wos', 'History', 'HISTORY', null, 'manual', 'pending');
+        $this->inserirCorrecao($conn, 'scopus', 'Education', 'EDUCATION', 'economia', 'manual', 'active');
+        $this->inserirCorrecao($conn, 'livre', 'Education', 'EDUCATION', 'economia', 'manual', 'active');
+
+        $crosswalk = new AreaCrosswalk($dir, null, $conn);
+
+        $this->assertSame(['educacao', 'psicologia'], $crosswalk->map('wos', 'Acoustics'));
+        $this->assertSame(['educacao', 'psicologia'], $crosswalk->map('wos', ' ACOUSTICS '), 'A chave continua sendo a caixa e os espaços.');
+        $this->assertTrue($crosswalk->isKnown('wos', 'Sociology'));
+        $this->assertSame([], $crosswalk->map('wos', 'Sociology'));
+        $this->assertTrue($crosswalk->isKnown('wos', 'Nova Categoria'));
+        $this->assertSame(['filosofia'], $crosswalk->map('wos', 'nova categoria'));
+        $this->assertSame(['direito'], $crosswalk->map('wos', 'Law'), 'Semente do tesauro não troca o arquivo.');
+        $this->assertSame(['historia'], $crosswalk->map('wos', 'History'), 'Pendente não vale.');
+        $this->assertSame(['educacao'], $crosswalk->map('wos', 'Education'), 'Só as fontes aceitas e só as linhas manuais valem.');
+        $this->assertSame(['Acoustics', 'Sociology', 'Law', 'History', 'Education', 'Nova Categoria'], $crosswalk->knownLabels('wos'));
+    }
+
+    public function testCorrecaoManualVaiParaTodoRotuloDoArquivoComAMesmaFormaDoTesauro(): void
+    {
+        $dir = $this->diretorioComArquivos([
+            'crosswalk_scielo_desc.json' => $this->json(['map' => ['HISTÓRIA' => 'historia', 'HISTORIA' => 'historia', 'FÍSICA' => 'astronomia-fisica']]),
+        ]);
+        $conn = $this->conexaoComTabelas();
+        // O tesauro guarda uma linha só para HISTÓRIA e HISTORIA (mesma forma); o rótulo da linha é o de uma das grafias
+        $this->inserirCorrecao($conn, 'scielo_desc', 'HISTORIA', 'HISTORIA', 'filosofia', 'manual', 'active');
+
+        $crosswalk = new AreaCrosswalk($dir, null, $conn);
+
+        $this->assertSame(['filosofia'], $crosswalk->map('scielo_desc', 'HISTORIA'));
+        $this->assertSame(['filosofia'], $crosswalk->map('scielo_desc', 'HISTÓRIA'));
+        $this->assertSame(['astronomia-fisica'], $crosswalk->map('scielo_desc', 'FÍSICA'), 'Outro rótulo não é tocado.');
+        $this->assertSame(['HISTÓRIA', 'HISTORIA', 'FÍSICA'], $crosswalk->knownLabels('scielo_desc'));
+    }
+
+    public function testSemConexaoOuComATabelaInexistenteRespondemSoOsArquivos(): void
+    {
+        $dir = $this->diretorioComArquivos([
+            'crosswalk_wos.json' => $this->json(['map' => ['Acoustics' => 'engenharias-iv']]),
+        ]);
+
+        $semConexao = new AreaCrosswalk($dir);
+        $this->assertSame(['engenharias-iv'], $semConexao->map('wos', 'Acoustics'));
+
+        // Banco sem a migration do tesauro: a consulta falha com TableNotFoundException, que não derruba nada
+        $semTabela = new AreaCrosswalk($dir, null, DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]));
+        $this->assertSame(['engenharias-iv'], $semTabela->map('wos', 'Acoustics'));
+        $this->assertFalse($semTabela->isKnown('wos', 'Outro'));
+    }
+
     public function testArquivoAusenteEhToleradoSemMapeamento(): void
     {
         $crosswalk = new AreaCrosswalk($this->diretorioComArquivos([]));
@@ -278,6 +399,36 @@ class AreaCrosswalkTest extends TestCase
         $this->expectExceptionMessage($mensagem);
 
         $crosswalk->titleRules();
+    }
+
+    /**
+     * SQLite em memória com as duas tabelas que o serviço lê (só as colunas usadas), com as áreas da taxonomia.
+     */
+    private function conexaoComTabelas(): Connection
+    {
+        $conn = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
+        $conn->executeStatement('CREATE TABLE capes_areas (id INTEGER PRIMARY KEY, slug VARCHAR(80) NOT NULL)');
+        $conn->executeStatement(
+            'CREATE TABLE capes_area_variants (id INTEGER PRIMARY KEY AUTOINCREMENT, area_id INTEGER DEFAULT NULL, vocabulary VARCHAR(20) NOT NULL, '
+            . 'variation_name VARCHAR(255) NOT NULL, normalized_name VARCHAR(255) NOT NULL, origin VARCHAR(10) NOT NULL, status VARCHAR(10) NOT NULL)'
+        );
+        foreach ((new CapesTaxonomy())->all() as $area) {
+            $conn->insert('capes_areas', ['id' => $area['id'], 'slug' => $area['slug']]);
+        }
+
+        return $conn;
+    }
+
+    private function inserirCorrecao(Connection $conn, string $vocabulario, string $rotulo, string $normalizado, ?string $slug, string $origem, string $status): void
+    {
+        $conn->insert('capes_area_variants', [
+            'area_id' => $slug === null ? null : (new CapesTaxonomy())->bySlug($slug)['id'],
+            'vocabulary' => $vocabulario,
+            'variation_name' => $rotulo,
+            'normalized_name' => $normalizado,
+            'origin' => $origem,
+            'status' => $status,
+        ]);
     }
 
     private static function projectDirectory(): string

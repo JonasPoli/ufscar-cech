@@ -67,6 +67,7 @@ final class JournalEvidenceLoader
         private readonly JournalEvidenceArtifactReader $reader,
         private readonly AreaCrosswalk $crosswalk,
         private readonly CapesTaxonomy $taxonomy,
+        private readonly ?JournalAreaThesaurus $thesaurus = null,
     ) {
     }
 
@@ -172,6 +173,11 @@ final class JournalEvidenceLoader
      * ("Sociología", "Psicología"), já chegam pela própria fonte e contariam duas vezes. Ficam de fora "Social Sciences"
      * (lixo do importador), categorias WoS com `|` e o rótulo canônico que o classificador grava em `area` quando o
      * original estava vazio (não pode realimentar a classificação).
+     *
+     * Além do nome de uma área CAPES, vale o que o tesauro de categorias de revistas confiável (capes, cnpq e as
+     * correções manuais do admin) dá a exatamente uma área, com a mesma regra de grafia
+     * ({@see JournalAreaThesaurus::legacySlug()}): "Lingüística", a grafia do Lattes, e um sinônimo manual entram; um rótulo
+     * em inglês só entra se alguém o corrigiu à mão. Sem o serviço do tesauro vale só o nome da área.
      *
      * Com `$dryRun` faz tudo e desfaz (devolve a contagem que seria gravada).
      *
@@ -1055,10 +1061,15 @@ final class JournalEvidenceLoader
 
         $buffer = [];
         $rows = 0;
+        $byThesaurus = [];
         while (($row = $result->fetchAssociative()) !== false) {
             $original = trim((string) $row['original']);
             if (!$this->isCapesAreaName($original, $byCase, $byPlain)) {
-                continue;
+                // O valor se repete em muitas linhas: o tesauro responde uma vez por valor
+                $byThesaurus[$original] ??= $this->thesaurus?->legacySlug($original) !== null;
+                if (!$byThesaurus[$original]) {
+                    continue;
+                }
             }
             // Com `area_raw` vazio o valor vem de `area`; se for o rótulo canônico, é saída do classificador, não legado.
             if ((int) $row['from_area'] === 1 && $this->taxonomy->isCanonicalLabel($original)) {

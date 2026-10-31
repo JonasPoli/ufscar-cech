@@ -112,7 +112,12 @@ class ImportJournalDatabaseListCommand extends Command
             sprintf('Novos periódicos inseridos: %d', $result['inserted']),
             sprintf('Periódicos existentes atualizados: %d', $result['updated']),
             sprintf('Novos vínculos com a base criados: %d', $result['linksCreated']),
+            sprintf('Vínculos replicados nas demais linhas das famílias: %d', $result['baseLinksReplicated']),
+            sprintf('Variantes de nome novas: %d (ignoradas: %d, das quais %d pertencem a outro periódico)', $result['variationsAdded'], $result['variationsSkipped'], $result['variationConflicts']),
         ]);
+        if ($result['ambiguous'] > 0) {
+            $io->warning(sprintf('%d linhas ignoradas: o nome casa com mais de uma família de periódicos e a linha não tem ISSN conhecido.', $result['ambiguous']));
+        }
 
         return Command::SUCCESS;
     }

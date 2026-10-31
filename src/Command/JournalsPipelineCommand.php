@@ -39,15 +39,18 @@ class JournalsPipelineCommand extends Command
         'normalize-titles',
         'audit-before',
         'scielo-enrich',
+        'area-thesaurus-first',
         'evidence-load',
         'families-first',
         'index',
         'families',
         'learn',
         'overrides-names',
+        'learn-external',
         'families-final',
         'index-again',
         'audit-after',
+        'area-thesaurus',
         'title-rules',
         'classify',
         'ai-import',
@@ -200,7 +203,14 @@ class JournalsPipelineCommand extends Command
             'index', 'index-again' => $this->call('app:index:journals', [], $output),
             'learn' => $this->call('app:journals:names:learn', [], $output),
             'overrides-names' => $this->overrides($derived . '/overrides/names.jsonl', $output),
+            'learn-external' => $this->call(
+                'app:journals:names:learn-external',
+                ['--file' => $derived . '/' . self::EVIDENCE_FILE],
+                $output
+            ),
             'audit-after' => $this->auditAfter($state, $io, $output),
+            // Duas vezes: antes da carga, para a evidência legacy já usar o tesauro; depois, para contar e achar pendentes.
+            'area-thesaurus-first', 'area-thesaurus' => $this->call('app:journals:areas:thesaurus', [], $output),
             'title-rules' => $this->call('app:journals:evidence:load', ['--title-rules' => true], $output),
             'classify', 'classify-again' => $this->call('app:journals:classify', [], $output),
             'ai-import' => $this->aiImport($derived, $output),
@@ -365,7 +375,7 @@ class JournalsPipelineCommand extends Command
         if (in_array('scielo-enrich', $selected, true) && !is_file($derived . '/' . self::SCIELO_FILE)) {
             $missing[] = sprintf('%s (passo scielo-enrich)', $derived . '/' . self::SCIELO_FILE);
         }
-        $usesEvidence = array_intersect(['evidence-load', 'families-first', 'families', 'families-final'], $selected) !== [];
+        $usesEvidence = array_intersect(['evidence-load', 'families-first', 'families', 'learn-external', 'families-final'], $selected) !== [];
         if ($usesEvidence && !is_file($derived . '/' . self::EVIDENCE_FILE)) {
             $missing[] = sprintf('%s (passos evidence-load e families)', $derived . '/' . self::EVIDENCE_FILE);
         }

@@ -491,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 progressBarFill.style.width = '100%';
                 progressPercentText.textContent = '100%';
                 progressStatusText.textContent = 'Periódicos e bases indexados!';
-                log(`✓ Concluído em ${s.durationSec}s! ${s.totalProcessed} artigos processados, ${s.journalsMatched} periódicos vinculados, ${s.qualisResolved} Qualis atribuídos, ${s.databasesLinked} com bases científicas.`, 'success');
+                log(`✓ Concluído em ${s.durationSec}s! ${s.totalProcessed} artigos processados, ${s.journalsMatched} periódicos vinculados, ${s.qualisResolved} Qualis atribuídos, ${s.databasesLinked} com bases científicas; ${s.nonArticlesCleared} itens que não são artigo tiveram o vínculo limpo.`, 'success');
             } else {
                 log('✗ Erro ao indexar periódicos: ' + (res.message || 'Erro'), 'error');
             }

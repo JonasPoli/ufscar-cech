@@ -285,6 +285,103 @@ class EntityMergeServiceTest extends KernelTestCase
         );
     }
 
+    public function testTheMergeItselfRewritesQualisAndDatabasesOfTheArticlesOfTheWholeFamily(): void
+    {
+        $source = $this->createJournal("Revista B1 Fonte {$this->uniq}");
+        $master = $this->createJournal("Revista A2 Mestre {$this->uniq}");
+        // Linha membro da família do master, sem Qualis próprio: o artigo dela usa o da família
+        $member = $this->createJournal("Revista A2 Mestre Online {$this->uniq}", $master);
+        $this->conn->executeStatement("UPDATE qualis_journals SET qualis = 'B1' WHERE id = ?", [$source->getId()]);
+        $this->conn->executeStatement("UPDATE qualis_journals SET qualis = 'A2' WHERE id = ?", [$master->getId()]);
+
+        $dbX = $this->createDatabase('x');
+        $dbY = $this->createDatabase('y');
+        $this->linkBase($source->getId(), $dbX);
+        $this->linkBase($master->getId(), $dbY);
+
+        $sourceArticle = $this->createArticle($source, 'Artigo da fonte');
+        $masterArticle = $this->createArticle($master, 'Artigo do mestre');
+        $memberArticle = $this->createArticle($member, 'Artigo do membro');
+        // O que a indexação tinha gravado antes da mesclagem
+        $this->setArticleIndexing($sourceArticle, 'B1', [$dbX]);
+        $this->setArticleIndexing($masterArticle, 'A2', [$dbY]);
+        $this->setArticleIndexing($memberArticle, null, null);
+
+        $this->assertNull($this->merge->getLastMergeRefresh(), 'Nenhuma mesclagem ainda');
+        $this->merge->mergeJournals($master->getId(), [$source->getId()]);
+
+        // A própria mesclagem refaz o que os artigos guardam do cadastro: o artigo que veio da fonte B1 mostra A2
+        $this->assertSame($master->getId(), $this->articleJournal($sourceArticle));
+        foreach ([$sourceArticle, $masterArticle, $memberArticle] as $articleId) {
+            $this->assertSame('A2', $this->articleQualis($articleId), 'Um B1 mesclado num A2 passa a mostrar A2');
+            $this->assertSame([$this->acronym('x'), $this->acronym('y')], $this->articleDatabaseAcronyms($articleId), 'As bases das duas revistas valem para a família toda');
+        }
+
+        $refresh = $this->merge->getLastMergeRefresh();
+        $this->assertSame($master->getId(), $refresh['family']);
+        $this->assertSame(2, $refresh['rows'], 'O master e a linha membro');
+        $this->assertSame(3, $refresh['articles']);
+        $this->assertGreaterThanOrEqual(1, $refresh['baseLinks']);
+
+        // Os vínculos foram replicados na família: a linha membro tem as bases das duas
+        $this->assertSame(
+            [$dbX, $dbY],
+            array_map('intval', $this->conn->fetchFirstColumn('SELECT academic_database_id FROM qualis_journal_academic_database WHERE qualis_journal_id = ? ORDER BY academic_database_id', [$member->getId()]))
+        );
+
+        // Chamar de novo é idempotente (qualquer linha da família serve)
+        $again = $this->merge->refreshFamilyArticles($member->getId());
+        $this->assertSame($master->getId(), $again['family']);
+        $this->assertSame(0, $again['articles']);
+        $this->assertSame(0, $again['baseLinks']);
+
+        // E refaz de verdade se o cadastro mudar por fora: o Qualis da revista passou a B2
+        $this->conn->executeStatement("UPDATE qualis_journals SET qualis = 'B2' WHERE id = ?", [$master->getId()]);
+        $this->assertSame(3, $this->merge->refreshFamilyArticles($master->getId())['articles']);
+        $this->assertSame('B2', $this->articleQualis($sourceArticle));
+    }
+
+    public function testTheMergeUsesTheQualisOfTheFamilyAndClearsTheStaleOneWhenTheFamilyHasNone(): void
+    {
+        $source = $this->createJournal("Revista Fonte Q {$this->uniq}");
+        $master = $this->createJournal("Revista Mestre Sem Qualis {$this->uniq}");
+        $this->conn->executeStatement("UPDATE qualis_journals SET qualis = 'B1' WHERE id = ?", [$source->getId()]);
+        $article = $this->createArticle($source, 'Artigo');
+        $this->setArticleIndexing($article, 'B1', null);
+
+        $this->merge->mergeJournals($master->getId(), [$source->getId()]);
+
+        // O Qualis vem sempre do cadastro: sem Qualis na revista resultante, o artigo também fica sem
+        $this->assertNull($this->articleQualis($article));
+
+        // Com Qualis só numa linha membro, a família inteira usa o dele (como o resolver de periódicos). A mesclagem limpou
+        // o EntityManager: o master do teste está solto, então a canônica é recarregada
+        $member = $this->createJournal("Revista Mestre Membro Q {$this->uniq}", $this->em->find(QualisJournal::class, $master->getId()));
+        $this->conn->executeStatement("UPDATE qualis_journals SET qualis = ' b3 ' WHERE id = ?", [$member->getId()]);
+        $this->merge->refreshFamilyArticles($master->getId());
+        $this->assertSame('B3', $this->articleQualis($article));
+    }
+
+    public function testAFieldChosenInTheMergeReachesTheArticlesToo(): void
+    {
+        $source = $this->createJournal("Revista Fonte Campo {$this->uniq}");
+        $master = $this->createJournal("Revista Mestre Campo {$this->uniq}");
+        $article = $this->createArticle($master, 'Artigo do mestre');
+        $this->setArticleIndexing($article, null, null);
+
+        $this->merge->mergeJournals($master->getId(), [$source->getId()], ['qualis' => 'a1']);
+
+        $this->assertSame('A1', $this->articleQualis($article));
+    }
+
+    public function testRefreshOfAJournalThatDoesNotExistDoesNothing(): void
+    {
+        $this->assertSame(
+            ['family' => 0, 'rows' => 0, 'articles' => 0, 'baseLinks' => 0],
+            $this->merge->refreshFamilyArticles(999999999)
+        );
+    }
+
     // ------------------------------------------------------------------------------------------------------------
 
     private static function norm(string $name): string
@@ -360,6 +457,46 @@ class EntityMergeServiceTest extends KernelTestCase
         $this->conn->executeStatement('UPDATE production_items SET qualis_journal_id = ? WHERE id = ?', [$journal->getId(), $article->getId()]);
 
         return (int)$article->getId();
+    }
+
+    private function articleQualis(int $articleId): ?string
+    {
+        $value = $this->conn->fetchOne('SELECT qualis FROM production_items WHERE id = ?', [$articleId]);
+
+        return $value === false || $value === null ? null : (string)$value;
+    }
+
+    /**
+     * Acrônimos das bases gravados em `indexed_databases` do artigo, em ordem.
+     *
+     * @return list<string>
+     */
+    private function articleDatabaseAcronyms(int $articleId): array
+    {
+        $json = $this->conn->fetchOne('SELECT indexed_databases FROM production_items WHERE id = ?', [$articleId]);
+        $acronyms = array_column(json_decode((string)$json, true) ?: [], 'acronym');
+        sort($acronyms);
+
+        return $acronyms;
+    }
+
+    /**
+     * Grava no artigo o que a indexação gravaria: o Qualis e as bases (JSON), ou nada.
+     *
+     * @param list<int>|null $databaseIds
+     */
+    private function setArticleIndexing(int $articleId, ?string $qualis, ?array $databaseIds): void
+    {
+        $json = null;
+        if ($databaseIds !== null) {
+            $json = json_encode(array_map(fn (int $id): array => ['id' => $id, 'acronym' => 'antigo'], $databaseIds));
+        }
+        $this->conn->executeStatement('UPDATE production_items SET qualis = ?, indexed_databases = ? WHERE id = ?', [$qualis, $json, $articleId]);
+    }
+
+    private function acronym(string $suffix): string
+    {
+        return "{$this->uniq}{$suffix}";
     }
 
     private function insertEvidence(int $journalId, string $source, string $recordKey, string $label): void

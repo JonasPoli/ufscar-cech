@@ -7,11 +7,15 @@ namespace App\Controller\admin;
 use App\Entity\JournalNameCandidate;
 use App\Entity\QualisJournal;
 use App\Repository\JournalNameCandidateRepository;
+use App\Repository\QualisJournalRepository;
 use App\Service\Indexing\CurriculumNormalizationService;
+use App\Service\Journal\Issn;
 use App\Service\Journal\JournalVariantConflictException;
 use App\Service\Journal\JournalVariantGuard;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -22,7 +26,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  *
  * Aceitar grava uma variante `curated` na linha canônica do periódico escolhido (pela trava JournalVariantGuard),
  * revincula os artigos com aquele nome e marca o nome como aceito. Rejeitar e reabrir só mudam o status. Toda ação
- * é POST com CSRF: token inválido não altera nada.
+ * é POST com CSRF: token inválido não altera nada. A busca de periódico por nome (GET, só leitura) alimenta o campo
+ * de busca da tela, que preenche o ID do periódico.
  */
 #[IsGranted('ROLE_ADMIN')]
 #[Route('/admin/journal-names')]
@@ -31,6 +36,7 @@ class AdminJournalNameController extends AbstractController
     private const PER_PAGE = 50;
     private const MAX_SEARCH_LENGTH = 200;
     private const MAX_CHAIN_DEPTH = 10;
+    private const JOURNAL_SEARCH_LIMIT = 15;
 
     /** Abas da tela, na ordem de exibição: status => rótulo. */
     private const TABS = [
@@ -45,6 +51,7 @@ class AdminJournalNameController extends AbstractController
         private readonly JournalNameCandidateRepository $candidates,
         private readonly JournalVariantGuard $guard,
         private readonly CurriculumNormalizationService $normalization,
+        private readonly QualisJournalRepository $journals,
     ) {
     }
 
@@ -70,6 +77,22 @@ class AdminJournalNameController extends AbstractController
             'tabs' => self::TABS,
             'counts' => $counts,
             'pendingCount' => $counts[JournalNameCandidate::STATUS_PENDING],
+        ]);
+    }
+
+    /**
+     * Periódicos pelo nome, para o campo de busca da tela (que preenche o ID do periódico): até 15 famílias cujo título,
+     * nome de exibição ou variante contém o termo, na ordem de relevância, cada uma pela linha canônica (que é a que
+     * `accept` usa). Termo com menos de 3 letras devolve a lista vazia.
+     */
+    #[Route('/search', name: 'app_admin_journal_name_search', methods: ['GET'])]
+    public function search(Request $request): JsonResponse
+    {
+        $term = $this->searchFrom($request->query->get('q'));
+
+        return new JsonResponse([
+            'q' => $term,
+            'journals' => $this->journalFamilies($this->journals->findFamilyRowIdsByName($term, self::JOURNAL_SEARCH_LIMIT)),
         ]);
     }
 
@@ -200,6 +223,87 @@ class AdminJournalNameController extends AbstractController
     private function reviewer(): string
     {
         return mb_substr($this->getUser()?->getUserIdentifier() ?? 'desconhecido', 0, 100, 'UTF-8');
+    }
+
+    /**
+     * Uma entrada por família, na ordem em que aparecem em $rowIds (agrupados por família, a canônica primeiro): id da
+     * canônica, nome de exibição, ISSNs válidos e estrato (o da canônica ou, sem ele, o da primeira linha da família que
+     * tem Qualis, como o resolver faz).
+     *
+     * @param list<int> $rowIds
+     *
+     * @return list<array{id: int, name: string, issn: string|null, qualis: string|null}>
+     */
+    private function journalFamilies(array $rowIds): array
+    {
+        if ($rowIds === []) {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($this->em->getConnection()->fetchAllAssociative(
+            'SELECT id, canonical_journal_id, title, display_title, issn, issn_e, issn_imp, qualis FROM qualis_journals WHERE id IN (:ids) ORDER BY id',
+            ['ids' => $rowIds],
+            ['ids' => ArrayParameterType::INTEGER]
+        ) as $row) {
+            $rows[(int)$row['id']] = $row;
+        }
+
+        $familyOf = static fn (array $row): int => $row['canonical_journal_id'] !== null ? (int)$row['canonical_journal_id'] : (int)$row['id'];
+
+        $order = [];
+        $members = [];
+        foreach ($rowIds as $rowId) {
+            if (!isset($rows[$rowId])) {
+                continue;
+            }
+            $family = $familyOf($rows[$rowId]);
+            $order[$family] = true;
+            $members[$family][] = $rows[$rowId];
+        }
+
+        $families = [];
+        foreach (array_keys($order) as $family) {
+            $canonical = $rows[$family] ?? $members[$family][0];
+
+            $qualis = '';
+            foreach (array_merge([$canonical], $members[$family]) as $row) {
+                $qualis = strtoupper(trim((string)$row['qualis']));
+                if ($qualis !== '') {
+                    break;
+                }
+            }
+
+            $display = trim((string)$canonical['display_title']);
+            $families[] = [
+                'id' => $family,
+                'name' => $display !== '' ? $display : trim((string)$canonical['title']),
+                'issn' => $this->issnsOf($canonical),
+                'qualis' => $qualis !== '' ? $qualis : null,
+            ];
+        }
+
+        return $families;
+    }
+
+    /**
+     * ISSNs válidos da linha, formatados (`0103-863X`) e sem repetição: impresso, genérico e eletrônico, nessa ordem,
+     * separados por « / ». Sem nenhum ISSN válido, nulo.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function issnsOf(array $row): ?string
+    {
+        $found = [];
+        foreach (['issn_imp', 'issn', 'issn_e'] as $column) {
+            foreach (Issn::extractAll(isset($row[$column]) ? (string)$row[$column] : null) as $n8) {
+                if (!in_array($n8, $found, true)) {
+                    $found[] = $n8;
+                }
+            }
+        }
+
+        return $found === [] ? null : implode(' / ', array_map(static fn (string $n8): string => Issn::format($n8), $found));
     }
 
     /**

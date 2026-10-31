@@ -4,6 +4,9 @@ namespace App\Service\Thesaurus;
 
 use App\Entity\AcademicDatabase;
 use App\Entity\QualisJournal;
+use App\Service\Journal\JournalFamilyBuilder;
+use App\Service\Journal\JournalVariantConflictException;
+use App\Service\Journal\JournalVariantGuard;
 use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
@@ -16,12 +19,41 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  *
  * Realiza UPSERT comparando todos os 3 campos de ISSN (issn_e, issn_l, issn_imp)
  * e o tesauro de variações de títulos, mantendo o banco sincronizado sem duplicatas.
+ *
+ * Como cada linha acha o periódico (as mesmas regras do resolver de periódicos, docs/evolutions/periodicos-por-base.md, A5.2):
+ *  - pelo ISSN, em qualquer das quatro colunas; se vários periódicos têm o mesmo ISSN, vale o de menor id;
+ *  - sem ISSN conhecido, pelo nome: o título da linha, e depois o título sem os trechos entre parênteses, contra os
+ *    títulos e as variantes do cadastro. Um nome que pertence a mais de uma família é AMBÍGUO: a linha não é atribuída a
+ *    nenhum periódico (nada é atualizado, inserido nem ligado à base) e entra na contagem `ambiguous`.
+ *
+ * Variantes de nome (abreviações, títulos alternativos) passam pela trava do tesauro
+ * ({@see JournalVariantGuard::addVariant()}): só entram nomes que nenhuma família conhece, gravados na canônica da família
+ * do periódico, e o que pertence a outra família é contado em `variationConflicts`. Como as listas têm dezenas de milhares
+ * de linhas, os nomes que o cadastro já conhece ficam num mapa em memória e a trava (que consulta o banco) só é chamada
+ * para os realmente novos; as variantes novas são gravadas em lotes.
+ *
+ * A presença numa base vale para a família toda: ao fim da importação os vínculos com as bases são replicados em todas as
+ * linhas de cada família ({@see JournalFamilyBuilder::propagateBaseLinks()}), porque os indicadores contam os artigos pela
+ * linha a que cada um está ligado.
+ *
+ * O texto da coluna de área da lista é o dado bruto e vai para `area_raw`; `area` recebe o rótulo canônico da primeira área
+ * CAPES que o tesauro de categorias reconhece nesse texto ou, se não reconhece, o próprio texto. As duas colunas só são
+ * preenchidas quando estão vazias.
  */
 class JournalDatabaseImporterService
 {
+    /** Variantes novas acumuladas antes de gravar: a trava confere cada nome contra elas, então o lote precisa ser curto. */
+    private const VARIANT_FLUSH_EVERY = 200;
+
+    /** Tamanho das colunas `normalized_name` e `variation_name` (a trava corta a chave nesse tamanho). */
+    private const MAX_NAME_LENGTH = 500;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
-        private readonly JournalFileDetectorService $detector
+        private readonly JournalFileDetectorService $detector,
+        private readonly JournalVariantGuard $variantGuard,
+        private readonly JournalAreaLabeler $areaLabeler,
+        private readonly JournalFamilyBuilder $familyBuilder
     ) {}
 
     /**
@@ -30,7 +62,11 @@ class JournalDatabaseImporterService
      * @param string $filePath Caminho absoluto do arquivo (.csv, .xlsx, .txt, .json)
      * @param string|null $targetDatabaseAcronym Sigla da base de destino (ex: 'scopus', 'wos', 'latindex', 'doaj')
      * @param callable|null $progressCallback Callback opcional: fn(int $current, int $total, string $msg)
-     * @return array{success: bool, database: ?string, databaseName: ?string, totalRead: int, inserted: int, updated: int, linksCreated: int, variationsSkipped: int, errors: array<string>}
+     * @return array{success: bool, database: ?string, databaseName: ?string, totalRead: int, inserted: int, updated: int, linksCreated: int, variationsAdded: int, variationsSkipped: int, variationConflicts: int, ambiguous: int, baseLinksReplicated: int, errors: array<string>}
+     *         `variationsSkipped`: nomes que não entraram por já serem conhecidos (da própria família ou de outra) ou por
+     *         serem código; `variationConflicts`: dos ignorados, os que pertencem a outra família; `ambiguous`: linhas
+     *         ignoradas por um nome que casa com mais de uma família; `baseLinksReplicated`: vínculos criados nas demais
+     *         linhas das famílias
      */
     public function import(string $filePath, ?string $targetDatabaseAcronym = null, ?callable $progressCallback = null): array
     {
@@ -40,17 +76,7 @@ class JournalDatabaseImporterService
         }
 
         if (!file_exists($filePath)) {
-            return [
-                'success' => false,
-                'database' => $targetDatabaseAcronym,
-                'databaseName' => null,
-                'totalRead' => 0,
-                'inserted' => 0,
-                'updated' => 0,
-                'linksCreated' => 0,
-                'variationsSkipped' => 0,
-                'errors' => ['Arquivo não encontrado: ' . $filePath],
-            ];
+            return self::failure($targetDatabaseAcronym, null, 'Arquivo não encontrado: ' . $filePath);
         }
 
         // 1. Detect database if not provided
@@ -79,21 +105,12 @@ class JournalDatabaseImporterService
         }
 
         if (!$dbEntity) {
-            return [
-                'success' => false,
-                'database' => null,
-                'databaseName' => null,
-                'totalRead' => 0,
-                'inserted' => 0,
-                'updated' => 0,
-                'linksCreated' => 0,
-                'variationsSkipped' => 0,
-                'errors' => ['Não foi possível identificar a Base de Indexação. Por favor selecione a base manualmente.'],
-            ];
+            return self::failure(null, null, 'Não foi possível identificar a Base de Indexação. Por favor selecione a base manualmente.');
         }
 
         $dbId = $dbEntity->getId();
         $dbAcronym = $dbEntity->getAcronym();
+        $dbName = $dbEntity->getName();
 
         // 2. Parse file(s) into standardized rows
         $filesToProcess = [];
@@ -105,17 +122,7 @@ class JournalDatabaseImporterService
         }
 
         if (empty($filesToProcess)) {
-            return [
-                'success' => false,
-                'database' => $dbAcronym,
-                'databaseName' => $dbEntity->getName(),
-                'totalRead' => 0,
-                'inserted' => 0,
-                'updated' => 0,
-                'linksCreated' => 0,
-                'variationsSkipped' => 0,
-                'errors' => ['Nenhum arquivo válido encontrado para processar.'],
-            ];
+            return self::failure($dbAcronym, $dbName, 'Nenhum arquivo válido encontrado para processar.');
         }
 
         $rows = [];
@@ -138,56 +145,21 @@ class JournalDatabaseImporterService
 
         $totalRows = count($rows);
         if ($totalRows === 0) {
-            return [
-                'success' => false,
-                'database' => $dbAcronym,
-                'databaseName' => $dbEntity->getName(),
-                'totalRead' => 0,
-                'inserted' => 0,
-                'updated' => 0,
-                'linksCreated' => 0,
-                'variationsSkipped' => 0,
-                'errors' => ['Nenhum registro encontrado nos arquivos processados.'],
-            ];
+            return self::failure($dbAcronym, $dbName, 'Nenhum registro encontrado nos arquivos processados.');
         }
 
         /** @var Connection $conn */
         $conn = $this->em->getConnection();
 
-        // 3. Build in-memory lookup map of existing journals across all 3 ISSN fields
-        // Map: normalized_issn => id
-        $issnToId = [];
-        $titleToId = [];
-
+        // 3. Mapas em memória do cadastro: ISSNs, nomes (para achar o periódico) e nomes já conhecidos (para as variantes)
+        $catalog = $this->loadCatalog($conn);
+        $issnToId = $catalog['issn'];
+        $nameToId = $catalog['names'];
+        $known = $catalog['known'];
+        $family = $catalog['family'];
         // id => título normalizado do próprio periódico, só para quem ainda não tem normalized_title (preenchido no UPDATE)
-        $normTitleToFill = [];
-
-        $stmt = $conn->executeQuery('SELECT id, normalized_issn, normalized_issn_e, normalized_issn_l, normalized_issn_imp, title, normalized_title FROM qualis_journals');
-        while ($r = $stmt->fetchAssociative()) {
-            $jid = (int)$r['id'];
-            foreach (['normalized_issn', 'normalized_issn_e', 'normalized_issn_l', 'normalized_issn_imp'] as $col) {
-                if (!empty($r[$col])) {
-                    $issnToId[$r[$col]] = $jid;
-                }
-            }
-            $normTitle = StringNormalizer::normalizeString($r['title']);
-            if ($normTitle !== '' && !isset($titleToId[$normTitle])) {
-                $titleToId[$normTitle] = $jid;
-            }
-            if (empty($r['normalized_title'])) {
-                $normTitleToFill[$jid] = $normTitle !== '' ? $normTitle : null;
-            }
-        }
-
-        // Also index thesaurus variants into titleToId
-        $vStmt = $conn->executeQuery('SELECT journal_id, normalized_name FROM journal_name_variants');
-        while ($vr = $vStmt->fetchAssociative()) {
-            $jid = (int)$vr['journal_id'];
-            $normVar = $vr['normalized_name'];
-            if ($normVar !== '' && !isset($titleToId[$normVar])) {
-                $titleToId[$normVar] = $jid;
-            }
-        }
+        $normTitleToFill = $catalog['titleToFill'];
+        unset($catalog);
 
         // Map of already existing links for this academic database
         $existingLinks = [];
@@ -202,10 +174,13 @@ class JournalDatabaseImporterService
         $linksCreated = 0;
         $variationsAdded = 0;
         $variationsSkipped = 0;
+        $variationConflicts = 0;
+        $ambiguous = 0;
         $errors = [];
 
         $batchSize = 250;
         $pendingLinkInserts = []; // array of journalIds
+        $pendingVariants = 0;
 
         foreach ($rows as $index => $row) {
             $title = trim((string)($row['title'] ?? ''));
@@ -228,7 +203,10 @@ class JournalDatabaseImporterService
             $primaryNorm = $normImp ?: ($normE ?: ($normL ?: $normGen));
             $displayIssn = $issnImp ?: ($issnE ?: ($issnL ?: $issnGen));
 
-            $normTitle = StringNormalizer::normalizeString($title);
+            $normTitle = self::nameKey($title);
+
+            // O texto bruto da área vai para area_raw; area recebe o rótulo canônico (se o tesauro reconhece) ou o texto
+            [$areaValue, $areaRaw] = $this->areaLabeler->columnsFor($area);
 
             // Find if journal exists by checking ALL 3 ISSN fields + general ISSN + title
             $journalId = null;
@@ -242,14 +220,21 @@ class JournalDatabaseImporterService
             }
 
             if (!$journalId && $normTitle !== '') {
-                if (isset($titleToId[$normTitle])) {
-                    $journalId = $titleToId[$normTitle];
-                } else {
-                    $cleanTitleNorm = StringNormalizer::normalizeString(preg_replace('/\([^)]+\)/', '', $title));
-                    if ($cleanTitleNorm !== '' && isset($titleToId[$cleanTitleNorm])) {
-                        $journalId = $titleToId[$cleanTitleNorm];
+                $hit = $nameToId[$normTitle] ?? null;
+                if ($hit === null) {
+                    $cleanTitleNorm = self::nameKey((string)preg_replace('/\([^)]+\)/', '', $title));
+                    if ($cleanTitleNorm !== '') {
+                        $hit = $nameToId[$cleanTitleNorm] ?? null;
                     }
                 }
+
+                // Nome de mais de uma família: não há como saber qual é o periódico, e escolher um (o primeiro, o último)
+                // misturaria revistas diferentes. A linha, as variantes e o vínculo com a base ficam de fora.
+                if (is_array($hit)) {
+                    $ambiguous++;
+                    continue;
+                }
+                $journalId = $hit;
             }
 
             if ($journalId) {
@@ -266,6 +251,7 @@ class JournalDatabaseImporterService
                         issn = COALESCE(NULLIF(issn, ""), ?),
                         normalized_issn = COALESCE(NULLIF(normalized_issn, ""), ?),
                         area = COALESCE(NULLIF(area, ""), ?),
+                        area_raw = COALESCE(NULLIF(area_raw, ""), ?),
                         normalized_title = COALESCE(NULLIF(normalized_title, ""), ?)
                      WHERE id = ?',
                     [
@@ -277,15 +263,17 @@ class JournalDatabaseImporterService
                         $normL ?: null,
                         $displayIssn ?: null,
                         $primaryNorm ?: null,
-                        $area ?: null,
+                        $areaValue,
+                        $areaRaw,
                         $normTitleToFill[$journalId] ?? null,
                         $journalId,
                     ]
                 );
+                unset($normTitleToFill[$journalId]);
 
-                // Register candidate norms into lookup map
+                // Register candidate norms into lookup map (o ISSN que já era de outro periódico continua dele)
                 foreach ($candidateNorms as $cand) {
-                    $issnToId[$cand] = $journalId;
+                    $issnToId[$cand] ??= $journalId;
                 }
 
                 // Link with Academic Database
@@ -301,7 +289,7 @@ class JournalDatabaseImporterService
                 }
                 $normTitleDb = mb_substr(StringNormalizer::normalizeString($title, true), 0, 500, 'UTF-8') ?: null;
                 $conn->executeStatement(
-                    'INSERT INTO qualis_journals (title, normalized_title, issn, normalized_issn, issn_imp, normalized_issn_imp, issn_e, normalized_issn_e, issn_l, normalized_issn_l, area, qualis) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    'INSERT INTO qualis_journals (title, normalized_title, issn, normalized_issn, issn_imp, normalized_issn_imp, issn_e, normalized_issn_e, issn_l, normalized_issn_l, area, area_raw, qualis) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                     [
                         mb_substr($title, 0, 500, 'UTF-8'),
                         $normTitleDb,
@@ -313,18 +301,21 @@ class JournalDatabaseImporterService
                         $normE ?: null,
                         $issnL ?: null,
                         $normL ?: null,
-                        $area ?: null,
+                        $areaValue,
+                        $areaRaw,
                         null,
                     ]
                 );
                 $journalId = (int)$conn->lastInsertId();
                 $inserted++;
+                $family[$journalId] = $journalId;
 
                 foreach ($candidateNorms as $cand) {
-                    $issnToId[$cand] = $journalId;
+                    $issnToId[$cand] ??= $journalId;
                 }
                 if ($normTitle !== '') {
-                    $titleToId[$normTitle] = $journalId;
+                    self::addToNameMap($nameToId, $normTitle, $journalId, $journalId, $family);
+                    self::addKnown($known, $normTitle, $journalId);
                 }
 
                 if (!isset($existingLinks[$journalId])) {
@@ -334,45 +325,61 @@ class JournalDatabaseImporterService
                 }
             }
 
-            // Sync variations (synonyms / abbreviations) into thesaurus
+            // Sync variations (synonyms / abbreviations) into thesaurus, pela trava de variantes
             if ($journalId && !empty($rowVariations)) {
+                $journal = null;
                 foreach ($rowVariations as $varName) {
                     $varName = trim((string)$varName);
                     if ($varName === '' || mb_strlen($varName) < 2) continue;
-                    $normVar = StringNormalizer::normalizeString($varName);
+                    $normVar = self::nameKey($varName);
                     if ($normVar === '') continue;
 
-                    // Mesmo normalized_name já existente em qualquer periódico (como título ou variante): pula
-                    if (isset($titleToId[$normVar])) {
+                    // Nome que o cadastro já conhece (título ou variante de alguma família): pula sem consultar o banco.
+                    // Se é de outra família é um conflito, e o nome continua com o dono dele.
+                    if (isset($known[$normVar])) {
+                        $variationsSkipped++;
+                        if ($known[$normVar] !== $family[$journalId]) {
+                            $variationConflicts++;
+                        }
+                        continue;
+                    }
+
+                    // Nome realmente novo: só a trava grava variante (recusa código e confere as outras famílias)
+                    $journal ??= $this->em->find(QualisJournal::class, $journalId);
+                    if ($journal === null) {
+                        break;
+                    }
+                    try {
+                        $variation = $this->variantGuard->addVariant($journal, $varName, 'alternative');
+                    } catch (JournalVariantConflictException) {
+                        $known[$normVar] = 0;
+                        $variationsSkipped++;
+                        $variationConflicts++;
+                        continue;
+                    }
+
+                    if ($variation === null) {
+                        // Não é um nome (HTML, pilha de erro...) ou a família já o tinha
                         $variationsSkipped++;
                         continue;
                     }
 
-                    // Com o índice único uniq_journal_variant_norm, INSERT IGNORE afeta 0 linhas quando a variante já existe
-                    $affected = $conn->executeStatement(
-                        'INSERT IGNORE INTO journal_name_variants (journal_id, variation_name, normalized_name, variation_type, status, created_at, updated_at) VALUES (?, ?, ?, ?, 1, NOW(), NOW())',
-                        [$journalId, mb_substr($varName, 0, 500, 'UTF-8'), mb_substr($normVar, 0, 500, 'UTF-8'), 'alternative']
-                    );
-                    if ($affected > 0) {
-                        $titleToId[$normVar] = $journalId;
-                        $variationsAdded++;
-                    } else {
-                        $variationsSkipped++;
-                    }
+                    self::addKnown($known, $normVar, $family[$journalId]);
+                    self::addToNameMap($nameToId, $normVar, $family[$journalId], $journalId, $family);
+                    $variationsAdded++;
+                    $pendingVariants++;
+                }
+
+                // Grava as variantes novas em lotes: a trava confere cada nome também contra as ainda não gravadas
+                if ($pendingVariants >= self::VARIANT_FLUSH_EVERY) {
+                    $this->flushVariants();
+                    $pendingVariants = 0;
                 }
             }
 
             // Flush links in batches
             if (count($pendingLinkInserts) >= $batchSize) {
-                $linkSql = 'INSERT IGNORE INTO qualis_journal_academic_database (qualis_journal_id, academic_database_id) VALUES ';
-                $valPlaceholders = [];
-                $valParams = [];
-                foreach ($pendingLinkInserts as $pJournalId) {
-                    $valPlaceholders[] = '(?, ?)';
-                    $valParams[] = $pJournalId;
-                    $valParams[] = $dbId;
-                }
-                $conn->executeStatement($linkSql . implode(', ', $valPlaceholders), $valParams);
+                $this->insertLinks($conn, $pendingLinkInserts, $dbId);
                 $pendingLinkInserts = [];
             }
 
@@ -381,30 +388,194 @@ class JournalDatabaseImporterService
             }
         }
 
-        // Flush remaining links
-        if (count($pendingLinkInserts) > 0) {
-            $linkSql = 'INSERT IGNORE INTO qualis_journal_academic_database (qualis_journal_id, academic_database_id) VALUES ';
-            $valPlaceholders = [];
-            $valParams = [];
-            foreach ($pendingLinkInserts as $pJournalId) {
-                $valPlaceholders[] = '(?, ?)';
-                $valParams[] = $pJournalId;
-                $valParams[] = $dbId;
-            }
-            $conn->executeStatement($linkSql . implode(', ', $valPlaceholders), $valParams);
+        // Flush remaining variants and links
+        if ($pendingVariants > 0) {
+            $this->flushVariants();
         }
+        if (count($pendingLinkInserts) > 0) {
+            $this->insertLinks($conn, $pendingLinkInserts, $dbId);
+        }
+
+        // A presença numa base vale para a família toda: replica os vínculos em todas as linhas de cada família (também
+        // quando esta lista não criou vínculo novo: uma família que já estava fora de sincronia é acertada)
+        $baseLinksReplicated = $this->familyBuilder->propagateBaseLinks();
 
         return [
             'success' => true,
             'database' => $dbAcronym,
-            'databaseName' => $dbEntity->getName(),
+            'databaseName' => $dbName,
             'totalRead' => $totalRows,
             'inserted' => $inserted,
             'updated' => $updated,
             'linksCreated' => $linksCreated,
+            'variationsAdded' => $variationsAdded,
             'variationsSkipped' => $variationsSkipped,
+            'variationConflicts' => $variationConflicts,
+            'ambiguous' => $ambiguous,
+            'baseLinksReplicated' => $baseLinksReplicated,
             'errors' => $errors,
         ];
+    }
+
+    /**
+     * Resultado de uma importação que não chegou a processar linhas.
+     *
+     * @return array{success: false, database: ?string, databaseName: ?string, totalRead: 0, inserted: 0, updated: 0, linksCreated: 0, variationsAdded: 0, variationsSkipped: 0, variationConflicts: 0, ambiguous: 0, baseLinksReplicated: 0, errors: array<string>}
+     */
+    private static function failure(?string $database, ?string $databaseName, string $error): array
+    {
+        return [
+            'success' => false,
+            'database' => $database,
+            'databaseName' => $databaseName,
+            'totalRead' => 0,
+            'inserted' => 0,
+            'updated' => 0,
+            'linksCreated' => 0,
+            'variationsAdded' => 0,
+            'variationsSkipped' => 0,
+            'variationConflicts' => 0,
+            'ambiguous' => 0,
+            'baseLinksReplicated' => 0,
+            'errors' => [$error],
+        ];
+    }
+
+    /**
+     * Lê o cadastro uma vez, para a memória.
+     *
+     * @return array{
+     *     issn: array<string, int>,
+     *     names: array<string, int|array<int, int>>,
+     *     known: array<string, int>,
+     *     family: array<int, int>,
+     *     titleToFill: array<int, ?string>
+     * } `issn`: ISSN normalizado => id da linha de menor id (o mesmo critério do resolver de periódicos); `names`: nome
+     *   (título ou variante) => id da linha, ou família => id quando o nome é de mais de uma família (ambíguo);
+     *   `known`: nome => id da família dona, ou 0 quando é de mais de uma (as variantes de qualquer status contam, porque o
+     *   índice único do tesauro vale para todas); `family`: id da linha => id da família; `titleToFill`: título normalizado
+     *   de quem ainda não tem `normalized_title`
+     */
+    private function loadCatalog(Connection $conn): array
+    {
+        $issnToId = [];
+        $names = [];
+        $known = [];
+        $family = [];
+        $titleToFill = [];
+
+        $stmt = $conn->executeQuery('SELECT id, canonical_journal_id, normalized_issn, normalized_issn_e, normalized_issn_l, normalized_issn_imp, title, normalized_title FROM qualis_journals ORDER BY id');
+        while ($r = $stmt->fetchAssociative()) {
+            $jid = (int)$r['id'];
+            $family[$jid] = $r['canonical_journal_id'] !== null ? (int)$r['canonical_journal_id'] : $jid;
+
+            // As linhas chegam em ordem de id: o primeiro a chegar a um ISSN é a linha de menor id, e ela fica com ele
+            foreach (['normalized_issn', 'normalized_issn_e', 'normalized_issn_l', 'normalized_issn_imp'] as $col) {
+                if (!empty($r[$col])) {
+                    $issnToId[$r[$col]] ??= $jid;
+                }
+            }
+
+            $normTitle = self::nameKey((string)$r['title']);
+            if ($normTitle !== '') {
+                self::addToNameMap($names, $normTitle, $family[$jid], $jid, $family);
+                self::addKnown($known, $normTitle, $family[$jid]);
+            }
+            if (empty($r['normalized_title'])) {
+                $titleToFill[$jid] = $normTitle !== '' ? $normTitle : null;
+            }
+        }
+
+        // Variantes do tesauro: depois dos títulos, de qualquer status
+        $vStmt = $conn->executeQuery('SELECT journal_id, normalized_name FROM journal_name_variants');
+        while ($vr = $vStmt->fetchAssociative()) {
+            $jid = (int)$vr['journal_id'];
+            $normVar = (string)$vr['normalized_name'];
+            if ($normVar === '' || !isset($family[$jid])) {
+                continue;
+            }
+            self::addToNameMap($names, $normVar, $family[$jid], $jid, $family);
+            self::addKnown($known, $normVar, $family[$jid]);
+        }
+
+        return ['issn' => $issnToId, 'names' => $names, 'known' => $known, 'family' => $family, 'titleToFill' => $titleToFill];
+    }
+
+    /**
+     * Forma do tesauro de um nome, no tamanho que cabe nas colunas (a trava de variantes usa a mesma chave).
+     */
+    private static function nameKey(string $name): string
+    {
+        return mb_substr(StringNormalizer::normalizeString($name), 0, self::MAX_NAME_LENGTH, 'UTF-8');
+    }
+
+    /**
+     * Guarda a linha $jid sob o nome $key. O nome guarda um id enquanto todas as linhas que o têm são da mesma família (vale
+     * a primeira, de menor id) ou, quando chega uma linha de outra família, o mapa família => id (ambíguo).
+     *
+     * @param array<string, int|array<int, int>> $map
+     * @param array<int, int> $family id da linha => família
+     */
+    private static function addToNameMap(array &$map, string $key, int $familyId, int $jid, array $family): void
+    {
+        $current = $map[$key] ?? null;
+        if ($current === null) {
+            $map[$key] = $jid;
+
+            return;
+        }
+
+        if (is_int($current)) {
+            $currentFamily = $family[$current] ?? $current;
+            if ($currentFamily !== $familyId) {
+                $map[$key] = [$currentFamily => $current, $familyId => $jid];
+            }
+
+            return;
+        }
+
+        $map[$key][$familyId] ??= $jid;
+    }
+
+    /**
+     * Registra a família dona do nome (0 quando o nome já era de outra família).
+     *
+     * @param array<string, int> $known
+     */
+    private static function addKnown(array &$known, string $key, int $familyId): void
+    {
+        if (!isset($known[$key])) {
+            $known[$key] = $familyId;
+        } elseif ($known[$key] !== $familyId) {
+            $known[$key] = 0;
+        }
+    }
+
+    /**
+     * Grava as variantes novas persistidas e solta as entidades (a lista de insertions que a trava varre volta a ser curta).
+     */
+    private function flushVariants(): void
+    {
+        $this->em->flush();
+        $this->em->clear();
+    }
+
+    /**
+     * @param list<int> $journalIds
+     */
+    private function insertLinks(Connection $conn, array $journalIds, int $dbId): void
+    {
+        $valPlaceholders = [];
+        $valParams = [];
+        foreach ($journalIds as $pJournalId) {
+            $valPlaceholders[] = '(?, ?)';
+            $valParams[] = $pJournalId;
+            $valParams[] = $dbId;
+        }
+        $conn->executeStatement(
+            'INSERT IGNORE INTO qualis_journal_academic_database (qualis_journal_id, academic_database_id) VALUES ' . implode(', ', $valPlaceholders),
+            $valParams
+        );
     }
 
     /**

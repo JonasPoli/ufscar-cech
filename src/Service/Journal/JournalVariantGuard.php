@@ -69,8 +69,9 @@ class JournalVariantGuard
      * @param string $rawName grafia como veio (Lattes, formulário...); a forma do tesauro é calculada aqui
      * @param string $type `variation_type`: alternative | lattes | curated | manual | ...
      *
-     * @return JournalVariation|null a variante criada; null quando o nome não tem letras ou números ou quando a família
-     *         já o conhece (como variante, mesmo desativada, ou como título de uma de suas linhas)
+     * @return JournalVariation|null a variante criada; null quando o nome não tem letras ou números, quando é código e não
+     *         nome (HTML, CSS, pilha de erro) ou quando a família já o conhece (como variante, mesmo desativada, ou como
+     *         título de uma de suas linhas)
      *
      * @throws JournalVariantConflictException quando o nome já pertence a outra família
      */
@@ -78,7 +79,7 @@ class JournalVariantGuard
     {
         $rawName = trim($rawName);
         $key = self::key($rawName);
-        if ($key === '') {
+        if ($key === '' || !self::looksLikeAName($rawName)) {
             return null;
         }
 
@@ -104,6 +105,16 @@ class JournalVariantGuard
         $this->em->persist($variation);
 
         return $variation;
+    }
+
+    /**
+     * Recusa texto que é claramente código: uma página de erro já entrou no tesauro linha a linha
+     * (docs/evolutions/periodicos-como-descobrimos.md, 3.11). Conferido contra os títulos e variantes do cadastro: os nomes
+     * reais com sinais parecidos ("#PerDebate", "Stimmen der Zeit <Freiburg, Breisgau>") passam.
+     */
+    private static function looksLikeAName(string $rawName): bool
+    {
+        return preg_match('~</?[a-z][a-z0-9]*(\s[^>]*)?>|<!|[{}]|^--[a-z-]+\s*:|:\s*[^;]*;\s*$|^\.[a-z][\w-]*[\s,.:]|^#\d+\s+/|/vendor/|^/\*|^HTTP \d{3}\b~', $rawName) !== 1;
     }
 
     /**

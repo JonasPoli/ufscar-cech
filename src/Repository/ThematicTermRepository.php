@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\ProductionItem;
 use App\Entity\ThematicTerm;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\ArrayParameterType;
@@ -17,6 +18,21 @@ use Symfony\Contracts\Cache\ItemInterface;
  */
 class ThematicTermRepository extends ServiceEntityRepository
 {
+    /**
+     * Prefixo (com a versão do formato) da chave de cache da análise editorial. Mude a versão quando o formato do
+     * resultado mudar: o cache de 24 horas não pode servir o formato antigo.
+     */
+    private const EDITORIAL_CACHE_PREFIX = 'thematic_editorial_v2_';
+
+    /**
+     * Chave de artigo distinto: DOI normalizado ou ano + título, a mesma de `/periodicos`
+     * (`JournalsByDatabaseService::ARTICLE_KEY`) e de `StatisticsService`, de modo que coautorias entre docentes do
+     * Centro contam uma vez.
+     */
+    private const ARTICLE_KEY = "CASE WHEN pi.doi IS NOT NULL AND TRIM(pi.doi) <> '' "
+        . "THEN CONCAT('DOI:', LOWER(TRIM(pi.doi))) "
+        . "ELSE CONCAT('TITLE:', COALESCE(pi.year, ''), ':', LOWER(TRIM(pi.title))) END";
+
     public function __construct(
         ManagerRegistry $registry,
         private readonly ?CacheInterface $cache = null
@@ -391,6 +407,9 @@ class ThematicTermRepository extends ServiceEntityRepository
     /**
      * Retorna a distribuição Qualis CAPES dos artigos e o ranking dos principais periódicos do tema.
      *
+     * Os periódicos são famílias (`COALESCE(canonical_journal_id, id)`), não grafias do Lattes: só artigos entram, as
+     * grafias de uma mesma revista viram uma linha, o nome é o de exibição da canônica e o estrato é o melhor dos artigos.
+     *
      * @return array{
      *     qualisDistribution: array<string, int>,
      *     totalArticlesWithQualis: int,
@@ -400,7 +419,7 @@ class ThematicTermRepository extends ServiceEntityRepository
      */
     public function getEditorialAnalytics(ThematicTerm $term, int $limitJournals = 6): array
     {
-        $cacheKey = 'thematic_editorial_' . ($term->getSlug() ?: (string)$term->getId());
+        $cacheKey = self::EDITORIAL_CACHE_PREFIX . ($term->getSlug() ?: (string)$term->getId());
 
         if ($this->cache !== null) {
             return $this->cache->get($cacheKey, function (ItemInterface $item) use ($term, $limitJournals) {
@@ -467,30 +486,7 @@ class ThematicTermRepository extends ServiceEntityRepository
         $topQualisPercentage = $totalWithQualis > 0 ? round(($topCount / $totalWithQualis) * 100, 1) : 0.0;
 
         // 2. Top Periódicos
-        $sqlJournals = "
-        SELECT journal_name, MAX(qualis) as qualis, COUNT(DISTINCT LOWER(TRIM(title))) as total
-        FROM production_items
-        WHERE (title LIKE :termPattern OR CAST(extra_data AS CHAR) LIKE :termPattern)
-          AND journal_name IS NOT NULL AND journal_name != ''
-        GROUP BY journal_name
-        ORDER BY total DESC
-        LIMIT :limit
-        ";
-
-        $rowsJournals = $conn->fetchAllAssociative(
-            $sqlJournals,
-            ['termPattern' => $termPattern, 'limit' => $limitJournals],
-            ['limit' => \PDO::PARAM_INT]
-        );
-
-        $topJournals = [];
-        foreach ($rowsJournals as $rj) {
-            $topJournals[] = [
-                'journalName' => (string)$rj['journal_name'],
-                'qualis' => $rj['qualis'] ? (string)$rj['qualis'] : null,
-                'count' => (int)$rj['total'],
-            ];
-        }
+        $topJournals = $this->computeTopJournals($termPattern, $limitJournals);
 
         return [
             'qualisDistribution' => $qualisDistribution,
@@ -498,6 +494,121 @@ class ThematicTermRepository extends ServiceEntityRepository
             'topQualisPercentage' => $topQualisPercentage,
             'topJournals' => $topJournals,
         ];
+    }
+
+    /**
+     * Periódicos com mais artigos distintos do tema, por família.
+     *
+     * Só artigos (`item_type = ARTIGO`; capítulo e evento têm o título do livro ou do congresso em `journal_name`).
+     * O artigo ligado a um periódico agrupa pela família do vínculo (`qualis_journal_id` aponta para a linha que o
+     * resolver escolheu, não para a canônica) e leva o nome de exibição da canônica; o artigo sem vínculo agrupa por
+     * `journal_name_normalized` e leva a grafia do Lattes mais frequente do grupo. O estrato é o melhor entre os artigos
+     * do grupo (o menor em ordem textual: A1 antes de A2, B1 antes de C), ignorando os vazios.
+     *
+     * @return list<array{journalName: string, qualis: ?string, count: int}>
+     */
+    private function computeTopJournals(string $termPattern, int $limit): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $key = self::ARTICLE_KEY;
+
+        $rows = $conn->fetchAllAssociative(
+            <<<SQL
+            SELECT g.fid, g.nn, g.total, g.qualis, c.display_title, c.title
+            FROM (
+                SELECT COALESCE(q.canonical_journal_id, q.id) AS fid,
+                       CASE WHEN q.id IS NULL THEN pi.journal_name_normalized END AS nn,
+                       COUNT(DISTINCT {$key}) AS total,
+                       MIN(NULLIF(pi.qualis, '')) AS qualis
+                FROM production_items pi
+                LEFT JOIN qualis_journals q ON q.id = pi.qualis_journal_id
+                WHERE pi.item_type = :articleType
+                  AND (pi.title LIKE :termPattern OR CAST(pi.extra_data AS CHAR) LIKE :termPattern)
+                  AND (q.id IS NOT NULL OR (pi.journal_name_normalized IS NOT NULL AND pi.journal_name_normalized <> ''))
+                GROUP BY fid, nn
+            ) g
+            LEFT JOIN qualis_journals c ON c.id = g.fid
+            ORDER BY g.total DESC, COALESCE(NULLIF(c.display_title, ''), c.title, g.nn) ASC
+            LIMIT :limit
+            SQL,
+            ['articleType' => ProductionItem::TYPE_ARTIGO, 'termPattern' => $termPattern, 'limit' => $limit],
+            ['limit' => \PDO::PARAM_INT]
+        );
+
+        $spellings = $this->mostFrequentSpellings(
+            $termPattern,
+            array_values(array_filter(array_map(
+                static fn (array $row): ?string => $row['fid'] === null ? (string)$row['nn'] : null,
+                $rows
+            )))
+        );
+
+        $topJournals = [];
+        foreach ($rows as $row) {
+            if ($row['fid'] !== null) {
+                $name = trim((string)$row['display_title']) !== '' ? trim((string)$row['display_title']) : trim((string)$row['title']);
+            } else {
+                $name = $spellings[(string)$row['nn']] ?? (string)$row['nn'];
+            }
+
+            $topJournals[] = [
+                'journalName' => $name,
+                'qualis' => $row['qualis'] !== null && $row['qualis'] !== '' ? (string)$row['qualis'] : null,
+                'count' => (int)$row['total'],
+            ];
+        }
+
+        return $topJournals;
+    }
+
+    /**
+     * Grafia do Lattes mais frequente (empate: a menor em ordem de bytes) de cada nome normalizado entre os artigos
+     * do tema sem vínculo com periódico.
+     *
+     * @param list<string> $normalizedNames
+     * @return array<string, string> nome normalizado => grafia
+     */
+    private function mostFrequentSpellings(string $termPattern, array $normalizedNames): array
+    {
+        if ($normalizedNames === []) {
+            return [];
+        }
+
+        $rows = $this->getEntityManager()->getConnection()->fetchAllAssociative(
+            'SELECT pi.journal_name_normalized AS nn, pi.journal_name AS spelling
+               FROM production_items pi
+              WHERE pi.item_type = :articleType
+                AND pi.qualis_journal_id IS NULL
+                AND pi.journal_name_normalized IN (:names)
+                AND (pi.title LIKE :termPattern OR CAST(pi.extra_data AS CHAR) LIKE :termPattern)',
+            ['articleType' => ProductionItem::TYPE_ARTIGO, 'termPattern' => $termPattern, 'names' => $normalizedNames],
+            ['names' => ArrayParameterType::STRING]
+        );
+
+        $counts = [];
+        foreach ($rows as $row) {
+            $spelling = trim((string)$row['spelling']);
+            if ($spelling !== '') {
+                $name = (string)$row['nn'];
+                $counts[$name][$spelling] = ($counts[$name][$spelling] ?? 0) + 1;
+            }
+        }
+
+        $best = [];
+        foreach ($counts as $name => $bySpelling) {
+            $winner = null;
+            $winnerCount = 0;
+            foreach ($bySpelling as $spelling => $count) {
+                $spelling = (string)$spelling;
+                if ($count > $winnerCount || ($count === $winnerCount && strcmp($spelling, (string)$winner) < 0)) {
+                    $winner = $spelling;
+                    $winnerCount = $count;
+                }
+            }
+            $best[(string)$name] = (string)$winner;
+        }
+
+        return $best;
     }
 
     private function normalizeString(string $str): string

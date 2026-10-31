@@ -115,6 +115,13 @@
                                         <input type="hidden" name="status" value="{{ status }}">
                                         <input type="hidden" name="q" value="{{ q }}">
                                         <input type="hidden" name="page" value="{{ currentPage }}">
+                                        {# Busca do periódico pelo nome: o JS (no fim da página) mostra o campo e preenche o ID; sem JS fica só o campo numérico #}
+                                        <div class="w-full min-w-[16rem]" data-journal-picker hidden>
+                                            <label for="journal-search-{{ c.id }}" class="sr-only">Buscar o periódico pelo nome</label>
+                                            <input id="journal-search-{{ c.id }}" type="search" autocomplete="off" placeholder="Buscar periódico pelo nome..." data-journal-search class="w-full px-2 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
+                                            <ul aria-label="Periódicos encontrados" hidden data-journal-results class="mt-1 max-h-48 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs divide-y divide-slate-100 dark:divide-slate-800"></ul>
+                                            <span class="mt-1 block text-[11px] text-slate-500 dark:text-slate-400" aria-live="polite" data-journal-status></span>
+                                        </div>
                                         <label for="journal-id-{{ c.id }}" class="sr-only">ID do periódico</label>
                                         <input id="journal-id-{{ c.id }}" type="number" name="journal_id" min="1" required placeholder="ID" value="{{ c.suggestedJournal ? c.suggestedJournal.id : '' }}" class="w-24 px-2 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500">
                                         <button type="submit" class="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-emerald-500 transition-colors">Aceitar</button>
@@ -184,4 +191,136 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+// Busca de periódico pelo nome nos formulários "Aceitar": escolher um resultado preenche o campo do ID.
+// Sem JS os campos de busca continuam ocultos (atributo hidden) e vale o campo numérico.
+(function () {
+    const searchUrl = "{{ path('app_admin_journal_name_search') }}";
+    const MIN_LETTERS = 3;
+    const DEBOUNCE_MS = 250;
+
+    document.querySelectorAll('[data-journal-picker]').forEach(function (picker) {
+        const form = picker.closest('form');
+        const input = picker.querySelector('[data-journal-search]');
+        const list = picker.querySelector('[data-journal-results]');
+        const status = picker.querySelector('[data-journal-status]');
+        const idField = form.querySelector('input[name="journal_id"]');
+        let timer = null;
+        let requestId = 0;
+
+        picker.hidden = false;
+
+        function closeList() {
+            list.hidden = true;
+            list.replaceChildren();
+        }
+
+        function choose(journal) {
+            idField.value = journal.id;
+            input.value = journal.name;
+            status.textContent = 'Selecionado: «' + journal.name + '» (#' + journal.id + ')';
+            closeList();
+        }
+
+        function render(journals) {
+            list.replaceChildren();
+            if (journals.length === 0) {
+                status.textContent = 'Nenhum periódico encontrado com esse nome.';
+                list.hidden = true;
+                return;
+            }
+
+            status.textContent = journals.length + ' periódico' + (journals.length === 1 ? '' : 's') + ' encontrado' + (journals.length === 1 ? '' : 's') + '.';
+            journals.forEach(function (journal) {
+                const item = document.createElement('li');
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'block w-full text-left px-2.5 py-1.5 hover:bg-sky-50 dark:hover:bg-slate-800 focus:bg-sky-50 dark:focus:bg-slate-800 focus:outline-hidden';
+
+                const name = document.createElement('span');
+                name.className = 'block font-semibold text-slate-900 dark:text-white';
+                name.textContent = journal.name;
+
+                const details = document.createElement('span');
+                details.className = 'block text-[11px] text-slate-500 dark:text-slate-400';
+                details.textContent = ['#' + journal.id, journal.issn ? 'ISSN ' + journal.issn : null, journal.qualis ? 'Qualis ' + journal.qualis : null]
+                    .filter(Boolean)
+                    .join(' · ');
+
+                button.append(name, details);
+                button.addEventListener('click', function () { choose(journal); });
+                item.appendChild(button);
+                list.appendChild(item);
+            });
+            list.hidden = false;
+        }
+
+        function search() {
+            const term = input.value.trim();
+            if ((term.match(/\p{L}/gu) || []).length < MIN_LETTERS) {
+                requestId++;
+                closeList();
+                status.textContent = term === '' ? '' : 'Digite ao menos ' + MIN_LETTERS + ' letras para buscar.';
+                return;
+            }
+
+            const current = ++requestId;
+            status.textContent = 'Buscando...';
+            fetch(searchUrl + '?q=' + encodeURIComponent(term), { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                .then(function (response) {
+                    if (!response.ok) { throw new Error('HTTP ' + response.status); }
+                    return response.json();
+                })
+                .then(function (data) {
+                    if (current === requestId) { render(data.journals || []); }
+                })
+                .catch(function () {
+                    if (current === requestId) {
+                        closeList();
+                        status.textContent = 'Não foi possível buscar agora. Digite o ID do periódico no campo ao lado.';
+                    }
+                });
+        }
+
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(search, DEBOUNCE_MS);
+        });
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                // Enter na busca não envia o formulário: escolhe o primeiro resultado, se houver
+                event.preventDefault();
+                const first = list.querySelector('button');
+                if (first) { first.click(); }
+            } else if (event.key === 'Escape') {
+                closeList();
+            } else if (event.key === 'ArrowDown') {
+                const first = list.querySelector('button');
+                if (first) { event.preventDefault(); first.focus(); }
+            }
+        });
+        list.addEventListener('keydown', function (event) {
+            const buttons = Array.from(list.querySelectorAll('button'));
+            const index = buttons.indexOf(document.activeElement);
+            if (event.key === 'ArrowDown' && index < buttons.length - 1) {
+                event.preventDefault();
+                buttons[index + 1].focus();
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                (index > 0 ? buttons[index - 1] : input).focus();
+            } else if (event.key === 'Escape') {
+                closeList();
+                input.focus();
+            }
+        });
+        document.addEventListener('click', function (event) {
+            if (!picker.contains(event.target)) { closeList(); }
+        });
+    });
+})();
+</script>
 {% endblock %}

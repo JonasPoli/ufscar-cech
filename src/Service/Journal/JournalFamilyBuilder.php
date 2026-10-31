@@ -1558,15 +1558,28 @@ TXT;
      * A família é uma só revista: a presença numa base vale para todas as suas linhas. Assim, os indicadores que contam
      * artigos por base em cada linha (StatisticsService) e a página /periodicos dão o mesmo resultado. A canônica recebe
      * os vínculos dos membros e, depois, os membros recebem os da canônica. Idempotente.
+     *
+     * Público para quem muda vínculos fora da reconstrução de famílias (edição de um periódico no admin, mesclagem,
+     * importação de lista de base): sem `$familyId` replica em todas as famílias (o que `build()` faz); com ele, só na
+     * família indicada (a canônica e as linhas que apontam para ela).
+     *
+     * @param int|null $familyId id da canônica da família, ou null para todas
+     *
+     * @return int vínculos criados
      */
-    private function propagateBaseLinks(): int
+    public function propagateBaseLinks(?int $familyId = null): int
     {
+        // Só as linhas membro de uma família: as da família pedida, ou todas as que têm canônica
+        $scope = $familyId === null ? 'q.canonical_journal_id IS NOT NULL' : 'q.canonical_journal_id = ?';
+        $params = $familyId === null ? [] : [$familyId];
+
         $added = (int)$this->conn->executeStatement(
             'INSERT IGNORE INTO qualis_journal_academic_database (qualis_journal_id, academic_database_id)
              SELECT DISTINCT q.canonical_journal_id, l.academic_database_id
                FROM qualis_journal_academic_database l
                JOIN qualis_journals q ON q.id = l.qualis_journal_id
-              WHERE q.canonical_journal_id IS NOT NULL'
+              WHERE ' . $scope,
+            $params
         );
 
         return $added + (int)$this->conn->executeStatement(
@@ -1574,7 +1587,8 @@ TXT;
              SELECT DISTINCT q.id, l.academic_database_id
                FROM qualis_journals q
                JOIN qualis_journal_academic_database l ON l.qualis_journal_id = q.canonical_journal_id
-              WHERE q.canonical_journal_id IS NOT NULL'
+              WHERE ' . $scope,
+            $params
         );
     }
 

@@ -224,6 +224,43 @@ class JournalVariantGuardTest extends KernelTestCase
 
     // ------------------------------------------------------------------------------------------------
 
+    /**
+     * @dataProvider notANameProvider
+     */
+    public function testTextThatIsCodeNotANameIsRefused(string $text): void
+    {
+        $journal = new \App\Entity\QualisJournal();
+        $journal->setTitle('Revista Teste Trava ' . bin2hex(random_bytes(4)));
+        $this->em->persist($journal);
+        $this->em->flush();
+
+        $this->assertNull($this->guard->addVariant($journal, $text, 'alternative'));
+    }
+
+    /**
+     * @return iterable<string, array{0: string}>
+     */
+    public static function notANameProvider(): iterable
+    {
+        yield 'HTML' => ['HTTP 500 <small>Internal Server Error</small>'];
+        yield 'CSS' => ['--highlight-default: #222222;'];
+        yield 'seletor CSS' => ['.filter-list li.active {'];
+        yield 'pilha de erro' => ['#13 /home/runcloud/webapps/app-bibliomap/vendor/symfony/error-handler/ErrorHandler.php'];
+    }
+
+    public function testRealNamesWithPunctuationAreAccepted(): void
+    {
+        $journal = new \App\Entity\QualisJournal();
+        $journal->setTitle('Revista Teste Trava ' . bin2hex(random_bytes(4)));
+        $this->em->persist($journal);
+        $this->em->flush();
+
+        foreach (['Cadernos & Debates: Educação (Online), n. %s', '#PerDebate %s', 'Stimmen der Zeit %s <Freiburg, Breisgau>', 'Revue de médecine navale %s (outre-mer);'] as $pattern) {
+            $name = sprintf($pattern, bin2hex(random_bytes(4)));
+            $this->assertNotNull($this->guard->addVariant($journal, $name, 'alternative'), $name);
+        }
+    }
+
     private function token(): string
     {
         return 'Zg' . bin2hex(random_bytes(5));

@@ -4,6 +4,8 @@ namespace App\Repository;
 
 use App\Entity\ProductionItem;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -103,9 +105,11 @@ class ProductionItemRepository extends ServiceEntityRepository
      * @param string|null $department Filter by researcher's department
      * @param int $page Current page (1-indexed)
      * @param int $limit Items per page
+     * @param list<int> $journalRowIds Linhas de `qualis_journals` das famílias cujo nome contém o termo
+     *        (`QualisJournalRepository::findFamilyRowIdsByName`): os artigos ligados a elas também entram na busca
      * @return ProductionItem[]
      */
-    public function searchProductions(?string $query = null, ?string $department = null, int $page = 1, int $limit = 20): array
+    public function searchProductions(?string $query = null, ?string $department = null, int $page = 1, int $limit = 20, array $journalRowIds = []): array
     {
         $qb = $this->createQueryBuilder('p')
             ->leftJoin('p.researcher', 'r')
@@ -114,8 +118,7 @@ class ProductionItemRepository extends ServiceEntityRepository
             ->addOrderBy('p.id', 'DESC');
 
         if ($query !== null && $query !== '') {
-            $qb->andWhere('p.title LIKE :query OR p.journalName LIKE :query OR p.eventName LIKE :query OR p.doi LIKE :query')
-               ->setParameter('query', '%' . $query . '%');
+            $this->applyTextFilter($qb, $query, $journalRowIds);
         }
 
         if ($department !== null && $department !== '' && $department !== 'all') {
@@ -132,16 +135,17 @@ class ProductionItemRepository extends ServiceEntityRepository
 
     /**
      * Counts total search results for production items.
+     *
+     * @param list<int> $journalRowIds Os mesmos de {@see searchProductions()}
      */
-    public function countSearchProductions(?string $query = null, ?string $department = null): int
+    public function countSearchProductions(?string $query = null, ?string $department = null, array $journalRowIds = []): int
     {
         $qb = $this->createQueryBuilder('p')
             ->select('COUNT(p.id)')
             ->leftJoin('p.researcher', 'r');
 
         if ($query !== null && $query !== '') {
-            $qb->andWhere('p.title LIKE :query OR p.journalName LIKE :query OR p.eventName LIKE :query OR p.doi LIKE :query')
-               ->setParameter('query', '%' . $query . '%');
+            $this->applyTextFilter($qb, $query, $journalRowIds);
         }
 
         if ($department !== null && $department !== '' && $department !== 'all') {
@@ -151,6 +155,60 @@ class ProductionItemRepository extends ServiceEntityRepository
         }
 
         return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * Filtro de texto da busca: título, periódico (como o docente escreveu), evento ou DOI contendo o termo.
+     *
+     * Com `$journalRowIds` acrescenta, em OR, os artigos ligados a esses periódicos, para a revista ser achada por
+     * qualquer nome (título, nome de exibição ou variante da família), e não só pela grafia do Lattes. Sem ids, o
+     * filtro é o de sempre. Só artigo entra por vínculo: o resto não tem periódico.
+     *
+     * @param list<int> $journalRowIds
+     */
+    private function applyTextFilter(QueryBuilder $qb, string $query, array $journalRowIds): void
+    {
+        $conditions = 'p.title LIKE :query OR p.journalName LIKE :query OR p.eventName LIKE :query OR p.doi LIKE :query';
+
+        if ($journalRowIds !== []) {
+            $conditions .= ' OR (p.itemType = :articleType AND IDENTITY(p.qualisJournal) IN (:journalRowIds))';
+            $qb->setParameter('articleType', ProductionItem::TYPE_ARTIGO)
+               ->setParameter('journalRowIds', array_values($journalRowIds), ArrayParameterType::INTEGER);
+        }
+
+        $qb->andWhere($conditions)
+           ->setParameter('query', '%' . $query . '%');
+    }
+
+    /**
+     * Nome usual do periódico de cada artigo ligado a um periódico de um docente: o nome de exibição da canônica da
+     * família (`COALESCE(display_title, title)`), em uma só consulta para a página do docente, sem N+1.
+     *
+     * O `qualis_journal_id` do artigo aponta para a linha que o resolver escolheu, não para a canônica; o `journal_name`
+     * do Lattes não entra e não é alterado. Artigo sem vínculo não aparece no resultado.
+     *
+     * @return array<int, string> id do item => nome usual
+     */
+    public function getUsualJournalNamesForResearcher(int $researcherId): array
+    {
+        $rows = $this->getEntityManager()->getConnection()->fetchAllAssociative(
+            "SELECT pi.id, COALESCE(NULLIF(c.display_title, ''), c.title) AS name
+               FROM production_items pi
+               JOIN qualis_journals q ON q.id = pi.qualis_journal_id
+               JOIN qualis_journals c ON c.id = COALESCE(q.canonical_journal_id, q.id)
+              WHERE pi.researcher_id = :researcherId AND pi.item_type = :articleType",
+            ['researcherId' => $researcherId, 'articleType' => ProductionItem::TYPE_ARTIGO]
+        );
+
+        $names = [];
+        foreach ($rows as $row) {
+            $name = trim((string)$row['name']);
+            if ($name !== '') {
+                $names[(int)$row['id']] = $name;
+            }
+        }
+
+        return $names;
     }
 
     /**

@@ -9,7 +9,9 @@ use App\Entity\Country;
 use App\Entity\CountryVariation;
 use App\Entity\Institution;
 use App\Entity\InstitutionVariation;
+use App\Entity\ProductionItem;
 use App\Entity\QualisJournal;
+use App\Service\Journal\JournalFamilyBuilder;
 use App\Service\Journal\JournalVariantConflictException;
 use App\Service\Journal\JournalVariantGuard;
 use Doctrine\ORM\EntityManagerInterface;
@@ -28,13 +30,20 @@ use Doctrine\ORM\EntityManagerInterface;
  */
 class EntityMergeService
 {
+    /** @var array{family: int, rows: int, articles: int, baseLinks: int}|null o que a última mesclagem de periódicos recalculou */
+    private ?array $lastMergeRefresh = null;
+
     /**
      * @param EntityManagerInterface $em Gerenciador de entidades do Doctrine
      * @param JournalVariantGuard $variantGuard Trava de integridade das variantes de periódicos (A5.3)
+     * @param JournalResolverService $journalResolver Bases de indexação de cada linha do cadastro (refreshFamilyArticles)
+     * @param JournalFamilyBuilder $familyBuilder Replicação dos vínculos com as bases na família (refreshFamilyArticles)
      */
     public function __construct(
         private readonly EntityManagerInterface $em,
-        private readonly JournalVariantGuard $variantGuard
+        private readonly JournalVariantGuard $variantGuard,
+        private readonly JournalResolverService $journalResolver,
+        private readonly JournalFamilyBuilder $familyBuilder
     ) {}
 
     /**
@@ -302,8 +311,14 @@ class EntityMergeService
      * Além disso, as bases de indexação das fontes são somadas às do master e os candidatos da fila de nomes que
      * apontavam para uma fonte passam a apontar para o master (senão sumiriam com a linha).
      *
-     * O que a mesclagem não faz: não recalcula `qualis`/`indexed_databases` dos artigos movidos (a indexação de
-     * periódicos, `app:index:journals`, refaz) nem reclassifica a área da família resultante.
+     * Ainda dentro da transação, depois do `flush`, os dados derivados do cadastro que os artigos guardam são refeitos
+     * ({@see self::refreshFamilyArticles()}): as bases passam a valer para a família toda e cada artigo ligado a ela
+     * recebe de novo `qualis` e `indexed_databases`, então um B1 mesclado num A2 deixa os artigos com A2. Os números ficam
+     * em {@see self::getLastMergeRefresh()}. Se isso falhar, a mesclagem inteira é desfeita.
+     *
+     * O que a mesclagem não faz: reclassificar a área da família resultante nem limpar o cache de páginas públicas. Quem a
+     * chama depois do commit usa o classificador de áreas (`JournalAreaClassifier::classifyFamily()`) e o
+     * `PageCacheService`, como o admin faz.
      *
      * Atenção: as correções são por SQL e o EntityManager é limpo (`clear`) antes de recarregar o master e as fontes;
      * entidades que o chamador tinha carregadas ficam destacadas.
@@ -397,6 +412,100 @@ class EntityMergeService
             }
 
             $this->em->flush();
+
+            // As fontes já saíram e a família do master está final: refaz o que os artigos guardam do cadastro
+            $this->lastMergeRefresh = $this->refreshFamilyArticles($masterId);
+
+            $conn->commit();
+        } catch (\Throwable $e) {
+            if ($conn->isTransactionActive()) {
+                $conn->rollBack();
+            }
+            $this->lastMergeRefresh = null;
+
+            throw $e;
+        }
+
+        return $master;
+    }
+
+    /**
+     * O que a última chamada de mergeJournals() recalculou nos artigos e nas bases da família (ver
+     * refreshFamilyArticles()); null se nenhuma mesclagem terminou ainda ou se a última falhou.
+     *
+     * @return array{family: int, rows: int, articles: int, baseLinks: int}|null
+     */
+    public function getLastMergeRefresh(): ?array
+    {
+        return $this->lastMergeRefresh;
+    }
+
+    /**
+     * Refaz os dados dos artigos que dependem do cadastro de periódicos (mergeJournals() chama isto, e quem alterou o
+     * cadastro por fora pode chamar de novo: é idempotente):
+     *  1. os vínculos com as bases passam a valer para a família toda (união dos vínculos de todas as linhas, como em
+     *     `app:journals:families`), porque a mesclagem só somou os das fontes ao master e os indicadores contam por linha;
+     *  2. cada artigo ligado a uma linha da família recebe de novo `production_items.qualis` e `indexed_databases`, como
+     *     a indexação (`app:index:journals`) grava: o Qualis da linha ou, se ela não tem, o da família (a canônica; sem
+     *     Qualis nela, a de menor id que tem), e as bases da linha, em JSON, ou NULL sem bases. Os artigos de uma
+     *     fonte já foram movidos para o master pela mesclagem, então um B1 mesclado num A2 passa a mostrar A2.
+     * Não mexe em `qualis_journal_id` nem relê o nome do periódico dos artigos, que continuam como o Lattes trouxe. Tudo
+     * numa transação.
+     *
+     * @param int $journalId qualquer linha da família resultante (normalmente o master devolvido por mergeJournals())
+     *
+     * @return array{family: int, rows: int, articles: int, baseLinks: int} família, linhas dela, artigos que mudaram e
+     *         vínculos com bases criados; tudo zero se o periódico não existe
+     */
+    public function refreshFamilyArticles(int $journalId): array
+    {
+        $conn = $this->em->getConnection();
+
+        $familyId = $conn->fetchOne('SELECT COALESCE(canonical_journal_id, id) FROM qualis_journals WHERE id = ?', [$journalId]);
+        if ($familyId === false || $familyId === null) {
+            return ['family' => 0, 'rows' => 0, 'articles' => 0, 'baseLinks' => 0];
+        }
+        $familyId = (int) $familyId;
+
+        $rows = $conn->fetchAllAssociative(
+            'SELECT id, qualis FROM qualis_journals WHERE id = ? OR canonical_journal_id = ? ORDER BY id',
+            [$familyId, $familyId]
+        );
+
+        // Mesmo critério do resolver (withFamilyQualis): a linha sem Qualis usa o da canônica e, sem ele, o da primeira
+        // linha da família que tem
+        $qualisOf = [];
+        $familyQualis = null;
+        foreach ($rows as $row) {
+            $qualis = strtoupper(trim((string) $row['qualis']));
+            $qualisOf[(int) $row['id']] = $qualis !== '' ? $qualis : null;
+            if ($qualis !== '' && ($familyQualis === null || (int) $row['id'] === $familyId)) {
+                $familyQualis = $qualis;
+            }
+        }
+
+        // O resolver guarda o que já leu: o que ele memorizou antes da mesclagem não vale mais
+        $this->journalResolver->clearCache();
+
+        $baseLinks = 0;
+        $articles = 0;
+        $conn->beginTransaction();
+        try {
+            $baseLinks = $this->familyBuilder->propagateBaseLinks($familyId);
+
+            foreach ($qualisOf as $rowId => $qualis) {
+                $databases = $this->journalResolver->resolveDatabasesForJournalId($rowId);
+                $articles += (int) $conn->executeStatement(
+                    'UPDATE production_items SET qualis = ?, indexed_databases = ? WHERE qualis_journal_id = ? AND item_type = ?',
+                    [
+                        $qualis ?? $familyQualis,
+                        $databases !== [] ? json_encode($databases, JSON_UNESCAPED_UNICODE) : null,
+                        $rowId,
+                        ProductionItem::TYPE_ARTIGO,
+                    ]
+                );
+            }
+
             $conn->commit();
         } catch (\Throwable $e) {
             if ($conn->isTransactionActive()) {
@@ -406,7 +515,10 @@ class EntityMergeService
             throw $e;
         }
 
-        return $master;
+        // Para o que a próxima leitura (nesta requisição ou no processo) não aproveite os vínculos de antes
+        $this->journalResolver->clearCache();
+
+        return ['family' => $familyId, 'rows' => count($rows), 'articles' => $articles, 'baseLinks' => $baseLinks];
     }
 
     /**

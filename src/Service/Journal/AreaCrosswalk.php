@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Service\Journal;
 
+use App\Service\Thesaurus\StringNormalizer;
+use Doctrine\DBAL\ArrayParameterType;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\TableNotFoundException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Crosswalks dos rótulos externos (ASJC, WoS, DOAJ, Latindex, SciELO) para os slugs da taxonomia CAPES,
- * e as regras de título.
+ * Crosswalks dos rótulos externos (ASJC, WoS, DOAJ, Latindex, SciELO e as áreas do CNPq) para os slugs da taxonomia
+ * CAPES, e as regras de título.
  *
  * Na primeira consulta (carga preguiçosa) lê `config/journal_areas/crosswalk_<fonte>.json`, no formato
  * `{"_meta": {...}, "map": {"<rótulo>": "slug" | ["slug", ...] | null}}`, e `crosswalk_title_rules.json`,
@@ -19,11 +23,19 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * Rótulos são comparados sem diferença de caixa e com espaços repetidos colapsados (no arquivo e na
  * consulta). Um valor null é decisão explícita (rótulo sem área temática): map() responde [] e isKnown()
  * responde true.
+ *
+ * Correções manuais: com uma conexão, a carga aplica por cima dos arquivos as linhas `origin = 'manual'` do tesauro de
+ * categorias (tabela `capes_area_variants`, ver {@see JournalAreaThesaurus}) das fontes aceitas. Uma linha `active`
+ * substitui o mapa do rótulo pelos slugs das linhas dele; uma `ignored` o transforma em decisão explícita sem área
+ * (`[]`, e isKnown() responde true). O tesauro compara pela forma dele (sem acento nem pontuação), este serviço pela
+ * caixa e pelos espaços: a correção vale para o rótulo (`variation_name`) e para todo rótulo do arquivo da mesma fonte
+ * que tenha a mesma forma do tesauro (como `HISTÓRIA` e `HISTORIA`). Sem conexão, ou com a tabela ainda inexistente, só
+ * os arquivos respondem.
  */
 class AreaCrosswalk
 {
-    /** Fontes aceitas. scopus e openalex usam 'asjc'; scielo_wos usa 'wos'. */
-    public const SOURCES = ['asjc', 'wos', 'doaj', 'latindex', 'scielo_area', 'scielo_desc'];
+    /** Fontes aceitas. scopus e openalex usam 'asjc'; scielo_wos usa 'wos'; 'cnpq' são as áreas do CNPq do Lattes. */
+    public const SOURCES = ['asjc', 'wos', 'doaj', 'latindex', 'scielo_area', 'scielo_desc', 'cnpq'];
 
     private const FILE_PREFIX = 'crosswalk_';
     private const FILE_SUFFIX = '.json';
@@ -32,8 +44,11 @@ class AreaCrosswalk
     /** @var array<string, array<string, list<string>>>|null fonte => rótulo normalizado => slugs */
     private ?array $index = null;
 
-    /** @var array<string, list<string>> fonte => rótulos como estão no arquivo, na ordem dele */
+    /** @var array<string, list<string>> fonte => rótulos como estão no arquivo, na ordem dele (e, no fim, os só manuais) */
     private array $labels = [];
+
+    /** @var array<string, list<array{label: string, slugs: list<string>|null}>> fonte => o que o arquivo traz, sem as correções manuais */
+    private array $fileEntries = [];
 
     /** @var list<array{pattern: string, slug: string}> */
     private array $rules = [];
@@ -42,10 +57,14 @@ class AreaCrosswalk
 
     private readonly CapesTaxonomy $taxonomy;
 
+    /**
+     * @param Connection|null $conn conexão para ler as correções manuais do tesauro; sem ela só os arquivos respondem
+     */
     public function __construct(
         #[Autowire('%kernel.project_dir%/config/journal_areas')]
         ?string $directory = null,
         ?CapesTaxonomy $taxonomy = null,
+        private readonly ?Connection $conn = null,
     ) {
         $this->directory = $directory ?? dirname(__DIR__, 3) . '/config/journal_areas';
         $this->taxonomy = $taxonomy ?? new CapesTaxonomy();
@@ -96,6 +115,23 @@ class AreaCrosswalk
     }
 
     /**
+     * O que o arquivo da fonte traz, na ordem dele e sem as correções manuais: o rótulo como está no arquivo e os seus
+     * slugs (`null` é a decisão explícita de rótulo sem área). É o que o tesauro de categorias semeia. Lista de pares,
+     * e não um mapa rótulo => slugs, porque o PHP transformaria o rótulo `1702` em chave inteira.
+     *
+     * @return list<array{label: string, slugs: list<string>|null}>
+     *
+     * @throws \InvalidArgumentException se a fonte não for aceita
+     */
+    public function fileEntries(string $source): array
+    {
+        self::requireSource($source);
+        $this->load();
+
+        return $this->fileEntries[$source];
+    }
+
+    /**
      * Regras de título, na ordem do arquivo.
      *
      * @return list<array{pattern: string, slug: string}>
@@ -135,6 +171,7 @@ class AreaCrosswalk
 
         $index = array_fill_keys(self::SOURCES, []);
         $labels = array_fill_keys(self::SOURCES, []);
+        $entries = array_fill_keys(self::SOURCES, []);
         $rules = [];
 
         $files = glob($this->directory . '/' . self::FILE_PREFIX . '*' . self::FILE_SUFFIX) ?: [];
@@ -150,17 +187,102 @@ class AreaCrosswalk
                 throw new \RuntimeException(sprintf('Crosswalk "%s": a fonte "%s" não é aceita.', $path, $name));
             }
 
-            [$index[$name], $labels[$name]] = $this->loadCrosswalk($name, $path);
+            [$index[$name], $labels[$name], $entries[$name]] = $this->loadCrosswalk($name, $path);
         }
+
+        $this->applyManualCorrections($index, $labels);
 
         // Só publica o estado depois de validar tudo: uma falha não deixa carga parcial.
         $this->index = $index;
         $this->labels = $labels;
+        $this->fileEntries = $entries;
         $this->rules = $rules;
     }
 
     /**
-     * @return array{0: array<string, list<string>>, 1: list<string>}
+     * Aplica por cima dos arquivos as correções manuais do tesauro (ver a descrição da classe).
+     *
+     * @param array<string, array<string, list<string>>> $index
+     * @param array<string, list<string>>                $labels
+     */
+    private function applyManualCorrections(array &$index, array &$labels): void
+    {
+        $corrections = $this->manualCorrections();
+        if ($corrections === []) {
+            return;
+        }
+
+        // Forma do tesauro dos rótulos dos arquivos, só das fontes que têm correção
+        $byNormalized = [];
+        foreach (array_keys($corrections) as $source) {
+            foreach ($labels[$source] as $label) {
+                $byNormalized[$source][StringNormalizer::normalizeString($label, true)][] = $label;
+            }
+        }
+
+        foreach ($corrections as $source => $bySource) {
+            foreach ($bySource as $normalized => $correction) {
+                $targets = array_merge($correction['labels'], $byNormalized[$source][(string) $normalized] ?? []);
+                foreach ($targets as $label) {
+                    $key = self::normalizeLabel($label);
+                    $index[$source][$key] = $correction['slugs'];
+                    if (!in_array($label, $labels[$source], true)) {
+                        $labels[$source][] = $label;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Linhas manuais `active` e `ignored` do tesauro das fontes aceitas, agrupadas por fonte e forma do tesauro: os
+     * rótulos (`variation_name`) e os slugs, sem repetição, na ordem das linhas (vazia se só há `ignored`).
+     *
+     * @return array<string, array<string, array{labels: list<string>, slugs: list<string>}>>
+     */
+    private function manualCorrections(): array
+    {
+        if ($this->conn === null) {
+            return [];
+        }
+
+        try {
+            $rows = $this->conn->fetchAllAssociative(
+                "SELECT v.vocabulary, v.variation_name, v.normalized_name, v.status, a.slug
+                   FROM capes_area_variants v
+                   LEFT JOIN capes_areas a ON a.id = v.area_id
+                  WHERE v.origin = 'manual' AND v.status IN ('active', 'ignored') AND v.vocabulary IN (?)
+                  ORDER BY v.id",
+                [self::SOURCES],
+                [ArrayParameterType::STRING]
+            );
+        } catch (TableNotFoundException) {
+            // Banco ainda sem a migration do tesauro: respondem só os arquivos
+            return [];
+        }
+
+        $corrections = [];
+        foreach ($rows as $row) {
+            $group = &$corrections[(string) $row['vocabulary']][(string) $row['normalized_name']];
+            $group ??= ['labels' => [], 'slugs' => []];
+
+            $label = (string) $row['variation_name'];
+            if (!in_array($label, $group['labels'], true)) {
+                $group['labels'][] = $label;
+            }
+
+            $slug = $row['slug'];
+            if ($row['status'] === 'active' && is_string($slug) && $this->taxonomy->isValidSlug($slug) && !in_array($slug, $group['slugs'], true)) {
+                $group['slugs'][] = $slug;
+            }
+            unset($group);
+        }
+
+        return $corrections;
+    }
+
+    /**
+     * @return array{0: array<string, list<string>>, 1: list<string>, 2: list<array{label: string, slugs: list<string>|null}>}
      */
     private function loadCrosswalk(string $source, string $path): array
     {
@@ -178,6 +300,7 @@ class AreaCrosswalk
 
         $index = [];
         $labels = [];
+        $entries = [];
         foreach ($map as $rawLabel => $value) {
             $label = (string) $rawLabel;
             $key = self::normalizeLabel($label);
@@ -191,9 +314,10 @@ class AreaCrosswalk
 
             $index[$key] = $this->slugsOf($value, $label, $path);
             $labels[] = $label;
+            $entries[] = ['label' => $label, 'slugs' => $value === null ? null : $index[$key]];
         }
 
-        return [$index, $labels];
+        return [$index, $labels, $entries];
     }
 
     /**

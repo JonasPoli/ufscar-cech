@@ -11,13 +11,16 @@ use App\Repository\JournalAreaRepository;
 use App\Repository\QualisJournalRepository;
 use App\Service\Journal\CapesTaxonomy;
 use App\Service\Journal\JournalAreaClassifier;
+use App\Service\Journal\JournalAreaThesaurus;
+use App\Service\Journal\JournalFamilyBuilder;
 use App\Service\Journal\JournalVariantConflictException;
 use App\Service\Journal\JournalVariantGuard;
+use App\Service\PageCacheService;
 use App\Service\Thesaurus\EntityMergeService;
+use App\Service\Thesaurus\JournalCsvImporterService;
 use App\Service\Thesaurus\StringNormalizer;
 use App\Service\Thesaurus\ThesaurusFileService;
 use Doctrine\ORM\EntityManagerInterface;
-use League\Csv\Reader;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
@@ -53,7 +56,11 @@ class AdminJournalController extends AbstractController
         private readonly JournalAreaRepository $areaRepo,
         private readonly JournalAreaEvidenceRepository $evidenceRepo,
         private readonly JournalAreaClassifier $areaClassifier,
-        private readonly CapesTaxonomy $taxonomy
+        private readonly CapesTaxonomy $taxonomy,
+        private readonly JournalAreaThesaurus $areaThesaurus,
+        private readonly JournalCsvImporterService $csvImporter,
+        private readonly JournalFamilyBuilder $familyBuilder,
+        private readonly PageCacheService $pageCache
     ) {}
 
     #[Route('/', name: 'app_admin_journal_index', methods: ['GET'])]
@@ -152,6 +159,13 @@ class AdminJournalController extends AbstractController
             $variationsText = (string)$request->request->get('variations', '');
             $candidates = $this->parseVariations($variationsText, (string)$request->request->get('new_variation', ''));
 
+            // Sem nenhuma área CAPES marcada, o texto livre de `area` ainda vale se o tesauro de categorias o reconhece
+            $recognized = $this->recognizeAreaText($values, null, null);
+            if ($recognized !== null) {
+                $values['areas'] = $recognized['slugs'];
+                $values['area_primary'] = $recognized['slugs'][0];
+            }
+
             // Valida tudo antes de tocar na entidade: com erro, nada é gravado e o formulário volta com o que foi digitado
             $errors = $this->validateForm($values, $candidates, null, false);
 
@@ -166,7 +180,7 @@ class AdminJournalController extends AbstractController
 
                     $notes = $this->syncVariations($journal, $candidates);
                     $this->em->flush();
-                    $notes = array_merge($notes, $this->saveAreasAndDisplayTitle($journal, $values, null));
+                    $notes = array_merge($notes, $this->saveAreasAndDisplayTitle($journal, $values, null, $recognized));
                     $conn->commit();
 
                     $this->addFlash('success', "Periódico \"{$journal->getTitle()}\" cadastrado com sucesso.");
@@ -221,6 +235,13 @@ class AdminJournalController extends AbstractController
             $variationsText = (string)$request->request->get('variations', '');
             $candidates = $this->parseVariations($variationsText, (string)$request->request->get('new_variation', ''));
 
+            // Sem nenhuma área CAPES marcada, o texto livre de `area` ainda vale se o tesauro de categorias o reconhece
+            $recognized = $this->recognizeAreaText($values, $journal, $context);
+            if ($recognized !== null) {
+                $values['areas'] = $recognized['slugs'];
+                $values['area_primary'] = $recognized['slugs'][0];
+            }
+
             // Valida tudo antes de tocar na entidade: com erro (título vazio, variação que já é de outro periódico, área
             // inválida) nada é gravado e o formulário volta com o que foi digitado
             $errors = $this->validateForm($values, $candidates, $journal, $context['isMember']);
@@ -229,12 +250,24 @@ class AdminJournalController extends AbstractController
                 $conn = $this->em->getConnection();
                 $conn->beginTransaction();
                 try {
+                    $previousQualis = $journal->getQualis();
                     $this->applyFields($journal, $values, $context['familyHasAreas']);
-                    $this->syncAcademicDatabases($journal, $values['academic_databases'], $allDatabases);
+                    $bases = $this->syncAcademicDatabases($journal, $values['academic_databases'], $allDatabases);
                     $notes = $this->syncVariations($journal, $candidates);
                     $this->em->flush();
-                    $notes = array_merge($notes, $this->saveAreasAndDisplayTitle($journal, $values, $context));
+                    $this->replicateBaseLinks($journal, $bases);
+
+                    // Qualis e bases ficam gravados em cada artigo: sem refazer, o selo e os indicadores seguem com o valor
+                    // antigo até a próxima indexação
+                    $articlesChanged = $journal->getQualis() !== $previousQualis || $bases['added'] !== [] || $bases['removed'] !== [];
+                    if ($articlesChanged) {
+                        $this->mergeService->refreshFamilyArticles((int)$journal->getId());
+                    }
+                    $notes = array_merge($notes, $this->saveAreasAndDisplayTitle($journal, $values, $context, $recognized));
                     $conn->commit();
+                    if ($articlesChanged) {
+                        $this->pageCache->clearCache();
+                    }
 
                     $this->addFlash('success', "Periódico \"{$journal->getTitle()}\" atualizado com sucesso.");
                     foreach ($notes as $note) {
@@ -355,12 +388,69 @@ class AdminJournalController extends AbstractController
 
         try {
             $master = $this->mergeService->mergeJournals($masterId, $sourceIds);
-            $this->addFlash('success', sprintf('Periódicos mesclados com sucesso em "%s". Variações unificadas.', $master->getTitle()));
         } catch (\Throwable $e) {
             $this->addFlash('danger', 'Erro na mesclagem: ' . $e->getMessage());
+
+            return $this->redirectToRoute('app_admin_journal_index');
+        }
+
+        $this->addFlash('success', sprintf('Periódicos mesclados com sucesso em "%s". Variações unificadas.', $master->getTitle()));
+        foreach ($this->refreshAfterMerge((int)$master->getId()) as [$type, $message]) {
+            $this->addFlash($type, $message);
         }
 
         return $this->redirectToRoute('app_admin_journal_index');
+    }
+
+    /**
+     * Refaz, depois do commit da mesclagem, o que o EntityMergeService não faz:
+     *  1. o aviso do que a própria mesclagem recalculou nos artigos (`qualis`, `indexed_databases`) e nas bases da família;
+     *  2. as áreas CAPES da família, pela classificação automática (a curadoria manual travada continua como está);
+     *  3. o cache das páginas públicas, que mostram o Qualis e as bases dos artigos.
+     * Cada passo falha sozinho: a mesclagem já está gravada, então o erro vira um aviso com o comando que refaz o passo.
+     *
+     * @return list<array{0: string, 1: string}> tipo do flash e texto
+     */
+    private function refreshAfterMerge(int $masterId): array
+    {
+        $messages = [];
+
+        $refreshed = $this->mergeService->getLastMergeRefresh();
+        if ($refreshed !== null) {
+            $messages[] = ['info', sprintf(
+                'Qualis e bases recalculados em %d %s do periódico resultante.',
+                $refreshed['articles'],
+                $refreshed['articles'] === 1 ? 'artigo' : 'artigos'
+            )];
+        }
+
+        try {
+            $decision = $this->areaClassifier->classifyFamily($masterId, 'merge-' . date('Ymd-His'));
+            // O classificador grava por SQL: o que estava carregado ficou desatualizado
+            $this->em->clear();
+
+            if ($decision === null) {
+                $messages[] = ['info', 'Áreas CAPES mantidas: a curadoria manual da família está travada.'];
+            } elseif (($decision['primary'] ?? null) === null) {
+                $messages[] = ['info', 'Áreas CAPES: sem evidência suficiente para classificar a família.'];
+            } else {
+                $slug = (string)$decision['primary']['slug'];
+                $messages[] = ['info', sprintf(
+                    'Áreas CAPES reclassificadas: %s (confiança %s).',
+                    $this->taxonomy->bySlug($slug)['name'] ?? $slug,
+                    self::CONFIDENCE_LABELS[$decision['confidence']] ?? $decision['confidence']
+                )];
+            }
+        } catch (\Throwable $e) {
+            $messages[] = ['warning', 'A mesclagem foi gravada, mas as áreas CAPES da família não foram reclassificadas (' . $e->getMessage() . '). Rode «php bin/console app:journals:classify».'];
+        }
+
+        // Como a tela de cache: o diretório inteiro das páginas públicas é removido e refeito a cada visita
+        $messages[] = $this->pageCache->clearCache()
+            ? ['info', 'Cache de páginas públicas limpo.']
+            : ['warning', 'Não foi possível limpar o cache de páginas públicas: use a tela de cache do admin.'];
+
+        return $messages;
     }
 
     #[Route('/export', name: 'app_admin_journal_export_csv', methods: ['GET'])]
@@ -372,10 +462,12 @@ class AdminJournalController extends AbstractController
         $response = new StreamedResponse(function() use ($conn, $areasByJournal) {
             $handle = fopen('php://output', 'w+');
             fwrite($handle, "\xEF\xBB\xBF");
-            // As colunas de áreas CAPES vêm no fim: quem já consome o arquivo continua lendo as quatro primeiras
-            fputcsv($handle, ['issn', 'title', 'qualis', 'area', 'area_capes_primary', 'areas_capes'], ';', '"', "\\");
+            // As colunas de áreas CAPES vêm depois das quatro primeiras, e as da família no fim (nome de exibição e linha
+            // canônica): quem já consome o arquivo continua lendo as quatro primeiras, e a importação de CSV (`title`,
+            // `issn`, `qualis`, `area`, `areas_capes`) ignora as que não conhece
+            fputcsv($handle, ['issn', 'title', 'qualis', 'area', 'area_capes_primary', 'areas_capes', 'display_title', 'canonical_journal_id'], ';', '"', "\\");
 
-            $stmt = $conn->executeQuery('SELECT id, issn, title, qualis, area FROM qualis_journals ORDER BY title ASC');
+            $stmt = $conn->executeQuery('SELECT id, issn, title, qualis, area, display_title, canonical_journal_id FROM qualis_journals ORDER BY title ASC');
             while ($row = $stmt->fetchAssociative()) {
                 $capes = $areasByJournal[(int)$row['id']] ?? ['primary' => null, 'all' => []];
                 fputcsv($handle, [
@@ -385,6 +477,8 @@ class AdminJournalController extends AbstractController
                     $row['area'] ?? '',
                     $capes['primary'] ?? '',
                     implode(';', $capes['all']),
+                    $row['display_title'] ?? '',
+                    $row['canonical_journal_id'] ?? '',
                 ], ';', '"', "\\");
             }
             fclose($handle);
@@ -400,20 +494,16 @@ class AdminJournalController extends AbstractController
     public function exportThesaurus(Request $request): Response
     {
         $format = strtolower($request->query->get('format', 'the'));
-        $journals = $this->journalRepo->findAll();
-        $records = [];
-        foreach ($journals as $j) {
-            $vars = [];
-            foreach ($j->getVariations() as $v) {
-                $vars[] = $v->getVariationName();
-            }
-            $records[] = [
-                'header' => $j->getTitle(),
-                'preferred_name' => $j->getTitle(),
-                'variations' => $vars,
-                'variants' => $vars,
-            ];
+
+        // O cadastro inteiro (84 mil linhas) é agrupado em memória: ~200 MB e poucos segundos
+        @ini_set('memory_limit', '1024M');
+        if (\function_exists('set_time_limit')) {
+            @\set_time_limit(300);
         }
+
+        // Uma entrada por família (revista), e não por linha do cadastro: o cabeçalho é o nome de exibição da canônica e as
+        // variantes são todos os nomes da família
+        $records = $this->databaseExporter->familyThesaurusRecords();
 
         return $this->fileService->exportThesaurusStream($records, $format, 'tesauro_periodicos');
     }
@@ -437,74 +527,40 @@ class AdminJournalController extends AbstractController
             if (\function_exists('set_time_limit')) {
                 @\set_time_limit(600);
             }
-            $csv = Reader::createFromPath($file->getRealPath(), 'r');
-            $csv->setDelimiter($this->detectCsvDelimiter((string)$file->getRealPath()));
-            $csv->setHeaderOffset(0);
+            @ini_set('memory_limit', '1024M');
 
-            $conn = $this->em->getConnection();
-            $batch = [];
-            $imported = 0;
-            $withAreas = 0;
-            $unknownAreas = [];
+            // Upsert numa transação só (JournalCsvImporterService): importar o mesmo arquivo de novo não duplica nada
+            $report = $this->csvImporter->import((string)$file->getRealPath());
 
-            foreach ($csv->getRecords() as $record) {
-                $title = trim($record['title'] ?? $record['TITLE'] ?? $record['titulo'] ?? $record['Título'] ?? '');
-                $issn = trim($record['issn'] ?? $record['ISSN'] ?? '');
-                $qualis = strtoupper(trim($record['qualis'] ?? $record['QUALIS'] ?? ''));
-                $area = trim($record['area'] ?? $record['AREA'] ?? $record['Área'] ?? '');
-                $areasCapes = trim($record['areas_capes'] ?? $record['AREAS_CAPES'] ?? '');
-
-                if ($title === '') continue;
-
-                $normIssn = $issn ? strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $issn)) : null;
-
-                $row = [
-                    'title' => $title,
-                    'issn' => $issn ?: null,
-                    'normalized_issn' => $normIssn,
-                    'qualis' => $qualis ?: null,
-                    'area' => $area ?: null,
-                ];
-
-                // Coluna opcional `areas_capes` (slugs ou nomes separados por `;`, a primeira é a principal): vira
-                // curadoria manual travada. Valores que não são áreas CAPES são ignorados e relatados no fim.
-                if ($areasCapes !== '') {
-                    $resolved = $this->areaRepo->resolveSlugs($areasCapes);
-                    foreach ($resolved['unknown'] as $unknown) {
-                        $unknownAreas[$unknown] = true;
-                    }
-                    if ($resolved['slugs'] !== []) {
-                        $this->insertJournalWithAreas($conn, $row, $resolved['slugs']);
-                        $imported++;
-                        $withAreas++;
-                        continue;
-                    }
-                }
-
-                $batch[] = $row;
-
-                if (count($batch) >= 500) {
-                    $this->batchInsertJournals($conn, $batch);
-                    $imported += count($batch);
-                    $batch = [];
-                }
+            $message = sprintf('Importação concluída! %d periódicos processados.', $report['processed']);
+            if ($report['withAreas'] > 0) {
+                $message .= " Áreas CAPES gravadas em {$report['withAreas']} (curadoria manual, travadas).";
             }
-
-            if (count($batch) > 0) {
-                $this->batchInsertJournals($conn, $batch);
-                $imported += count($batch);
-            }
-
-            $message = "Importação concluída! {$imported} periódicos processados.";
-            if ($withAreas > 0) {
-                $message .= " Áreas CAPES gravadas em {$withAreas} (curadoria manual, travadas).";
-            }
+            $message .= sprintf(' Criados: %d; completados: %d; ignorados: %d.', $report['created'], $report['completed'], $report['ignored']);
             $this->addFlash('success', $message);
-            if ($unknownAreas !== []) {
-                $this->addFlash('warning', 'Valores de areas_capes que não são áreas CAPES foram ignorados: ' . implode('; ', array_slice(array_keys($unknownAreas), 0, 10)) . (count($unknownAreas) > 10 ? '…' : '') . '.');
+
+            if ($report['ignored'] > 0) {
+                $this->addFlash('info', sprintf(
+                    'Ignorados: %d já cadastrados sem nada a completar, %d em famílias com áreas travadas, %d com título ambíguo, %d linhas inválidas.',
+                    $report['unchanged'],
+                    $report['locked'],
+                    $report['ambiguous'],
+                    $report['invalid']
+                ));
+            }
+            if ($report['warnings'] !== []) {
+                $this->addFlash('warning', sprintf(
+                    '%d linhas não puderam ser importadas: %s%s',
+                    $report['invalid'] + $report['ambiguous'],
+                    implode(' ', array_slice($report['warnings'], 0, 5)),
+                    count($report['warnings']) > 5 ? ' …' : ''
+                ));
+            }
+            if ($report['unknownAreas'] !== []) {
+                $this->addFlash('warning', 'Valores de areas_capes que não são áreas CAPES foram ignorados: ' . implode('; ', array_slice($report['unknownAreas'], 0, 10)) . (count($report['unknownAreas']) > 10 ? '…' : '') . '.');
             }
         } catch (\Throwable $e) {
-            $this->addFlash('danger', 'Erro na importação: ' . $e->getMessage());
+            $this->addFlash('danger', 'Erro na importação (nada foi gravado): ' . $e->getMessage());
         }
 
         return $this->redirectToRoute('app_admin_journal_index');
@@ -532,10 +588,17 @@ class AdminJournalController extends AbstractController
             $ext = strtolower($file->getClientOriginalExtension());
             $entries = $this->fileService->parseFile($file->getRealPath(), $ext);
 
+            // O tesauro exportado usa o nome de exibição da família como cabeçalho: sem ele aqui, reimportar o próprio
+            // arquivo criaria periódicos novos. O título tem prioridade sobre o nome de exibição de outra linha.
             $journalsMap = [];
+            $displayMap = [];
             foreach ($this->journalRepo->findAll() as $j) {
                 $journalsMap[StringNormalizer::normalizeString($j->getTitle(), true)] = $j;
+                if ((string)$j->getDisplayTitle() !== '') {
+                    $displayMap[StringNormalizer::normalizeString($j->getDisplayTitle(), true)] ??= $j;
+                }
             }
+            $journalsMap += $displayMap;
 
             $addedVars = 0;
             $newJournals = 0;
@@ -663,6 +726,16 @@ class AdminJournalController extends AbstractController
                     $result['updated'],
                     $result['linksCreated']
                 ));
+                $this->addFlash('info', sprintf(
+                    'Variantes de nome novas: %d (ignoradas: %d, das quais %d pertencem a outro periódico). Vínculos replicados nas demais linhas das famílias: %d.',
+                    $result['variationsAdded'],
+                    $result['variationsSkipped'],
+                    $result['variationConflicts'],
+                    $result['baseLinksReplicated']
+                ));
+                if ($result['ambiguous'] > 0) {
+                    $this->addFlash('warning', sprintf('%d linhas ignoradas: o nome casa com mais de uma família de periódicos e a linha não tem ISSN conhecido.', $result['ambiguous']));
+                }
             } else {
                 $err = implode(' ', $result['errors']);
                 $this->addFlash('danger', 'Erro na importação: ' . $err);
@@ -695,65 +768,6 @@ class AdminJournalController extends AbstractController
         $response->headers->set('Content-Disposition', 'attachment; filename="' . $filename . '"');
 
         return $response;
-    }
-
-    private function batchInsertJournals(\Doctrine\DBAL\Connection $conn, array $batch): void
-    {
-        $values = [];
-        $params = [];
-        foreach ($batch as $row) {
-            $values[] = '(?, ?, ?, ?, ?, ?)';
-            $params[] = $row['title'];
-            $params[] = mb_substr(StringNormalizer::normalizeString($row['title'], true), 0, 500, 'UTF-8') ?: null;
-            $params[] = $row['issn'];
-            $params[] = $row['normalized_issn'];
-            $params[] = $row['qualis'];
-            $params[] = $row['area'];
-        }
-
-        $sql = 'INSERT INTO qualis_journals (title, normalized_title, issn, normalized_issn, qualis, area) VALUES ' . implode(', ', $values);
-        $conn->executeStatement($sql, $params);
-    }
-
-    // ------------------------------------------------------------------------------------------------------------
-    // Importação de CSV: delimitador e periódicos com áreas CAPES
-    // ------------------------------------------------------------------------------------------------------------
-
-    /**
-     * Delimitador do CSV pelo cabeçalho: o mais frequente entre `;`, `,` e tabulação (vírgula se nenhum aparece).
-     * A exportação do admin usa `;`, e um arquivo assim precisa voltar pela importação.
-     */
-    private function detectCsvDelimiter(string $path): string
-    {
-        $handle = @fopen($path, 'r');
-        $line = $handle !== false ? (string)fgets($handle, 65536) : '';
-        if ($handle !== false) {
-            fclose($handle);
-        }
-        $line = preg_replace('/^\xEF\xBB\xBF/', '', $line) ?? $line;
-
-        $counts = [';' => substr_count($line, ';'), ',' => substr_count($line, ','), "\t" => substr_count($line, "\t")];
-        arsort($counts);
-        $best = (string)array_key_first($counts);
-
-        return $counts[$best] > 0 ? $best : ',';
-    }
-
-    /**
-     * Insere um periódico do CSV que traz `areas_capes` e grava as áreas como curadoria manual travada, na hora
-     * (precisa do id da linha nova, por isso fica de fora do INSERT em lote).
-     *
-     * @param array{title: string, issn: ?string, normalized_issn: ?string, qualis: ?string, area: ?string} $row
-     * @param list<string> $slugs a primeira é a principal
-     */
-    private function insertJournalWithAreas(\Doctrine\DBAL\Connection $conn, array $row, array $slugs): void
-    {
-        $this->batchInsertJournals($conn, [$row]);
-        $journal = $this->em->find(QualisJournal::class, (int)$conn->lastInsertId());
-        if ($journal !== null) {
-            $this->areaRepo->replaceManual($journal, $slugs, $slugs[0]);
-        }
-        $this->em->clear();
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -943,18 +957,89 @@ class AdminJournalController extends AbstractController
     }
 
     /**
+     * Marca no periódico as bases escolhidas e desmarca as outras (a gravação é do `flush`).
+     *
      * @param list<string> $selectedIds ids das bases marcadas
      * @param iterable<\App\Entity\AcademicDatabase> $allDatabases
+     *
+     * @return array{added: list<int>, removed: list<int>} ids das bases que passaram a estar ligadas ao periódico e das
+     *         que deixaram de estar
      */
-    private function syncAcademicDatabases(QualisJournal $journal, array $selectedIds, iterable $allDatabases): void
+    private function syncAcademicDatabases(QualisJournal $journal, array $selectedIds, iterable $allDatabases): array
     {
+        $changes = ['added' => [], 'removed' => []];
+
         foreach ($allDatabases as $db) {
+            $had = $journal->getAcademicDatabases()->contains($db);
             if (in_array((string)$db->getId(), $selectedIds, true)) {
                 $journal->addAcademicDatabase($db);
+                if (!$had) {
+                    $changes['added'][] = (int)$db->getId();
+                }
             } else {
                 $journal->removeAcademicDatabase($db);
+                if ($had) {
+                    $changes['removed'][] = (int)$db->getId();
+                }
             }
         }
+
+        return $changes;
+    }
+
+    /**
+     * A família é uma só revista: a presença numa base vale para todas as suas linhas, e os indicadores contam os artigos
+     * por `qualis_journal_id`, a linha a que cada artigo está ligado. Por isso, depois de salvar as bases de uma linha
+     * (já gravadas pelo `flush`), o que mudou vale para a família toda: uma base desmarcada sai de todas as linhas (senão a
+     * réplica a traria de volta) e as bases que alguma linha tem passam para as demais, como em `app:journals:families`.
+     * Sem mudança nas bases, nada é tocado.
+     *
+     * @param array{added: list<int>, removed: list<int>} $changes o que syncAcademicDatabases() devolveu
+     */
+    private function replicateBaseLinks(QualisJournal $journal, array $changes): void
+    {
+        if ($changes['added'] === [] && $changes['removed'] === []) {
+            return;
+        }
+
+        $familyId = $journal->getFamilyId();
+        if ($changes['removed'] !== []) {
+            $this->em->getConnection()->executeStatement(
+                'DELETE l FROM qualis_journal_academic_database l
+                   JOIN qualis_journals q ON q.id = l.qualis_journal_id
+                  WHERE (q.id = ? OR q.canonical_journal_id = ?) AND l.academic_database_id IN (' . implode(',', array_map('intval', $changes['removed'])) . ')',
+                [$familyId, $familyId]
+            );
+        }
+
+        $this->familyBuilder->propagateBaseLinks($familyId);
+    }
+
+    /**
+     * Texto livre de `area` do formulário lido pelo tesauro de categorias de revistas. Vale quando nenhuma área CAPES foi
+     * marcada, a família ainda não tem áreas (nem automáticas nem manuais), o texto foi alterado agora (salvar o formulário
+     * sem mexer em nada não pode virar curadoria travada) e o tesauro reconhece alguma área nele. Numa linha membro as
+     * áreas são só leitura (edita-se a canônica), então não vale.
+     *
+     * @param array<string, mixed> $values
+     * @param array<string, mixed>|null $context areaContext(); null num periódico novo
+     *
+     * @return array{slugs: list<string>, text: string}|null as áreas reconhecidas (a primeira é a principal) e o texto
+     */
+    private function recognizeAreaText(array $values, ?QualisJournal $journal, ?array $context): ?array
+    {
+        $text = (string)$values['area'];
+        if ($values['areas'] !== [] || $text === '' || ($context['isMember'] ?? false) || ($context['familyHasAreas'] ?? false)) {
+            return null;
+        }
+        if ($journal !== null && $text === (string)$journal->getArea()) {
+            return null;
+        }
+
+        $slugs = $this->areaThesaurus->resolve($text)['slugs'];
+        $slugs = array_values(array_filter($slugs, fn (string $slug): bool => $this->taxonomy->isValidSlug($slug)));
+
+        return $slugs === [] ? null : ['slugs' => $slugs, 'text' => $text];
     }
 
     /**
@@ -1007,10 +1092,12 @@ class AdminJournalController extends AbstractController
      *
      * @param array<string, mixed> $values
      * @param array<string, mixed>|null $context areaContext(); null num periódico novo
+     * @param array{slugs: list<string>, text: string}|null $recognized áreas lidas do texto livre (recognizeAreaText()), já
+     *        postas em `$values['areas']`: o aviso diz qual área foi reconhecida
      *
      * @return list<string> avisos para o usuário
      */
-    private function saveAreasAndDisplayTitle(QualisJournal $journal, array $values, ?array $context): array
+    private function saveAreasAndDisplayTitle(QualisJournal $journal, array $values, ?array $context, ?array $recognized = null): array
     {
         $notes = [];
 
@@ -1026,6 +1113,16 @@ class AdminJournalController extends AbstractController
 
         $note = $this->applyAreaSelection($journal, $values, $context['areaState'] ?? self::emptyAreaState());
         if ($note !== null) {
+            if ($recognized !== null) {
+                $notes[] = sprintf(
+                    'Nenhuma área CAPES foi marcada, mas o texto «%s» foi reconhecido como: %s.',
+                    $recognized['text'],
+                    implode(', ', array_map(
+                        fn (string $slug): string => ($this->taxonomy->bySlug($slug)['name'] ?? $slug) . ($slug === $recognized['slugs'][0] ? ' (principal)' : ''),
+                        $recognized['slugs']
+                    ))
+                );
+            }
             $notes[] = $note;
         }
 

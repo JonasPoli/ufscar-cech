@@ -26,7 +26,10 @@ use Psr\Log\LoggerInterface;
  * Executa as seguintes etapas sem alterar os dados brutos do Lattes:
  * 1. Sincroniza nomes e citações bibliográficas com o Tesauro de Autores (author_identities / variants).
  * 2. Resolve o periódico e atribui o melhor estrato Qualis CAPES para cada artigo científico. Nome de periódico
- *    sem vínculo seguro (desconhecido ou ambíguo) não recebe vínculo: entra na fila de revisão de nomes.
+ *    sem vínculo seguro (desconhecido ou ambíguo) não recebe vínculo: entra na fila de revisão de nomes. Só artigo tem
+ *    periódico: nos demais tipos (capítulo, evento, texto em jornal...) o `journal_name` é o título do livro, do
+ *    congresso ou do jornal, que pode coincidir com o de uma revista, e `qualis_journal_id`, `qualis` e
+ *    `indexed_databases` ficam vazios.
  * 3. Resolve todos os coautores de cada produção, identificando docentes internos do CECH (matched_researcher_id, is_cech_researcher).
  * 4. Resolve e vincula instituições de formação acadêmica (Education) e atuação profissional (ProfessionalExperience).
  * 5. Analisa vínculos com a UFSCar para determinar anos de admissão, desligamento e status ativo/aposentado.
@@ -100,7 +103,12 @@ class CurriculumNormalizationService
                 $prod->setJournalNameNormalized($normalizedJournalName);
             }
 
-            if ($journalName || $issn) {
+            if ($prod->getItemType() !== ProductionItem::TYPE_ARTIGO) {
+                // Como o lote: só artigo é resolvido, e um vínculo que uma indexação anterior tenha gravado sai
+                $prod->setQualis(null);
+                $prod->setQualisJournal(null);
+                $prod->setIndexedDatabases(null);
+            } elseif ($journalName || $issn) {
                 $res = $this->journalResolver->resolveJournalIdAndQualis($journalName, $issn);
                 if ($res) {
                     $prod->setQualis($res['qualis']);
@@ -342,10 +350,11 @@ class CurriculumNormalizationService
      * qualis_journal_id, qualis e indexed_databases diretamente em production_items.
      *
      * Grava também a coluna derivada journal_name_normalized (o journal_name do Lattes não é alterado) e, ao final,
-     * reconstrói a fila de revisão de nomes de periódicos sem vínculo.
+     * reconstrói a fila de revisão de nomes de periódicos sem vínculo. Os itens que não são artigo têm o vínculo
+     * limpo (clearNonArticleLinks), como no modo por docente.
      *
      * @param callable|null $progressCallback Callback opcional de progresso
-     * @return array{totalProcessed: int, qualisResolved: int, journalsMatched: int, databasesLinked: int, queue: array{pending: int, ambiguous: int, removed: int}, durationSec: float}
+     * @return array{totalProcessed: int, qualisResolved: int, journalsMatched: int, databasesLinked: int, nonArticlesCleared: int, queue: array{pending: int, ambiguous: int, removed: int}, durationSec: float}
      */
     public function indexAllProductionsJournalAndDatabases(?callable $progressCallback = null): array
     {
@@ -361,6 +370,7 @@ class CurriculumNormalizationService
             'qualisResolved' => 0,
             'journalsMatched' => 0,
             'databasesLinked' => 0,
+            'nonArticlesCleared' => $this->clearNonArticleLinks(),
         ];
 
         $batchSize = 250;
@@ -419,6 +429,25 @@ class CurriculumNormalizationService
         $stats['durationSec'] = $duration;
 
         return $stats;
+    }
+
+    /**
+     * Limpa `qualis_journal_id`, `qualis` e `indexed_databases` dos itens que não são artigo. São colunas derivadas (a
+     * regra de preservação dos dados do Lattes não se aplica a elas); `journal_name` e `issn` ficam como vieram.
+     * Só artigo tem periódico: o `journal_name` de um capítulo, de um evento ou de um texto em jornal é o título do
+     * livro, do congresso ou do jornal, e um vínculo gravado por uma indexação anterior apareceria como selo Qualis.
+     *
+     * @return int Quantidade de itens que tinham algum desses valores
+     */
+    public function clearNonArticleLinks(): int
+    {
+        return (int)$this->em->getConnection()->executeStatement(
+            "UPDATE production_items
+                SET qualis = NULL, qualis_journal_id = NULL, indexed_databases = NULL
+              WHERE item_type <> :articleType
+                AND (qualis IS NOT NULL OR qualis_journal_id IS NOT NULL OR indexed_databases IS NOT NULL)",
+            ['articleType' => ProductionItem::TYPE_ARTIGO]
+        );
     }
 
     /**

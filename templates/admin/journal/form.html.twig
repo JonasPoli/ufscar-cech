@@ -105,6 +105,11 @@
                             Preenchido pela classificação CAPES da família: para mudar, use o bloco logo abaixo.
                         </p>
                     {% endif %}
+                    {% if not familyHasAreas and not isMember %}
+                        <p class="text-[11px] text-slate-400">
+                            Texto livre. Se nenhuma área CAPES for marcada abaixo e o texto digitado for reconhecido como uma área (ex.: «Educação»), ela é gravada como curadoria manual e a tela avisa qual foi reconhecida.
+                        </p>
+                    {% endif %}
                     {% if journal.areaRaw %}
                         <p class="text-[11px] text-slate-400">Valor original importado: {{ journal.areaRaw }}</p>
                     {% endif %}

@@ -33,6 +33,8 @@ class AdminJournalTest extends WebTestCase
 
     /** @var int[] */
     private array $researcherIds = [];
+    /** @var int[] */
+    private array $databaseIds = [];
     /** @var string[] */
     private array $tempFiles = [];
 
@@ -51,6 +53,9 @@ class AdminJournalTest extends WebTestCase
             }
             // Áreas, evidências, variantes e bases saem em cascata; as famílias se desfazem por SET NULL
             $this->conn->executeStatement('DELETE FROM qualis_journals WHERE title LIKE ?', ['%' . $this->uniq . '%']);
+            foreach ($this->databaseIds as $id) {
+                $this->conn->executeStatement('DELETE FROM academic_database WHERE id = ?', [$id]);
+            }
         }
         foreach ($this->tempFiles as $file) {
             @unlink($file);
@@ -714,7 +719,11 @@ class AdminJournalTest extends WebTestCase
         $this->assertStringStartsWith("\xEF\xBB\xBF", $content);
 
         $lines = preg_split('/\r?\n/', trim(substr($content, 3)));
-        $this->assertSame(['issn', 'title', 'qualis', 'area', 'area_capes_primary', 'areas_capes'], str_getcsv($lines[0], ';', '"', '\\'));
+        $this->assertSame(
+            ['issn', 'title', 'qualis', 'area', 'area_capes_primary', 'areas_capes', 'display_title', 'canonical_journal_id'],
+            str_getcsv($lines[0], ';', '"', '\\'),
+            'As colunas da família (nome de exibição e canônica) vêm depois das de áreas CAPES, no fim'
+        );
 
         $rows = array_filter($lines, fn (string $l): bool => str_contains($l, $this->uniq));
         $parsed = [];
@@ -722,8 +731,8 @@ class AdminJournalTest extends WebTestCase
             $fields = str_getcsv($line, ';', '"', '\\');
             $parsed[$fields[1]] = $fields;
         }
-        $this->assertSame(['', "Revista Exportada {$this->uniq}", '', self::LABEL_EDUCACAO, 'Educação', 'Educação;Sociologia'], $parsed["Revista Exportada {$this->uniq}"]);
-        $this->assertSame(['', "Revista Sem Área Exportada {$this->uniq}", '', '', '', ''], $parsed["Revista Sem Área Exportada {$this->uniq}"]);
+        $this->assertSame(['', "Revista Exportada {$this->uniq}", '', self::LABEL_EDUCACAO, 'Educação', 'Educação;Sociologia', '', ''], $parsed["Revista Exportada {$this->uniq}"]);
+        $this->assertSame(['', "Revista Sem Área Exportada {$this->uniq}", '', '', '', '', '', ''], $parsed["Revista Sem Área Exportada {$this->uniq}"]);
     }
 
     public function testExportFullCatalogCsvAndJsonIncludeTheCapesColumnsAtTheEnd(): void
@@ -737,7 +746,7 @@ class AdminJournalTest extends WebTestCase
         $reader = Reader::fromString((string)$client->getResponse()->getContent());
         $reader->setHeaderOffset(0);
         $header = $reader->getHeader();
-        $this->assertSame(['area_capes_primary', 'areas_capes'], array_slice($header, -2));
+        $this->assertSame(['area_capes_primary', 'areas_capes', 'display_title', 'canonical_journal_id'], array_slice($header, -4), 'As colunas de áreas CAPES e as da família ficam no fim');
         $this->assertSame(['ID', 'Título do Periódico'], array_slice($header, 0, 2), 'As colunas existentes continuam onde estavam');
         $found = null;
         foreach ($reader->getRecords() as $record) {
@@ -755,7 +764,7 @@ class AdminJournalTest extends WebTestCase
         $item = current(array_filter($data, fn (array $i): bool => $i['id'] === $journal->getId()));
         $this->assertSame('Psicologia', $item['area_capes_primary']);
         $this->assertSame(['Psicologia', 'Direito'], $item['areas_capes']);
-        $this->assertSame(['area_capes_primary', 'areas_capes'], array_slice(array_keys($item), -2));
+        $this->assertSame(['area_capes_primary', 'areas_capes', 'display_title', 'canonical_journal_id'], array_slice(array_keys($item), -4));
     }
 
     // ------------------------------------------------------------------------------------------------------------
@@ -765,10 +774,13 @@ class AdminJournalTest extends WebTestCase
     public function testImportCsvAcceptsTheExportDelimiterAndSavesAreasCapesAsLockedManual(): void
     {
         $client = $this->getAuthenticatedClient();
+        // O ISSN é único por execução: a importação procura o periódico pelo ISSN, e o `cech_test` compartilhado já tem
+        // linhas (algumas com a área travada) com ISSNs fixos de outros testes
+        $issn = $this->uniqueIssn();
         // Como a exportação do admin: BOM e `;`; o campo `areas_capes` traz várias áreas separadas por `;`, entre aspas
         $csv = "\xEF\xBB\xBF" . implode("\n", [
             'title;issn;qualis;area;areas_capes',
-            "Importada Um {$this->uniq};1111-2222;a1;Texto da planilha;\"Educação;Sociologia\"",
+            "Importada Um {$this->uniq};{$issn};a1;Texto da planilha;\"Educação;Sociologia\"",
             "Importada Dois {$this->uniq};;;;",
             "Importada Três {$this->uniq};;b2;Só texto;Astrologia",
             "Importada Quatro {$this->uniq};;;;\"direito; Psicologia\"",
@@ -793,7 +805,7 @@ class AdminJournalTest extends WebTestCase
         $this->assertSame(self::LABEL_EDUCACAO, $one['area']);
         $this->assertSame('Texto da planilha', $one['area_raw']);
         $this->assertSame('A1', $one['qualis']);
-        $this->assertSame('1111-2222', $one['issn']);
+        $this->assertSame($issn, $one['issn']);
         $this->assertSame(self::norm("Importada Um {$this->uniq}"), $one['normalized_title']);
 
         $two = $this->journalRow("Importada Dois {$this->uniq}");
@@ -813,7 +825,8 @@ class AdminJournalTest extends WebTestCase
     public function testImportCsvWithCommasStillWorks(): void
     {
         $client = $this->getAuthenticatedClient();
-        $csv = "title,issn,qualis,area\n\"Importada Vírgula {$this->uniq}\",3333-4444,b1,Interdisciplinar\n";
+        $issn = $this->uniqueIssn();
+        $csv = "title,issn,qualis,area\n\"Importada Vírgula {$this->uniq}\",{$issn},b1,Interdisciplinar\n";
 
         $crawler = $client->request('GET', '/admin/journals/');
         $client->request(
@@ -825,7 +838,10 @@ class AdminJournalTest extends WebTestCase
         $client->followRedirect();
         $this->assertSelectorTextContains('body', 'Importação concluída! 1 periódicos processados.');
         $row = $this->journalRow("Importada Vírgula {$this->uniq}");
-        $this->assertSame(['B1', 'Interdisciplinar', '3333-4444'], [$row['qualis'], $row['area'], $row['issn']]);
+        // O texto da planilha é o dado bruto (`area_raw`); `area` recebe o rótulo canônico da área que o tesauro reconhece nele
+        $this->assertSame(['B1', 'Interdisciplinar', $issn], [$row['qualis'], $row['area_raw'], $row['issn']]);
+        $this->assertSame('INTERDISCIPLINAR / MULTIDISCIPLINAR', $row['area']);
+        $this->assertSame(0, (int)$row['areas_locked'], 'O texto da coluna area não trava a família: a classificação automática continua valendo');
     }
 
     public function testImportThesaurusUsesTheGuardSkipsConflictsAndCountsThem(): void
@@ -901,6 +917,443 @@ class AdminJournalTest extends WebTestCase
         $this->assertSame($master->getId(), (int)$this->conn->fetchOne('SELECT journal_id FROM journal_name_variants WHERE normalized_name = ?', [self::norm("Alt Fonte Tela {$this->uniq}")]));
     }
 
+    public function testChangingTheQualisInTheFormUpdatesTheArticles(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $journal = $this->createJournal("Revista Qualis Editado {$this->uniq}");
+        $articleId = $this->createArticle($journal);
+        $this->conn->update('production_items', ['qualis' => 'B2'], ['id' => $articleId]);
+        $this->conn->update('qualis_journals', ['qualis' => 'B2'], ['id' => $journal->getId()]);
+
+        $this->postEdit($client, $journal->getId(), ['qualis' => 'A1']);
+        $this->assertResponseRedirects('/admin/journals/');
+
+        $this->assertSame('A1', $this->conn->fetchOne('SELECT qualis FROM production_items WHERE id = ?', [$articleId]));
+    }
+
+    public function testReimportingAThesaurusWhoseHeaderIsTheDisplayTitleDoesNotCreateAJournal(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $journal = $this->createJournal("REVISTA CADASTRADA {$this->uniq}");
+        $this->conn->update('qualis_journals', ['display_title' => "Revista Exibida {$this->uniq}"], ['id' => $journal->getId()]);
+        $this->em->clear();
+        $csv = "preferred_name,variant_name\nRevista Exibida {$this->uniq},Grafia Exportada {$this->uniq}\n";
+
+        $crawler = $client->request('GET', '/admin/journals/');
+        $client->request(
+            'POST',
+            '/admin/journals/import-thesaurus',
+            ['_token' => $crawler->filter('form[action="/admin/journals/import-thesaurus"] input[name="_token"]')->attr('value')],
+            ['thesaurus_file' => $this->uploadedFile($csv, 'csv')]
+        );
+        $this->assertResponseRedirects('/admin/journals/');
+
+        $this->assertSame(0, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE title = ?', [mb_convert_case("Revista Exibida {$this->uniq}", MB_CASE_TITLE, 'UTF-8')]));
+        $this->assertSame($journal->getId(), (int)$this->conn->fetchOne('SELECT journal_id FROM journal_name_variants WHERE variation_name = ?', ["Grafia Exportada {$this->uniq}"]));
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Excluir
+    // ------------------------------------------------------------------------------------------------------------
+
+    public function testTheDeleteButtonCarriesATokenThatTheServerAcceptsAndTheJournalIsRemoved(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $journal = $this->createJournal("Revista Para Excluir {$this->uniq}");
+        $stays = $this->createJournal("Revista Que Fica {$this->uniq}");
+        $id = $journal->getId();
+
+        $crawler = $client->request('GET', '/admin/journals/?search=' . $this->uniq);
+        $this->assertResponseIsSuccessful();
+        $button = $crawler->filter(sprintf('button[data-id="%d"][data-token]', $id));
+        $this->assertCount(1, $button, 'O botão Excluir da linha traz o token em data-token');
+        $token = (string)$button->attr('data-token');
+        $this->assertNotSame('', $token);
+        $this->assertSame("/admin/journals/{$id}/delete", $button->attr('data-action'));
+        $this->assertSame("Revista Para Excluir {$this->uniq}", $button->attr('data-title'));
+
+        // O modal tem o campo do token e o script o preenche com o do botão (antes ele ia sempre vazio)
+        $this->assertCount(1, $crawler->filter('form#deleteForm input[name="_token"]#deleteCsrfToken'));
+        $this->assertStringContainsString("getElementById('deleteCsrfToken').value = button.dataset.token", (string)$client->getResponse()->getContent());
+
+        // Sem token (o que o formulário enviava) e com o token de outro periódico: recusado, nada some
+        $otherToken = (string)$crawler->filter(sprintf('button[data-id="%d"][data-token]', $stays->getId()))->attr('data-token');
+        $this->assertNotSame($token, $otherToken, 'O token é por periódico');
+        foreach (['', $otherToken] as $wrong) {
+            $client->request('POST', "/admin/journals/{$id}/delete", ['_token' => $wrong]);
+            $this->assertResponseRedirects('/admin/journals/');
+            $client->followRedirect();
+            $this->assertSelectorTextContains('body', 'Token de segurança inválido');
+            $this->assertSame(1, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE id = ?', [$id]));
+        }
+
+        // Com o token do botão, o periódico é excluído e só ele
+        $client->request('POST', "/admin/journals/{$id}/delete", ['_token' => $token]);
+        $this->assertResponseRedirects('/admin/journals/');
+        $client->followRedirect();
+        $this->assertSelectorTextContains('body', "Periódico \"Revista Para Excluir {$this->uniq}\" removido com sucesso.");
+        $this->assertSame(0, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE id = ?', [$id]));
+        $this->assertSame(1, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE id = ?', [$stays->getId()]));
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Importar CSV: upsert
+    // ------------------------------------------------------------------------------------------------------------
+
+    public function testImportCsvTwiceDoesNotDuplicateAndReportsCreatedCompletedAndIgnored(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $issn = $this->uniqueIssn();
+        $csv = implode("\n", [
+            'title;issn;qualis;area',
+            "Importada Com ISSN {$this->uniq};{$issn};b1;",
+            "Importada Sem Qualis {$this->uniq};;;",
+        ]) . "\n";
+
+        $this->importCsv($client, $csv);
+        $this->assertSelectorTextContains('body', 'Importação concluída! 2 periódicos processados.');
+        $this->assertSelectorTextContains('body', 'Criados: 2; completados: 0; ignorados: 0.');
+        $this->assertSame(2, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE title LIKE ?', ['Importada %' . $this->uniq]));
+
+        // O mesmo arquivo de novo: ninguém é criado, e o que já está completo é ignorado
+        $this->importCsv($client, $csv);
+        $this->assertSelectorTextContains('body', 'Criados: 0; completados: 0; ignorados: 2.');
+        $this->assertSelectorTextContains('body', '2 já cadastrados sem nada a completar');
+        $this->assertSame(2, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE title LIKE ?', ['Importada %' . $this->uniq]), 'Importar duas vezes não duplica');
+
+        // Um arquivo que traz o que faltava: completa o vazio, sem sobrescrever o que já existe
+        $this->importCsv($client, implode("\n", [
+            'title;issn;qualis;area',
+            "Importada Com ISSN {$this->uniq};{$issn};a1;",
+            "Importada Sem Qualis {$this->uniq};;a2;",
+        ]) . "\n");
+        $this->assertSelectorTextContains('body', 'Criados: 0; completados: 1; ignorados: 1.');
+        $this->assertSame('B1', $this->journalRow("Importada Com ISSN {$this->uniq}")['qualis'], 'O Qualis que já estava não é sobrescrito');
+        $this->assertSame('A2', $this->journalRow("Importada Sem Qualis {$this->uniq}")['qualis'], 'O Qualis vazio é completado, e o periódico é achado pelo título porque a linha não tem ISSN');
+        $this->assertSame(2, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE title LIKE ?', ['Importada %' . $this->uniq]));
+    }
+
+    public function testTheExportedCsvCanBeImportedAgainWithoutDuplicatesOrErrors(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $head = $this->createJournal("Revista Exportada Cabeça {$this->uniq}", 'Texto original');
+        $member = $this->createJournal("Revista Exportada Online {$this->uniq}", null, $head);
+        $plain = $this->createJournal("Revista Exportada Solta {$this->uniq}");
+        // A curadoria de áreas pela tela vem primeiro: o formulário regrava ISSN e Qualis com o que recebe
+        $this->postEdit($client, $head->getId(), ['area' => 'Texto original', 'areas' => ['educacao'], 'area_primary' => 'educacao']);
+        $issn = $this->uniqueIssn();
+        $this->conn->executeStatement(
+            "UPDATE qualis_journals SET issn = ?, normalized_issn = ?, qualis = 'A2' WHERE id = ?",
+            [$issn, str_replace('-', '', $issn), $head->getId()]
+        );
+        $this->conn->executeStatement("UPDATE qualis_journals SET display_title = 'Nome de Exibição', display_title_source = 'manual' WHERE id IN (?, ?)", [$head->getId(), $member->getId()]);
+
+        // O arquivo exportado (BOM, `;`, colunas de áreas e da família), só com as linhas deste teste
+        $client->request('GET', '/admin/journals/export');
+        $lines = preg_split('/\r?\n/', trim(substr((string)$client->getInternalResponse()->getContent(), 3)));
+        $kept = array_values(array_filter($lines, fn (string $line, int $i): bool => $i === 0 || str_contains($line, $this->uniq), ARRAY_FILTER_USE_BOTH));
+        $this->assertCount(4, $kept, 'O cabeçalho e as três linhas do teste');
+
+        $this->importCsv($client, implode("\n", $kept) . "\n");
+
+        $this->assertSelectorTextContains('body', 'Importação concluída! 3 periódicos processados.');
+        $this->assertSelectorTextContains('body', 'Criados: 0; completados: 0; ignorados: 3.');
+        $this->assertSame(3, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE title LIKE ?', ['Revista Exportada %' . $this->uniq]), 'Reimportar o próprio CSV exportado não duplica');
+        // A cabeça tem as áreas travadas: a importação nem toca nela (nem na coluna areas_capes, que ela mesma exportou)
+        $this->assertSame(['educacao'], array_column($this->areasOf($head->getId()), 'slug'));
+        $this->assertSame('A2', $this->conn->fetchOne('SELECT qualis FROM qualis_journals WHERE id = ?', [$head->getId()]));
+        $this->assertSame(1, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE id = ?', [$plain->getId()]));
+    }
+
+    public function testImportCsvInvalidRowsBecomeWarningsAndTheOthersAreStillImported(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $csv = implode("\n", [
+            'title;issn;qualis;area',
+            "Importada Válida {$this->uniq};;a1;",
+            str_repeat('T', 501 - strlen($this->uniq)) . $this->uniq . ';;;',
+            "Importada Qualis Longo {$this->uniq};;ABCDEFGHIJK;",
+            "Importada Válida Dois {$this->uniq};;b2;",
+        ]) . "\n";
+
+        $this->importCsv($client, $csv);
+
+        $this->assertSelectorTextContains('body', 'Importação concluída! 2 periódicos processados.');
+        $this->assertSelectorTextContains('body', 'Criados: 2; completados: 0; ignorados: 2.');
+        $this->assertSelectorTextContains('body', '2 linhas inválidas');
+        $this->assertSelectorTextContains('body', 'Linha 3: título com 501 caracteres (máximo 500)');
+        $this->assertSelectorTextContains('body', 'Linha 4: Qualis «ABCDEFGHIJK…» com mais de 10 caracteres');
+        $this->assertSame(2, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE title LIKE ?', ['Importada V%' . $this->uniq]));
+        $this->assertSame(0, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE title LIKE ?', ['Importada Qualis Longo %']));
+    }
+
+    public function testImportCsvAreaTextGoesToAreaRawAndTheCanonicalLabelWithoutLockingTheFamily(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $csv = implode("\n", [
+            'title;issn;qualis;area;areas_capes',
+            "Importada Área Reconhecida {$this->uniq};;;Educação;",
+            "Importada Área Livre {$this->uniq};;;Categoria sem mapa {$this->uniq};",
+            "Importada Área Curada {$this->uniq};;;Educação;Psicologia",
+        ]) . "\n";
+
+        $this->importCsv($client, $csv);
+
+        $recognized = $this->journalRow("Importada Área Reconhecida {$this->uniq}");
+        $this->assertSame([self::LABEL_EDUCACAO, 'Educação', 0], [$recognized['area'], $recognized['area_raw'], (int)$recognized['areas_locked']]);
+        $this->assertSame([], $this->areasOf((int)$recognized['id']), 'O texto de area não grava áreas CAPES: a classificação automática continua valendo');
+
+        $free = $this->journalRow("Importada Área Livre {$this->uniq}");
+        $this->assertSame(["Categoria sem mapa {$this->uniq}", "Categoria sem mapa {$this->uniq}"], [$free['area'], $free['area_raw']]);
+
+        // A coluna areas_capes segue como era: curadoria manual travada (e o texto bruto de area continua em area_raw)
+        $curated = $this->journalRow("Importada Área Curada {$this->uniq}");
+        $this->assertSame(['psicologia'], array_column($this->areasOf((int)$curated['id']), 'slug'));
+        $this->assertSame(1, (int)$curated['areas_locked']);
+        $this->assertSame('Educação', $curated['area_raw']);
+        $this->assertSame('PSICOLOGIA / CIÊNCIAS HUMANAS', $curated['area']);
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Mesclagem: o que ela deixava velho
+    // ------------------------------------------------------------------------------------------------------------
+
+    public function testMergeFromTheAdminRecalculatesTheArticlesTheAreasAndClearsThePageCache(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $source = $this->createJournal("Revista B1 Fonte {$this->uniq}");
+        $master = $this->createJournal("Revista A2 Mestre {$this->uniq}");
+        $this->conn->executeStatement("UPDATE qualis_journals SET qualis = 'B1' WHERE id = ?", [$source->getId()]);
+        $this->conn->executeStatement("UPDATE qualis_journals SET qualis = 'A2' WHERE id = ?", [$master->getId()]);
+        $databaseId = $this->createDatabase('x');
+        $this->linkBase($source->getId(), $databaseId);
+        $articleId = $this->createArticle($source);
+        $this->conn->executeStatement("UPDATE production_items SET qualis = 'B1', indexed_databases = NULL WHERE id = ?", [$articleId]);
+        // Evidência que classifica a família como Direito
+        $this->insertEvidence($source->getId(), 'wos', 'W1', 'Law');
+        $marker = $this->pageCacheMarker();
+
+        $crawler = $client->request('GET', '/admin/journals/?search=' . $this->uniq);
+        $client->request('POST', '/admin/journals/merge', [
+            '_token' => $crawler->filter('form[action="/admin/journals/merge"] input[name="_token"]')->attr('value'),
+            'master_id' => $master->getId(),
+            'source_ids' => [$master->getId(), $source->getId()],
+        ]);
+        $this->assertResponseRedirects('/admin/journals/');
+        $client->followRedirect();
+        $this->assertSelectorTextContains('body', 'Periódicos mesclados com sucesso');
+        $this->assertSelectorTextContains('body', 'Qualis e bases recalculados em 1 artigo');
+        $this->assertSelectorTextContains('body', 'Áreas CAPES reclassificadas: Direito (confiança alta)');
+        $this->assertSelectorTextContains('body', 'Cache de páginas públicas limpo.');
+
+        // Um B1 mesclado num A2 deixa o artigo com A2, e as bases da fonte passam para o artigo
+        $this->assertSame($master->getId(), (int)$this->conn->fetchOne('SELECT qualis_journal_id FROM production_items WHERE id = ?', [$articleId]));
+        $this->assertSame('A2', $this->conn->fetchOne('SELECT qualis FROM production_items WHERE id = ?', [$articleId]));
+        $databases = json_decode((string)$this->conn->fetchOne('SELECT indexed_databases FROM production_items WHERE id = ?', [$articleId]), true);
+        $this->assertSame(["{$this->uniq}x"], array_column($databases ?? [], 'acronym'));
+        $this->assertSame([$databaseId], array_map('intval', $this->conn->fetchFirstColumn('SELECT academic_database_id FROM qualis_journal_academic_database WHERE qualis_journal_id = ?', [$master->getId()])));
+
+        // A área da família foi reclassificada com a evidência que veio da fonte
+        $this->assertSame([['direito', 'auto', 'high']], array_map(static fn (array $r): array => [$r['slug'], $r['method'], $r['confidence']], $this->areasOf($master->getId())));
+        $this->assertSame('DIREITO / CIÊNCIAS SOCIAIS APLICADAS', $this->columnsOf($master->getId())['area']);
+
+        // O cache de páginas públicas foi limpo, como na tela de cache
+        $this->assertFileDoesNotExist($marker);
+    }
+
+    public function testMergeKeepsTheManualAreasOfALockedFamilyAndSaysSo(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $source = $this->createJournal("Revista Fonte Travada {$this->uniq}");
+        $master = $this->createJournal("Revista Mestre Travado {$this->uniq}");
+        $this->curateEducationDirectly($master->getId());
+        $this->insertEvidence($source->getId(), 'wos', 'W1', 'Law');
+
+        $crawler = $client->request('GET', '/admin/journals/?search=' . $this->uniq);
+        $client->request('POST', '/admin/journals/merge', [
+            '_token' => $crawler->filter('form[action="/admin/journals/merge"] input[name="_token"]')->attr('value'),
+            'master_id' => $master->getId(),
+            'source_ids' => [$master->getId(), $source->getId()],
+        ]);
+        $client->followRedirect();
+
+        $this->assertSelectorTextContains('body', 'Áreas CAPES mantidas: a curadoria manual da família está travada.');
+        $this->assertSame([['educacao', 'manual']], array_map(static fn (array $r): array => [$r['slug'], $r['method']], $this->areasOf($master->getId())));
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Bases de indexação por família
+    // ------------------------------------------------------------------------------------------------------------
+
+    public function testSavingTheBasesOfAFamilyRowReplicatesThemToTheWholeFamilyAndRemovalReachesItToo(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $head = $this->createJournal("Revista Bases Cabeça {$this->uniq}");
+        $member = $this->createJournal("Revista Bases Online {$this->uniq}", null, $head);
+        $sibling = $this->createJournal("Revista Bases Impressa {$this->uniq}", null, $head);
+        $alien = $this->createJournal("Revista Bases Alheia {$this->uniq}");
+        $dbX = $this->createDatabase('x');
+        $dbY = $this->createDatabase('y');
+        $this->linkBase($alien->getId(), $dbX);
+        $family = [$head->getId(), $member->getId(), $sibling->getId()];
+
+        // Marcar uma base numa linha membro vale para a canônica e para a outra linha da família
+        $this->postEdit($client, $member->getId(), ['academic_databases' => [(string)$dbX]]);
+        $this->assertResponseRedirects('/admin/journals/');
+        foreach ($family as $id) {
+            $this->assertSame([$dbX], $this->linkedDatabases($id), "Linha #{$id}");
+        }
+
+        // Marcar outra na canônica, mantendo a primeira
+        $this->postEdit($client, $head->getId(), ['academic_databases' => [(string)$dbX, (string)$dbY]]);
+        foreach ($family as $id) {
+            $this->assertSame([$dbX, $dbY], $this->linkedDatabases($id), "Linha #{$id}");
+        }
+
+        // Desmarcar numa linha só tira da família toda (senão a réplica traria de volta)
+        $this->postEdit($client, $sibling->getId(), ['academic_databases' => [(string)$dbY]]);
+        foreach ($family as $id) {
+            $this->assertSame([$dbY], $this->linkedDatabases($id), "Linha #{$id}");
+        }
+
+        // Outra família não é tocada
+        $this->assertSame([$dbX], $this->linkedDatabases($alien->getId()));
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Exportações por família
+    // ------------------------------------------------------------------------------------------------------------
+
+    public function testExportedCsvsCarryTheDisplayTitleAndTheCanonicalRow(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $head = $this->createJournal("Revista Família Exportada {$this->uniq}");
+        $member = $this->createJournal("Revista Família Exportada Online {$this->uniq}", null, $head);
+        $this->conn->executeStatement("UPDATE qualis_journals SET display_title = 'Nome Bonito', display_title_source = 'manual' WHERE id IN (?, ?)", [$head->getId(), $member->getId()]);
+
+        $client->request('GET', '/admin/journals/export');
+        $lines = preg_split('/\r?\n/', trim(substr((string)$client->getInternalResponse()->getContent(), 3)));
+        $rows = [];
+        foreach ($lines as $line) {
+            if (str_contains($line, $this->uniq)) {
+                $fields = str_getcsv($line, ';', '"', '\\');
+                $rows[$fields[1]] = $fields;
+            }
+        }
+        $this->assertSame(['Nome Bonito', ''], array_slice($rows["Revista Família Exportada {$this->uniq}"], -2));
+        $this->assertSame(['Nome Bonito', (string)$head->getId()], array_slice($rows["Revista Família Exportada Online {$this->uniq}"], -2));
+
+        $client->request('GET', '/admin/journals/export-full?format=csv');
+        $reader = Reader::fromString((string)$client->getResponse()->getContent());
+        $reader->setHeaderOffset(0);
+        $this->assertSame(['display_title', 'canonical_journal_id'], array_slice($reader->getHeader(), -2));
+        $found = [];
+        foreach ($reader->getRecords() as $record) {
+            if (str_contains((string)$record['Título do Periódico'], $this->uniq)) {
+                $found[(int)$record['ID']] = [$record['display_title'], $record['canonical_journal_id']];
+            }
+        }
+        $this->assertSame(['Nome Bonito', ''], $found[$head->getId()]);
+        $this->assertSame(['Nome Bonito', (string)$head->getId()], $found[$member->getId()]);
+    }
+
+    public function testExportedThesaurusHasOneEntryPerFamilyUnderTheDisplayName(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $head = $this->createJournal("Revista Tesauro Cabeça {$this->uniq}");
+        $member = $this->createJournal("Revista Tesauro Online {$this->uniq}", null, $head);
+        $this->conn->executeStatement("UPDATE qualis_journals SET display_title = ?, display_title_source = 'manual' WHERE id IN (?, ?)", ["Nome Tesauro {$this->uniq}", $head->getId(), $member->getId()]);
+        $this->createVariant($head, "Apelido Tesauro {$this->uniq}");
+        $this->createVariant($member, "Apelido Online Tesauro {$this->uniq}");
+
+        // .the: um cabeçalho para a família e as variantes (o arquivo .the do admin grava tudo em minúsculas)
+        $client->request('GET', '/admin/journals/export-thesaurus?format=the');
+        $the = (string)$client->getResponse()->getContent();
+        $this->assertSame(1, substr_count($the, "**#nome tesauro {$this->uniq}\r\n"));
+        $this->assertStringNotContainsString("**#revista tesauro online {$this->uniq}", $the, 'A linha membro não é uma entrada à parte');
+        $this->assertStringNotContainsString("**#revista tesauro cabeça {$this->uniq}", $the, 'O cabeçalho é o nome de exibição');
+        foreach (["revista tesauro cabeça {$this->uniq}", "revista tesauro online {$this->uniq}", "apelido tesauro {$this->uniq}", "apelido online tesauro {$this->uniq}"] as $variant) {
+            $this->assertStringContainsString("100 1 ^{$variant}$\r\n", $the);
+        }
+
+        // CSV: as mesmas variantes sob o mesmo cabeçalho
+        $client->request('GET', '/admin/journals/export-thesaurus?format=csv');
+        $reader = Reader::fromString((string)$client->getResponse()->getContent());
+        $reader->setHeaderOffset(0);
+        $variants = [];
+        foreach ($reader->getRecords() as $record) {
+            if (str_contains((string)$record['preferred_name'], $this->uniq)) {
+                $variants[$record['preferred_name']][] = $record['variant_name'];
+            }
+        }
+        $this->assertSame(["Nome Tesauro {$this->uniq}"], array_keys($variants));
+        $this->assertEqualsCanonicalizing(
+            ["Revista Tesauro Cabeça {$this->uniq}", "Revista Tesauro Online {$this->uniq}", "Apelido Tesauro {$this->uniq}", "Apelido Online Tesauro {$this->uniq}"],
+            $variants["Nome Tesauro {$this->uniq}"]
+        );
+    }
+
+    // ------------------------------------------------------------------------------------------------------------
+    // Texto livre de área reconhecido pelo tesauro de categorias
+    // ------------------------------------------------------------------------------------------------------------
+
+    public function testFreeTextAreaRecognizedByTheThesaurusBecomesTheCapesSelection(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $journal = $this->createJournal("Revista Texto Reconhecido {$this->uniq}");
+        $id = $journal->getId();
+
+        $this->postEdit($client, $id, ['area' => 'Educação']);
+        $this->assertResponseRedirects('/admin/journals/');
+        $client->followRedirect();
+        $this->assertSelectorTextContains('body', 'o texto «Educação» foi reconhecido como: Educação (principal).');
+        $this->assertSelectorTextContains('body', 'Áreas CAPES gravadas (curadoria manual, travadas): Educação (principal).');
+
+        $this->assertSame([['educacao', 'manual', 1]], array_map(static fn (array $r): array => [$r['slug'], $r['method'], (int)$r['is_primary']], $this->areasOf($id)));
+        $this->assertSame(1, $this->scalar('SELECT areas_locked FROM qualis_journals WHERE id = ?', [$id]));
+        $this->assertSame(['area' => self::LABEL_EDUCACAO, 'area_raw' => 'Educação'], $this->columnsOf($id), 'O texto digitado fica em area_raw');
+
+        // Texto que o tesauro não reconhece segue como sempre: só o texto, sem áreas
+        $other = $this->createJournal("Revista Texto Não Reconhecido {$this->uniq}");
+        $this->postEdit($client, $other->getId(), ['area' => "Categoria sem mapa {$this->uniq}"]);
+        $this->assertSame([], $this->areasOf($other->getId()));
+        $this->assertSame(["Categoria sem mapa {$this->uniq}", "Categoria sem mapa {$this->uniq}"], array_values($this->columnsOf($other->getId())));
+        $this->assertSame(0, $this->scalar('SELECT areas_locked FROM qualis_journals WHERE id = ?', [$other->getId()]));
+
+        // Com áreas CAPES marcadas, são elas que valem, não o texto
+        $marked = $this->createJournal("Revista Texto E Áreas {$this->uniq}");
+        $this->postEdit($client, $marked->getId(), ['area' => 'Educação', 'areas' => ['direito'], 'area_primary' => 'direito']);
+        $this->assertSame(['direito'], array_column($this->areasOf($marked->getId()), 'slug'));
+
+        // Família que já tem áreas: o texto livre não mexe nelas (o campo area nem aceita edição)
+        $this->postEdit($client, $id, ['area' => 'Psicologia', 'areas' => ['educacao'], 'area_primary' => 'educacao']);
+        $this->assertSame(['educacao'], array_column($this->areasOf($id), 'slug'));
+    }
+
+    public function testNewJournalWithRecognizedAreaTextGetsTheCapesSelectionAndAnUnchangedTextIsNotTurnedIntoCuration(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $crawler = $client->request('GET', '/admin/journals/new');
+        $client->request('POST', '/admin/journals/new', [
+            '_token' => $this->formToken($crawler),
+            'title' => "Revista Nova Texto {$this->uniq}",
+            'area' => 'Psicologia',
+        ]);
+        $this->assertResponseRedirects('/admin/journals/');
+        $client->followRedirect();
+        $this->assertSelectorTextContains('body', 'o texto «Psicologia» foi reconhecido como: Psicologia (principal).');
+        $id = (int)$this->journalRow("Revista Nova Texto {$this->uniq}")['id'];
+        $this->assertSame(['psicologia'], array_column($this->areasOf($id), 'slug'));
+
+        // O texto já gravado (reconhecível, mas sem áreas) não vira curadoria travada só por salvar o formulário
+        $stored = $this->createJournal("Revista Texto Guardado {$this->uniq}", 'Educação');
+        $crawler = $client->request('GET', "/admin/journals/{$stored->getId()}/edit");
+        $client->submit($crawler->filter('form#journalForm')->form());
+        $this->assertResponseRedirects('/admin/journals/');
+        $this->assertSame([], $this->areasOf($stored->getId()));
+        $this->assertSame(0, $this->scalar('SELECT areas_locked FROM qualis_journals WHERE id = ?', [$stored->getId()]));
+    }
+
     // ------------------------------------------------------------------------------------------------------------
     // Utilitários
     // ------------------------------------------------------------------------------------------------------------
@@ -908,6 +1361,23 @@ class AdminJournalTest extends WebTestCase
     private static function norm(string $name): string
     {
         return StringNormalizer::normalizeString($name, true);
+    }
+
+    /**
+     * ISSN (só a forma NNNN-NNNN, sem dígito verificador) que nenhuma outra linha do banco de teste tem.
+     */
+    private function uniqueIssn(): string
+    {
+        do {
+            $issn = sprintf('%04d-%04d', random_int(1000, 9999), random_int(1000, 9999));
+            $norm = str_replace('-', '', $issn);
+            $taken = $this->conn->fetchOne(
+                'SELECT COUNT(*) FROM qualis_journals WHERE normalized_issn = ? OR normalized_issn_e = ? OR normalized_issn_l = ? OR normalized_issn_imp = ?',
+                [$norm, $norm, $norm, $norm]
+            );
+        } while ((int)$taken > 0);
+
+        return $issn;
     }
 
     /**
@@ -955,6 +1425,69 @@ class AdminJournalTest extends WebTestCase
     {
         $journal = $this->em->find(QualisJournal::class, $id);
         static::getContainer()->get(\App\Repository\JournalAreaRepository::class)->replaceManual($journal, ['educacao'], 'educacao');
+    }
+
+    /**
+     * Envia um CSV pela tela de importação (com o token da própria tela) e segue o redirecionamento, deixando as
+     * mensagens da importação no `body` para o teste conferir.
+     */
+    private function importCsv(KernelBrowser $client, string $content): Crawler
+    {
+        $crawler = $client->request('GET', '/admin/journals/');
+        $client->request(
+            'POST',
+            '/admin/journals/import',
+            ['_token' => $crawler->filter('form[action="/admin/journals/import"] input[name="_token"]')->attr('value')],
+            ['csv_file' => $this->uploadedFile($content, 'csv')]
+        );
+        $this->assertResponseRedirects('/admin/journals/');
+
+        return $client->followRedirect();
+    }
+
+    private function createDatabase(string $suffix): int
+    {
+        $database = new \App\Entity\AcademicDatabase();
+        $database->setName("Base teste {$suffix} {$this->uniq}");
+        $database->setAcronym("{$this->uniq}{$suffix}");
+        $this->em->persist($database);
+        $this->em->flush();
+        $this->databaseIds[] = (int)$database->getId();
+
+        return (int)$database->getId();
+    }
+
+    private function linkBase(int $journalId, int $databaseId): void
+    {
+        $this->conn->insert('qualis_journal_academic_database', ['qualis_journal_id' => $journalId, 'academic_database_id' => $databaseId]);
+    }
+
+    /**
+     * @return list<int> ids das bases ligadas à linha, em ordem
+     */
+    private function linkedDatabases(int $journalId): array
+    {
+        return array_map('intval', $this->conn->fetchFirstColumn(
+            'SELECT academic_database_id FROM qualis_journal_academic_database WHERE qualis_journal_id = ? ORDER BY academic_database_id',
+            [$journalId]
+        ));
+    }
+
+    /**
+     * Arquivo no diretório do cache de páginas públicas; some quando a tela de cache (ou a mesclagem) o limpa.
+     */
+    private function pageCacheMarker(): string
+    {
+        $dir = static::getContainer()->getParameter('kernel.project_dir') . '/' . \App\Service\PageCacheService::CACHE_SUBDIR;
+        if (!is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+        $file = $dir . '/' . $this->uniq . '.html';
+        file_put_contents($file, '<html>página antiga</html>');
+        $this->tempFiles[] = $file;
+        $this->assertFileExists($file);
+
+        return $file;
     }
 
     private function createJournal(string $title, ?string $area = null, ?QualisJournal $canonical = null): QualisJournal

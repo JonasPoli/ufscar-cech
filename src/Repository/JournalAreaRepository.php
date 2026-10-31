@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\JournalArea;
 use App\Entity\QualisJournal;
 use App\Service\Journal\CapesTaxonomy;
+use App\Service\Journal\JournalAreaThesaurus;
 use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -33,8 +34,16 @@ class JournalAreaRepository extends ServiceEntityRepository
     /** @var array<string, string>|null forma do tesauro do slug/nome/rótulo de cada área => slug (resolveSlugs) */
     private ?array $areaLookup = null;
 
-    public function __construct(ManagerRegistry $registry, private readonly CapesTaxonomy $taxonomy)
-    {
+    /**
+     * O tesauro de categorias é opcional: sem ele, {@see self::resolveSlugs()} só entende slug, nome e rótulo canônico.
+     * O serviço do tesauro depende só da conexão, da taxonomia e do crosswalk (nunca deste repositório), então não há
+     * dependência circular.
+     */
+    public function __construct(
+        ManagerRegistry $registry,
+        private readonly CapesTaxonomy $taxonomy,
+        private readonly ?JournalAreaThesaurus $thesaurus = null,
+    ) {
         parent::__construct($registry, JournalArea::class);
     }
 
@@ -275,8 +284,10 @@ class JournalAreaRepository extends ServiceEntityRepository
 
     /**
      * Entende uma lista de áreas escrita à mão (coluna `areas_capes` do CSV): slugs, nomes (`Educação`) ou rótulos
-     * canônicos (`EDUCAÇÃO / CIÊNCIAS HUMANAS`) separados por `;`, sem diferença de caixa nem de acentos. A primeira
-     * área reconhecida é a que o chamador deve tratar como principal.
+     * canônicos (`EDUCAÇÃO / CIÊNCIAS HUMANAS`) separados por `;`, sem diferença de caixa nem de acentos. O trecho que
+     * não é nenhum dos três ainda é procurado no tesauro de categorias de revistas (só linhas `active`: `Lingüística`,
+     * `Mathematics, Applied`, um sinônimo corrigido no admin), que pode dar mais de uma área. A primeira área reconhecida
+     * é a que o chamador deve tratar como principal.
      *
      * @return array{slugs: list<string>, unknown: list<string>} slugs únicos na ordem escrita e os trechos não reconhecidos
      */
@@ -293,11 +304,20 @@ class JournalAreaRepository extends ServiceEntityRepository
             }
 
             $slug = $lookup[StringNormalizer::normalizeString($token, true)] ?? null;
-            if ($slug === null) {
+            if ($slug !== null) {
+                $slugs[$slug] = $slug;
+                continue;
+            }
+
+            // Rótulo "sem área" (`ignored`) volta como lista vazia e não vale como área: continua desconhecido
+            $found = $this->thesaurus?->lookup($token) ?? [];
+            if ($found === []) {
                 $unknown[] = $token;
                 continue;
             }
-            $slugs[$slug] = $slug;
+            foreach ($found as $foundSlug) {
+                $slugs[$foundSlug] = $foundSlug;
+            }
         }
 
         return ['slugs' => array_values($slugs), 'unknown' => $unknown];

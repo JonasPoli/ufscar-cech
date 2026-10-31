@@ -8,6 +8,8 @@ use App\Entity\JournalArea;
 use App\Entity\QualisJournal;
 use App\Repository\JournalAreaRepository;
 use App\Service\Journal\CapesTaxonomy;
+use App\Service\Journal\JournalAreaThesaurus;
+use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -44,6 +46,7 @@ class JournalAreaRepositoryTest extends KernelTestCase
         if (isset($this->conn)) {
             // Evidências, áreas e variantes saem em cascata; a ordem não importa porque as famílias se desfazem por SET NULL
             $this->conn->executeStatement('DELETE FROM qualis_journals WHERE title LIKE ?', ['%' . $this->uniq . '%']);
+            $this->conn->executeStatement('DELETE FROM capes_area_variants WHERE normalized_name LIKE ?', ['%' . strtoupper($this->uniq) . '%']);
         }
         if (isset($this->em)) {
             $this->em->clear();
@@ -212,6 +215,30 @@ class JournalAreaRepositoryTest extends KernelTestCase
             $this->repo->resolveSlugs(' sociologia ; EDUCACAO ; Astrologia ; educação ; ')
         );
         $this->assertSame(['slugs' => [], 'unknown' => []], $this->repo->resolveSlugs(' ; ;'));
+    }
+
+    public function testResolveSlugsConsultsTheCategoryThesaurusForActiveRowsOnly(): void
+    {
+        $u = $this->uniq;
+        foreach ([
+            ["Sinonimo {$u}", 'sociologia', 'active'],
+            ["Sinonimo Duplo {$u}", 'direito', 'active'],
+            ["Sinonimo Duplo {$u}", 'economia', 'active'],
+            ["Ignorado {$u}", null, 'ignored'],
+            ["Pendente {$u}", null, 'pending'],
+        ] as [$label, $slug, $status]) {
+            $this->conn->executeStatement(
+                "INSERT INTO capes_area_variants (area_id, vocabulary, variation_name, normalized_name, origin, status, occurrences, created_at, updated_at) VALUES (?, 'livre', ?, ?, 'manual', ?, 0, NOW(), NOW())",
+                [$slug === null ? null : $this->taxonomy->bySlug($slug)['id'], $label, StringNormalizer::normalizeString($label, true), $status]
+            );
+        }
+        static::getContainer()->get(JournalAreaThesaurus::class)->reset();
+
+        // O índice das áreas vence; o tesauro entra no que ele não conhece, e pode dar mais de uma área
+        $this->assertSame(
+            ['slugs' => ['sociologia', 'educacao', 'direito', 'economia'], 'unknown' => ["Ignorado {$u}", "Pendente {$u}", 'Astrologia']],
+            $this->repo->resolveSlugs("Sinonimo {$u} ; educacao ; Sinonimo Duplo {$u} ; Ignorado {$u} ; Pendente {$u} ; Astrologia")
+        );
     }
 
     public function testPrimaryByJournalPrefersManualAndNamesByJournalListPrimaryFirst(): void

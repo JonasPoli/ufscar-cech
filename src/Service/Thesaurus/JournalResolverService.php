@@ -366,7 +366,7 @@ class JournalResolverService
      *
      * @return array{0: string, 1: string}
      */
-    private static function titleKeys(?string $title, ?string $normalizedTitle): array
+    public static function titleKeys(?string $title, ?string $normalizedTitle): array
     {
         $exact = self::normalizeString($normalizedTitle !== null && $normalizedTitle !== '' ? $normalizedTitle : $title);
 
