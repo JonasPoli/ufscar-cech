@@ -506,4 +506,16 @@ class JournalAiBatchServiceTest extends KernelTestCase
 
         return $dir;
     }
+
+    public function testThePromptListsExactlyTheSlugsOfTheTaxonomy(): void
+    {
+        preg_match('/Slugs permitidos \(use exatamente\): ([^\n]+)\./', \App\Service\Journal\JournalAiBatchService::PROMPT, $match);
+        $inPrompt = array_map('trim', explode(',', $match[1]));
+        sort($inPrompt);
+
+        $expected = array_column((new \App\Service\Journal\CapesTaxonomy())->all(), 'slug');
+        sort($expected);
+
+        $this->assertSame($expected, $inPrompt, 'O texto do prompt é uma cópia da taxonomia: precisa acompanhar o arquivo.');
+    }
 }

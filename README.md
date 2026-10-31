@@ -210,6 +210,7 @@ php bin/console lint:yaml config
 
 Para detalhes aprofundados sobre cada módulo, consulte a pasta [`docs/`](docs):
 - [docs/VISAO_GERAL_DO_SISTEMA.md](docs/VISAO_GERAL_DO_SISTEMA.md) — **Comece por aqui**: para que serve o sistema, público, fluxo de dados e regras fixas.
+- [docs/CAPACIDADE_DO_SERVIDOR.md](docs/CAPACIDADE_DO_SERVIDOR.md) — Quantos currículos o servidor aguenta e o caminho para crescer.
 - [docs/COMANDOS.md](docs/COMANDOS.md) — Catálogo de todos os comandos e scripts.
 - [docs/LATTES_IMPORT.md](docs/LATTES_IMPORT.md) — Como importar currículos e o mapa do XML do Lattes.
 - [docs/evolutions/periodicos-como-descobrimos.md](docs/evolutions/periodicos-como-descobrimos.md) — Como cada fato sobre as revistas foi descoberto.

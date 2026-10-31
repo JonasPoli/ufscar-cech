@@ -1,0 +1,782 @@
+escala,buffer_pool,medida,valor,unidade,observacao
+1,-,analyze_table_total,1,s,ANALYZE TABLE em todas as tabelas de cech (carga: bp 8 GB)
+1,128MB,comando:topics,8.41,s,status=ok; app:index:topics; memory_limit efetivo -1 (ini_set no servico);  [OK] Indexação concluída com sucesso em 8.28 segundos! Total de termos: 130.733  
+1,128MB,comando_pico_rss:topics,393,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+1,128MB,comando_binlog:topics,43.7,MB,binlog gerado pelo comando
+1,128MB,comando:keywords,0.21,s,status=ok; app:sync:keywords --dir=/private/tmp/claude-501/-Volumes-Dados-work-cech/3597d8d7-4a0b-4653-8e4f-03b3e09366fc/scratchpad/lab/xml1; memory_limit 1536M; Sincronizador de Palavras-Chave Oficiais do Lattes — CECH [OK] Sincronização concluída! 14 produções atualizadas com um total de 54  
+1,128MB,comando_pico_rss:keywords,62,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+1,128MB,comando_binlog:keywords,0.0,MB,binlog gerado pelo comando
+1,128MB,comando:index,3.04,s,"status=ok; app:index:journals; memory_limit efetivo 1024M (ini_set no comando);  [OK] Indexação concluída em 2.89 segundos! Artigos Processados 13.469  {'message':'User Deprecated: Version detection logic for MySQL will change in DBAL 4. Please specify the version as the server reports it, e.g. \'8.0.31\' instead of \'8\'. (AbstractMySQLDriver.php:89"
+1,128MB,comando_pico_rss:index,141,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+1,128MB,comando_binlog:index,0.4,MB,binlog gerado pelo comando
+1,128MB,comando:families,9.20,s,status=ok; app:journals:families --artifact=/Volumes/Dados/work/cech/docs/banco/derived/journal_evidence.jsonl.gz; memory_limit efetivo 1024M (ini_set no comando);  [OK] Famílias gravadas: 0 linha(s) com canônica alterada e 0 com nome exibido  --------] 21% artefato 3/4: ISSNs e títulos 95000/309064 [========>-------------------] 30% artefato 3/4: ISSNs e títulos 125000/309064 [===========>----------------] 40% artefato 3/4: ISSNs e títu
+1,128MB,comando_pico_rss:families,438,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+1,128MB,comando_binlog:families,0.0,MB,binlog gerado pelo comando
+1,128MB,comando:report,0.59,s,status=ok; app:journals:report; memory_limit efetivo 1024M (ini_set no comando);  
+1,128MB,comando_pico_rss:report,72,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+1,128MB,comando_binlog:report,0.0,MB,binlog gerado pelo comando
+1,-,analyze_table_total,1,s,ANALYZE TABLE em todas as tabelas de cech (carga: bp 8 GB)
+1,128MB,tamanho_tabela:journal_area_evidence,85.65,MB,dados=62.59MB indices=23.06MB linhas_estimadas=382083
+1,128MB,tamanho_tabela:thematic_term_researchers,60.62,MB,dados=38.56MB indices=22.06MB linhas_estimadas=243857
+1,128MB,tamanho_tabela:qualis_journals,47.74,MB,dados=20.55MB indices=27.19MB linhas_estimadas=83385
+1,128MB,tamanho_tabela:production_items,37.65,MB,dados=24.56MB indices=13.09MB linhas_estimadas=76832
+1,128MB,tamanho_tabela:thematic_terms,30.07,MB,dados=14.52MB indices=15.55MB linhas_estimadas=129595
+1,128MB,tamanho_tabela:production_authors,27.07,MB,dados=15.52MB indices=11.55MB linhas_estimadas=158764
+1,128MB,tamanho_tabela:journal_name_variants,20.07,MB,dados=8.52MB indices=11.55MB linhas_estimadas=73406
+1,128MB,tamanho_tabela:journal_areas,19.58,MB,dados=7.52MB indices=12.06MB linhas_estimadas=110435
+1,128MB,tamanho_tabela:examination_boards,14.07,MB,dados=9.52MB indices=4.55MB linhas_estimadas=41731
+1,128MB,tamanho_tabela:orientations,13.05,MB,dados=7.52MB indices=5.53MB linhas_estimadas=27072
+1,128MB,tamanho_tabela:event_participations,9.99,MB,dados=6.52MB indices=3.47MB linhas_estimadas=28195
+1,128MB,tamanho_tabela:qualis_journal_academic_database,9.55,MB,dados=4.52MB indices=5.03MB linhas_estimadas=134082
+1,128MB,tamanho_tabela:research_projects,9.19,MB,dados=8.52MB indices=0.67MB linhas_estimadas=6388
+1,128MB,tamanho_tabela:author_name_variants,6.04,MB,dados=4.52MB indices=1.52MB linhas_estimadas=37563
+1,128MB,tamanho_tabela:institution_name_variants,5.04,MB,dados=3.52MB indices=1.52MB linhas_estimadas=25917
+1,128MB,tamanho_tabela:professional_experiences,4.63,MB,dados=2.52MB indices=2.11MB linhas_estimadas=9717
+1,128MB,tamanho_tabela:author_identities,2.52,MB,dados=2.52MB indices=0.00MB linhas_estimadas=20372
+1,128MB,tamanho_tabela:educations,2.00,MB,dados=1.52MB indices=0.48MB linhas_estimadas=5603
+1,128MB,tamanho_tabela:institutions,1.96,MB,dados=1.52MB indices=0.44MB linhas_estimadas=9315
+1,128MB,tamanho_tabela:researchers,1.61,MB,dados=1.52MB indices=0.09MB linhas_estimadas=355
+1,128MB,tamanho_tabela:journal_name_candidates,0.56,MB,dados=0.39MB indices=0.17MB linhas_estimadas=1153
+1,128MB,tamanho_tabela:knowledge_areas,0.42,MB,dados=0.19MB indices=0.23MB linhas_estimadas=1617
+1,128MB,tamanho_tabela:awards,0.36,MB,dados=0.27MB indices=0.09MB linhas_estimadas=1458
+1,128MB,tamanho_tabela:language_proficiencies,0.20,MB,dados=0.11MB indices=0.09MB linhas_estimadas=1317
+1,128MB,tamanho_tabela:country_name_variants,0.11,MB,dados=0.09MB indices=0.02MB linhas_estimadas=900
+1,128MB,tamanho_tabela:state_name_variants,0.10,MB,dados=0.08MB indices=0.02MB linhas_estimadas=621
+1,128MB,tamanho_tabela:messenger_messages,0.07,MB,dados=0.02MB indices=0.05MB linhas_estimadas=0
+1,128MB,tamanho_tabela:capes_areas,0.05,MB,dados=0.02MB indices=0.03MB linhas_estimadas=59
+1,128MB,tamanho_tabela:academic_database,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=10
+1,128MB,tamanho_tabela:city_name_variants,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=20
+1,128MB,tamanho_tabela:states,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=200
+1,128MB,tamanho_tabela:super_test_fields,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=0
+1,128MB,tamanho_tabela:cities,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=65
+1,128MB,tamanho_tabela:author_external_identifiers,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=187
+1,128MB,tamanho_tabela:thesaurus_concepts,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=0
+1,128MB,tamanho_tabela:thesaurus_schemes,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=0
+1,128MB,tamanho_tabela:users,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=1
+1,128MB,tamanho_tabela:image,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=0
+1,128MB,tamanho_tabela:doctrine_migration_versions,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=14
+1,128MB,tamanho_tabela:countries,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=167
+1,128MB,tamanho_tabela:site_settings,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=1
+1,128MB,tamanho_tabela:test_database,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=0
+1,128MB,n_curriculos,415,curriculos,count(*) researchers
+1,128MB,n_producoes,76652,linhas,count(*) production_items
+1,128MB,n_autores,156645,linhas,count(*) production_authors
+1,128MB,tamanho_tabelas_proporcionais,180.84,MB,dados+indices das 13 tabelas proporcionais
+1,128MB,tamanho_banco_cech,410.25,MB,dados+indices de todas as tabelas de cech
+1,128MB,mb_por_curriculo_proporcionais,0.436,MB/curriculo,tabelas proporcionais / n_curriculos
+1,128MB,du_datadir,784,MB,"du -sk do datadir inteiro menos a copia base cech_base (315MB); inclui redo, undo, doublewrite, mysql.ibd, binlog"
+1,128MB,du_datadir_cech,589,MB,du -sk de datadir/cech (arquivos .ibd das tabelas)
+1,128MB,du_binlog,0,MB,binlogs presentes
+1,128MB,pagina_cache_hit:home,0.004410,s,X-Page-Cache: HIT; bytes=105696
+1,128MB,pagina:home,0.489,s,mediana de 3; t1=0.548476(200) t2=0.488612(200) t3=0.465007(200) 
+1,128MB,pagina_bytes:home,105696.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:home,4.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:home,1342112.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:home,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:indicadores,0.004896,s,X-Page-Cache: HIT; bytes=838015
+1,128MB,pagina:indicadores,0.374,s,mediana de 3; t1=0.517342(200) t2=0.310065(200) t3=0.373603(200) 
+1,128MB,pagina_bytes:indicadores,838015.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:indicadores,25.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:indicadores,362453.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:indicadores,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:indicadores_aba_training,0.004385,s,X-Page-Cache: HIT; bytes=9503
+1,128MB,pagina:indicadores_aba_training,0.051,s,mediana de 3; t1=0.061963(200) t2=0.050761(200) t3=0.048538(200) 
+1,128MB,pagina_bytes:indicadores_aba_training,9503.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:indicadores_aba_training,5.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:indicadores_aba_training,74596.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:indicadores_aba_training,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:indicadores_aba_production,0.004713,s,X-Page-Cache: HIT; bytes=589552
+1,128MB,pagina:indicadores_aba_production,0.282,s,mediana de 3; t1=0.284311(200) t2=0.281661(200) t3=0.279959(200) 
+1,128MB,pagina_bytes:indicadores_aba_production,589552.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:indicadores_aba_production,12.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:indicadores_aba_production,272671.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:indicadores_aba_production,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:indicadores_aba_network,0.064992,s,X-Page-Cache: HIT; bytes=72441066
+1,128MB,pagina:indicadores_aba_network,2.818,s,mediana de 3; t1=3.062295(200) t2=2.818391(200) t3=2.218820(200) 
+1,128MB,pagina_bytes:indicadores_aba_network,72441066.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:indicadores_aba_network,227.300,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:indicadores_aba_network,1636201.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:indicadores_aba_network,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:periodicos,0.004623,s,X-Page-Cache: HIT; bytes=170814
+1,128MB,pagina:periodicos,0.380,s,mediana de 3; t1=0.439542(200) t2=0.379737(200) t3=0.373468(200) 
+1,128MB,pagina_bytes:periodicos,170814.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:periodicos,5.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:periodicos,531371.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:periodicos,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:periodicos_scopus,0.004368,s,X-Page-Cache: HIT; bytes=694773
+1,128MB,pagina:periodicos_scopus,0.196,s,mediana de 3; t1=0.194434(200) t2=0.199958(200) t3=0.195584(200) 
+1,128MB,pagina_bytes:periodicos_scopus,694773.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:periodicos_scopus,6.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:periodicos_scopus,381424.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:periodicos_scopus,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:periodicos_area_educacao,0.004457,s,X-Page-Cache: HIT; bytes=173651
+1,128MB,pagina:periodicos_area_educacao,0.382,s,mediana de 3; t1=0.386063(200) t2=0.373664(200) t3=0.382118(200) 
+1,128MB,pagina_bytes:periodicos_area_educacao,173651.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:periodicos_area_educacao,4.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:periodicos_area_educacao,551055.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:periodicos_area_educacao,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina:lista_prof_pag1,0.053,s,mediana de 3; t1=0.057443(200) t2=0.053138(200) t3=0.053230(200) 
+1,128MB,pagina_bytes:lista_prof_pag1,65993.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:lista_prof_pag1,12.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:lista_prof_pag1,3499.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:lista_prof_pag1,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina:lista_prof_pag_alta_28,0.098,s,mediana de 3; t1=0.099242(200) t2=0.098420(200) t3=0.094392(200) 
+1,128MB,pagina_bytes:lista_prof_pag_alta_28,56542.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:lista_prof_pag_alta_28,24.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:lista_prof_pag_alta_28,6532.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:lista_prof_pag_alta_28,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:perfil_pesado,0.010881,s,X-Page-Cache: HIT; bytes=6296114
+1,128MB,pagina:perfil_pesado,0.349,s,mediana de 3; t1=0.403245(200) t2=0.346934(200) t3=0.349052(200) 
+1,128MB,pagina_bytes:perfil_pesado,6296114.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:perfil_pesado,50.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:perfil_pesado,84865.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:perfil_pesado,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:perfil_pesado_aba_analytics,0.004767,s,X-Page-Cache: HIT; bytes=80463
+1,128MB,pagina:perfil_pesado_aba_analytics,0.162,s,mediana de 3; t1=0.184988(200) t2=0.154444(200) t3=0.161814(200) 
+1,128MB,pagina_bytes:perfil_pesado_aba_analytics,80463.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:perfil_pesado_aba_analytics,30.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:perfil_pesado_aba_analytics,6063.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:perfil_pesado_aba_analytics,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:perfil_mediano,0.005238,s,X-Page-Cache: HIT; bytes=1268763
+1,128MB,pagina:perfil_mediano,0.106,s,mediana de 3; t1=0.105579(200) t2=0.097901(200) t3=0.126920(200) 
+1,128MB,pagina_bytes:perfil_mediano,1268763.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:perfil_mediano,28.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:perfil_mediano,75890.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:perfil_mediano,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina:busca_educacao,0.105,s,mediana de 3; t1=0.106028(200) t2=0.105191(200) t3=0.102243(200) 
+1,128MB,pagina_bytes:busca_educacao,131284.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:busca_educacao,8.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:busca_educacao,105834.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:busca_educacao,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:temas,0.004243,s,X-Page-Cache: HIT; bytes=111697
+1,128MB,pagina:temas,0.050,s,mediana de 3; t1=0.059155(200) t2=0.049345(200) t3=0.049900(200) 
+1,128MB,pagina_bytes:temas,111697.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:temas,3.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:temas,261468.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:temas,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:temas_termo_educacao,0.004751,s,X-Page-Cache: HIT; bytes=166752
+1,128MB,pagina:temas_termo_educacao,0.463,s,mediana de 3; t1=0.466433(200) t2=0.463226(200) t3=0.456872(200) 
+1,128MB,pagina_bytes:temas_termo_educacao,166752.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:temas_termo_educacao,6.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:temas_termo_educacao,564810.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:temas_termo_educacao,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina:temas_autocomplete,0.044,s,mediana de 3; t1=0.044018(200) t2=0.043628(200) t3=0.043941(200) 
+1,128MB,pagina_bytes:temas_autocomplete,3260.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:temas_autocomplete,2.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:temas_autocomplete,130733.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:temas_autocomplete,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:departamentos,0.004740,s,X-Page-Cache: HIT; bytes=49491
+1,128MB,pagina:departamentos,0.031,s,mediana de 3; t1=0.029582(200) t2=0.032183(200) t3=0.031221(200) 
+1,128MB,pagina_bytes:departamentos,49491.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:departamentos,2.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:departamentos,69919.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:departamentos,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina_cache_hit:departamento_PS,0.005449,s,X-Page-Cache: HIT; bytes=178954
+1,128MB,pagina:departamento_PS,0.352,s,mediana de 3; t1=0.364188(200) t2=0.352241(200) t3=0.344689(200) 
+1,128MB,pagina_bytes:departamento_PS,178954.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:departamento_PS,82.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:departamento_PS,35446.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:departamento_PS,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,pagina:sitemap,0.038,s,mediana de 3; t1=0.038022(200) t2=0.038036(200) t3=0.037317(200) 
+1,128MB,pagina_bytes:sitemap,82294.000,bytes,tamanho do HTML/JSON
+1,128MB,pagina_php_pico_mb:sitemap,22.000,MB,"memory_get_peak_usage(true), mediana"
+1,128MB,pagina_linhas_lidas:sitemap,70333.000,linhas,"Innodb_rows_read por requisicao, mediana"
+1,128MB,pagina_leituras_bp:sitemap,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+1,128MB,importacao:pesado_exec1,2.94,s,"app:import:lattes --file=lattes7916014556126573.xml (substituicao); rc=0; antes(prod,aut,ori)=2015/2474/86 depois=2015/2474/86; 1 currículos importados "
+1,128MB,importacao_pico_rss:pesado_exec1,163,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+1,128MB,importacao_binlog:pesado_exec1,2.31,MB,binlog gerado pela importacao
+1,128MB,importacao:pesado_exec2,1.54,s,"app:import:lattes --file=lattes7916014556126573.xml (substituicao); rc=0; antes(prod,aut,ori)=2015/2474/86 depois=2015/2474/86; 1 currículos importados "
+1,128MB,importacao_pico_rss:pesado_exec2,134,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+1,128MB,importacao_binlog:pesado_exec2,2.31,MB,binlog gerado pela importacao
+1,128MB,importacao:mediano_exec1,1.36,s,"app:import:lattes --file=lattes6045175290152830.xml (substituicao); rc=0; antes(prod,aut,ori)=140/252/52 depois=140/252/52; 1 currículos importados "
+1,128MB,importacao_pico_rss:mediano_exec1,101,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+1,128MB,importacao_binlog:mediano_exec1,0.76,MB,binlog gerado pela importacao
+10,-,clonagem_tempo,46,s,"clones k=1..9 (INSERT..SELECT, fk_checks=1, bp 8 GB, sem binlog)"
+10,-,analyze_table_total,1,s,ANALYZE TABLE em todas as tabelas de cech (carga: bp 8 GB)
+10,128MB,comando:topics,76.93,s,status=ok; app:index:topics; memory_limit efetivo -1 (ini_set no servico);  [OK] Indexação concluída com sucesso em 76.74 segundos! Total de termos:  
+10,128MB,comando_pico_rss:topics,1837,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+10,128MB,comando_binlog:topics,461.1,MB,binlog gerado pelo comando
+10,128MB,comando:keywords,0.23,s,status=ok; app:sync:keywords --dir=/private/tmp/claude-501/-Volumes-Dados-work-cech/3597d8d7-4a0b-4653-8e4f-03b3e09366fc/scratchpad/lab/xml1; memory_limit 1536M; Sincronizador de Palavras-Chave Oficiais do Lattes — CECH [OK] Sincronização concluída! 39 produções atualizadas com um total de 119  
+10,128MB,comando_pico_rss:keywords,62,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+10,128MB,comando_binlog:keywords,0.0,MB,binlog gerado pelo comando
+10,128MB,comando:index,14.23,s,"status=ok; app:index:journals; memory_limit efetivo 1024M (ini_set no comando);  [OK] Indexação concluída em 14.07 segundos! Artigos Processados 134.690  {'message':'User Deprecated: Version detection logic for MySQL will change in DBAL 4. Please specify the version as the server reports it, e.g. \'8.0.31\' instead of \'8\'. (AbstractMySQLDriver.php:89"
+10,128MB,comando_pico_rss:index,201,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+10,128MB,comando_binlog:index,0.6,MB,binlog gerado pelo comando
+10,128MB,comando:families,9.82,s,status=ok; app:journals:families --artifact=/Volumes/Dados/work/cech/docs/banco/derived/journal_evidence.jsonl.gz; memory_limit efetivo 1024M (ini_set no comando);  [OK] Famílias gravadas: 0 linha(s) com canônica alterada e 150 com nome exibido  títulos e países dos grupos 155000/309064 [========>-------] 50% artefato 4/4: títulos e países dos grupos 190000/309064 [=========>------] 61% artefato 4/4: títulos e países dos grupos 220000/3
+10,128MB,comando_pico_rss:families,451,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+10,128MB,comando_binlog:families,0.1,MB,binlog gerado pelo comando
+10,128MB,comando:report,1.67,s,status=ok; app:journals:report; memory_limit efetivo 1024M (ini_set no comando);  
+10,128MB,comando_pico_rss:report,72,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+10,128MB,comando_binlog:report,0.0,MB,binlog gerado pelo comando
+10,-,analyze_table_total,0,s,ANALYZE TABLE em todas as tabelas de cech (carga: bp 8 GB)
+10,128MB,tamanho_tabela:thematic_term_researchers,825.47,MB,dados=531.00MB indices=294.47MB linhas_estimadas=3168501
+10,128MB,tamanho_tabela:production_items,334.83,MB,dados=237.78MB indices=97.05MB linhas_estimadas=729581
+10,128MB,tamanho_tabela:production_authors,240.32,MB,dados=148.66MB indices=91.66MB linhas_estimadas=1480490
+10,128MB,tamanho_tabela:examination_boards,117.16,MB,dados=90.61MB indices=26.55MB linhas_estimadas=418887
+10,128MB,tamanho_tabela:orientations,97.65,MB,dados=66.59MB indices=31.06MB linhas_estimadas=272301
+10,128MB,tamanho_tabela:journal_area_evidence,85.65,MB,dados=62.59MB indices=23.06MB linhas_estimadas=403944
+10,128MB,tamanho_tabela:research_projects,84.65,MB,dados=76.59MB indices=8.06MB linhas_estimadas=59060
+10,128MB,tamanho_tabela:event_participations,75.11,MB,dados=55.58MB indices=19.53MB linhas_estimadas=311159
+10,128MB,tamanho_tabela:thematic_terms,51.16,MB,dados=25.55MB indices=25.61MB linhas_estimadas=219779
+10,128MB,tamanho_tabela:qualis_journals,47.74,MB,dados=20.55MB indices=27.19MB linhas_estimadas=83973
+10,128MB,tamanho_tabela:professional_experiences,34.61,MB,dados=19.55MB indices=15.06MB linhas_estimadas=86685
+10,128MB,tamanho_tabela:journal_name_variants,20.07,MB,dados=8.52MB indices=11.55MB linhas_estimadas=74102
+10,128MB,tamanho_tabela:journal_areas,19.58,MB,dados=7.52MB indices=12.06MB linhas_estimadas=110320
+10,128MB,tamanho_tabela:educations,15.07,MB,dados=9.52MB indices=5.55MB linhas_estimadas=58262
+10,128MB,tamanho_tabela:researchers,9.57,MB,dados=8.52MB indices=1.05MB linhas_estimadas=3725
+10,128MB,tamanho_tabela:qualis_journal_academic_database,9.55,MB,dados=4.52MB indices=5.03MB linhas_estimadas=134082
+10,128MB,tamanho_tabela:author_name_variants,6.04,MB,dados=4.52MB indices=1.52MB linhas_estimadas=37471
+10,128MB,tamanho_tabela:knowledge_areas,5.97,MB,dados=2.52MB indices=3.45MB linhas_estimadas=16155
+10,128MB,tamanho_tabela:institution_name_variants,5.04,MB,dados=3.52MB indices=1.52MB linhas_estimadas=25987
+10,128MB,tamanho_tabela:awards,3.27,MB,dados=2.52MB indices=0.75MB linhas_estimadas=13884
+10,128MB,tamanho_tabela:author_identities,2.52,MB,dados=2.52MB indices=0.00MB linhas_estimadas=20416
+10,128MB,tamanho_tabela:language_proficiencies,2.13,MB,dados=1.52MB indices=0.61MB linhas_estimadas=13340
+10,128MB,tamanho_tabela:institutions,1.96,MB,dados=1.52MB indices=0.44MB linhas_estimadas=8901
+10,128MB,tamanho_tabela:journal_name_candidates,0.56,MB,dados=0.39MB indices=0.17MB linhas_estimadas=1150
+10,128MB,tamanho_tabela:country_name_variants,0.11,MB,dados=0.09MB indices=0.02MB linhas_estimadas=900
+10,128MB,tamanho_tabela:state_name_variants,0.10,MB,dados=0.08MB indices=0.02MB linhas_estimadas=621
+10,128MB,tamanho_tabela:messenger_messages,0.07,MB,dados=0.02MB indices=0.05MB linhas_estimadas=0
+10,128MB,tamanho_tabela:capes_areas,0.05,MB,dados=0.02MB indices=0.03MB linhas_estimadas=59
+10,128MB,tamanho_tabela:academic_database,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=10
+10,128MB,tamanho_tabela:city_name_variants,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=20
+10,128MB,tamanho_tabela:states,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=200
+10,128MB,tamanho_tabela:super_test_fields,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=0
+10,128MB,tamanho_tabela:cities,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=65
+10,128MB,tamanho_tabela:author_external_identifiers,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=187
+10,128MB,tamanho_tabela:thesaurus_concepts,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=0
+10,128MB,tamanho_tabela:thesaurus_schemes,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=0
+10,128MB,tamanho_tabela:users,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=1
+10,128MB,tamanho_tabela:image,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=0
+10,128MB,tamanho_tabela:doctrine_migration_versions,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=14
+10,128MB,tamanho_tabela:countries,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=167
+10,128MB,tamanho_tabela:site_settings,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=1
+10,128MB,tamanho_tabela:test_database,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=0
+10,128MB,n_curriculos,4150,curriculos,count(*) researchers
+10,128MB,n_producoes,766520,linhas,count(*) production_items
+10,128MB,n_autores,1566450,linhas,count(*) production_authors
+10,128MB,tamanho_tabelas_proporcionais,1845.78,MB,dados+indices das 13 tabelas proporcionais
+10,128MB,tamanho_banco_cech,2096.28,MB,dados+indices de todas as tabelas de cech
+10,128MB,mb_por_curriculo_proporcionais,0.445,MB/curriculo,tabelas proporcionais / n_curriculos
+10,128MB,du_datadir,2677,MB,"du -sk do datadir inteiro menos a copia base cech_base (315MB); inclui redo, undo, doublewrite, mysql.ibd, binlog"
+10,128MB,du_datadir_cech,2348,MB,du -sk de datadir/cech (arquivos .ibd das tabelas)
+10,128MB,du_binlog,0,MB,binlogs presentes
+10,128MB,pagina_cache_hit:home,0.004901,s,X-Page-Cache: HIT; bytes=106242
+10,128MB,pagina:home,5.794,s,mediana de 3; t1=5.780213(200) t2=5.793774(200) t3=5.946675(200) 
+10,128MB,pagina_bytes:home,106242.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:home,4.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:home,14125209.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:home,27072.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina_cache_hit:indicadores,0.009675,s,X-Page-Cache: HIT; bytes=5556078
+10,128MB,pagina:indicadores,3.636,s,mediana de 3; t1=3.973197(200) t2=3.548436(200) t3=3.635615(200) 
+10,128MB,pagina_bytes:indicadores,5556078.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:indicadores,45.900,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:indicadores,4329078.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:indicadores,19914.500,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina_cache_hit:indicadores_aba_training,0.004084,s,X-Page-Cache: HIT; bytes=9587
+10,128MB,pagina:indicadores_aba_training,0.442,s,mediana de 3; t1=0.483870(200) t2=0.433867(200) t3=0.442242(200) 
+10,128MB,pagina_bytes:indicadores_aba_training,9587.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:indicadores_aba_training,6.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:indicadores_aba_training,745951.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:indicadores_aba_training,2257.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina_cache_hit:indicadores_aba_production,0.010156,s,X-Page-Cache: HIT; bytes=5033828
+10,128MB,pagina:indicadores_aba_production,4.102,s,mediana de 3; t1=3.967561(200) t2=4.215543(200) t3=4.102394(200) 
+10,128MB,pagina_bytes:indicadores_aba_production,5033828.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:indicadores_aba_production,98.400,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:indicadores_aba_production,2635564.500,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:indicadores_aba_production,43889.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina:indicadores_aba_network,erro_http_500,s,sem resposta 200; t1=51.554034(500) t2=29.238401(500) t3=33.414127(500) 
+10,128MB,pagina_cache_hit:periodicos,0.004427,s,X-Page-Cache: HIT; bytes=170941
+10,128MB,pagina:periodicos,3.754,s,mediana de 3; t1=3.978986(200) t2=3.753921(200) t3=3.498936(200) 
+10,128MB,pagina_bytes:periodicos,170941.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:periodicos,19.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:periodicos,3044836.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:periodicos,29905.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina_cache_hit:periodicos_scopus,0.005226,s,X-Page-Cache: HIT; bytes=695859
+10,128MB,pagina:periodicos_scopus,0.998,s,mediana de 3; t1=0.999629(200) t2=0.998383(200) t3=0.990133(200) 
+10,128MB,pagina_bytes:periodicos_scopus,695859.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:periodicos_scopus,6.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:periodicos_scopus,1058532.500,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:periodicos_scopus,9969.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina_cache_hit:periodicos_area_educacao,0.004900,s,X-Page-Cache: HIT; bytes=173783
+10,128MB,pagina:periodicos_area_educacao,3.490,s,mediana de 3; t1=3.490286(200) t2=3.416614(200) t3=3.915467(200) 
+10,128MB,pagina_bytes:periodicos_area_educacao,173783.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:periodicos_area_educacao,4.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:periodicos_area_educacao,3070151.500,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:periodicos_area_educacao,29068.500,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina:lista_prof_pag1,0.057,s,mediana de 3; t1=0.073121(200) t2=0.057498(200) t3=0.055765(200) 
+10,128MB,pagina_bytes:lista_prof_pag1,65836.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:lista_prof_pag1,10.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:lista_prof_pag1,14236.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:lista_prof_pag1,3.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina:lista_prof_pag_alta_277,0.292,s,mediana de 3; t1=0.307734(200) t2=0.291733(200) t3=0.279985(200) 
+10,128MB,pagina_bytes:lista_prof_pag_alta_277,56771.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:lista_prof_pag_alta_277,54.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:lista_prof_pag_alta_277,28491.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:lista_prof_pag_alta_277,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina_cache_hit:perfil_pesado,0.010808,s,X-Page-Cache: HIT; bytes=6477886
+10,128MB,pagina:perfil_pesado,2.216,s,mediana de 3; t1=2.900973(200) t2=2.213548(200) t3=2.215827(200) 
+10,128MB,pagina_bytes:perfil_pesado,6477886.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:perfil_pesado,58.600,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:perfil_pesado,3454856.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:perfil_pesado,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina_cache_hit:perfil_pesado_aba_analytics,0.005242,s,X-Page-Cache: HIT; bytes=83169
+10,128MB,pagina:perfil_pesado_aba_analytics,3.754,s,mediana de 3; t1=3.984276(200) t2=3.722059(200) t3=3.754251(200) 
+10,128MB,pagina_bytes:perfil_pesado_aba_analytics,83169.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:perfil_pesado_aba_analytics,24.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:perfil_pesado_aba_analytics,6523697.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:perfil_pesado_aba_analytics,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina_cache_hit:perfil_mediano,0.005461,s,X-Page-Cache: HIT; bytes=1283799
+10,128MB,pagina:perfil_mediano,1.209,s,mediana de 3; t1=1.209042(200) t2=1.192770(200) t3=1.220753(200) 
+10,128MB,pagina_bytes:perfil_mediano,1283799.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:perfil_mediano,32.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:perfil_mediano,2046943.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:perfil_mediano,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina:busca_educacao,1.028,s,mediana de 3; t1=1.003304(200) t2=1.106030(200) t3=1.028044(200) 
+10,128MB,pagina_bytes:busca_educacao,131422.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:busca_educacao,10.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:busca_educacao,1054938.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:busca_educacao,4335.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina_cache_hit:temas,0.004304,s,X-Page-Cache: HIT; bytes=111790
+10,128MB,pagina:temas,0.076,s,mediana de 3; t1=0.086719(200) t2=0.075868(200) t3=0.076067(200) 
+10,128MB,pagina_bytes:temas,111790.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:temas,3.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:temas,451756.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:temas,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina_cache_hit:temas_termo_educacao,0.004815,s,X-Page-Cache: HIT; bytes=167611
+10,128MB,pagina:temas_termo_educacao,6.714,s,mediana de 3; t1=6.874780(200) t2=6.714194(200) t3=6.694991(200) 
+10,128MB,pagina_bytes:temas_termo_educacao,167611.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:temas_termo_educacao,14.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:temas_termo_educacao,3485060.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:temas_termo_educacao,182951.500,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina:temas_autocomplete,0.073,s,mediana de 3; t1=0.072788(200) t2=0.076013(200) t3=0.071794(200) 
+10,128MB,pagina_bytes:temas_autocomplete,3317.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:temas_autocomplete,4.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:temas_autocomplete,225877.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:temas_autocomplete,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina_cache_hit:departamentos,0.004873,s,X-Page-Cache: HIT; bytes=49514
+10,128MB,pagina:departamentos,0.229,s,mediana de 3; t1=0.239597(200) t2=0.229106(200) t3=0.227534(200) 
+10,128MB,pagina_bytes:departamentos,49514.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:departamentos,2.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:departamentos,699181.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:departamentos,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,pagina:departamento_PS,erro_http_500,s,sem resposta 200; t1=2.751959(500) t2=2.520071(500) t3=2.395725(500) 
+10,128MB,pagina:sitemap,0.320,s,mediana de 3; t1=0.327932(200) t2=0.320103(200) t3=0.316947(200) 
+10,128MB,pagina_bytes:sitemap,808783.000,bytes,tamanho do HTML/JSON
+10,128MB,pagina_php_pico_mb:sitemap,238.000,MB,"memory_get_peak_usage(true), mediana"
+10,128MB,pagina_linhas_lidas:sitemap,703330.000,linhas,"Innodb_rows_read por requisicao, mediana"
+10,128MB,pagina_leituras_bp:sitemap,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+10,128MB,importacao:pesado_exec1,3.41,s,"app:import:lattes --file=lattes7916014556126573.xml (substituicao); rc=0; antes(prod,aut,ori)=2015/2474/86 depois=2015/2474/86; 1 currículos importados "
+10,128MB,importacao_pico_rss:pesado_exec1,164,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+10,128MB,importacao_binlog:pesado_exec1,2.31,MB,binlog gerado pela importacao
+10,128MB,importacao:pesado_exec2,1.81,s,"app:import:lattes --file=lattes7916014556126573.xml (substituicao); rc=0; antes(prod,aut,ori)=2015/2474/86 depois=2015/2474/86; 1 currículos importados "
+10,128MB,importacao_pico_rss:pesado_exec2,139,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+10,128MB,importacao_binlog:pesado_exec2,2.31,MB,binlog gerado pela importacao
+10,128MB,importacao:mediano_exec1,1.41,s,"app:import:lattes --file=lattes6045175290152830.xml (substituicao); rc=0; antes(prod,aut,ori)=140/252/52 depois=140/252/52; 1 currículos importados "
+10,128MB,importacao_pico_rss:mediano_exec1,105,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+10,128MB,importacao_binlog:mediano_exec1,0.76,MB,binlog gerado pela importacao
+100,-,clonagem_tempo,520,s,"clones k=10..99 (INSERT..SELECT, fk_checks=1, bp 8 GB, sem binlog)"
+100,-,analyze_table_total,1,s,ANALYZE TABLE em todas as tabelas de cech (carga: bp 8 GB)
+100,128MB,comando:topics,1656.14,s,status=ok; app:index:topics; memory_limit efetivo -1 (ini_set no servico);  [OK] Indexação concluída com sucesso em 1655.02 segundos! Total de termos:  
+100,128MB,comando_pico_rss:topics,16420,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+100,128MB,comando_binlog:topics,4429.0,MB,binlog gerado pelo comando
+100,128MB,comando:keywords,0.36,s,status=ok; app:sync:keywords --dir=/private/tmp/claude-501/-Volumes-Dados-work-cech/3597d8d7-4a0b-4653-8e4f-03b3e09366fc/scratchpad/lab/xml1; memory_limit 1536M; Sincronizador de Palavras-Chave Oficiais do Lattes — CECH [OK] Sincronização concluída! 39 produções atualizadas com um total de 119  
+100,128MB,comando_pico_rss:keywords,62,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+100,128MB,comando_binlog:keywords,0.0,MB,binlog gerado pelo comando
+100,128MB,comando:index,127.59,s,"status=ok; app:index:journals; memory_limit efetivo 1024M (ini_set no comando);  [OK] Indexação concluída em 127.35 segundos! Artigos Processados 1.346.900  {'message':'User Deprecated: Version detection logic for MySQL will change in DBAL 4. Please specify the version as the server reports it, e.g. \'8.0.31\' instead of \'8\'. (AbstractMySQLDriver.php:89"
+100,128MB,comando_pico_rss:index,856,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+100,128MB,comando_binlog:index,0.6,MB,binlog gerado pelo comando
+100,128MB,comando:families,18.08,s,status=ok; app:journals:families --artifact=/Volumes/Dados/work/cech/docs/banco/derived/journal_evidence.jsonl.gz; memory_limit efetivo 1024M (ini_set no comando);  [OK] Famílias gravadas: 0 linha(s) com canônica alterada e 0 com nome exibido  --------] 21% artefato 3/4: ISSNs e títulos 95000/309064 [========>-------------------] 30% artefato 3/4: ISSNs e títulos 125000/309064 [===========>----------------] 40% artefato 3/4: ISSNs e títu
+100,128MB,comando_pico_rss:families,579,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+100,128MB,comando_binlog:families,0.0,MB,binlog gerado pelo comando
+100,128MB,comando:report,12.16,s,status=ok; app:journals:report; memory_limit efetivo 1024M (ini_set no comando);  
+100,128MB,comando_pico_rss:report,72,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+100,128MB,comando_binlog:report,0.0,MB,binlog gerado pelo comando
+100,-,analyze_table_total,2,s,ANALYZE TABLE em todas as tabelas de cech (carga: bp 8 GB)
+100,128MB,tamanho_tabela:thematic_term_researchers,8225.98,MB,dados=5307.00MB indices=2918.98MB linhas_estimadas=33145897
+100,128MB,tamanho_tabela:production_items,3269.42,MB,dados=2386.00MB indices=883.42MB linhas_estimadas=7457140
+100,128MB,tamanho_tabela:production_authors,2356.66,MB,dados=1492.00MB indices=864.66MB linhas_estimadas=14693502
+100,128MB,tamanho_tabela:examination_boards,1143.02,MB,dados=911.00MB indices=232.02MB linhas_estimadas=4225320
+100,128MB,tamanho_tabela:orientations,929.53,MB,dados=674.00MB indices=255.53MB linhas_estimadas=2673879
+100,128MB,tamanho_tabela:research_projects,823.09,MB,dados=766.00MB indices=57.09MB linhas_estimadas=582753
+100,128MB,tamanho_tabela:event_participations,727.81,MB,dados=563.00MB indices=164.81MB linhas_estimadas=3046070
+100,128MB,tamanho_tabela:professional_experiences,315.09,MB,dados=193.73MB indices=121.36MB linhas_estimadas=997152
+100,128MB,tamanho_tabela:educations,126.16,MB,dados=88.63MB indices=37.53MB linhas_estimadas=573440
+100,128MB,tamanho_tabela:researchers,88.67,MB,dados=78.61MB indices=10.06MB linhas_estimadas=33750
+100,128MB,tamanho_tabela:journal_area_evidence,85.65,MB,dados=62.59MB indices=23.06MB linhas_estimadas=394096
+100,128MB,tamanho_tabela:thematic_terms,51.16,MB,dados=25.55MB indices=25.61MB linhas_estimadas=219858
+100,128MB,tamanho_tabela:qualis_journals,47.74,MB,dados=20.55MB indices=27.19MB linhas_estimadas=81096
+100,128MB,tamanho_tabela:knowledge_areas,32.05,MB,dados=15.52MB indices=16.53MB linhas_estimadas=161313
+100,128MB,tamanho_tabela:awards,31.58,MB,dados=23.55MB indices=8.03MB linhas_estimadas=139678
+100,128MB,tamanho_tabela:journal_name_variants,20.07,MB,dados=8.52MB indices=11.55MB linhas_estimadas=70946
+100,128MB,tamanho_tabela:journal_areas,19.58,MB,dados=7.52MB indices=12.06MB linhas_estimadas=110366
+100,128MB,tamanho_tabela:language_proficiencies,15.55,MB,dados=8.52MB indices=7.03MB linhas_estimadas=131614
+100,128MB,tamanho_tabela:qualis_journal_academic_database,9.55,MB,dados=4.52MB indices=5.03MB linhas_estimadas=134082
+100,128MB,tamanho_tabela:author_name_variants,6.04,MB,dados=4.52MB indices=1.52MB linhas_estimadas=35894
+100,128MB,tamanho_tabela:institution_name_variants,5.04,MB,dados=3.52MB indices=1.52MB linhas_estimadas=26687
+100,128MB,tamanho_tabela:author_identities,2.52,MB,dados=2.52MB indices=0.00MB linhas_estimadas=21191
+100,128MB,tamanho_tabela:institutions,1.96,MB,dados=1.52MB indices=0.44MB linhas_estimadas=9097
+100,128MB,tamanho_tabela:journal_name_candidates,0.56,MB,dados=0.39MB indices=0.17MB linhas_estimadas=1117
+100,128MB,tamanho_tabela:country_name_variants,0.11,MB,dados=0.09MB indices=0.02MB linhas_estimadas=900
+100,128MB,tamanho_tabela:state_name_variants,0.10,MB,dados=0.08MB indices=0.02MB linhas_estimadas=621
+100,128MB,tamanho_tabela:messenger_messages,0.07,MB,dados=0.02MB indices=0.05MB linhas_estimadas=0
+100,128MB,tamanho_tabela:capes_areas,0.05,MB,dados=0.02MB indices=0.03MB linhas_estimadas=59
+100,128MB,tamanho_tabela:academic_database,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=10
+100,128MB,tamanho_tabela:city_name_variants,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=20
+100,128MB,tamanho_tabela:states,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=200
+100,128MB,tamanho_tabela:super_test_fields,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=0
+100,128MB,tamanho_tabela:cities,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=65
+100,128MB,tamanho_tabela:author_external_identifiers,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=187
+100,128MB,tamanho_tabela:thesaurus_concepts,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=0
+100,128MB,tamanho_tabela:thesaurus_schemes,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=0
+100,128MB,tamanho_tabela:users,0.04,MB,dados=0.02MB indices=0.02MB linhas_estimadas=1
+100,128MB,tamanho_tabela:image,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=0
+100,128MB,tamanho_tabela:doctrine_migration_versions,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=14
+100,128MB,tamanho_tabela:countries,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=167
+100,128MB,tamanho_tabela:site_settings,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=1
+100,128MB,tamanho_tabela:test_database,0.02,MB,dados=0.02MB indices=0.00MB linhas_estimadas=0
+100,128MB,n_curriculos,41500,curriculos,count(*) researchers
+100,128MB,n_producoes,7665200,linhas,count(*) production_items
+100,128MB,n_autores,15664500,linhas,count(*) production_authors
+100,128MB,tamanho_tabelas_proporcionais,18084.61,MB,dados+indices das 13 tabelas proporcionais
+100,128MB,tamanho_banco_cech,18335.11,MB,dados+indices de todas as tabelas de cech
+100,128MB,mb_por_curriculo_proporcionais,0.436,MB/curriculo,tabelas proporcionais / n_curriculos
+100,128MB,du_datadir,19576,MB,"du -sk do datadir inteiro menos a copia base cech_base (315MB); inclui redo, undo, doublewrite, mysql.ibd, binlog"
+100,128MB,du_datadir_cech,18783,MB,du -sk de datadir/cech (arquivos .ibd das tabelas)
+100,128MB,du_binlog,0,MB,binlogs presentes
+100,128MB,pagina_cache_hit:home,0.004776,s,X-Page-Cache: HIT; bytes=104761
+100,128MB,pagina:home,57.252,s,mediana de 3; t1=56.741012(200) t2=57.252146(200) t3=57.453966(200) 
+100,128MB,pagina_bytes:home,104761.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:home,4.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:home,141342481.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:home,192777.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina_cache_hit:indicadores,0.053546,s,X-Page-Cache: HIT; bytes=52801073
+100,128MB,pagina:indicadores,36.838,s,mediana de 3; t1=36.837998(200) t2=36.537657(200) t3=39.745014(200) 
+100,128MB,pagina_bytes:indicadores,52801073.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:indicadores,295.100,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:indicadores,43897518.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:indicadores,176668.500,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina_cache_hit:indicadores_aba_training,0.004326,s,X-Page-Cache: HIT; bytes=9671
+100,128MB,pagina:indicadores_aba_training,5.075,s,mediana de 3; t1=5.074600(200) t2=5.309050(200) t3=5.071488(200) 
+100,128MB,pagina_bytes:indicadores_aba_training,9671.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:indicadores_aba_training,24.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:indicadores_aba_training,7459501.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:indicadores_aba_training,4934.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina:indicadores_aba_production,erro_http_500,s,sem resposta 200; t1=20.487369(500) t2=20.862314(500) t3=21.058371(500) 
+100,128MB,pagina:indicadores_aba_network,timeout,s,sem resposta 200; t1=300.005858(timeout) 
+100,128MB,pagina_cache_hit:periodicos,0.004478,s,X-Page-Cache: HIT; bytes=171170
+100,128MB,pagina:periodicos,41.738,s,mediana de 3; t1=47.415792(200) t2=40.320561(200) t3=41.737715(200) 
+100,128MB,pagina_bytes:periodicos,171170.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:periodicos,4.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:periodicos,27029476.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:periodicos,821957.500,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina_cache_hit:periodicos_scopus,0.004468,s,X-Page-Cache: HIT; bytes=696580
+100,128MB,pagina:periodicos_scopus,12.043,s,mediana de 3; t1=14.065555(200) t2=12.043304(200) t3=11.233385(200) 
+100,128MB,pagina_bytes:periodicos_scopus,696580.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:periodicos_scopus,6.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:periodicos_scopus,8534755.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:periodicos_scopus,235178.500,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina_cache_hit:periodicos_area_educacao,0.004568,s,X-Page-Cache: HIT; bytes=173971
+100,128MB,pagina:periodicos_area_educacao,42.209,s,mediana de 3; t1=42.209257(200) t2=42.793174(200) t3=38.176130(200) 
+100,128MB,pagina_bytes:periodicos_area_educacao,173971.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:periodicos_area_educacao,4.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:periodicos_area_educacao,27054794.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:periodicos_area_educacao,864314.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina:lista_prof_pag1,0.122,s,mediana de 3; t1=0.191489(200) t2=0.121941(200) t3=0.117294(200) 
+100,128MB,pagina_bytes:lista_prof_pag1,65853.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:lista_prof_pag1,12.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:lista_prof_pag1,126646.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:lista_prof_pag1,945.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina:lista_prof_pag_alta_2767,0.405,s,mediana de 3; t1=0.419119(200) t2=0.404814(200) t3=0.385299(200) 
+100,128MB,pagina_bytes:lista_prof_pag_alta_2767,56773.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:lista_prof_pag_alta_2767,54.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:lista_prof_pag_alta_2767,177891.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:lista_prof_pag_alta_2767,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina_cache_hit:perfil_pesado,0.010731,s,X-Page-Cache: HIT; bytes=6477886
+100,128MB,pagina:perfil_pesado,2.242,s,mediana de 3; t1=4.234314(200) t2=2.241955(200) t3=2.190693(200) 
+100,128MB,pagina_bytes:perfil_pesado,6477886.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:perfil_pesado,69.600,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:perfil_pesado,3454856.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:perfil_pesado,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina_cache_hit:perfil_pesado_aba_analytics,0.004508,s,X-Page-Cache: HIT; bytes=83169
+100,128MB,pagina:perfil_pesado_aba_analytics,3.799,s,mediana de 3; t1=3.774341(200) t2=3.798820(200) t3=4.479003(200) 
+100,128MB,pagina_bytes:perfil_pesado_aba_analytics,83169.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:perfil_pesado_aba_analytics,24.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:perfil_pesado_aba_analytics,6523697.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:perfil_pesado_aba_analytics,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina_cache_hit:perfil_mediano,0.005334,s,X-Page-Cache: HIT; bytes=1283799
+100,128MB,pagina:perfil_mediano,1.281,s,mediana de 3; t1=1.281455(200) t2=1.397001(200) t3=1.246362(200) 
+100,128MB,pagina_bytes:perfil_mediano,1283799.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:perfil_mediano,32.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:perfil_mediano,2046943.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:perfil_mediano,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina:busca_educacao,10.123,s,mediana de 3; t1=10.122969(200) t2=10.209621(200) t3=10.042144(200) 
+100,128MB,pagina_bytes:busca_educacao,130992.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:busca_educacao,10.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:busca_educacao,10545970.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:busca_educacao,2274.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina_cache_hit:temas,0.004471,s,X-Page-Cache: HIT; bytes=111862
+100,128MB,pagina:temas,0.097,s,mediana de 3; t1=0.103314(200) t2=0.096735(200) t3=0.086701(200) 
+100,128MB,pagina_bytes:temas,111862.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:temas,3.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:temas,451756.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:temas,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina_cache_hit:temas_termo_educacao,0.005376,s,X-Page-Cache: HIT; bytes=167761
+100,128MB,pagina:temas_termo_educacao,74.126,s,mediana de 3; t1=77.911296(200) t2=74.126405(200) t3=73.426843(200) 
+100,128MB,pagina_bytes:temas_termo_educacao,167761.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:temas_termo_educacao,103.900,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:temas_termo_educacao,30803470.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:temas_termo_educacao,3449137.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina:temas_autocomplete,0.071,s,mediana de 3; t1=0.091546(200) t2=0.069511(200) t3=0.071331(200) 
+100,128MB,pagina_bytes:temas_autocomplete,3365.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:temas_autocomplete,20.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:temas_autocomplete,225877.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:temas_autocomplete,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina_cache_hit:departamentos,0.004783,s,X-Page-Cache: HIT; bytes=49537
+100,128MB,pagina:departamentos,2.805,s,mediana de 3; t1=2.804997(200) t2=2.901777(200) t3=2.619389(200) 
+100,128MB,pagina_bytes:departamentos,49537.000,bytes,tamanho do HTML/JSON
+100,128MB,pagina_php_pico_mb:departamentos,2.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB,pagina_linhas_lidas:departamentos,6991801.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB,pagina_leituras_bp:departamentos,21228.500,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,pagina:departamento_PS,erro_http_500,s,sem resposta 200; t1=2.691907(500) t2=2.503618(500) t3=2.434032(500) 
+100,128MB,pagina:sitemap,erro_http_500,s,sem resposta 200; t1=4.041152(500) t2=3.765553(500) t3=3.636112(500) 
+100,128MB,importacao:pesado_exec1,5.86,s,"app:import:lattes --file=lattes7916014556126573.xml (substituicao); rc=0; antes(prod,aut,ori)=2015/2474/86 depois=2015/2474/86; 1 currículos importados "
+100,128MB,importacao_pico_rss:pesado_exec1,237,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+100,128MB,importacao_binlog:pesado_exec1,2.31,MB,binlog gerado pela importacao
+100,128MB,importacao:pesado_exec2,3.89,s,"app:import:lattes --file=lattes7916014556126573.xml (substituicao); rc=0; antes(prod,aut,ori)=2015/2474/86 depois=2015/2474/86; 1 currículos importados "
+100,128MB,importacao_pico_rss:pesado_exec2,231,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+100,128MB,importacao_binlog:pesado_exec2,2.31,MB,binlog gerado pela importacao
+100,128MB,importacao:mediano_exec1,3.64,s,"app:import:lattes --file=lattes6045175290152830.xml (substituicao); rc=0; antes(prod,aut,ori)=140/252/52 depois=140/252/52; 1 currículos importados "
+100,128MB,importacao_pico_rss:mediano_exec1,180,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+100,128MB,importacao_binlog:mediano_exec1,0.76,MB,binlog gerado pela importacao
+100,1GB,pagina_cache_hit:home,0.004274,s,X-Page-Cache: HIT; bytes=104761
+100,1GB,pagina:home,64.235,s,mediana de 3; t1=63.916612(200) t2=66.560147(200) t3=64.235261(200) 
+100,1GB,pagina_bytes:home,104761.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:home,4.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:home,141342481.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:home,297469.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina_cache_hit:indicadores,0.049953,s,X-Page-Cache: HIT; bytes=52801073
+100,1GB,pagina:indicadores,38.157,s,mediana de 3; t1=38.156502(200) t2=39.052814(200) t3=37.486114(200) 
+100,1GB,pagina_bytes:indicadores,52801073.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:indicadores,295.100,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:indicadores,43785318.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:indicadores,210171.500,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina_cache_hit:indicadores_aba_training,0.004316,s,X-Page-Cache: HIT; bytes=9671
+100,1GB,pagina:indicadores_aba_training,6.015,s,mediana de 3; t1=5.492767(200) t2=6.015028(200) t3=6.101000(200) 
+100,1GB,pagina_bytes:indicadores_aba_training,9671.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:indicadores_aba_training,24.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:indicadores_aba_training,7459501.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:indicadores_aba_training,8478.500,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina:indicadores_aba_production,erro_http_500,s,sem resposta 200; t1=23.625547(500) t2=22.528101(500) t3=23.481934(500) 
+100,1GB,pagina:indicadores_aba_network,timeout,s,sem resposta 200; t1=300.010001(timeout) 
+100,1GB,pagina_cache_hit:periodicos,0.004253,s,X-Page-Cache: HIT; bytes=171170
+100,1GB,pagina:periodicos,46.155,s,mediana de 3; t1=46.155473(200) t2=46.654123(200) t3=44.857227(200) 
+100,1GB,pagina_bytes:periodicos,171170.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:periodicos,4.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:periodicos,27026570.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:periodicos,308935.500,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina_cache_hit:periodicos_scopus,0.004477,s,X-Page-Cache: HIT; bytes=696578
+100,1GB,pagina:periodicos_scopus,15.057,s,mediana de 3; t1=13.843184(200) t2=15.057352(200) t3=15.243967(200) 
+100,1GB,pagina_bytes:periodicos_scopus,696578.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:periodicos_scopus,6.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:periodicos_scopus,8534084.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:periodicos_scopus,90679.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina_cache_hit:periodicos_area_educacao,0.004414,s,X-Page-Cache: HIT; bytes=173971
+100,1GB,pagina:periodicos_area_educacao,44.483,s,mediana de 3; t1=46.580085(200) t2=44.483354(200) t3=42.997142(200) 
+100,1GB,pagina_bytes:periodicos_area_educacao,173971.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:periodicos_area_educacao,4.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:periodicos_area_educacao,27051888.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:periodicos_area_educacao,276285.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina:lista_prof_pag1,0.122,s,mediana de 3; t1=0.156905(200) t2=0.120245(200) t3=0.122241(200) 
+100,1GB,pagina_bytes:lista_prof_pag1,65853.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:lista_prof_pag1,12.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:lista_prof_pag1,126646.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:lista_prof_pag1,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina:lista_prof_pag_alta_2767,0.408,s,mediana de 3; t1=0.414168(200) t2=0.408135(200) t3=0.404587(200) 
+100,1GB,pagina_bytes:lista_prof_pag_alta_2767,56773.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:lista_prof_pag_alta_2767,54.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:lista_prof_pag_alta_2767,177891.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:lista_prof_pag_alta_2767,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina_cache_hit:perfil_pesado,0.009860,s,X-Page-Cache: HIT; bytes=6418467
+100,1GB,pagina:perfil_pesado,2.259,s,mediana de 3; t1=4.233688(200) t2=2.238606(200) t3=2.259376(200) 
+100,1GB,pagina_bytes:perfil_pesado,6418467.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:perfil_pesado,69.400,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:perfil_pesado,3454889.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:perfil_pesado,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina_cache_hit:perfil_pesado_aba_analytics,0.004499,s,X-Page-Cache: HIT; bytes=71891
+100,1GB,pagina:perfil_pesado_aba_analytics,3.920,s,mediana de 3; t1=3.865792(200) t2=4.039355(200) t3=3.920140(200) 
+100,1GB,pagina_bytes:perfil_pesado_aba_analytics,71891.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:perfil_pesado_aba_analytics,24.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:perfil_pesado_aba_analytics,6523697.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:perfil_pesado_aba_analytics,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina_cache_hit:perfil_mediano,0.005294,s,X-Page-Cache: HIT; bytes=1280139
+100,1GB,pagina:perfil_mediano,1.215,s,mediana de 3; t1=1.216842(200) t2=1.206181(200) t3=1.215420(200) 
+100,1GB,pagina_bytes:perfil_mediano,1280139.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:perfil_mediano,32.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:perfil_mediano,2046947.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:perfil_mediano,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina:busca_educacao,9.807,s,mediana de 3; t1=9.886456(200) t2=9.806760(200) t3=9.697258(200) 
+100,1GB,pagina_bytes:busca_educacao,130992.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:busca_educacao,10.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:busca_educacao,10545970.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:busca_educacao,46577.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina_cache_hit:temas,0.004577,s,X-Page-Cache: HIT; bytes=111862
+100,1GB,pagina:temas,0.077,s,mediana de 3; t1=0.092830(200) t2=0.075992(200) t3=0.077152(200) 
+100,1GB,pagina_bytes:temas,111862.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:temas,3.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:temas,451756.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:temas,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina_cache_hit:temas_termo_educacao,0.005205,s,X-Page-Cache: HIT; bytes=167761
+100,1GB,pagina:temas_termo_educacao,93.970,s,mediana de 3; t1=91.388967(200) t2=93.969896(200) t3=95.683865(200) 
+100,1GB,pagina_bytes:temas_termo_educacao,167761.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:temas_termo_educacao,103.900,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:temas_termo_educacao,30803470.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:temas_termo_educacao,2147195.500,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina:temas_autocomplete,0.071,s,mediana de 3; t1=0.071386(200) t2=0.071936(200) t3=0.068890(200) 
+100,1GB,pagina_bytes:temas_autocomplete,3365.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:temas_autocomplete,20.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:temas_autocomplete,225877.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:temas_autocomplete,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina_cache_hit:departamentos,0.004168,s,X-Page-Cache: HIT; bytes=49537
+100,1GB,pagina:departamentos,2.266,s,mediana de 3; t1=2.393405(200) t2=2.266154(200) t3=2.232964(200) 
+100,1GB,pagina_bytes:departamentos,49537.000,bytes,tamanho do HTML/JSON
+100,1GB,pagina_php_pico_mb:departamentos,2.000,MB,"memory_get_peak_usage(true), mediana"
+100,1GB,pagina_linhas_lidas:departamentos,6991801.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,1GB,pagina_leituras_bp:departamentos,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,1GB,pagina:departamento_PS,erro_http_500,s,sem resposta 200; t1=2.758232(500) t2=2.520151(500) t3=2.441881(500) 
+100,1GB,pagina:sitemap,erro_http_500,s,sem resposta 200; t1=3.333829(500) t2=3.816059(500) t3=3.460369(500) 
+100,16GB,pagina_cache_hit:home,0.004384,s,X-Page-Cache: HIT; bytes=104761
+100,16GB,pagina:home,49.702,s,mediana de 3; t1=51.289374(200) t2=49.702241(200) t3=49.541485(200) 
+100,16GB,pagina_bytes:home,104761.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:home,4.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:home,134788581.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:home,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina_cache_hit:indicadores,0.053152,s,X-Page-Cache: HIT; bytes=52801073
+100,16GB,pagina:indicadores,31.095,s,mediana de 3; t1=31.708452(200) t2=30.926292(200) t3=31.095092(200) 
+100,16GB,pagina_bytes:indicadores,52801073.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:indicadores,295.100,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:indicadores,37231418.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:indicadores,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina_cache_hit:indicadores_aba_training,0.004571,s,X-Page-Cache: HIT; bytes=9671
+100,16GB,pagina:indicadores_aba_training,3.694,s,mediana de 3; t1=3.967575(200) t2=3.693796(200) t3=3.613457(200) 
+100,16GB,pagina_bytes:indicadores_aba_training,9671.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:indicadores_aba_training,24.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:indicadores_aba_training,7459501.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:indicadores_aba_training,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina:indicadores_aba_production,erro_http_500,s,sem resposta 200; t1=12.762836(500) t2=13.290317(500) t3=12.691924(500) 
+100,16GB,pagina:indicadores_aba_network,timeout,s,sem resposta 200; t1=300.010043(timeout) 
+100,16GB,pagina_cache_hit:periodicos,0.004919,s,X-Page-Cache: HIT; bytes=171170
+100,16GB,pagina:periodicos,30.342,s,mediana de 3; t1=32.785858(200) t2=30.342172(200) t3=29.902883(200) 
+100,16GB,pagina_bytes:periodicos,171170.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:periodicos,4.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:periodicos,27026565.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:periodicos,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina_cache_hit:periodicos_scopus,0.004392,s,X-Page-Cache: HIT; bytes=696578
+100,16GB,pagina:periodicos_scopus,9.159,s,mediana de 3; t1=9.463048(200) t2=9.114024(200) t3=9.158844(200) 
+100,16GB,pagina_bytes:periodicos_scopus,696578.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:periodicos_scopus,6.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:periodicos_scopus,8534079.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:periodicos_scopus,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina_cache_hit:periodicos_area_educacao,0.005106,s,X-Page-Cache: HIT; bytes=173971
+100,16GB,pagina:periodicos_area_educacao,29.008,s,mediana de 3; t1=28.735544(200) t2=29.078232(200) t3=29.007564(200) 
+100,16GB,pagina_bytes:periodicos_area_educacao,173971.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:periodicos_area_educacao,4.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:periodicos_area_educacao,27051883.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:periodicos_area_educacao,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina:lista_prof_pag1,0.115,s,mediana de 3; t1=0.134532(200) t2=0.115389(200) t3=0.115491(200) 
+100,16GB,pagina_bytes:lista_prof_pag1,65853.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:lista_prof_pag1,12.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:lista_prof_pag1,126646.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:lista_prof_pag1,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina:lista_prof_pag_alta_2767,0.408,s,mediana de 3; t1=0.407581(200) t2=0.414808(200) t3=0.401136(200) 
+100,16GB,pagina_bytes:lista_prof_pag_alta_2767,56773.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:lista_prof_pag_alta_2767,54.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:lista_prof_pag_alta_2767,177891.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:lista_prof_pag_alta_2767,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina_cache_hit:perfil_pesado,0.010830,s,X-Page-Cache: HIT; bytes=6418467
+100,16GB,pagina:perfil_pesado,2.581,s,mediana de 3; t1=4.648109(200) t2=2.581253(200) t3=2.483047(200) 
+100,16GB,pagina_bytes:perfil_pesado,6418467.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:perfil_pesado,69.400,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:perfil_pesado,3454889.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:perfil_pesado,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina_cache_hit:perfil_pesado_aba_analytics,0.004605,s,X-Page-Cache: HIT; bytes=71891
+100,16GB,pagina:perfil_pesado_aba_analytics,4.235,s,mediana de 3; t1=4.235419(200) t2=4.219282(200) t3=4.332402(200) 
+100,16GB,pagina_bytes:perfil_pesado_aba_analytics,71891.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:perfil_pesado_aba_analytics,24.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:perfil_pesado_aba_analytics,6523697.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:perfil_pesado_aba_analytics,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina_cache_hit:perfil_mediano,0.005205,s,X-Page-Cache: HIT; bytes=1280139
+100,16GB,pagina:perfil_mediano,1.347,s,mediana de 3; t1=1.376228(200) t2=1.337199(200) t3=1.347313(200) 
+100,16GB,pagina_bytes:perfil_mediano,1280139.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:perfil_mediano,32.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:perfil_mediano,2046947.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:perfil_mediano,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina:busca_educacao,8.819,s,mediana de 3; t1=8.798354(200) t2=8.878828(200) t3=8.819317(200) 
+100,16GB,pagina_bytes:busca_educacao,130992.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:busca_educacao,10.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:busca_educacao,10545970.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:busca_educacao,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina_cache_hit:temas,0.004271,s,X-Page-Cache: HIT; bytes=111862
+100,16GB,pagina:temas,0.082,s,mediana de 3; t1=0.088768(200) t2=0.081530(200) t3=0.079506(200) 
+100,16GB,pagina_bytes:temas,111862.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:temas,3.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:temas,451756.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:temas,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina_cache_hit:temas_termo_educacao,0.005452,s,X-Page-Cache: HIT; bytes=167761
+100,16GB,pagina:temas_termo_educacao,44.759,s,mediana de 3; t1=44.759111(200) t2=45.102841(200) t3=44.578499(200) 
+100,16GB,pagina_bytes:temas_termo_educacao,167761.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:temas_termo_educacao,103.900,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:temas_termo_educacao,30803470.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:temas_termo_educacao,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina:temas_autocomplete,0.071,s,mediana de 3; t1=0.070671(200) t2=0.070978(200) t3=0.070585(200) 
+100,16GB,pagina_bytes:temas_autocomplete,3365.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:temas_autocomplete,20.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:temas_autocomplete,225877.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:temas_autocomplete,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina_cache_hit:departamentos,0.004749,s,X-Page-Cache: HIT; bytes=49537
+100,16GB,pagina:departamentos,2.264,s,mediana de 3; t1=2.312911(200) t2=2.263545(200) t3=2.234771(200) 
+100,16GB,pagina_bytes:departamentos,49537.000,bytes,tamanho do HTML/JSON
+100,16GB,pagina_php_pico_mb:departamentos,2.000,MB,"memory_get_peak_usage(true), mediana"
+100,16GB,pagina_linhas_lidas:departamentos,6991801.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,16GB,pagina_leituras_bp:departamentos,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,16GB,pagina:departamento_PS,erro_http_500,s,sem resposta 200; t1=2.662099(500) t2=2.465227(500) t3=2.450943(500) 
+100,16GB,pagina:sitemap,erro_http_500,s,sem resposta 200; t1=3.364488(500) t2=3.397860(500) t3=3.275060(500) 
+100,128MB_nomes_distintos,pagina:perfil_pesado,erro_http_500,s,sem resposta 200; t1=2.982909(500) t2=2.888072(500) t3=2.871480(500) 
+100,128MB_nomes_distintos,pagina:perfil_pesado_aba_analytics,erro_http_500,s,sem resposta 200; t1=2.845409(500) t2=2.833976(500) t3=2.821177(500) 
+100,128MB_nomes_distintos,pagina:perfil_mediano,erro_http_500,s,sem resposta 200; t1=2.957822(500) t2=2.733413(500) t3=2.770322(500) 
+100,128MB_nomes_distintos,importacao:pesado_exec1,4.35,s,"app:import:lattes --file=lattes7916014556126573.xml (substituicao); rc=0; antes(prod,aut,ori)=2015/2474/86 depois=2015/2474/86; 1 currículos importados "
+100,128MB_nomes_distintos,importacao_pico_rss:pesado_exec1,230,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+100,128MB_nomes_distintos,importacao_binlog:pesado_exec1,2.31,MB,binlog gerado pela importacao
+100,128MB_nomes_distintos,importacao:pesado_exec2,3.92,s,"app:import:lattes --file=lattes7916014556126573.xml (substituicao); rc=0; antes(prod,aut,ori)=2015/2474/86 depois=2015/2474/86; 1 currículos importados "
+100,128MB_nomes_distintos,importacao_pico_rss:pesado_exec2,233,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+100,128MB_nomes_distintos,importacao_binlog:pesado_exec2,2.31,MB,binlog gerado pela importacao
+100,128MB_nomes_distintos,importacao:mediano_exec1,2.72,s,"app:import:lattes --file=lattes6045175290152830.xml (substituicao); rc=0; antes(prod,aut,ori)=140/252/52 depois=140/252/52; 1 currículos importados "
+100,128MB_nomes_distintos,importacao_pico_rss:mediano_exec1,180,MB,maximum resident set size de /usr/bin/time -l; rss de /usr/bin/time -l
+100,128MB_nomes_distintos,importacao_binlog:mediano_exec1,0.76,MB,binlog gerado pela importacao
+100,128MB_nomes_distintos,ruptura_indice_autores:4150,200,"http (2a requisicao, com o indice ja em cache)",pesquisadores com nome distinto=4150; 1a req=200 4.511715; 2a req=200 2.243747; arquivo(s) de cache >100KB somam 26.7MB; pico php=103MB
+100,128MB_nomes_distintos,ruptura_indice_autores:10375,200,"http (2a requisicao, com o indice ja em cache)",pesquisadores com nome distinto=10375; 1a req=200 4.536976; 2a req=200 2.296042; arquivo(s) de cache >100KB somam 60.1MB; pico php=211MB
+100,128MB_nomes_distintos,ruptura_indice_autores:20750,200,"http (2a requisicao, com o indice ja em cache)",pesquisadores com nome distinto=20750; 1a req=200 4.771431; 2a req=200 2.746451; arquivo(s) de cache >100KB somam 116.0MB; pico php=405MB
+100,128MB_nomes_distintos,ruptura_indice_autores:31125,500,"http (2a requisicao, com o indice ja em cache)",pesquisadores com nome distinto=31125; 1a req=200 5.057624; 2a req=500 0.470876; arquivo(s) de cache >100KB somam 172.3MB; pico php=513MB
+100,128MB_clone_intacto,pagina_cache_hit:perfil_pesado_intacto,0.010147,s,X-Page-Cache: HIT; bytes=6296199
+100,128MB_clone_intacto,pagina:perfil_pesado_intacto,0.342,s,mediana de 3; t1=0.662519(200) t2=0.342254(200) t3=0.336719(200) 
+100,128MB_clone_intacto,pagina_bytes:perfil_pesado_intacto,6296199.000,bytes,tamanho do HTML/JSON
+100,128MB_clone_intacto,pagina_php_pico_mb:perfil_pesado_intacto,51.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB_clone_intacto,pagina_linhas_lidas:perfil_pesado_intacto,84865.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB_clone_intacto,pagina_leituras_bp:perfil_pesado_intacto,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB_clone_intacto,pagina_cache_hit:perfil_pesado_aba_analytics_intacto,0.004920,s,X-Page-Cache: HIT; bytes=80463
+100,128MB_clone_intacto,pagina:perfil_pesado_aba_analytics_intacto,0.166,s,mediana de 3; t1=0.169149(200) t2=0.166258(200) t3=0.158424(200) 
+100,128MB_clone_intacto,pagina_bytes:perfil_pesado_aba_analytics_intacto,80463.000,bytes,tamanho do HTML/JSON
+100,128MB_clone_intacto,pagina_php_pico_mb:perfil_pesado_aba_analytics_intacto,30.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB_clone_intacto,pagina_linhas_lidas:perfil_pesado_aba_analytics_intacto,6063.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB_clone_intacto,pagina_leituras_bp:perfil_pesado_aba_analytics_intacto,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB_clone_intacto,pagina_cache_hit:perfil_mediano_intacto,0.004991,s,X-Page-Cache: HIT; bytes=1268853
+100,128MB_clone_intacto,pagina:perfil_mediano_intacto,0.091,s,mediana de 3; t1=0.093101(200) t2=0.090185(200) t3=0.090869(200) 
+100,128MB_clone_intacto,pagina_bytes:perfil_mediano_intacto,1268853.000,bytes,tamanho do HTML/JSON
+100,128MB_clone_intacto,pagina_php_pico_mb:perfil_mediano_intacto,27.000,MB,"memory_get_peak_usage(true), mediana"
+100,128MB_clone_intacto,pagina_linhas_lidas:perfil_mediano_intacto,75890.000,linhas,"Innodb_rows_read por requisicao, mediana"
+100,128MB_clone_intacto,pagina_leituras_bp:perfil_mediano_intacto,0.000,paginas,"Innodb_buffer_pool_reads (faltas no buffer pool) por requisicao, mediana"
+100,128MB,thematic_links_reconstruidos,34017404,linhas,"count(*) thematic_term_researchers apos app:index:topics (x1=243857 aprox, x10=3401744)"
+100,128MB,thematic_termos_reconstruidos,225877,linhas,"count(*) thematic_terms apos app:index:topics (x1=130733, x10=225877)"
+-,-,ambiente:mysql_laboratorio,8.0.40,versao,"Homebrew macOS x86_64; producao e 8.4.7"
+-,-,ambiente:php,8.4.19,versao,"opcache.enable_cli=On; web: php -S 1 processo, memory_limit efetivo 512M (public/index.php), CLI -d memory_limit=1536M"
+-,-,ambiente:codigo,b108c098083843276aa410e4388100fdfb980a27,commit,"git archive HEAD; arquivos alterados no working tree durante a medicao (MainController, ProductionItemRepository, IndexJournalsCommand) NAO foram usados"
+-,-,ambiente:maquina,Mac Intel 32 CPUs logicas / 64 GB RAM / macOS 14.6.1,hw,"cache de arquivos do SO nao pode ser esvaziado (purge exige sudo)"

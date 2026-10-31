@@ -179,6 +179,16 @@ Todo criador de grafia passa por ela. Ela recusa um nome que já é título ou v
 | Selo de Qualis e bases | usa o que está gravado no item, sem adivinhar pelo texto na hora de exibir |
 | `/admin/journal-names` | busca a revista por qualquer nome, em vez de digitar o ID |
 
+### O que ficou de fora, de propósito
+
+| Onde | Por quê |
+|---|---|
+| Nome da revista na página do professor, no citation meta e nas exportações do currículo | É o nome como o docente escreveu, que é dado dele. O nome usual aparece no tooltip e no filtro |
+| Figuras de `/indicadores` que contam por linha, como artigos por estrato | Um artigo com dois docentes conta duas vezes nelas e uma vez em `/periodicos`. Mudar isso muda números públicos, e a decisão é de produto |
+| `knowledge_areas` nos gráficos do docente | Usa as grandes áreas do CNPq que o docente declarou. O tesauro de categorias reconhece esses nomes, mas os gráficos continuam na taxonomia do CNPq |
+| Lista de amostra em `JournalLinkAuditService` | São revistas fixas de propósito, usadas só para conferir a auditoria |
+| Títulos em outros alfabetos, como cirílico e árabe | O resolver só compara letras latinas, então esses nomes nunca seriam achados |
+
 ### Como corrigir
 
 - **Nome com vínculo errado ou sem vínculo:** `/admin/journal-names`, ou uma linha em `docs/banco/derived/overrides/names.jsonl`.

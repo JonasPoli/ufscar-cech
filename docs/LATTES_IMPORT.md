@@ -29,6 +29,20 @@ bin/import-curriculos.sh --dept="ED|Departamento de Educação" pasta-com-xmls/ 
 - Se o lote foi importado no Mac e levado por dump ao servidor. Os `created_at` iguais nos dois bancos e a pasta existir só no Mac indicam que sim, mas é uma inferência.
 - A origem de cada currículo, porque o banco não guarda esse dado.
 
+**Reimportação de 31/10/2026.** Os 414 XML da pasta foram importados de novo em produção com o parser corrigido, por `bin/import-curriculos.sh docs/banco/CECH`. Levou cerca de 1h45, com o site no ar; backup em `var/backups/antes_curriculos_20261031-062021.sql.zip`. Artigos seguiram em 13.487 e ligados a uma revista foram de 12.077 para 12.079. Os 2 docentes sem XML na pasta não mudaram.
+
+| Medida | Antes | Depois |
+|---|---:|---:|
+| Produções | 76.837 | 121.073 |
+| Demais produções técnicas | 0 | 42.349 |
+| Bancas | 41.842 | 46.937 |
+| Projetos com coordenador marcado | 36, no banco local | 4.983 de 6.825 |
+| Formações com orientador | 265, no banco local | 1.090 |
+| Formações com agência | 1, no banco local | 928 |
+| Autores | 157.309 | 242.658 |
+
+Os XML enviados ficam em `docs/banco/CECH/lote-*` no servidor e podem ser apagados depois de conferir.
+
 **O JSON não foi usado.** `docs/banco/items_cech.json`, de 270 MB, só aparece como referência em `docs/somos.md`. Nenhum código o lê.
 
 ## Como importar mais
@@ -76,7 +90,7 @@ O script faz, em ordem:
 | Temas | `app:index:topics` |
 | Cache | `app:cache:clear` |
 
-Para testar no banco local: `LOCAL=1 bin/import-curriculos.sh pasta/`. A execução com um XML real levou 131 s no Mac; a maior parte é o pipeline de revistas.
+Para testar no banco local: `LOCAL=1 bin/import-curriculos.sh pasta/`. Cada currículo leva cerca de 15 s no servidor e 3,4 s no Mac; depois disso, o pipeline de revistas, as teses e os temas levam uns 15 minutos no servidor.
 
 ### 4. Depois de importar
 

@@ -2,7 +2,7 @@
 
 Este documento conta, na ordem em que aconteceu, como cada fato sobre as revistas foi descoberto: de onde veio o dado, o que foi medido, qual era a causa e o que foi feito. Serve para quem precisar conferir um número, repetir o trabalho ou discordar de uma decisão.
 
-O desenho técnico completo está em [periodicos-por-base.md](periodicos-por-base.md). O registro de cada nome da fila está em [periodicos-fila-de-nomes-decisoes.csv](periodicos-fila-de-nomes-decisoes.csv). Os números abaixo são de produção em 31/10/2026, depois do commit `b108c09`, salvo quando o texto diz outra coisa.
+O desenho técnico completo está em [periodicos-por-base.md](periodicos-por-base.md). O registro de cada nome da fila está em [periodicos-fila-de-nomes-decisoes.csv](periodicos-fila-de-nomes-decisoes.csv). Os números abaixo são de produção em 31/10/2026, salvo quando o texto diz outra coisa. A tabela de situação é de depois da publicação do commit `ee79e88` e da reimportação dos currículos.
 
 ## 1. Situação de hoje
 
@@ -14,7 +14,7 @@ O desenho técnico completo está em [periodicos-por-base.md](periodicos-por-bas
 | Linhas com alguma evidência externa de área | 72.425 (86,2%) |
 | Famílias com artigo dos docentes (as que aparecem em `/periodicos`) | 2.436, todas classificadas |
 | Artigos no Lattes | 13.487 |
-| Artigos ligados a uma revista | 12.077 (89,5%) |
+| Artigos ligados a uma revista | 12.079 (89,6%) |
 
 A confiança da área principal nas 2.436 famílias visíveis é alta em 1.754 (72,0%), média em 475 (19,5%), baixa em 193 (7,9%) e manual em 14 (0,6%).
 
@@ -129,7 +129,11 @@ Os títulos da Scopus, WoS, DOAJ, Latindex, PubMed e OpenAlex estavam sendo usad
 1. A execução parou em `BRITISH HOMOEOPATHIC JOURNAL`. Para o MySQL, "HOMŒOPATHIC" e "HOMOEOPATHIC" são iguais, e o PHP os via como diferentes. Agora cada nome é gravado na hora, dentro de uma transação, para a trava enxergar a colação do banco.
 2. Um artigo perdeu o vínculo. "PSYCHE" era o título sem parênteses de `Psyche (Pasadena)`, e virar variante de `PSYCHE (STUTTGART)` tornou o nome ambíguo. O comando agora usa as mesmas chaves do resolver.
 
-**Resultado no banco local.** 44.747 nomes candidatos: 22.135 viraram variantes `external`, 751 ficaram de fora por estar em mais de uma família e 21.817 por não terem coerência com o título. Nos 13.469 artigos locais, nenhum vínculo foi perdido, trocado ou criado. O ganho é para currículos futuros e para a busca.
+**Resultado em produção.** 44.746 nomes candidatos: 22.135 viraram variantes `external`, 751 ficaram de fora por estar em mais de uma família e 21.816 por não terem coerência com o título. Nos 13.487 artigos, nenhum vínculo foi perdido, trocado ou criado. O ganho é para currículos futuros e para a busca.
+
+### 3.13 Parser que perdia dados, achado ao conferir o XML
+
+Ao montar o mapa do XML, cruzamos os atributos que o parser lê com os 414 arquivos reais, e depois uma revisão completa do código confirmou o resto. Apareceram 42.349 itens de produção técnica que nunca entravam, 5.095 bancas perdidas por um nome de tag errado, orientador em branco em quase todo doutorado e mestrado, e um normalizador que não enxergava os itens recém-gravados. Artigos não foram afetados. Detalhes e números em [LATTES_IMPORT.md](../LATTES_IMPORT.md).
 
 ## 4. Como cada revista ganhou uma área
 
@@ -172,7 +176,7 @@ Dois nomes foram corrigidos à mão depois de conferir: "Cadernos de Pesquisa (F
 ## 6. Limites que continuam valendo
 
 - A área de uma revista é de uma lista externa ou de um modelo, não um julgamento da CAPES sobre aquela revista. A confiança é baixa em 193 famílias visíveis.
-- O nome de uma revista grafado de um jeito desconhecido e sem ISSN fica sem vínculo: 1.410 artigos hoje.
+- O nome de uma revista grafado de um jeito desconhecido e sem ISSN fica sem vínculo: 1.408 artigos hoje.
 - `/indicadores` conta artigos por docente em algumas figuras. Um artigo com dois docentes conta duas vezes nelas, e uma vez em `/periodicos`. Os totais não precisam bater.
 - Os títulos dos currículos estão como cada docente escreveu. Nenhum dado do Lattes foi alterado.
 
