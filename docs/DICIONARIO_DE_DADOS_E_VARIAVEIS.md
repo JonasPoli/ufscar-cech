@@ -52,6 +52,8 @@ Representa o docente ou pesquisador acadêmico do CECH/UFSCar.
 ---
 
 ### 2.2 `ProductionItem` (Tabela: `production_items`)
+
+Valores de `item_type`: `ARTIGO`, `LIVRO`, `CAPITULO`, `EVENTO`, `TEXTO_JORNAL`, `TRABALHO_TECNICO`, `OUTRA_TECNICA` (filhos de `DEMAIS-TIPOS-DE-PRODUCAO-TECNICA`, com a tag em `nature`), `SOFTWARE`, `PATENTE`, `MARCA`, `PRODUCAO_ARTISTICA` e `OUTRA`. Só `ARTIGO` é ligado a revistas: nos outros tipos, `journal_name` guarda outra coisa, como o título do livro.
 Representa cada item bibliográfico, técnico ou artístico produzido pelo pesquisador.
 
 | Coluna / Propriedade | Tipo PHP / DB | Origem | Descrição e Finalidade |
@@ -220,3 +222,190 @@ Tabela de relacionamento e ponderação entre cada termo temático e o pesquisad
 - `topDepartments` (`array`): Ranking de departamentos com maior número de produções no tema selecionado.
 - `totalResearchersForTerm` (`int`): Total de docentes associados ao tema.
 - `hasMore` (`bool`): Indicador de paginação para exibição do botão "Mais (+10)".
+
+---
+
+## 4. Demais tabelas
+
+Lista gerada a partir das entidades em 31/10/2026. As colunas que recebem dado do Lattes seguem a regra da seção 1; o mapa de cada atributo do XML está em [LATTES_IMPORT.md](LATTES_IMPORT.md).
+
+### `AcademicDatabase` (Tabela: `academic_database`)
+
+Bases de indexação (Scopus, Web of Science, PubMed, SciELO, Latindex...).
+
+`id` integer, `name` varchar(255), `acronym` varchar(100), `url` varchar(500), `list_download_url` varchar(500), `logo` varchar(500), `file_formats` json, `signature_columns` json, `description` text, `import_instructions` text.
+
+### `Award` (Tabela: `awards`)
+
+Prêmios e títulos do docente. Dado do Lattes.
+
+`id` integer, `name` text, `year` integer, `promoter_entity` varchar(255), `researcher_id` → `researchers`.
+
+### `CapesAreaVariant` (Tabela: `capes_area_variants`)
+
+Tesauro de categorias: rótulo de cada vocabulário e área CAPES correspondente. Ver [THESAURUS.md](THESAURUS.md).
+
+`id` integer, `vocabulary` varchar(20), `variation_name` varchar(255), `normalized_name` varchar(255), `origin` varchar(10), `status` varchar(10), `occurrences` integer, `created_at` datetime_immutable, `updated_at` datetime_immutable, `area_id` → `capes_areas`.
+
+### `CapesArea` (Tabela: `capes_areas`)
+
+Taxonomia CAPES: 9 grandes áreas e 50 áreas de avaliação, com ids fixos.
+
+`id` smallint, `level` smallint, `slug` varchar(80), `name` varchar(150), `college` varchar(80), `sort_order` smallint, `parent_id` → `capes_areas`.
+
+### `City` (Tabela: `cities`)
+
+Tesauro de cidades.
+
+`id` integer, `name` varchar(150), `latitude` varchar(50), `longitude` varchar(50), `status` boolean, `created_at` datetime_immutable, `updated_at` datetime_immutable, `state_id` → `states`.
+
+### `CityVariation` (Tabela: `city_name_variants`)
+
+Grafias de cada cidade.
+
+`id` integer, `variation_name` varchar(150), `normalized_name` varchar(150), `variation_type` varchar(50), `status` boolean, `created_at` datetime_immutable, `updated_at` datetime_immutable, `city_id` → `cities`.
+
+### `Country` (Tabela: `countries`)
+
+Tesauro de países: nome preferido e anos de fundação e extinção.
+
+`id` integer, `common_name` varchar(150), `official_name` varchar(200), `iso_alpha2` varchar(2), `iso_alpha3` varchar(3), `iso_numeric` integer, `status` boolean, `foundation_year` integer, `extinction_year` integer, `created_at` datetime_immutable, `updated_at` datetime_immutable.
+
+### `CountryVariation` (Tabela: `country_name_variants`)
+
+Grafias de cada país.
+
+`id` integer, `variation_name` varchar(150), `normalized_name` varchar(150), `variation_type` varchar(50), `status` boolean, `created_at` datetime_immutable, `updated_at` datetime_immutable, `country_id` → `countries`.
+
+### `EventParticipation` (Tabela: `event_participations`)
+
+Participações em eventos.
+
+`id` integer, `event_name` varchar(500), `event_type` varchar(100), `participation_type` varchar(100), `presentation_title` text, `year` integer, `researcher_id` → `researchers`.
+
+### `ExaminationBoard` (Tabela: `examination_boards`)
+
+Bancas de que o docente participou.
+
+`id` integer, `board_type` varchar(100), `candidate_name` varchar(255), `title` text, `institution_name` varchar(255), `year` integer, `researcher_id` → `researchers`.
+
+### `File` (Tabela: `file`)
+
+Arquivos enviados por telas de teste do gerador.
+
+`name` varchar(255), `original_name` varchar(255), `mime_type` varchar(255), `size` integer, `dimensions` simple_array.
+
+### `Image` (Tabela: `image`)
+
+Imagens enviadas por telas de teste do gerador.
+
+`id` integer, `type` varchar(255), `image_name` varchar(255), `updated_at` datetime_immutable.
+
+### `InstitutionVariation` (Tabela: `institution_name_variants`)
+
+Grafias de cada instituição.
+
+`id` integer, `variation_name` varchar(255), `normalized_name` varchar(255), `variation_type` varchar(50), `status` boolean, `created_at` datetime_immutable, `updated_at` datetime_immutable, `institution_id` → `institutions`.
+
+### `Institution` (Tabela: `institutions`)
+
+Tesauro de instituições.
+
+`id` integer, `official_name` varchar(255), `short_name` varchar(150), `acronym` varchar(50), `institution_type` varchar(100), `legal_nature` varchar(100), `corporate_name` varchar(255), `tax_id` varchar(20), `sponsor_code` integer, `higher_education_code` integer, `latitude` varchar(50), `longitude` varchar(50), `phone` varchar(100), `headquarters_address` varchar(255), `academic_organization` varchar(100), `accreditation_type` varchar(150), `category` varchar(100), `administrative_category` varchar(100), `institutional_concept` varchar(10), `institutional_concept_year` integer, `distance_learning_concept` varchar(10), `distance_learning_concept_year` integer, `general_course_index` varchar(10), `general_course_index_year` integer, `rector` varchar(150), `legal_representative` varchar(150), `active_regulations` varchar(255), `higher_education_status` varchar(50), `vantagepoint` varchar(255), `official_website` varchar(255), `institutional_email` varchar(150), `status` boolean, `notes` text, `foundation_year` integer, `extinction_year` integer, `created_at` datetime_immutable, `updated_at` datetime_immutable, `country_id` → `countries`, `state_id` → `states`, `city_id` → `cities`.
+
+### `JournalAreaEvidence` (Tabela: `journal_area_evidence`)
+
+Evidências de área: cada rótulo de cada lista externa, por revista.
+
+`id` integer, `source` varchar(20), `record_key` varchar(100), `label` varchar(255), `weight` decimal, `source_title` varchar(500), `batch` varchar(100), `payload` json, `created_at` datetime_immutable, `journal_id` → `qualis_journals`.
+
+### `JournalArea` (Tabela: `journal_areas`)
+
+Áreas CAPES de cada revista, com a principal, a nota, a confiança e o método.
+
+`id` integer, `is_primary` boolean, `score` decimal, `confidence` varchar(10), `method` varchar(20), `run_id` varchar(40), `updated_at` datetime_immutable, `journal_id` → `qualis_journals`, `area_id` → `capes_areas`.
+
+### `JournalNameCandidate` (Tabela: `journal_name_candidates`)
+
+Fila de nomes sem vínculo seguro.
+
+`id` integer, `normalized_name` varchar(500), `raw_name` varchar(500), `issn_raw` varchar(50), `articles_count` integer, `researchers_count` integer, `suggestion_method` varchar(20), `status` varchar(20), `sample_titles` json, `first_seen_at` datetime_immutable, `last_seen_at` datetime_immutable, `reviewed_at` datetime_immutable, `reviewed_by` varchar(100), `suggested_journal_id` → `qualis_journals`, `resolved_journal_id` → `qualis_journals`.
+
+### `JournalVariation` (Tabela: `journal_name_variants`)
+
+Tesauro de revistas: grafias de cada revista. `normalized_name` é único. Ver [THESAURUS.md](THESAURUS.md).
+
+`id` integer, `variation_name` varchar(500), `normalized_name` varchar(500), `variation_type` varchar(50), `status` boolean, `created_at` datetime_immutable, `updated_at` datetime_immutable, `journal_id` → `qualis_journals`.
+
+### `KnowledgeArea` (Tabela: `knowledge_areas`)
+
+Áreas de atuação declaradas no Lattes, na tabela do CNPq.
+
+`id` integer, `major_area` varchar(150), `area` varchar(150), `sub_area` varchar(150), `specialty` varchar(255), `researcher_id` → `researchers`.
+
+### `LanguageProficiency` (Tabela: `language_proficiencies`)
+
+Idiomas e proficiência.
+
+`id` integer, `language` varchar(100), `reading` varchar(50), `writing` varchar(50), `speaking` varchar(50), `comprehension` varchar(50), `researcher_id` → `researchers`.
+
+### `ProfessionalExperience` (Tabela: `professional_experiences`)
+
+Vínculos profissionais do Lattes. `is_exclusive_dedication` vem de `FLAG-DEDICACAO-EXCLUSIVA`; `is_current` é calculado.
+
+`id` integer, `institution_name` varchar(255), `institution_code` varchar(50), `agency_name` varchar(255), `unit_name` varchar(255), `role_name` varchar(255), `contract_type` varchar(150), `workload_hours` integer, `start_year` integer, `start_month` integer, `end_year` integer, `end_month` integer, `is_current` boolean, `other_info` text, `researcher_id` → `researchers`, `institution_id` → `institutions`.
+
+### `QualisJournal` (Tabela: `qualis_journals`)
+
+Cadastro de revistas. Linhas da mesma revista formam uma família por `canonical_journal_id`; `area` guarda o rótulo canônico, `area_raw` o texto original e `display_title` o nome exibido.
+
+`id` integer, `title` varchar(500), `issn` varchar(50), `normalized_issn` varchar(50), `issn_e` varchar(50), `normalized_issn_e` varchar(50), `issn_l` varchar(50), `normalized_issn_l` varchar(50), `issn_imp` varchar(50), `normalized_issn_imp` varchar(50), `qualis` varchar(10), `area` text.
+
+### `ResearchProject` (Tabela: `research_projects`)
+
+Projetos do Lattes. `is_coordinator` vem de `FLAG-RESPONSAVEL`.
+
+`id` integer, `name` varchar(500), `nature` varchar(50), `status` varchar(50), `start_year` integer, `end_year` integer, `description` text, `agency_financier` varchar(255), `is_coordinator` boolean, `researcher_id` → `researchers`.
+
+### `StateVariation` (Tabela: `state_name_variants`)
+
+Grafias de cada estado.
+
+`id` integer, `variation_name` varchar(150), `normalized_name` varchar(150), `variation_type` varchar(50), `status` boolean, `created_at` datetime_immutable, `updated_at` datetime_immutable, `state_id` → `states`.
+
+### `State` (Tabela: `states`)
+
+Tesauro de estados.
+
+`id` integer, `name` varchar(150), `code` varchar(10), `status` boolean, `created_at` datetime_immutable, `updated_at` datetime_immutable, `country_id` → `countries`.
+
+### `SuperTestFields` (Tabela: `super_test_fields`)
+
+Idem.
+
+`id` integer, `simple_input_text` varchar(255), `edit_text_with_editor` text, `date_field` date, `date_and_time_field` datetime, `choice_type_from_list` varchar(255), `sin_nao_int` integer, `boolean_true_false` boolean, `image` varchar(255), `img_updated_at` datetime_immutable, `select_enum` varchar(255), `email_field` varchar(255), `numero_simples` integer, `choice_type_from_entity_id` → `test_database`.
+
+### `TestDatabase` (Tabela: `test_database`)
+
+Tela de teste do gerador de CRUD. Sem uso em produção.
+
+`id` integer, `name` varchar(255).
+
+### `ThesaurusConcept` (Tabela: `thesaurus_concepts`)
+
+Idem: vazia e sem uso.
+
+`id` integer, `pref_label` varchar(255), `normalized_label` varchar(255), `notation` varchar(100), `alt_labels` json, `created_at` datetime_immutable, `updated_at` datetime_immutable, `scheme_id` → `thesaurus_schemes`.
+
+### `ThesaurusScheme` (Tabela: `thesaurus_schemes`)
+
+Estrutura genérica de vocabulário. Vazia e sem uso: os tesauros reais usam as tabelas `*_name_variants` e `capes_area_variants`.
+
+`id` integer, `code` varchar(100), `title` varchar(255), `description` text, `uri` varchar(255), `created_at` datetime_immutable, `updated_at` datetime_immutable.
+
+### `User` (Tabela: `users`)
+
+Usuários do painel administrativo.
+
+`id` integer, `username` varchar(180), `roles` json, `password` varchar(255).
+

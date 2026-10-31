@@ -92,7 +92,7 @@ cd /home/runcloud/webapps/ufscar-cech
 
 ### 4.3. Normalização Geral de Currículos e Autores
 ```bash
-/RunCloud/Packages/php84rc/bin/php bin/console app:curriculums:normalize --all --env=prod
+/RunCloud/Packages/php84rc/bin/php bin/console app:curriculum:normalize --env=prod
 /RunCloud/Packages/php84rc/bin/php bin/console app:thesaurus:sync-authors --env=prod
 ```
 
@@ -175,7 +175,7 @@ Em `docs/banco/derived/`, o script envia e o pipeline lê:
 | `scielo_articlemeta.json` | `app:journals:evidence:fetch-scielo` | `scielo-enrich` |
 | `ai/*.out.jsonl` | subagentes, a partir de `ai/batch_*.jsonl` | `ai-import` |
 | `ai_titles/*.out.jsonl` | subagentes, a partir de `ai_titles/title_*.jsonl` | `ai-import` |
-| `overrides/names.jsonl` | curadoria (JSONL) | `overrides-names` |
+| `overrides/names.jsonl` | curadoria (JSONL): `{"type":"name","name":"...","journal":{"issn":"..."},"how":"..."}` aceita um nome; `{"type":"name_reject","name":"...","how":"..."}` rejeita. `how` aparece na tela da fila como autor da decisão | `overrides-names` |
 | `overrides/areas.jsonl` | curadoria (JSONL) | `overrides-areas` |
 
 Só os dois primeiros são obrigatórios. Sem um arquivo opcional, o passo correspondente é pulado.
@@ -189,22 +189,25 @@ O pipeline roda os passos abaixo em ordem e para no primeiro erro. Ele não apli
 | 1 | `normalize-titles` | Preenche as formas normalizadas dos títulos |
 | 2 | `audit-before` | Grava o snapshot dos vínculos artigo→periódico em `var/audit/` |
 | 3 | `scielo-enrich` | Completa os ISSNs dos periódicos SciELO que não têm um válido |
-| 4 | `evidence-load` | Carrega as evidências de área no banco, com linhas faltantes e evidência legada |
-| 5 | `families-first` | Agrupa as linhas de cada periódico em famílias, sem mesclar nada |
-| 6 | `index` | Indexa os periódicos nas produções (`app:index:journals`) |
-| 7 | `families` | Refaz as famílias depois da indexação |
-| 8 | `learn` | Aprende grafias do Lattes confirmadas pelo ISSN |
-| 9 | `overrides-names` | Aplica `overrides/names.jsonl` |
-| 10 | `families-final` | Refaz as famílias com os agrupamentos manuais e estende às linhas de cada família os vínculos com bases |
-| 11 | `index-again` | Reindexa |
-| 12 | `audit-after` | Compara os vínculos com o snapshot do passo 2 |
-| 13 | `title-rules` | Cria evidência pelas regras de título |
-| 14 | `classify` | Classifica as famílias nas áreas CAPES |
-| 15 | `ai-import` | Importa `ai/*.out.jsonl` e `ai_titles/*.out.jsonl`, com o modelo `claude-haiku` |
-| 16 | `overrides-areas` | Aplica `overrides/areas.jsonl` |
-| 17 | `classify-again` | Classifica de novo, com as evidências novas |
-| 18 | `report` | Imprime o relatório de periódicos |
-| 19 | `cache-clear` | Limpa o cache das páginas públicas |
+| 4 | `area-thesaurus-first` | Semeia o tesauro de categorias, para a evidência legada já usar o tesauro |
+| 5 | `evidence-load` | Carrega as evidências de área no banco, com linhas faltantes e evidência legada |
+| 6 | `families-first` | Agrupa as linhas de cada periódico em famílias, sem mesclar nada |
+| 7 | `index` | Indexa os periódicos nas produções (`app:index:journals`) |
+| 8 | `families` | Refaz as famílias depois da indexação |
+| 9 | `learn` | Aprende grafias do Lattes confirmadas pelo ISSN |
+| 10 | `overrides-names` | Aplica `overrides/names.jsonl`, com as decisões da fila de nomes |
+| 11 | `learn-external` | Grava como variantes os títulos das listas externas confirmados pelo ISSN (`app:journals:names:learn-external`) |
+| 12 | `families-final` | Refaz as famílias com os agrupamentos manuais e estende às linhas de cada família os vínculos com bases |
+| 13 | `index-again` | Reindexa |
+| 14 | `audit-after` | Compara os vínculos com o snapshot do passo 2 |
+| 15 | `area-thesaurus` | Atualiza o tesauro de categorias (`app:journals:areas:thesaurus`): sementes, contagens e rótulos pendentes |
+| 16 | `title-rules` | Cria evidência pelas regras de título |
+| 17 | `classify` | Classifica as famílias nas áreas CAPES |
+| 18 | `ai-import` | Importa `ai/*.out.jsonl` e `ai_titles/*.out.jsonl`, com o modelo `claude-haiku` |
+| 19 | `overrides-areas` | Aplica `overrides/areas.jsonl` |
+| 20 | `classify-again` | Classifica de novo, com as evidências novas |
+| 21 | `report` | Imprime o relatório de periódicos |
+| 22 | `cache-clear` | Limpa o cache das páginas públicas |
 
 Opções, com os nomes de passo da tabela:
 
@@ -257,6 +260,15 @@ php bin/console app:journals:classify
 - `--scope=visible` (padrão) exporta lotes de 40 periódicos das famílias sem área ou com confiança `low`. `--include-medium` inclui a confiança `medium`.
 - `--scope=unclassified` faz a segunda passada, só com título e país, em `docs/banco/derived/ai_titles/` (lotes de 250).
 - O `ai:import` lista e pula as linhas inválidas. Reimportar um arquivo substitui a evidência que ele gravou antes, então é seguro. A opção `--model` grava o nome do modelo na evidência (padrão `claude-sonnet`; o pipeline usa `claude-haiku`).
+
+### 4.7. Importação de currículos Lattes
+
+Use `bin/import-curriculos.sh` a partir do Mac. Ele faz backup, envia os XML, importa e atualiza palavras-chave, revistas, temas e cache. O guia completo e o mapa do XML estão em [LATTES_IMPORT.md](LATTES_IMPORT.md).
+
+```bash
+bin/import-curriculos.sh --check pasta-com-xmls/
+bin/import-curriculos.sh --dept="ED|Departamento de Educação" pasta-com-xmls/
+```
 
 ---
 

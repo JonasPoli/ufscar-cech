@@ -40,7 +40,7 @@ graph TD
         DB_Raw --> CountryResolver[CountryResolverService]
         
         AuthThesaurus --> DB_Thesaurus[(author_identities, author_name_variants, author_external_identifiers)]
-        JournalResolver --> DB_Qualis[(qualis_journals, journal_variations)]
+        JournalResolver --> DB_Qualis[(qualis_journals, journal_name_variants)]
         InstResolver --> DB_Institutions[(institutions, institution_variations)]
         CountryResolver --> DB_Geo[(countries, states, cities & variations)]
     end
@@ -137,12 +137,19 @@ graph TD
 #### 2.2 Tesauro de Periódicos e Qualis CAPES (`JournalResolverService` & `QualisJournal`)
 - **Tabelas do Banco de Dados**:
   - `qualis_journals`: Lista mestre de periódicos científicos com ISSN, nome oficial, área de avaliação e estrato Qualis CAPES (A1 a C).
-  - `journal_variations`: Nomes alternativos, abreviaturas e grafias incorretas associadas ao periódico canônico.
-- **Processamento de Resolução**:
-  1. Normalização do ISSN (remoção de traços, espaços e caracteres inválidos).
-  2. Busca exata por ISSN na tabela `qualis_journals`.
-  3. Caso o ISSN não esteja disponível ou não encontre, busca pelo nome do periódico normalizado em `journal_variations` e `qualis_journals`.
-  4. O `production_items.qualis_journal_id` e o estrato `qualis` da produção são atualizados.
+  - `journal_name_variants`: nomes alternativos, abreviaturas e grafias associadas ao periódico, com o tipo (`alternative`, `lattes`, `curated`, `manual`, `external`). O nome normalizado é único: um nome só pertence a uma família.
+  - `journal_name_candidates`: fila de nomes sem vínculo seguro, revisada em `/admin/journal-names`.
+  - `journal_areas`, `capes_areas` e `capes_area_variants`: áreas CAPES da revista e tesauro de categorias.
+- **Famílias**: a mesma revista pode ter várias linhas (impressa, online). `canonical_journal_id` aponta para a linha canônica; para contar por revista, use `COALESCE(canonical_journal_id, id)`.
+- **Processamento de Resolução** (`JournalResolverService`):
+  1. ISSN, nas quatro colunas normalizadas.
+  2. Nome exato: título normalizado, título sem parênteses ou variante ativa.
+  3. Nome sem parênteses.
+  4. Chave compacta, sem conectivos, com pelo menos 2 palavras.
+  5. Se mais de uma família casar, o nome é ambíguo e não resolve: vai para a fila.
+  6. `production_items.qualis_journal_id`, `qualis` e `indexed_databases` são atualizados. Só artigos são resolvidos. Os dados brutos (`journal_name`, `issn`) não mudam.
+
+Mais detalhes em [THESAURUS.md](THESAURUS.md) e em [evolutions/periodicos-como-descobrimos.md](evolutions/periodicos-como-descobrimos.md).
 
 #### 2.3 Tesauro Institucional (`InstitutionResolverService` & `Institution`)
 - **Tabelas do Banco de Dados**:

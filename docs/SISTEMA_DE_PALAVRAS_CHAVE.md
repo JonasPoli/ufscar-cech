@@ -55,6 +55,21 @@ Em conformidade estrita com a **Regra de Preservação de Dados Lattes** do proj
   - `title`: Título em português da orientação.
   - `alternativeTitle`: Título alternativo (frequentemente em inglês), capturado do Repositório Institucional.
 
+### 2.2 Quando as palavras-chave do Lattes são gravadas
+- **Na importação do XML**: o parser (`LattesXmlParserService`) lê as `PALAVRAS-CHAVE` de cada produção e as grava em `extra_data.keywords` junto com o resto do currículo. Isso vale para `app:import:lattes`, para `/admin/curriculum/new` e para `/admin/curriculum/import`. Por isso o `bin/import-curriculos.sh` não chama mais `app:sync:keywords`. O parser de HTML (marcador do navegador e HTML colado) não lê palavras-chave.
+- **`app:sync:keywords` serve só para dados antigos**, importados antes de o parser gravar as palavras-chave. Ele casa a produção do banco com a do XML pelo título e, para não corromper nada:
+  - ignora título repetido dentro do mesmo docente, no banco ou no XML (não há como saber qual item é qual);
+  - não sobrescreve produção que já tem palavras-chave;
+  - termina com código de erro se algum arquivo falhar, e lista os arquivos com problema.
+
+```bash
+# Só se houver produções antigas sem palavras-chave:
+php bin/console app:sync:keywords --dir=docs/banco/CECH
+php bin/console app:sync:keywords --file=docs/banco/CECH/lattes1234567890123456.xml
+```
+
+Depois de gravar palavras-chave por qualquer caminho, rode `app:index:topics` para atualizar a busca temática.
+
 ---
 
 ## 3. ⚙️ Mineração e Indexação: `ThematicTermIndexService`
@@ -89,6 +104,8 @@ php bin/console app:index:thematic-terms --min-occurrences=2
 # Execução no servidor de produção (RunCloud)
 /RunCloud/Packages/php84rc/bin/php bin/console app:index:thematic-terms --env=prod
 ```
+
+A reconstrução não esvazia as tabelas que a busca está usando. Ela grava `thematic_terms_new` e `thematic_term_researchers_new` (criadas com `CREATE TABLE ... LIKE`, sem migration) e só no fim as coloca no lugar das atuais com um `RENAME TABLE` único, que é atômico, recriando as chaves estrangeiras. Se a indexação falhar no meio, a busca temática continua com o índice anterior, e as sobras de uma execução interrompida são apagadas na execução seguinte.
 
 ---
 

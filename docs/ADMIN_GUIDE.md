@@ -167,3 +167,37 @@ Ferramenta para exportação completa, migração e segurança do banco de dados
 - **Ambíguos**: o nome casa com periódicos de famílias diferentes, e o sistema não escolhe entre eles. Só o ISSN do artigo resolve esse caso. Antes de informar um ID, confira o ISSN e os títulos de amostra; se o nome já pertence a outra família, a tela mostra o conflito e nada muda.
 - **Abas e contagens**: *Pendentes*, *Ambíguos*, *Aceitos* e *Rejeitados* separam os casos, e o topo da tela mostra quantos nomes aguardam revisão. Nomes pendentes e ambíguos têm o link *Procurar no cadastro*, que abre a busca de periódicos em outra aba.
 - **Atualização**: um nome pendente que deixa de aparecer nos artigos (porque ganhou vínculo, por exemplo) sai da fila na próxima atualização. Nomes já decididos não mudam.
+- **Decisões em lote**: as decisões da revisão de outubro de 2026 estão em [evolutions/periodicos-fila-de-nomes-decisoes.csv](evolutions/periodicos-fila-de-nomes-decisoes.csv), com o motivo de cada nome, e são reaplicadas a cada publicação a partir de `overrides/names.jsonl`. Em `Rejeitados`, o campo "por" mostra a regra usada.
+
+## 🏷️ 11. Tesauro de categorias (`/admin/journal-categories`)
+
+- **O que é**: a lista de todos os rótulos de área conhecidos (das listas Scopus, Web of Science, DOAJ, Latindex, SciELO, CNPq e CAPES) com a área CAPES correspondente.
+- **Quando mexer**: quando uma revista está na área errada porque um rótulo foi mal mapeado, ou quando aparece um rótulo em *Pendentes*.
+- **Corrigir um rótulo**: escolha a área e salve. A correção vale para aquele rótulo naquela lista, e é protegida: as próximas atualizações não a desfazem.
+- **Ignorar**: use para rótulo que não diz nada sobre o assunto, como "Outros".
+- **Novo sinônimo**: registra um nome que deve ser entendido como uma área, por exemplo em importações por CSV.
+- **Quando faz efeito**: a tela muda só o tesauro. As revistas mudam de área na próxima execução de `app:journals:classify` ou de `app:journals:pipeline`, e na próxima publicação. Revistas com curadoria manual não mudam.
+- **Detalhes**: [THESAURUS.md](THESAURUS.md).
+
+## 🧹 12. Cache de páginas (`/admin/cache`)
+
+As páginas públicas ficam guardadas em disco por até 30 dias, para abrirem rápido. A tela mostra o que está em cache e limpa tudo. Use depois de mudanças que não passaram por um comando. O equivalente no terminal é `app:cache:clear`. Importar ou excluir um currículo, mesclar revistas e mudar Qualis ou bases de uma revista já limpam o cache sozinhos.
+
+## 👤 13. Usuários (`/admin/users`)
+
+Cria, edita e exclui os usuários do painel. No terminal: `app:admin-user`.
+
+## 🧪 14. Telas de teste (`/admin/test/database`, `/admin/super/test/fields`)
+
+São telas geradas para testar o gerador de CRUD do projeto. Não fazem parte do portal, e nenhum recurso depende delas.
+
+## 📝 15. Mudanças de comportamento nas telas de revistas e currículos (outubro de 2026)
+
+- **Excluir revista** (`/admin/journals`): o botão passou a funcionar.
+- **Importar CSV de revistas**: não duplica mais. A linha é procurada por ISSN e, sem ISSN, pelo título; se existir, só o que está vazio é preenchido. Revista com área travada não muda. A mensagem diz quantas foram criadas, completadas e ignoradas.
+- **Mesclar revistas e alterar Qualis ou bases**: os artigos passam a mostrar o valor novo na hora, sem esperar a próxima indexação.
+- **Texto livre de área no formulário**: se o tesauro de categorias reconhecer o texto, ele vira a área CAPES da revista, e a tela avisa qual.
+- **Exportações**: o CSV de revistas traz `display_title` e `canonical_journal_id`; o tesauro sai por família.
+- **Importar currículo**: um XML mais antigo que o do banco é recusado, salvo com a caixa "Importar mesmo com data antiga". `/admin/curriculum/import` aceita departamento. Um arquivo com erro não impede os seguintes. Guia completo: [LATTES_IMPORT.md](LATTES_IMPORT.md).
+- **Fila de nomes** (`/admin/journal-names`): dá para buscar a revista por qualquer nome, em vez de digitar o ID.
+

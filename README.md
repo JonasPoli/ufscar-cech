@@ -159,16 +159,18 @@ php bin/console app:database:dump
 ```bash
 php bin/console app:import:bibliomap
 ```
+Os comandos que copiam do BiblioMap (`app:import:bibliomap`, `app:import-bibliomap-journals` e `app:import-bibliomap-databases`) **apagam** (`TRUNCATE`) as tabelas de destino antes de copiar. Por isso recusam rodar quando elas já têm dados; `--force` libera a substituição, mas ainda pede confirmação (com `--no-interaction` a resposta é "não" e nada é apagado).
 
 ### 5. Importar Currículos Lattes em Lote (XML)
 ```bash
 php bin/console app:import:lattes --dir=docs/banco/CECH --no-debug
 ```
 
-### 6. Enriquecer com Metadados Institucionais e Qualis (Excel)
+### 6. Complementar Docentes com Departamentos (Excel)
 ```bash
 php bin/console app:import:excel
 ```
+Só complementa os docentes (departamento, ORCID, anos de entrada e saída); o Qualis dos artigos vem sempre de `qualis_journals`, pela indexação de periódicos (`app:index:journals`). O comando termina com erro se a planilha não existe ou a importação falha.
 
 ### 7. Importar Fotos de Docentes em Lote
 ```bash
@@ -208,6 +210,9 @@ php bin/console lint:yaml config
 
 Para detalhes aprofundados sobre cada módulo, consulte a pasta [`docs/`](docs):
 - [docs/VISAO_GERAL_DO_SISTEMA.md](docs/VISAO_GERAL_DO_SISTEMA.md) — **Comece por aqui**: para que serve o sistema, público, fluxo de dados e regras fixas.
+- [docs/COMANDOS.md](docs/COMANDOS.md) — Catálogo de todos os comandos e scripts.
+- [docs/LATTES_IMPORT.md](docs/LATTES_IMPORT.md) — Como importar currículos e o mapa do XML do Lattes.
+- [docs/evolutions/periodicos-como-descobrimos.md](docs/evolutions/periodicos-como-descobrimos.md) — Como cada fato sobre as revistas foi descoberto.
 - [docs/CODE_REVIEW.md](docs/CODE_REVIEW.md) — Achados da revisão de código (11/09/2026), o que foi corrigido e o que está pendente.
 - [docs/SISTEMA_DE_PALAVRAS_CHAVE.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/SISTEMA_DE_PALAVRAS_CHAVE.md) — Manual e especificação completa do Sistema de Palavras-Chave e Descoberta Temática.
 - [docs/evolutions/pesquisa-tematica.md](file:///Users/jonaspoli/work/html/ufscar-cech/docs/evolutions/pesquisa-tematica.md) — Especificação técnica e evolução da Pesquisa Temática por Palavras-Chave.
