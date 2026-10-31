@@ -4,6 +4,7 @@ namespace App\Command;
 
 use App\Service\Import\LattesXmlParserService;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\ProgressBar;
@@ -21,7 +22,8 @@ class ImportLattesCommand extends Command
 {
     public function __construct(
         private readonly LattesXmlParserService $parserService,
-        private readonly EntityManagerInterface $em
+        private readonly EntityManagerInterface $em,
+        private readonly ManagerRegistry $registry
     ) {
         parent::__construct();
     }
@@ -31,7 +33,8 @@ class ImportLattesCommand extends Command
         $this
             ->addOption('dir', null, InputOption::VALUE_OPTIONAL, 'Diretório com os arquivos XML', 'docs/banco/CECH')
             ->addOption('file', null, InputOption::VALUE_OPTIONAL, 'Arquivo XML específico para importar')
-            ->addOption('dept', null, InputOption::VALUE_REQUIRED, 'Departamento dos currículos, que o XML não traz: "CODIGO|Nome do departamento"');
+            ->addOption('dept', null, InputOption::VALUE_REQUIRED, 'Departamento dos currículos, que o XML não traz: "CODIGO|Nome do departamento"')
+            ->addOption('force', null, InputOption::VALUE_NONE, 'Importa mesmo um XML com data anterior à do currículo que está no banco');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -85,9 +88,17 @@ class ImportLattesCommand extends Command
         $successCount = 0;
         $errorCount = 0;
         $errors = [];
+        $skipped = [];
+        $force = (bool)$input->getOption('force');
 
         foreach ($files as $index => $file) {
             try {
+                if (!$force && $this->parserService->isOlderThanStored($file->getRealPath())) {
+                    $skipped[] = $file->getFilename();
+                    $progressBar->advance();
+                    continue;
+                }
+
                 $researcher = $this->parserService->parseAndSave($file->getRealPath());
                 if ($department !== null) {
                     $researcher->setDepartmentCode($department[0]);
@@ -97,7 +108,12 @@ class ImportLattesCommand extends Command
                 $this->em->clear();
                 $successCount++;
             } catch (\Throwable $e) {
-                $this->em->clear();
+                // Erro de banco fecha o EntityManager: sem reabrir, todos os arquivos seguintes falhariam também.
+                if ($this->em->isOpen()) {
+                    $this->em->clear();
+                } else {
+                    $this->registry->resetManager();
+                }
                 $errorCount++;
                 $errors[] = sprintf("%s: %s", $file->getFilename(), $e->getMessage());
             }
@@ -112,6 +128,14 @@ class ImportLattesCommand extends Command
         $io->newLine(2);
 
         $io->success(sprintf('Importação finalizada! %d currículos importados com sucesso.', $successCount));
+
+        if ($skipped !== []) {
+            $io->note(sprintf(
+                '%d arquivo(s) pulado(s): o XML é mais antigo que o currículo no banco. Use --force para importar assim mesmo: %s',
+                count($skipped),
+                implode(', ', array_slice($skipped, 0, 10))
+            ));
+        }
 
         if ($errorCount > 0) {
             $io->warning(sprintf('%d arquivos apresentaram erros durante a importação:', $errorCount));

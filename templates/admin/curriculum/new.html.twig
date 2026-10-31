@@ -56,14 +56,7 @@
                         </label>
                         <select id="deptSelect" name="department" required class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20">
                             <option value="">Selecione o departamento...</option>
-                            <option value="DCI|Departamento de Ciência da Informação">DCI - Departamento de Ciência da Informação</option>
-                            <option value="DEn|Departamento de Educação">DEn - Departamento de Educação</option>
-                            <option value="DFil|Departamento de Filosofia">DFil - Departamento de Filosofia</option>
-                            <option value="DCSo|Departamento de Ciências Sociais">DCSo - Departamento de Ciências Sociais</option>
-                            <option value="DPsi|Departamento de Psicologia">DPsi - Departamento de Psicologia</option>
-                            <option value="DL|Departamento de Letras">DL - Departamento de Letras</option>
-                            <option value="DFis|Departamento de Educação Física e Motricidade Humana">DFis - Depto. de Educação Física e Motricidade Humana</option>
-                            <option value="DGeo|Departamento de Metodologia de Ensino">DGeo / DMTE - Depto. de Metodologia de Ensino</option>
+                            {% include 'admin/curriculum/_department_options.html.twig' %}
                         </select>
                     </div>
 
@@ -77,6 +70,12 @@
                                 Se possuir o arquivo <code>.xml</code> exportado da Plataforma Lattes, anexe-o aqui para importar todas as produções e orientações instantaneamente.
                             </p>
                             <input type="file" id="xmlFileInput" name="xml_file" accept=".xml" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 dark:file:bg-slate-800 dark:file:text-sky-400 cursor-pointer" />
+                            <div class="flex items-start gap-2 mt-3">
+                                <input type="checkbox" id="forceOlderCheck" name="force_older" value="1" class="mt-0.5 h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900" />
+                                <label for="forceOlderCheck" class="text-[11px] text-slate-600 dark:text-slate-400 cursor-pointer">
+                                    <b>Importar mesmo com data antiga.</b> Um XML mais antigo que o currículo já cadastrado não substitui o atual, porque a importação troca todas as produções; marque esta caixa para importá-lo assim mesmo.
+                                </label>
+                            </div>
                         </div>
 
                         <div class="rounded-xl border border-slate-200 dark:border-slate-800 p-4 bg-white dark:bg-slate-900/30">
@@ -142,7 +141,7 @@
                         Arraste o botão abaixo para a sua <b>Barra de Favoritos</b> do navegador:
                     </p>
                     <div class="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800 text-center">
-                        <a href="javascript:(async function(){const m=document.documentElement.innerHTML.match(/lattes\.cnpq\.br\/(\d{16})/i),p=new URLSearchParams(location.search),i=document.querySelector('input[name=&quot;id&quot;]'),id=(m?m[1]:null)||p.get('id')||(i?i.value:'')||location.pathname.split('/').pop()||'';const old=document.getElementById('cech-sync-toast');if(old)old.remove();const t=document.createElement('div');t.id='cech-sync-toast';t.style.position='fixed';t.style.top='20px';t.style.right='20px';t.style.zIndex='9999999';t.style.background='#0284c7';t.style.color='#fff';t.style.padding='16px 20px';t.style.borderRadius='14px';t.style.boxShadow='0 12px 30px rgba(0,0,0,0.4)';t.style.fontFamily='system-ui,sans-serif';t.style.fontSize='13px';t.style.maxWidth='480px';t.style.maxHeight='80vh';t.style.overflowY='auto';t.style.lineHeight='1.5';t.style.cursor='pointer';t.textContent='⏳ Sincronizando com CECH...';document.body.appendChild(t);const eps=Array.from(new Set([location.origin+'/api/curriculum/import-html','https://127.0.0.1:8002/api/curriculum/import-html','https://localhost:8002/api/curriculum/import-html','http://127.0.0.1:8002/api/curriculum/import-html','http://localhost:8002/api/curriculum/import-html','https://127.0.0.1:8000/api/curriculum/import-html','https://localhost:8000/api/curriculum/import-html','http://127.0.0.1:8000/api/curriculum/import-html','http://localhost:8000/api/curriculum/import-html']));let ok=false;for(const ep of eps){try{const r=await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json','X-Cech-Sync-Token':'{{ syncToken }}'},body:JSON.stringify({idLattes:id,html:document.documentElement.outerHTML})});if(!r.ok&&r.status>=500)throw new Error('HTTP '+r.status);const d=await r.json();if(d.success){console.group('%c📊 [CECH] RELATÓRIO DETALHADO DE ALTERAÇÕES','color:#0284c7;font-size:14px;font-weight:bold;');console.log('👤 Docente:',d.researcher.fullName);console.log('📝 Resumo:',d.report?d.report.summaryMessage:d.message);let dh='';if(d.report&&d.report.addedItems){const it=d.report.addedItems,li=[];if(it.articles&&it.articles.length){console.log('%c📰 Novos Artigos ('+it.articles.length+'):','color:#16a34a;font-weight:bold;');console.table(it.articles);it.articles.forEach(a=>li.push(`<li><b>📰 Artigo:</b> "${a.title}" (${a.year||'s/d'})</li>`));}if(it.books&&it.books.length){console.log('%c📚 Novos Livros ('+it.books.length+'):','color:#16a34a;font-weight:bold;');console.table(it.books);it.books.forEach(b=>li.push(`<li><b>📚 Livro:</b> "${b.title}" (${b.year||'s/d'})</li>`));}if(it.chapters&&it.chapters.length){console.log('%c📖 Novos Capítulos ('+it.chapters.length+'):','color:#16a34a;font-weight:bold;');console.table(it.chapters);it.chapters.forEach(c=>li.push(`<li><b>📖 Capítulo:</b> "${c.title}" (${c.year||'s/d'})</li>`));}if(it.events&&it.events.length){console.log('%c🎤 Novos Trabalhos em Eventos ('+it.events.length+'):','color:#16a34a;font-weight:bold;');console.table(it.events);it.events.forEach(e=>li.push(`<li><b>🎤 Evento:</b> "${e.title}" (${e.year||'s/d'})</li>`));}if(it.orientations&&it.orientations.length){console.log('%c🎓 Novas Orientações ('+it.orientations.length+'):','color:#16a34a;font-weight:bold;');console.table(it.orientations);it.orientations.forEach(o=>li.push(`<li><b>🎓 Orientação (${o.type}):</b> ${o.student} (${o.year||'s/d'})</li>`));}if(li.length){dh=`<div style="margin-top:10px;background:rgba(255,255,255,0.08);padding:10px 12px;border-radius:8px;font-size:12px;"><b style="color:#38bdf8;">Novos itens adicionados (${li.length}):</b><ul style="margin:6px 0 0 16px;padding:0;line-height:1.4;">${li.slice(0,8).join('')}${li.length>8?`<li><i>... e mais ${li.length-8} itens</i></li>`:''}</ul></div>`;}else{dh='<div style="margin-top:8px;opacity:0.85;font-size:12px;">ℹ️ Nenhuma nova produção ou orientação adicionada.</div>';}}console.groupEnd();t.style.background='#0f172a';t.innerHTML='<b>🎉 Sincronizado com Sucesso!</b><br><br><b>Docente:</b> '+(d.researcher.fullName||'')+'<br><b>ID Lattes:</b> '+(d.researcher.idLattes||'')+'<br><b>Total Produções:</b> '+(d.researcher.productionsCount??0)+'<br><b>Total Orientações:</b> '+(d.researcher.orientationsCount??0)+'<br>'+dh+'<br><small style="opacity:0.7">Clique para fechar | F12 para ver no console</small>';t.onclick=()=>t.remove();setTimeout(()=>t.remove(),12000);ok=true;break;}}catch(e){}}if(!ok){t.style.background='#b91c1c';t.innerHTML='<b>❌ Erro ao conectar ao servidor local.</b>';t.onclick=()=>t.remove();}})();" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md transition-transform active:scale-95 cursor-grab">
+                        <a href="javascript:(async function(){const m=document.documentElement.innerHTML.match(/lattes\.cnpq\.br\/(\d{16})/i),p=new URLSearchParams(location.search),i=document.querySelector('input[name=&quot;id&quot;]'),id=(m?m[1]:null)||p.get('id')||(i?i.value:'')||location.pathname.split('/').pop()||'';const old=document.getElementById('cech-sync-toast');if(old)old.remove();const t=document.createElement('div');t.id='cech-sync-toast';t.style.position='fixed';t.style.top='20px';t.style.right='20px';t.style.zIndex='9999999';t.style.background='#0284c7';t.style.color='#fff';t.style.padding='16px 20px';t.style.borderRadius='14px';t.style.boxShadow='0 12px 30px rgba(0,0,0,0.4)';t.style.fontFamily='system-ui,sans-serif';t.style.fontSize='13px';t.style.maxWidth='480px';t.style.maxHeight='80vh';t.style.overflowY='auto';t.style.lineHeight='1.5';t.style.cursor='pointer';t.textContent='⏳ Sincronizando com CECH...';document.body.appendChild(t);const eps=Array.from(new Set(['{{ app.request.schemeAndHttpHost }}/api/curriculum/import-html','https://127.0.0.1:8002/api/curriculum/import-html','https://localhost:8002/api/curriculum/import-html','http://127.0.0.1:8002/api/curriculum/import-html','http://localhost:8002/api/curriculum/import-html','https://127.0.0.1:8000/api/curriculum/import-html','https://localhost:8000/api/curriculum/import-html','http://127.0.0.1:8000/api/curriculum/import-html','http://localhost:8000/api/curriculum/import-html']));let ok=false;for(const ep of eps){try{const r=await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json','X-Cech-Sync-Token':'{{ syncToken }}'},body:JSON.stringify({idLattes:id,html:document.documentElement.outerHTML})});if(!r.ok&&r.status>=500)throw new Error('HTTP '+r.status);const d=await r.json();if(d.success){console.group('%c📊 [CECH] RELATÓRIO DETALHADO DE ALTERAÇÕES','color:#0284c7;font-size:14px;font-weight:bold;');console.log('👤 Docente:',d.researcher.fullName);console.log('📝 Resumo:',d.report?d.report.summaryMessage:d.message);let dh='';if(d.report&&d.report.addedItems){const it=d.report.addedItems,li=[];if(it.articles&&it.articles.length){console.log('%c📰 Novos Artigos ('+it.articles.length+'):','color:#16a34a;font-weight:bold;');console.table(it.articles);it.articles.forEach(a=>li.push(`<li><b>📰 Artigo:</b> &quot;${a.title}&quot; (${a.year||'s/d'})</li>`));}if(it.books&&it.books.length){console.log('%c📚 Novos Livros ('+it.books.length+'):','color:#16a34a;font-weight:bold;');console.table(it.books);it.books.forEach(b=>li.push(`<li><b>📚 Livro:</b> &quot;${b.title}&quot; (${b.year||'s/d'})</li>`));}if(it.chapters&&it.chapters.length){console.log('%c📖 Novos Capítulos ('+it.chapters.length+'):','color:#16a34a;font-weight:bold;');console.table(it.chapters);it.chapters.forEach(c=>li.push(`<li><b>📖 Capítulo:</b> &quot;${c.title}&quot; (${c.year||'s/d'})</li>`));}if(it.events&&it.events.length){console.log('%c🎤 Novos Trabalhos em Eventos ('+it.events.length+'):','color:#16a34a;font-weight:bold;');console.table(it.events);it.events.forEach(e=>li.push(`<li><b>🎤 Evento:</b> &quot;${e.title}&quot; (${e.year||'s/d'})</li>`));}if(it.orientations&&it.orientations.length){console.log('%c🎓 Novas Orientações ('+it.orientations.length+'):','color:#16a34a;font-weight:bold;');console.table(it.orientations);it.orientations.forEach(o=>li.push(`<li><b>🎓 Orientação (${o.type}):</b> ${o.student} (${o.year||'s/d'})</li>`));}if(li.length){dh=`<div style=&quot;margin-top:10px;background:rgba(255,255,255,0.08);padding:10px 12px;border-radius:8px;font-size:12px;&quot;><b style=&quot;color:#38bdf8;&quot;>Novos itens adicionados (${li.length}):</b><ul style=&quot;margin:6px 0 0 16px;padding:0;line-height:1.4;&quot;>${li.slice(0,8).join('')}${li.length>8?`<li><i>... e mais ${li.length-8} itens</i></li>`:''}</ul></div>`;}else{dh='<div style=&quot;margin-top:8px;opacity:0.85;font-size:12px;&quot;>ℹ️ Nenhuma nova produção ou orientação adicionada.</div>';}}console.groupEnd();t.style.background='#0f172a';t.innerHTML='<b>🎉 Sincronizado com Sucesso!</b><br><br><b>Docente:</b> '+(d.researcher.fullName||'')+'<br><b>ID Lattes:</b> '+(d.researcher.idLattes||'')+'<br><b>Total Produções:</b> '+(d.researcher.productionsCount??0)+'<br><b>Total Orientações:</b> '+(d.researcher.orientationsCount??0)+'<br>'+dh+'<br><small style=&quot;opacity:0.7&quot;>Clique para fechar | F12 para ver no console</small>';[].concat((d.warnings||[]).map(w=>'⚠️ '+w),d.notice?['ℹ️ '+d.notice]:[]).forEach(m=>{const n=document.createElement('div');n.style.cssText='margin-top:8px;font-size:12px;opacity:0.9';n.textContent=m;t.appendChild(n);});t.onclick=()=>t.remove();setTimeout(()=>t.remove(),12000);ok=true;break;}}catch(e){}}if(!ok){t.style.background='#b91c1c';t.innerHTML='<b>❌ Erro ao conectar ao servidor local.</b>';t.onclick=()=>t.remove();}})();" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md transition-transform active:scale-95 cursor-grab">
                             <sl-icon name="cloud-arrow-down"></sl-icon> 📥 Sincronizar com CECH
                         </a>
                         <p class="text-[10px] text-amber-700 dark:text-amber-300 mt-2">
@@ -250,8 +249,9 @@
     toast.textContent = '⏳ Sincronizando com CECH... Tentando conectar ao servidor local...';
     document.body.appendChild(toast);
 
+    // O portal vem primeiro. O origin da página do Lattes não entra: é o do CNPq, e o token não pode ir para lá.
     const endpoints = Array.from(new Set([
-        window.location.origin + '/api/curriculum/import-html',
+        '{{ app.request.schemeAndHttpHost }}/api/curriculum/import-html',
         'https://127.0.0.1:8002/api/curriculum/import-html',
         'https://localhost:8002/api/curriculum/import-html',
         'http://127.0.0.1:8002/api/curriculum/import-html',
@@ -349,6 +349,14 @@
                     + '<b>Total Orientações:</b> ' + (data.researcher.orientationsCount ?? 0) + '<br>'
                     + detailsHtml + '<br>'
                     + '<small style="opacity:0.7">Clique para fechar | F12 para ver a tabela completa no console</small>';
+                // Avisos do servidor e o que esta importação não atualiza (textContent: o texto não é HTML)
+                [].concat((data.warnings || []).map(w => '⚠️ ' + w), data.notice ? ['ℹ️ ' + data.notice] : []).forEach(msg => {
+                    const line = document.createElement('div');
+                    line.style.cssText = 'margin-top:8px; font-size:12px; opacity:0.9;';
+                    line.textContent = msg;
+                    toast.appendChild(line);
+                });
+                if (data.notice) console.log('ℹ️ Aviso:', data.notice);
                 toast.onclick = () => toast.remove();
                 setTimeout(() => { if (toast.parentNode) toast.remove(); }, 12000);
                 success = true;
@@ -423,8 +431,9 @@
     toast.textContent = '⏳ Sincronizando com CECH... Tentando conectar ao servidor local...';
     document.body.appendChild(toast);
 
+    // O portal vem primeiro. O origin da página do Lattes não entra: é o do CNPq, e o token não pode ir para lá.
     const endpoints = Array.from(new Set([
-        window.location.origin + '/api/curriculum/import-html',
+        '{{ app.request.schemeAndHttpHost }}/api/curriculum/import-html',
         'https://127.0.0.1:8002/api/curriculum/import-html',
         'https://localhost:8002/api/curriculum/import-html',
         'http://127.0.0.1:8002/api/curriculum/import-html',
@@ -522,6 +531,14 @@
                     + '<b>Total Orientações:</b> ' + (data.researcher.orientationsCount ?? 0) + '<br>'
                     + detailsHtml + '<br>'
                     + '<small style="opacity:0.7">Clique para fechar | F12 para ver a tabela completa no console</small>';
+                // Avisos do servidor e o que esta importação não atualiza (textContent: o texto não é HTML)
+                [].concat((data.warnings || []).map(w => '⚠️ ' + w), data.notice ? ['ℹ️ ' + data.notice] : []).forEach(msg => {
+                    const line = document.createElement('div');
+                    line.style.cssText = 'margin-top:8px; font-size:12px; opacity:0.9;';
+                    line.textContent = msg;
+                    toast.appendChild(line);
+                });
+                if (data.notice) console.log('ℹ️ Aviso:', data.notice);
                 toast.onclick = () => toast.remove();
                 setTimeout(() => { if (toast.parentNode) toast.remove(); }, 12000);
                 success = true;

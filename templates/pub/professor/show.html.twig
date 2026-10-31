@@ -751,7 +751,8 @@ function applyGlobalFilter() {
         } catch (e) {
             itemDbs = [];
         }
-        const text = item.textContent.toLowerCase();
+        // O nome usual da família do periódico (quando difere do que o docente escreveu) também entra na busca
+        const text = (item.textContent + ' ' + (item.getAttribute('data-journal-canonical') || '')).toLowerCase();
 
         const matchDoi = !onlyDoi || hasDoi;
         const matchTerm = term === '' || text.includes(term) || (normTerm !== '' && normalizeFilterStr(text).includes(normTerm));

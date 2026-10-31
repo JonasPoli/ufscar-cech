@@ -351,5 +351,17 @@ class ResearcherRepository extends ServiceEntityRepository
 
         return $qb->getQuery()->getOneOrNullResult();
     }
-}
 
+    /**
+     * Slug para o docente, sem repetir o de outro: dois homônimos teriam a mesma página. Quem já está com o slug o mantém.
+     */
+    public function uniqueSlug(string $slug, string $idLattes): string
+    {
+        $taken = $this->getEntityManager()->getConnection()->fetchOne(
+            'SELECT 1 FROM researchers WHERE slug = ? AND id_lattes <> ? LIMIT 1',
+            [$slug, $idLattes]
+        );
+
+        return $taken === false ? $slug : $slug . '-' . $idLattes;
+    }
+}

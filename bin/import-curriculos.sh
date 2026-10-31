@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Importa currículos Lattes (XML) em produção e atualiza tudo o que depende deles.
-# Roda sem IA: backup, importação, palavras-chave, periódicos, temas e cache.
+# Roda sem IA: backup, importação, teses do Repositório, periódicos, temas e cache.
 #
 #   bin/import-curriculos.sh lattes123.xml pasta-com-xmls/
 #   bin/import-curriculos.sh --dept="DEd|Departamento de Educação" lattes123.xml
@@ -23,6 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SSH_TARGET="${PROD_USER}@${PROD_HOST}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 BATCH="docs/banco/CECH/lote-${STAMP}"
+REPOSITORY_FILE="${REPOSITORY_FILE:-docs/banco/TeD-UFSCar.csv}"
 LOCAL="${LOCAL:-}"
 
 CHECK=""
@@ -63,16 +64,34 @@ done
 [ "${#FILES[@]}" -gt 0 ] || { echo "Nenhum arquivo XML encontrado." >&2; exit 1; }
 
 IDS=()
+DATES=()
 for f in "${FILES[@]}"; do
+    command grep --color=never -aq '<CURRICULO-VITAE' "${f}" || { echo "Não é um XML do Lattes (sem CURRICULO-VITAE): ${f}" >&2; exit 1; }
     id="$(command grep --color=never -aoE 'NUMERO-IDENTIFICADOR="[0-9]{16}"' "${f}" | head -1 | command grep --color=never -oE '[0-9]{16}' || true)"
-    [ -n "${id}" ] || { echo "Não é um XML do Lattes (sem NUMERO-IDENTIFICADOR): ${f}" >&2; exit 1; }
+    # Parte dos XML vem sem o atributo: como o importador, usa os 16 dígitos do nome do arquivo.
+    [ -n "${id}" ] || id="$(basename "${f}" | command grep --color=never -oE '[0-9]{16}' | head -1 || true)"
+    [ -n "${id}" ] || { echo "Sem ID Lattes: nem NUMERO-IDENTIFICADOR no XML, nem 16 dígitos no nome do arquivo: ${f}" >&2; exit 1; }
     IDS+=("${id}")
+    # DATA-ATUALIZACAO vem como DDMMAAAA; aqui fica AAAAMMDD para comparar.
+    d="$(command grep --color=never -aoE 'DATA-ATUALIZACAO="[0-9]{8}"' "${f}" | head -1 | command grep --color=never -oE '[0-9]{8}' || true)"
+    DATES+=("${d:4:4}${d:2:2}${d:0:2}")
 done
 IN_LIST="$(printf "'%s'," "${IDS[@]}")"; IN_LIST="${IN_LIST%,}"
-EXISTING="$(remote "${PHP} bin/console dbal:run-sql ${ENV_ARGS} \"SELECT id_lattes FROM researchers WHERE id_lattes IN (${IN_LIST})\" 2>/dev/null" | command grep --color=never -oE '[0-9]{16}' || true)"
+EXISTING="$(remote "${PHP} bin/console dbal:run-sql ${ENV_ARGS} \"SELECT CONCAT(id_lattes, ':', COALESCE(DATE_FORMAT(last_lattes_update, '%Y%m%d'), '')) FROM researchers WHERE id_lattes IN (${IN_LIST})\" 2>/dev/null" | command grep --color=never -oE '[0-9]{16}:[0-9]*' || true)"
 NEW=0
 for i in "${!FILES[@]}"; do
-    if [[ "${EXISTING}" == *"${IDS[$i]}"* ]]; then state="atualiza (substitui as produções atuais)"; else state="novo"; NEW=$((NEW + 1)); fi
+    stored=""
+    known=""
+    for row in ${EXISTING}; do
+        if [ "${row%%:*}" = "${IDS[$i]}" ]; then known=1; stored="${row##*:}"; fi
+    done
+    if [ -z "${known}" ]; then
+        state="novo"; NEW=$((NEW + 1))
+    elif [ -n "${stored}" ] && [ -n "${DATES[$i]}" ] && [ "${DATES[$i]}" -lt "${stored}" ]; then
+        state="pulado (o XML é mais antigo que o currículo no banco)"
+    else
+        state="atualiza (substitui as produções atuais)"
+    fi
     printf '  %s  %s  %s\n' "${IDS[$i]}" "${state}" "$(basename "${FILES[$i]}")"
 done
 echo "${#FILES[@]} arquivo(s), ${NEW} novo(s)."
@@ -96,8 +115,10 @@ fi
 echo "== 4. Importação =="
 DEPT_ARG=""
 [ -n "${DEPT}" ] && DEPT_ARG="--dept='${DEPT}'"
-remote "${PHP} -d memory_limit=1536M bin/console app:import:lattes --dir=${BATCH} ${DEPT_ARG} ${ENV_ARGS}" | tail -8
-remote "${PHP} -d memory_limit=1G bin/console app:sync:keywords --dir=${BATCH} ${ENV_ARGS}" | tail -3
+IMPORT_STATUS=0
+remote "${PHP} -d memory_limit=1536M bin/console app:import:lattes --dir=${BATCH} ${DEPT_ARG} ${ENV_ARGS}" | tail -24 || IMPORT_STATUS=$?
+# A importação refaz as orientações do Lattes, e com elas somem o link e o resumo vindos do Repositório UFSCar.
+remote "if [ -f ${REPOSITORY_FILE} ]; then ${PHP} -d memory_limit=1G bin/console app:import:repository --file=${REPOSITORY_FILE} ${ENV_ARGS} | tail -3; else echo 'Sem ${REPOSITORY_FILE}: teses do Repositório não reaplicadas.'; fi"
 
 echo "== 5. Periódicos, áreas e fila de nomes =="
 remote "${PHP} -d memory_limit=1536M bin/console app:journals:pipeline --derived=docs/banco/derived ${ENV_ARGS} 2>&1 | tee var/audit/curriculos-${STAMP}.log | tail -32; exit \${PIPESTATUS[0]}"
@@ -108,3 +129,7 @@ remote "${PHP} bin/console app:cache:clear ${ENV_ARGS}" | tail -1
 
 echo "Concluído. Backup: var/backups/antes_curriculos_${STAMP}.sql.zip | Log: var/audit/curriculos-${STAMP}.log"
 echo "Confira os nomes novos em /admin/journal-names."
+if [ "${IMPORT_STATUS}" -ne 0 ]; then
+    echo "Atenção: algum arquivo não foi importado. Veja a lista no passo 4; o resto seguiu normalmente." >&2
+    exit 1
+fi

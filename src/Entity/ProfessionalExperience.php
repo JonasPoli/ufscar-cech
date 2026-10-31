@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Support\LattesText;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
@@ -59,6 +60,10 @@ class ProfessionalExperience
     #[ORM\Column(name: 'is_current', type: 'boolean', options: ['default' => false])]
     private bool $isCurrent = false;
 
+    /** FLAG-DEDICACAO-EXCLUSIVA do XML. */
+    #[ORM\Column(name: 'is_exclusive_dedication', options: ['default' => false])]
+    private bool $isExclusiveDedication = false;
+
     #[ORM\Column(name: 'other_info', type: 'text', nullable: true)]
     private ?string $otherInfo = null;
 
@@ -67,7 +72,7 @@ class ProfessionalExperience
     public function getResearcher(): ?Researcher { return $this->researcher; }
     public function setResearcher(?Researcher $r): static { $this->researcher = $r; return $this; }
 
-    public function getInstitutionName(): string { return $this->institutionName; }
+    public function getInstitutionName(): string { return (string)LattesText::display($this->institutionName); }
     public function setInstitutionName(string $v): static { $this->institutionName = $v; return $this; }
 
     public function getInstitution(): ?Institution { return $this->institution; }
@@ -82,7 +87,7 @@ class ProfessionalExperience
     public function getUnitName(): ?string { return $this->unitName; }
     public function setUnitName(?string $v): static { $this->unitName = $v; return $this; }
 
-    public function getRoleName(): ?string { return $this->roleName; }
+    public function getRoleName(): ?string { return LattesText::display($this->roleName); }
     public function setRoleName(?string $v): static { $this->roleName = $v; return $this; }
 
     public function getContractType(): ?string { return $this->contractType; }
@@ -106,6 +111,9 @@ class ProfessionalExperience
     public function isCurrent(): bool { return $this->isCurrent; }
     public function setIsCurrent(bool $v): static { $this->isCurrent = $v; return $this; }
 
-    public function getOtherInfo(): ?string { return $this->otherInfo; }
+    public function isExclusiveDedication(): bool { return $this->isExclusiveDedication; }
+    public function setIsExclusiveDedication(bool $v): static { $this->isExclusiveDedication = $v; return $this; }
+
+    public function getOtherInfo(): ?string { return LattesText::display($this->otherInfo); }
     public function setOtherInfo(?string $v): static { $this->otherInfo = $v; return $this; }
 }

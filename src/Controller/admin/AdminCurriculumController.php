@@ -5,10 +5,15 @@ namespace App\Controller\admin;
 use App\Entity\Researcher;
 use App\Repository\ResearcherRepository;
 use App\Service\Export\CurriculumExporterService;
+use App\Service\Import\CurriculumPostImportService;
 use App\Service\Import\LattesHtmlParserService;
 use App\Service\Import\LattesXmlParserService;
 use App\Service\Import\RepositoryImportService;
+use App\Service\PageCacheService;
+use App\Service\Thesaurus\AuthorResolverService;
+use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,14 +25,16 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 #[Route('/admin/curriculum')]
 class AdminCurriculumController extends AbstractController
 {
-    private const REPOSITORY_CSV_PATH = 'docs/banco/TeD-UFSCar.csv';
-
     public function __construct(
         private readonly EntityManagerInterface $em,
+        private readonly ManagerRegistry $registry,
         private readonly ResearcherRepository $researcherRepo,
         private readonly CurriculumExporterService $exporterService,
         private readonly LattesXmlParserService $parserService,
-        private readonly LattesHtmlParserService $htmlParserService
+        private readonly LattesHtmlParserService $htmlParserService,
+        private readonly CurriculumPostImportService $postImport,
+        private readonly AuthorResolverService $authorResolver,
+        private readonly PageCacheService $pageCache
     ) {}
 
     #[Route('/', name: 'app_admin_curriculum_index', methods: ['GET'])]
@@ -71,7 +78,9 @@ class AdminCurriculumController extends AbstractController
         if ($request->isMethod('POST')) {
             $rawLattes = trim((string)$request->request->get('lattes_id'));
             $rawDept = trim((string)$request->request->get('department'));
-            $fetchPhoto = (bool)$request->request->get('fetch_photo', true);
+            // Caixa desmarcada não é enviada: com o padrão `true`, a foto oficial era buscada mesmo assim e trocava a enviada à mão
+            $fetchPhoto = $request->request->has('fetch_photo');
+            $forceOlder = $request->request->has('force_older');
             /** @var UploadedFile|null $xmlFile */
             $xmlFile = $request->files->get('xml_file');
 
@@ -84,36 +93,44 @@ class AdminCurriculumController extends AbstractController
                 return $this->render('admin/curriculum/new.html.twig', ['syncToken' => $syncToken->getToken()]);
             }
 
-            $deptCode = null;
-            $deptName = null;
-            if ($rawDept) {
-                $parts = explode('|', $rawDept, 2);
-                $deptCode = $parts[0];
-                $deptName = $parts[1] ?? $parts[0];
-            }
+            $department = $this->parseDepartment($rawDept);
 
             $researcher = null;
+            $skippedOlder = false;
+            $importFailed = false;
 
             // 1. Process XML if uploaded or if exists locally
-            if ($xmlFile && $xmlFile->isValid()) {
-                try {
-                    $researcher = $this->parserService->parseAndSave($xmlFile->getRealPath());
-                } catch (\Throwable $e) {
-                    $this->addFlash('error', 'Erro ao processar arquivo XML: ' . $e->getMessage());
+            $xmlPaths = [];
+            if ($xmlFile instanceof UploadedFile) {
+                if ($xmlFile->isValid()) {
+                    $xmlPaths[] = $xmlFile->getRealPath();
+                } else {
+                    $importFailed = true;
+                    $this->addFlash('error', 'O servidor não recebeu o arquivo XML (' . $xmlFile->getErrorMessage() . '). Nada foi importado dele.');
                 }
             } else {
                 // Check if XML exists in docs/banco/CECH/
-                $possiblePaths = [
-                    $this->getParameter('kernel.project_dir') . "/docs/banco/CECH/lattes{$idLattes}.xml",
-                    $this->getParameter('kernel.project_dir') . "/docs/banco/CECH/{$idLattes}.xml",
-                ];
-                foreach ($possiblePaths as $p) {
-                    if (file_exists($p)) {
-                        try {
-                            $researcher = $this->parserService->parseAndSave($p);
-                            break;
-                        } catch (\Throwable) {}
+                foreach (["lattes{$idLattes}.xml", "{$idLattes}.xml"] as $name) {
+                    $path = $this->getParameter('kernel.project_dir') . "/docs/banco/CECH/{$name}";
+                    if (file_exists($path)) {
+                        $xmlPaths[] = $path;
                     }
+                }
+            }
+
+            foreach ($xmlPaths as $xmlPath) {
+                try {
+                    // O ID da tela vale para o XML sem NUMERO-IDENTIFICADOR; o do próprio XML, quando existe, tem preferência
+                    if (!$forceOlder && $this->parserService->isOlderThanStored($xmlPath, $idLattes)) {
+                        $skippedOlder = true;
+                        continue;
+                    }
+                    $researcher = $this->parserService->parseAndSave($xmlPath, $idLattes);
+                    break;
+                } catch (\Throwable $e) {
+                    $importFailed = true;
+                    $this->recoverEntityManager();
+                    $this->addFlash('error', 'Erro ao processar arquivo XML: ' . $e->getMessage());
                 }
             }
 
@@ -124,9 +141,13 @@ class AdminCurriculumController extends AbstractController
                     $existing = $this->researcherRepo->findOneBy(['idLattes' => $idLattes]);
                     $researcher = $this->htmlParserService->parseHtmlAndSave($htmlContent, $existing, $idLattes);
                 } catch (\Throwable $e) {
+                    $importFailed = true;
+                    $this->recoverEntityManager();
                     $this->addFlash('error', 'Erro ao processar HTML colado: ' . $e->getMessage());
                 }
             }
+            $imported = $researcher !== null;
+            $report = $this->parserService->getLastReport() ?? $this->htmlParserService->getLastReport();
 
             // If no XML was found or parsed, get or create researcher entity
             if (!$researcher) {
@@ -135,18 +156,20 @@ class AdminCurriculumController extends AbstractController
                     $researcher = new \App\Entity\Researcher();
                     $researcher->setIdLattes($idLattes);
                     $researcher->setFullName("Pesquisador Lattes {$idLattes}");
+                    // Sem slug, o docente novo fica com '' e a página pública dele não tem endereço
+                    $researcher->setSlug(StringNormalizer::slugify($researcher->getFullName()));
                     $this->em->persist($researcher);
                 }
             }
 
-            if ($deptCode && $deptName) {
-                $researcher->setDepartmentCode($deptCode);
-                $researcher->setDepartment($deptName);
+            if ($department !== null) {
+                $researcher->setDepartmentCode($department[0]);
+                $researcher->setDepartment($department[1]);
             }
 
             $this->em->flush();
 
-            // 2. Fetch official photo if requested
+            // 3. Fetch official photo if requested
             $photoSuccess = false;
             if ($fetchPhoto) {
                 $url = $photoService->crawlPhoto($researcher);
@@ -155,12 +178,28 @@ class AdminCurriculumController extends AbstractController
                 }
             }
 
-            $report = $this->parserService->getLastReport() ?? $this->htmlParserService->getLastReport();
-            $msg = $report['summaryMessage'] ?? "Docente \"{$researcher->getFullName()}\" cadastrado/atualizado com sucesso!";
-            if ($photoSuccess) {
-                $msg .= " Foto oficial do CNPq vinculada com sucesso.";
+            // Cache de páginas e teses do Repositório; falha aqui não desfaz a importação, vira aviso
+            $post = $this->postImport->run([$researcher]);
+
+            $photoMessage = $photoSuccess ? ' Foto oficial do CNPq vinculada com sucesso.' : '';
+            if ($imported) {
+                $msg = $report['summaryMessage'] ?? "Docente \"{$researcher->getFullName()}\" cadastrado/atualizado com sucesso!";
+                $this->addFlash('success', $msg . $photoMessage . ' ' . CurriculumPostImportService::HEAVY_STEPS_NOTICE);
+            } elseif ($skippedOlder) {
+                $stored = $researcher->getLastLattesUpdate();
+                $this->addFlash('warning', sprintf(
+                    'O XML tem data de atualização anterior à do currículo que já está no banco%s, e importá-lo trocaria dados novos por antigos: nada foi importado. Marque "Importar mesmo com data antiga" para importar assim mesmo.',
+                    $stored ? ' (' . $stored->format('d/m/Y') . ')' : ''
+                ));
+                if ($photoSuccess || $department !== null) {
+                    $this->addFlash('success', trim(($department !== null ? 'Departamento atualizado.' : '') . $photoMessage));
+                }
+            } elseif (!$importFailed) {
+                $this->addFlash('success', "Docente \"{$researcher->getFullName()}\" cadastrado/atualizado com sucesso!" . $photoMessage);
             }
-            $this->addFlash('success', $msg);
+            foreach ($post['warnings'] as $warning) {
+                $this->addFlash('warning', $warning);
+            }
 
             return $this->redirectToRoute('app_admin_curriculum_show', ['id' => $researcher->getId()]);
         }
@@ -186,9 +225,22 @@ class AdminCurriculumController extends AbstractController
     public function import(Request $request): Response
     {
         if ($request->isMethod('POST')) {
+            // Cada XML grande leva alguns segundos: o lote não pode parar no limite padrão de execução
+            if (\function_exists('ini_set')) {
+                @\ini_set('memory_limit', '512M');
+            }
+            if (\function_exists('set_time_limit')) {
+                @\set_time_limit(300);
+            }
+
             /** @var UploadedFile[]|UploadedFile|null $files */
             $files = $request->files->get('xml_files');
-            $count = 0;
+            $department = $this->parseDepartment(trim((string)$request->request->get('department')));
+            $forceOlder = $request->request->has('force_older');
+
+            /** @var Researcher[] $imported */
+            $imported = [];
+            $skipped = [];
             $errors = [];
 
             if ($files) {
@@ -197,22 +249,63 @@ class AdminCurriculumController extends AbstractController
                 }
 
                 foreach ($files as $file) {
-                    if ($file instanceof UploadedFile && $file->isValid()) {
-                        try {
-                            $this->parserService->parseAndSave($file->getRealPath());
-                            $count++;
-                        } catch (\Throwable $e) {
-                            $errors[] = sprintf("%s: %s", $file->getClientOriginalName(), $e->getMessage());
+                    if (!$file instanceof UploadedFile) {
+                        continue;
+                    }
+
+                    $name = $file->getClientOriginalName();
+                    if (!$file->isValid()) {
+                        $errors[] = sprintf('%s: o servidor não recebeu o arquivo (%s)', $name, $file->getErrorMessage());
+                        continue;
+                    }
+
+                    // O arquivo enviado se chama /tmp/phpXXXXXX: o ID, quando o XML não o traz, vem de 16 dígitos do nome original
+                    $idLattes = $this->lattesIdFrom($name);
+
+                    try {
+                        if (!$forceOlder && $this->parserService->isOlderThanStored($file->getRealPath(), $idLattes)) {
+                            $skipped[] = $name;
+                            continue;
                         }
+
+                        $researcher = $this->parserService->parseAndSave($file->getRealPath(), $idLattes);
+                        $imported[] = $researcher;
+
+                        if ($department !== null) {
+                            $researcher->setDepartmentCode($department[0]);
+                            $researcher->setDepartment($department[1]);
+                            $this->em->flush();
+                        }
+                    } catch (\Throwable $e) {
+                        // Erro de banco fecha o EntityManager: sem reabrir, todos os arquivos seguintes falhariam também
+                        $this->recoverEntityManager();
+                        $errors[] = sprintf('%s: %s', $name, $e->getMessage());
                     }
                 }
             }
 
-            if ($count > 0) {
-                $this->addFlash('success', sprintf('%d currículo(s) importado(s) com sucesso!', $count));
+            if ($imported !== []) {
+                $this->addFlash('success', sprintf('%d currículo(s) importado(s) com sucesso! %s', count($imported), CurriculumPostImportService::HEAVY_STEPS_NOTICE));
+            }
+            if ($skipped !== []) {
+                $this->addFlash('warning', sprintf(
+                    '%d arquivo(s) pulado(s): o XML tem data anterior à do currículo que já está no banco (%s). Marque "Importar mesmo com data antiga" para importar assim mesmo.',
+                    count($skipped),
+                    implode(', ', array_slice($skipped, 0, 5))
+                ));
             }
             if (!empty($errors)) {
                 $this->addFlash('error', 'Erros: ' . implode(' | ', array_slice($errors, 0, 5)));
+            }
+            if ($imported === [] && $skipped === [] && $errors === []) {
+                $this->addFlash('warning', 'Nenhum arquivo XML foi enviado.');
+            }
+
+            // Cache de páginas e teses do Repositório; falha aqui não desfaz a importação, vira aviso
+            if ($imported !== []) {
+                foreach ($this->postImport->run($imported)['warnings'] as $warning) {
+                    $this->addFlash('warning', $warning);
+                }
             }
 
             return $this->redirectToRoute('app_admin_curriculum_index');
@@ -299,9 +392,9 @@ class AdminCurriculumController extends AbstractController
             return $this->redirectToRoute('app_admin_curriculum_show', ['id' => $researcher->getId()]);
         }
 
-        $csvPath = $this->getParameter('kernel.project_dir') . '/' . self::REPOSITORY_CSV_PATH;
+        $csvPath = $this->getParameter('kernel.project_dir') . '/' . CurriculumPostImportService::REPOSITORY_CSV_PATH;
         if (!is_readable($csvPath)) {
-            $this->addFlash('error', sprintf('Arquivo do Repositório Institucional não encontrado no servidor (%s).', self::REPOSITORY_CSV_PATH));
+            $this->addFlash('error', sprintf('Arquivo do Repositório Institucional não encontrado no servidor (%s).', CurriculumPostImportService::REPOSITORY_CSV_PATH));
             return $this->redirectToRoute('app_admin_curriculum_show', ['id' => $researcher->getId()]);
         }
 
@@ -375,9 +468,52 @@ class AdminCurriculumController extends AbstractController
             $name = $researcher->getFullName();
             $this->em->remove($researcher);
             $this->em->flush();
+            // O índice de docentes fica 30 dias em cache e as páginas públicas, outros 30: os dois ainda citam o docente
+            // excluído. Com o id velho no índice, a próxima importação falha na chave estrangeira de
+            // production_authors.matched_researcher_id.
+            $this->authorResolver->clearCache();
+            $this->pageCache->clearCache();
             $this->addFlash('success', "Currículo de \"{$name}\" removido com sucesso.");
         }
 
         return $this->redirectToRoute('app_admin_curriculum_index');
+    }
+
+    /**
+     * ID Lattes de exatamente 16 dígitos dentro de um texto (nome de arquivo, URL), ou null se não houver.
+     */
+    private function lattesIdFrom(string $text): ?string
+    {
+        return preg_match('/(?<!\d)\d{16}(?!\d)/', $text, $match) === 1 ? $match[0] : null;
+    }
+
+    /**
+     * "CODIGO|Nome" do formulário em [código, nome]; só o código serve também de nome. Vazio devolve null: o departamento
+     * do docente não é mexido.
+     *
+     * @return array{0: string, 1: string}|null
+     */
+    private function parseDepartment(string $raw): ?array
+    {
+        $parts = explode('|', trim($raw), 2);
+        $code = trim($parts[0]);
+        if ($code === '') {
+            return null;
+        }
+        $name = trim($parts[1] ?? '');
+
+        return [$code, $name !== '' ? $name : $code];
+    }
+
+    /**
+     * Um erro de banco fecha o EntityManager; sem reabrir, a tela (ou o arquivo seguinte do lote) falha também.
+     */
+    private function recoverEntityManager(): void
+    {
+        if ($this->em->isOpen()) {
+            $this->em->clear();
+        } else {
+            $this->registry->resetManager();
+        }
     }
 }

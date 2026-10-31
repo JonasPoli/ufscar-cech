@@ -15,6 +15,7 @@ use App\Entity\ProfessionalExperience;
 use App\Entity\Researcher;
 use App\Entity\ResearchProject;
 use App\Service\Indexing\CurriculumNormalizationService;
+use App\Service\Thesaurus\AuthorResolverService;
 use App\Service\Thesaurus\AuthorThesaurusService;
 use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\ORM\EntityManagerInterface;
@@ -44,12 +45,14 @@ class LattesXmlParserService
      * @param AuthorThesaurusService $authorThesaurusService Serviço de sincronização do tesauro de autores
      * @param CurriculumNormalizationService $normalizationService Serviço de normalização e enriquecimento
      * @param CurriculumDiffService $diffService Serviço de cálculo de diff de importação
+     * @param AuthorResolverService $authorResolver Índice de docentes usado para reconhecer coautores
      */
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly AuthorThesaurusService $authorThesaurusService,
         private readonly CurriculumNormalizationService $normalizationService,
-        private readonly CurriculumDiffService $diffService
+        private readonly CurriculumDiffService $diffService,
+        private readonly AuthorResolverService $authorResolver
     ) {}
 
     public function getLastReport(): ?array
@@ -58,30 +61,75 @@ class LattesXmlParserService
     }
 
     /**
-     * Trunca uma string de forma segura em UTF-8 para evitar estouro de tamanho de colunas no banco de dados.
+     * Apara as pontas e corta só o que não cabe na coluna. O texto fica como veio do Lattes: entidades HTML e espaços
+     * repetidos não são mexidos aqui (regra de preservação do AGENTS.md); quem decodifica para exibir é LattesText.
      *
      * @param string|null $str String de entrada
-     * @param int $length Tamanho máximo permitido em caracteres
-     * @return string|null String decodificada de entidades HTML e truncada
+     * @param int|null $length Tamanho da coluna em caracteres; null para coluna TEXT
      */
-    private function truncate(?string $str, int $length): ?string
+    private function truncate(?string $str, ?int $length = null): ?string
     {
         if ($str === null) return null;
-        $str = html_entity_decode($str, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $str = trim(preg_replace('/\s+/', ' ', $str));
-        if (mb_strlen($str) <= $length) return $str;
+        $str = trim($str);
+        if ($length === null || mb_strlen($str) <= $length) return $str;
         return mb_substr($str, 0, $length);
+    }
+
+    /**
+     * ID Lattes do arquivo: o do XML, senão o informado, senão os 16 dígitos do nome do arquivo. Nunca aceita menos de 16
+     * dígitos: um upload chega como `/tmp/phpw3Hq9N`, e os dígitos desse nome criariam um docente com o ID "39".
+     */
+    private function resolveIdLattes(string $fromXml, ?string $informed, string $filePath): string
+    {
+        foreach ([$fromXml, (string)$informed, (string)preg_replace('/\D/', '', pathinfo($filePath, PATHINFO_FILENAME))] as $candidate) {
+            if (preg_match('/^\d{16}$/', $candidate) === 1) {
+                return $candidate;
+            }
+        }
+
+        throw new \RuntimeException("Could not determine ID Lattes for file: {$filePath}");
+    }
+
+    /**
+     * Diz se o XML é de uma data anterior à do currículo que já está no banco, pelo cabeçalho do arquivo, sem ler o resto.
+     * Importá-lo trocaria dados novos por antigos, porque a importação substitui tudo. Sem data de um dos lados, responde false.
+     */
+    public function isOlderThanStored(string $filePath, ?string $idLattes = null): bool
+    {
+        $handle = @fopen($filePath, 'rb');
+        if ($handle === false) {
+            return false;
+        }
+        $head = (string)fread($handle, 4096);
+        fclose($handle);
+
+        if (!preg_match('/DATA-ATUALIZACAO="(\d{2})(\d{2})(\d{4})"/', $head, $date)) {
+            return false;
+        }
+        try {
+            $id = [1 => $this->resolveIdLattes(preg_match('/NUMERO-IDENTIFICADOR="(\d+)"/', $head, $m) ? $m[1] : '', $idLattes, $filePath)];
+        } catch (\RuntimeException) {
+            return false;
+        }
+
+        $stored = $this->em->getConnection()->fetchOne('SELECT last_lattes_update FROM researchers WHERE id_lattes = ?', [$id[1]]);
+        if ($stored === false || $stored === null) {
+            return false;
+        }
+
+        return "{$date[3]}-{$date[2]}-{$date[1]}" < substr((string)$stored, 0, 10);
     }
 
     /**
      * Realiza o parsing de um arquivo XML Lattes completo e persiste/atualiza o Pesquisador e todas as entidades vinculadas.
      *
      * @param string $filePath Caminho absoluto para o arquivo XML
+     * @param string|null $idLattes ID informado por quem chama, para o XML sem NUMERO-IDENTIFICADOR (10 dos 414 não trazem)
      * @return Researcher Entidade do pesquisador atualizada
      * @throws \InvalidArgumentException Se o arquivo não existir
      * @throws \RuntimeException Se o XML for inválido ou não contiver a tag CURRICULO-VITAE
      */
-    public function parseAndSave(string $filePath): Researcher
+    public function parseAndSave(string $filePath, ?string $idLattes = null): Researcher
     {
         if (!file_exists($filePath)) {
             throw new \InvalidArgumentException("XML file not found: {$filePath}");
@@ -92,18 +140,14 @@ class LattesXmlParserService
             throw new \RuntimeException("Invalid XML structure for Lattes CV: {$filePath}");
         }
 
-        $idLattes = trim((string)($xml['NUMERO-IDENTIFICADOR'] ?? ''));
-        if ($idLattes === '') {
-            $idLattes = pathinfo($filePath, PATHINFO_FILENAME);
-            $idLattes = preg_replace('/[^0-9]/', '', $idLattes);
-        }
-
-        if ($idLattes === '') {
-            throw new \RuntimeException("Could not determine ID Lattes for file: {$filePath}");
-        }
+        $idLattes = $this->resolveIdLattes(trim((string)($xml['NUMERO-IDENTIFICADOR'] ?? '')), $idLattes, $filePath);
 
         $repository = $this->em->getRepository(Researcher::class);
         $researcher = $repository->findOneBy(['idLattes' => $idLattes]);
+
+        // Capturar snapshot para cálculo do relatório de alterações (diff report); docente novo ainda não tem id
+        $snapshot = $this->diffService->takeSnapshot($researcher);
+
         if (!$researcher) {
             $researcher = new Researcher();
             $researcher->setIdLattes($idLattes);
@@ -126,7 +170,7 @@ class LattesXmlParserService
             $fullName = trim((string)($generalData['NOME-COMPLETO'] ?? ''));
             if ($fullName !== '') {
                 $researcher->setFullName($this->truncate($fullName, 255));
-                $researcher->setSlug(StringNormalizer::slugify($fullName));
+                $researcher->setSlug($repository->uniqueSlug(StringNormalizer::slugify($fullName), $idLattes));
             }
             $researcher->setCitationNames(trim((string)($generalData['NOME-EM-CITACOES-BIBLIOGRAFICAS'] ?? '')));
             $researcher->setNationality($this->truncate((string)($generalData['NACIONALIDADE'] ?? ''), 50));
@@ -172,14 +216,42 @@ class LattesXmlParserService
         // Sync researcher citation names to Author Thesaurus
         $this->authorThesaurusService->syncResearcherCitationNames($researcher);
 
-        // Capturar snapshot para cálculo do relatório de alterações (diff report)
-        $snapshot = $this->diffService->takeSnapshot($researcher);
+        // Apaga e regrava os filhos numa transação só: um XML que falhe no meio não deixa o docente sem produção.
+        $this->em->getConnection()->transactional(function () use ($xml, $generalData, $researcher): void {
+            $this->replaceChildren($xml, $generalData, $researcher);
+            $this->em->flush();
+        });
 
+        // Os filhos são gravados com setResearcher() e as coleções carregadas ainda têm os itens antigos: sem reler do banco,
+        // o normalizador e o relatório olham para o currículo de antes da importação.
+        $researcherId = $researcher->getId();
+        $this->em->clear();
+        $researcher = $this->em->find(Researcher::class, $researcherId);
+
+        // O índice de docentes fica 30 dias em cache: sem renovar, o docente novo não é reconhecido como coautor, e um docente
+        // já excluído faz a gravação do vínculo falhar por chave estrangeira.
+        $this->authorResolver->clearCache();
+
+        // Automatically normalize and index co-authors, journals and institutions into new index columns
+        $this->normalizationService->normalizeResearcher($researcher);
+
+        // Calcular e salvar relatório de alterações
+        $this->lastReport = $this->diffService->computeReport($researcher, $snapshot);
+
+        return $researcher;
+    }
+
+    /**
+     * Substitui os itens do pesquisador pelos do XML. Nada fica pela metade: o chamador roda isto numa transação.
+     */
+    private function replaceChildren(\SimpleXMLElement $xml, ?\SimpleXMLElement $generalData, Researcher $researcher): void
+    {
         // Clear existing child entities for idempotency
         $conn = $this->em->getConnection();
         $conn->executeStatement('DELETE FROM production_items WHERE researcher_id = ?', [$researcher->getId()]);
         $conn->executeStatement('DELETE FROM educations WHERE researcher_id = ?', [$researcher->getId()]);
-        $conn->executeStatement('DELETE FROM orientations WHERE researcher_id = ?', [$researcher->getId()]);
+        // Teses vindas do Repositório UFSCar não estão no XML: apagá-las aqui perderia a importação do repositório.
+        $conn->executeStatement('DELETE FROM orientations WHERE researcher_id = ? AND source = ?', [$researcher->getId(), Orientation::SOURCE_LATTES]);
         $conn->executeStatement('DELETE FROM awards WHERE researcher_id = ?', [$researcher->getId()]);
         $conn->executeStatement('DELETE FROM knowledge_areas WHERE researcher_id = ?', [$researcher->getId()]);
         $conn->executeStatement('DELETE FROM professional_experiences WHERE researcher_id = ?', [$researcher->getId()]);
@@ -217,25 +289,33 @@ class LattesXmlParserService
 
         // Process Bibliographical Production
         $this->parseBibliographicalProduction($xml->{'PRODUCAO-BIBLIOGRAFICA'} ?? null, $researcher);
+        $this->parseAcceptedArticles($xml->{'PRODUCAO-BIBLIOGRAFICA'} ?? null, $researcher);
 
         // Process Technical Production
         $this->parseTechnicalProduction($xml->{'PRODUCAO-TECNICA'} ?? null, $researcher);
 
         // Process Artistic and Cultural Production
         $this->parseArtisticProductions($xml->{'OUTRA-PRODUCAO'} ?? null, $researcher);
+        $this->parseOtherWorks($xml->{'OUTRA-PRODUCAO'} ?? null, $researcher);
 
         // Process Orientations (Completed & Ongoing)
         $this->parseOrientations($xml->{'OUTRA-PRODUCAO'} ?? null, $xml->{'DADOS-COMPLEMENTARES'} ?? null, $researcher);
+    }
 
-        $this->em->flush();
+    /**
+     * Primeiro atributo preenchido da lista, sem espaços nas pontas. O operador `??` não serve aqui: um atributo presente
+     * e vazio o interrompe antes de chegar ao que tem valor.
+     */
+    private function firstAttribute(\SimpleXMLElement $node, string ...$names): string
+    {
+        foreach ($names as $name) {
+            $value = trim((string)($node[$name] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
 
-        // Automatically normalize and index co-authors, journals and institutions into new index columns
-        $this->normalizationService->normalizeResearcher($researcher);
-
-        // Calcular e salvar relatório de alterações
-        $this->lastReport = $this->diffService->computeReport($researcher, $snapshot);
-
-        return $researcher;
+        return '';
     }
 
     private function parseEducations(?\SimpleXMLElement $generalData, Researcher $researcher): void
@@ -251,13 +331,13 @@ class LattesXmlParserService
             $education->setInstitutionName($this->truncate((string)($item['NOME-INSTITUICAO'] ?? $item['NOME-DA-INSTITUICAO'] ?? ''), 255));
             
             $startYear = (int)($item['ANO-DE-INICIO'] ?? 0);
-            $endYear = (int)($item['ANO-DE-CONCLUSAO'] ?? $item['ANO-DE-OBTENCAO-DO-TITULO'] ?? 0);
+            $endYear = (int)$this->firstAttribute($item, 'ANO-DE-CONCLUSAO', 'ANO-DE-OBTENCAO-DO-TITULO');
             if ($startYear > 0) $education->setStartYear($startYear);
             if ($endYear > 0) $education->setEndYear($endYear);
 
-            $education->setMonographTitle($this->truncate((string)($item['TITULO-DA-DISSERTACAO-TESE'] ?? $item['TITULO-DO-TRABALHO-DE-CONCLUSAO-DE-CURSO'] ?? $item['TITULO-DO-TRABALHO'] ?? ''), 500));
-            $education->setAdvisorName($this->truncate((string)($item['NOME-DO-ORIENTADOR'] ?? $item['NOME-DO-SUPERVISOR'] ?? ''), 255));
-            $education->setGrantingAgency($this->truncate((string)($item['NOME-AGENCIA-FINANCIADORA'] ?? $item['NOME-DA-AGENCIA-FINANCIADORA'] ?? ''), 150));
+            $education->setMonographTitle($this->truncate($this->firstAttribute($item, 'TITULO-DA-DISSERTACAO-TESE', 'TITULO-DO-TRABALHO-DE-CONCLUSAO-DE-CURSO', 'TITULO-DO-TRABALHO', 'TITULO-DA-MONOGRAFIA')));
+            $education->setAdvisorName($this->truncate($this->firstAttribute($item, 'NOME-COMPLETO-DO-ORIENTADOR', 'NOME-DO-ORIENTADOR', 'NOME-ORIENTADOR-DOUT'), 255));
+            $education->setGrantingAgency($this->truncate($this->firstAttribute($item, 'NOME-AGENCIA'), 150));
 
             $workload = (int)($item['CARGA-HORARIA'] ?? 0);
             if ($workload > 0) $education->setWorkloadHours($workload);
@@ -342,17 +422,15 @@ class LattesXmlParserService
                     if ($endMonth > 0) $exp->setEndMonth($endMonth);
 
                     $flagAtual = (string)($vinculo['FLAG-VINCULO-EMPREGATICIO'] ?? 'NAO');
-                    $exp->setIsCurrent($endYear === 0 || $endYear >= (int)date('Y'));
+                    $endsAt = sprintf('%04d-%02d', $endYear, $endMonth > 0 ? $endMonth : 12);
+                    $exp->setIsCurrent($endYear === 0 || $endsAt >= date('Y-m'));
 
                     $workload = (int)($vinculo['CARGA-HORARIA-SEMANAL'] ?? 0);
                     if ($workload > 0) $exp->setWorkloadHours($workload);
 
-                    $dedicacaoExclusiva = strtoupper((string)($vinculo['FLAG-DEDICACAO-EXCLUSIVA'] ?? 'NAO')) === 'SIM';
-                    $outrasInfo = trim((string)($vinculo['OUTRAS-INFORMACOES'] ?? ''));
-                    if ($dedicacaoExclusiva) {
-                        $outrasInfo = $outrasInfo ? $outrasInfo . ' | Dedicação Exclusiva (DE)' : 'Dedicação Exclusiva (DE)';
-                    }
-                    $exp->setOtherInfo($this->truncate($outrasInfo, 1000));
+                    $exp->setIsExclusiveDedication(strtoupper((string)($vinculo['FLAG-DEDICACAO-EXCLUSIVA'] ?? 'NAO')) === 'SIM');
+                    $outrasInfo = (string)($vinculo['OUTRAS-INFORMACOES'] ?? '');
+                    $exp->setOtherInfo($this->truncate($outrasInfo));
 
                     $this->em->persist($exp);
                 }
@@ -376,7 +454,7 @@ class LattesXmlParserService
             $knowledgeArea->setMajorArea($this->truncate((string)($item['NOME-GRANDE-AREA-DO-CONHECIMENTO'] ?? ''), 150));
             $knowledgeArea->setArea($this->truncate((string)($item['NOME-DA-AREA-DO-CONHECIMENTO'] ?? ''), 150));
             $knowledgeArea->setSubArea($this->truncate((string)($item['NOME-DA-SUB-AREA-DO-CONHECIMENTO'] ?? ''), 150));
-            $knowledgeArea->setSpecialty($this->truncate((string)($item['NOME-DA-ESPECIALIDADE'] ?? ''), 150));
+            $knowledgeArea->setSpecialty($this->truncate((string)($item['NOME-DA-ESPECIALIDADE'] ?? ''), 255));
 
             $this->em->persist($knowledgeArea);
         }
@@ -392,7 +470,7 @@ class LattesXmlParserService
 
             $award = new Award();
             $award->setResearcher($researcher);
-            $award->setName($this->truncate($name, 255));
+            $award->setName($this->truncate($name));
             $award->setPromoterEntity($this->truncate((string)($item['NOME-DA-ENTIDADE-PROMOTORA'] ?? ''), 255));
             $year = (int)($item['ANO-DA-PREMIACAO'] ?? 0);
             if ($year > 0) $award->setYear($year);
@@ -428,7 +506,7 @@ class LattesXmlParserService
                     $production->setIssn($this->truncate((string)($details['ISSN'] ?? ''), 50));
                     $production->setVolume($this->truncate((string)($details['VOLUME'] ?? ''), 50));
                     $production->setIssue($this->truncate((string)($details['FASCICULO'] ?? ''), 50));
-                    $production->setPages($this->truncate((string)($details['PAGINA-INICIAL'] ?? '') . '-' . (string)($details['PAGINA-FINAL'] ?? ''), 50));
+                    $production->setPages($this->truncate($this->pageRange($details), 50));
                 }
 
                 $kws = $this->extractKeywords($article);
@@ -494,7 +572,7 @@ class LattesXmlParserService
                     $production->setPublisher($this->truncate((string)($details['NOME-DA-EDITORA'] ?? ''), 500));
                     $production->setIsbn($this->truncate((string)($details['ISBN'] ?? ''), 50));
                     $production->setJournalName($this->truncate((string)($details['TITULO-DO-LIVRO'] ?? ''), 500));
-                    $production->setPages($this->truncate((string)($details['PAGINA-INICIAL'] ?? '') . '-' . (string)($details['PAGINA-FINAL'] ?? ''), 50));
+                    $production->setPages($this->truncate($this->pageRange($details), 50));
                 }
 
                 $kws = $this->extractKeywords($chapter);
@@ -605,11 +683,13 @@ class LattesXmlParserService
         if (!$prodTec) return;
 
         foreach ($prodTec->children() as $tag => $item) {
-            $first = $item->children()[0] ?? null;
-            if (!$first) continue;
-
-            $title = trim((string)($first['TITULO'] ?? $first['TITULO-DO-TRABALHO-TECNICO'] ?? $first['TITULO-DO-SOFTWARE'] ?? ''));
-            if ($title === '') continue;
+            // Este bloco é só um agrupador: cada filho dele é um item, com dados básicos, autores e palavras-chave próprios.
+            if ((string)$tag === 'DEMAIS-TIPOS-DE-PRODUCAO-TECNICA') {
+                foreach ($item->children() as $subTag => $subItem) {
+                    $this->persistTechnicalItem($subItem, (string)$subTag, ProductionItem::TYPE_OUTRA_TECNICA, $researcher);
+                }
+                continue;
+            }
 
             $itemType = match ((string)$tag) {
                 'SOFTWARE' => ProductionItem::TYPE_SOFTWARE,
@@ -617,14 +697,97 @@ class LattesXmlParserService
                 'MARCA' => ProductionItem::TYPE_MARCA,
                 default => ProductionItem::TYPE_TRABALHO_TECNICO,
             };
+            $this->persistTechnicalItem($item, (string)$tag, $itemType, $researcher);
+        }
+    }
+
+    private function persistTechnicalItem(\SimpleXMLElement $item, string $tag, string $itemType, Researcher $researcher): void
+    {
+        $first = $item->children()[0] ?? null;
+        if (!$first) return;
+
+        $title = $this->firstAttribute($first, 'TITULO', 'TITULO-DO-TRABALHO-TECNICO', 'TITULO-DO-SOFTWARE', 'TITULO-DO-PRODUTO', 'TITULO-DO-PROCESSO');
+        if ($title === '') return;
+
+        $production = new ProductionItem();
+        $production->setResearcher($researcher);
+        $production->setItemType($itemType);
+        $production->setTitle($title);
+        $production->setNature($this->truncate($tag, 100));
+        $production->setYear((int)$this->firstAttribute($first, 'ANO', 'ANO-DESENVOLVIMENTO') ?: null);
+        $production->setDoi($this->truncate((string)($first['DOI'] ?? ''), 255));
+        $production->setLanguage($this->truncate((string)($first['IDIOMA'] ?? ''), 50));
+        $production->setCountry($this->truncate((string)($first['PAIS'] ?? ''), 100));
+
+        $kws = $this->extractKeywords($item);
+        if (!empty($kws)) {
+            $production->setKeywords($kws);
+        }
+
+        $this->parseAuthors($item, $production);
+        $this->em->persist($production);
+    }
+
+    /**
+     * Artigos aceitos e ainda não publicados. Ficam como `OUTRA`: não contam como artigo nem entram no ranking de periódicos
+     * até virem publicados no currículo.
+     */
+    private function parseAcceptedArticles(?\SimpleXMLElement $prodBib, Researcher $researcher): void
+    {
+        if (!$prodBib || !isset($prodBib->{'ARTIGOS-ACEITOS-PARA-PUBLICACAO'})) return;
+
+        foreach ($prodBib->{'ARTIGOS-ACEITOS-PARA-PUBLICACAO'}->{'ARTIGO-ACEITO-PARA-PUBLICACAO'} as $article) {
+            $basicData = $article->{'DADOS-BASICOS-DO-ARTIGO'} ?? null;
+            if (!$basicData) continue;
+
+            $title = trim((string)($basicData['TITULO-DO-ARTIGO'] ?? ''));
+            if ($title === '') continue;
+
+            $details = $article->{'DETALHAMENTO-DO-ARTIGO'} ?? null;
+            $production = new ProductionItem();
+            $production->setResearcher($researcher);
+            $production->setItemType(ProductionItem::TYPE_OUTRA);
+            $production->setNature('ARTIGO-ACEITO-PARA-PUBLICACAO');
+            $production->setTitle($title);
+            $production->setYear((int)($basicData['ANO-DO-ARTIGO'] ?? 0) ?: null);
+            $production->setDoi($this->truncate((string)($basicData['DOI'] ?? ''), 255));
+            $production->setLanguage($this->truncate((string)($basicData['IDIOMA'] ?? ''), 50));
+            $production->setCountry($this->truncate((string)($basicData['PAIS-DE-PUBLICACAO'] ?? ''), 100));
+            if ($details) {
+                $production->setJournalName($this->truncate((string)($details['TITULO-DO-PERIODICO-OU-REVISTA'] ?? ''), 500));
+                $production->setIssn($this->truncate((string)($details['ISSN'] ?? ''), 50));
+            }
+
+            $kws = $this->extractKeywords($article);
+            if (!empty($kws)) {
+                $production->setKeywords($kws);
+            }
+
+            $this->parseAuthors($article, $production);
+            $this->em->persist($production);
+        }
+    }
+
+    private function parseOtherWorks(?\SimpleXMLElement $otherProd, Researcher $researcher): void
+    {
+        if (!$otherProd) return;
+
+        foreach ($otherProd->{'DEMAIS-TRABALHOS'} as $item) {
+            $basicData = $item->{'DADOS-BASICOS-DE-DEMAIS-TRABALHOS'} ?? null;
+            if (!$basicData) continue;
+
+            $title = trim((string)($basicData['TITULO'] ?? ''));
+            if ($title === '') continue;
 
             $production = new ProductionItem();
             $production->setResearcher($researcher);
-            $production->setItemType($itemType);
+            $production->setItemType(ProductionItem::TYPE_OUTRA);
+            $production->setNature($this->truncate((string)($basicData['NATUREZA'] ?? 'DEMAIS-TRABALHOS'), 100));
             $production->setTitle($title);
-            $production->setNature($this->truncate((string)$tag, 100));
-            $production->setYear((int)($first['ANO'] ?? 0) ?: null);
-            $production->setDoi($this->truncate((string)($first['DOI'] ?? ''), 255));
+            $production->setYear((int)($basicData['ANO'] ?? 0) ?: null);
+            $production->setDoi($this->truncate((string)($basicData['DOI'] ?? ''), 255));
+            $production->setLanguage($this->truncate((string)($basicData['IDIOMA'] ?? ''), 50));
+            $production->setCountry($this->truncate((string)($basicData['PAIS'] ?? ''), 100));
 
             $kws = $this->extractKeywords($item);
             if (!empty($kws)) {
@@ -634,6 +797,16 @@ class LattesXmlParserService
             $this->parseAuthors($item, $production);
             $this->em->persist($production);
         }
+    }
+
+    /**
+     * "10-20", ou só o lado que existir. Sem nenhum, null em vez de um "-" solto.
+     */
+    private function pageRange(\SimpleXMLElement $details): ?string
+    {
+        $pages = array_filter([trim((string)($details['PAGINA-INICIAL'] ?? '')), trim((string)($details['PAGINA-FINAL'] ?? ''))], static fn (string $p): bool => $p !== '');
+
+        return $pages === [] ? null : implode('-', $pages);
     }
 
     private function extractKeywords(\SimpleXMLElement $item): array
@@ -713,7 +886,7 @@ class LattesXmlParserService
                 
                 $orientation->setOrientationType($type);
 
-                $orientation->setTitle($this->truncate((string)($basicData['TITULO'] ?? $basicData['TITULO-DO-TRABALHO'] ?? ''), 500));
+                $orientation->setTitle($this->truncate((string)($basicData['TITULO'] ?? $basicData['TITULO-DO-TRABALHO'] ?? '')));
                 $orientation->setYear((int)($basicData['ANO'] ?? 0) ?: null);
 
                 if ($details) {
@@ -781,7 +954,7 @@ class LattesXmlParserService
 
                 $orientation->setOrientationType($type);
 
-                $orientation->setTitle($this->truncate((string)($basicData['TITULO-DO-TRABALHO'] ?? $basicData['TITULO'] ?? ''), 500));
+                $orientation->setTitle($this->truncate((string)($basicData['TITULO-DO-TRABALHO'] ?? $basicData['TITULO'] ?? '')));
                 $orientation->setYear((int)($basicData['ANO'] ?? 0) ?: null);
 
                 if ($details) {
@@ -803,7 +976,7 @@ class LattesXmlParserService
         if (!$generalData || !isset($generalData->{'IDIOMAS'})) return;
 
         foreach ($generalData->{'IDIOMAS'}->{'IDIOMA'} as $item) {
-            $langName = trim((string)($item['IDIOMA'] ?? $item['DESCRICAO-DO-IDIOMA'] ?? ''));
+            $langName = $this->firstAttribute($item, 'DESCRICAO-DO-IDIOMA', 'IDIOMA');
             if ($langName === '') continue;
 
             $lang = new LanguageProficiency();
@@ -840,7 +1013,14 @@ class LattesXmlParserService
             if ($startYear > 0) $proj->setStartYear($startYear);
             if ($endYear > 0) $proj->setEndYear($endYear);
 
-            $proj->setDescription($this->truncate((string)($item['DESCRICAO-DO-PROJETO'] ?? ''), 2000));
+            $proj->setDescription($this->truncate((string)($item['DESCRICAO-DO-PROJETO'] ?? '')));
+
+            foreach ($item->{'EQUIPE-DO-PROJETO'}->{'INTEGRANTES-DO-PROJETO'} as $member) {
+                if ((string)$member['NRO-ID-CNPQ'] === $researcher->getIdLattes() && strtoupper((string)$member['FLAG-RESPONSAVEL']) === 'SIM') {
+                    $proj->setIsCoordinator(true);
+                    break;
+                }
+            }
 
             // Financiador
             if (isset($item->{'FINANCIADORES-DO-PROJETO'}->{'FINANCIADOR-DO-PROJETO'})) {
@@ -856,7 +1036,7 @@ class LattesXmlParserService
     {
         if (!$dadosComp) return;
 
-        $boardNodes = $dadosComp->xpath('.//PARTICIPACAO-EM-BANCA-TRABALHOS-CONCLUSAO/* | .//PARTICIPACAO-EM-BANCA-DE-EXAME-QUALIFICACAO | .//OUTRAS-BANCAS-JULGADORAS-OU-COMISSOES/*');
+        $boardNodes = $dadosComp->xpath('.//PARTICIPACAO-EM-BANCA-TRABALHOS-CONCLUSAO/* | .//PARTICIPACAO-EM-BANCA-DE-EXAME-QUALIFICACAO | .//PARTICIPACAO-EM-BANCA-JULGADORA/*');
         if (!$boardNodes) return;
 
         foreach ($boardNodes as $item) {
@@ -887,7 +1067,7 @@ class LattesXmlParserService
             $board->setBoardType($boardType);
 
             if ($basicData) {
-                $board->setTitle($this->truncate((string)($basicData['TITULO'] ?? $basicData['TITULO-DO-TRABALHO'] ?? ''), 500));
+                $board->setTitle($this->truncate((string)($basicData['TITULO'] ?? $basicData['TITULO-DO-TRABALHO'] ?? '')));
                 $year = (int)($basicData['ANO'] ?? 0);
                 if ($year > 0) $board->setYear($year);
             }
@@ -919,6 +1099,7 @@ class LattesXmlParserService
             }
 
             $eventType = match (true) {
+                str_starts_with($tag, 'OUTRAS-') => 'Evento Científico',
                 str_contains($tag, 'CONGRESSO') => 'Congresso',
                 str_contains($tag, 'SIMPOSIO') => 'Simpósio',
                 str_contains($tag, 'SEMINARIO') => 'Seminário',
@@ -954,7 +1135,7 @@ class LattesXmlParserService
             }
 
             $event->setEventName($this->truncate($eventName, 500));
-            $event->setPresentationTitle($this->truncate($presentationTitle, 500));
+            $event->setPresentationTitle($this->truncate($presentationTitle));
 
             if ($event->getEventName() !== '') {
                 $this->em->persist($event);
@@ -986,7 +1167,7 @@ class LattesXmlParserService
             $prod = new ProductionItem();
             $prod->setResearcher($researcher);
             $prod->setItemType(ProductionItem::TYPE_ARTISTICA);
-            $prod->setTitle($this->truncate($title, 500));
+            $prod->setTitle($this->truncate($title));
             $prod->setNature($this->truncate((string)($basicData['NATUREZA'] ?? (string)$tag), 100));
             
             $year = (int)($basicData['ANO'] ?? 0);

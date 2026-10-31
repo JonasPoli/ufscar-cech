@@ -103,6 +103,11 @@
                                 Trabalhos Técnicos (<span class="pill-count" data-initial="{{ techWorks|length }}">{{ techWorks|length }}</span>)
                             </button>
                         {% endif %}
+                        {% if otherTechnical|length > 0 %}
+                            <button type="button" onclick="setCategoryFilter('tecnico-demais')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="tecnico">
+                                Demais Produções Técnicas (<span class="pill-count" data-initial="{{ otherTechnical|length }}">{{ otherTechnical|length }}</span>)
+                            </button>
+                        {% endif %}
                         {% if software|length > 0 or patents|length > 0 %}
                             {% set innovCount = software|length + patents|length %}
                             <button type="button" onclick="setCategoryFilter('inovacao')" class="category-pill rounded-lg px-2.5 py-1 text-xs font-medium bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-all" data-category="inovacao">
@@ -164,13 +169,16 @@
                             Artigos em Periódicos ({{ articles|length }})
                         </h3>
                         <div class="space-y-3">
+                            {# Nome usual da família do periódico (só quando difere do que o docente escreveu): dica no nome e texto extra do filtro #}
+                            {% set usualNames = usualJournalNames|default({}) %}
                             {% for p in articles %}
                                 {% set indexedDbs = resolve_databases(p, p.issn) %}
                                 {% set dbAcronyms = [] %}
                                 {% for db in indexedDbs %}
                                     {% set dbAcronyms = dbAcronyms|merge([db.acronym|lower]) %}
                                 {% endfor %}
-                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 hover:border-sky-300 dark:hover:border-sky-700 transition-colors space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="artigo" data-year="{{ p.year }}" data-databases="{{ dbAcronyms|json_encode|e('html_attr') }}">
+                                {% set usualJournal = usualNames[p.id] ?? null %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 hover:border-sky-300 dark:hover:border-sky-700 transition-colors space-y-2 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="artigo" data-year="{{ p.year }}" data-databases="{{ dbAcronyms|json_encode|e('html_attr') }}"{% if usualJournal %} data-journal-canonical="{{ usualJournal|e('html_attr') }}"{% endif %}>
                                     <div class="flex flex-wrap items-center justify-between gap-2">
                                         <div class="flex flex-wrap items-center gap-2">
                                             {% if p.year %}
@@ -214,7 +222,7 @@
 
                                     <div class="text-xs text-slate-600 dark:text-slate-400 prod-details">
                                         {% if p.journalName %}
-                                            <span class="font-medium italic text-slate-800 dark:text-slate-200">{{ p.journalName }}</span>
+                                            <span class="font-medium italic text-slate-800 dark:text-slate-200"{% if usualJournal %} title="Nome usual do periódico: {{ usualJournal }}"{% endif %}>{{ p.journalName }}</span>
                                         {% endif %}
                                         {% if p.volume %} v. {{ p.volume }},{% endif %}
                                         {% if p.issue %} n. {{ p.issue }},{% endif %}
@@ -489,6 +497,61 @@
                                                 </span>
                                             {% endif %}
                                             <span class="text-[11px] font-bold text-teal-600 dark:text-teal-400 uppercase">{{ p.nature ?: 'Trabalho Técnico' }}</span>
+                                        </div>
+                                    </div>
+                                    <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>
+
+                                    {% if p.keywords|length > 0 %}
+                                        <div class="flex flex-wrap items-center gap-1.5 pt-0.5 pb-0.5">
+                                            <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1">
+                                                <sl-icon name="tags-fill" class="text-emerald-500 text-[11px]"></sl-icon> Palavras-chave:
+                                            </span>
+                                            {% for kw in p.keywords %}
+                                                <button type="button" onclick="filterByKeyword('{{ kw|e('js') }}')" class="rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60 px-2 py-0.5 text-[10px] font-medium transition-colors hover:scale-105" title="Filtrar produções por '{{ kw }}'">
+                                                    #{{ kw }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
+                                    {% if p.journalName %}<p class="text-xs text-slate-500 dark:text-slate-400 prod-details">{{ p.journalName }}</p>{% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 6b. Demais tipos de produção técnica do Lattes -->
+                {% set otherTechnicalLabels = {
+                    'APRESENTACAO-DE-TRABALHO': 'Apresentação de trabalho',
+                    'ORGANIZACAO-DE-EVENTO': 'Organização de evento',
+                    'PROGRAMA-DE-RADIO-OU-TV': 'Programa de rádio ou TV',
+                    'CURSO-DE-CURTA-DURACAO-MINISTRADO': 'Curso de curta duração ministrado',
+                    'OUTRA-PRODUCAO-TECNICA': 'Outra produção técnica',
+                    'RELATORIO-DE-PESQUISA': 'Relatório de pesquisa',
+                    'DESENVOLVIMENTO-DE-MATERIAL-DIDATICO-OU-INSTRUCIONAL': 'Material didático ou instrucional',
+                    'EDITORACAO': 'Editoração',
+                    'MIDIA-SOCIAL-WEBSITE-BLOG': 'Mídia social, site ou blog',
+                    'CARTA-MAPA-OU-SIMILAR': 'Carta, mapa ou similar',
+                    'MAQUETE': 'Maquete'
+                } %}
+                {% if otherTechnical|length > 0 %}
+                    <div class="space-y-4 prod-section" data-section-category="tecnico-demais">
+                        <h3 class="font-heading text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-2">
+                            <sl-icon name="gear" class="text-teal-600 dark:text-teal-400"></sl-icon>
+                            Demais Produções Técnicas ({{ otherTechnical|length }})
+                        </h3>
+                        <div class="space-y-3">
+                            {% for p in otherTechnical %}
+                                <div class="prod-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-1.5 bg-white/50 dark:bg-slate-900/50" data-has-doi="{{ p.doi ? '1' : '0' }}" data-category="tecnico" data-year="{{ p.year }}">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center gap-2">
+                                            {% if p.year %}
+                                                <span class="rounded-md bg-teal-100 px-2 py-0.5 text-[11px] font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                                                    {{ p.year }}
+                                                </span>
+                                            {% endif %}
+                                            <span class="text-[11px] font-bold text-teal-600 dark:text-teal-400 uppercase">{{ otherTechnicalLabels[p.nature] ?? p.nature }}</span>
                                         </div>
                                     </div>
                                     <h4 class="font-heading text-sm font-semibold text-slate-900 dark:text-white prod-title">{{ p.title }}</h4>

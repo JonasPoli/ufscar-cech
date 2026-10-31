@@ -63,6 +63,16 @@ class ImportPhotosCommand extends Command
                 }
             }
 
+            if (!empty($result['failed'])) {
+                $io->warning(sprintf(
+                    '%d arquivo(s) casaram com um docente mas não foram importados (não são imagem válida ou não puderam ser gravados): %s',
+                    count($result['failed']),
+                    implode(', ', array_slice($result['failed'], 0, 10))
+                ));
+
+                return Command::FAILURE;
+            }
+
             return Command::SUCCESS;
         } catch (\Throwable $e) {
             $io->error('Erro ao importar fotos: ' . $e->getMessage());

@@ -273,6 +273,9 @@
                                 {% if exp.agencyName or exp.unitName %}
                                     <p><strong class="font-semibold text-slate-700 dark:text-slate-200">Órgão/Unidade:</strong> {{ [exp.agencyName, exp.unitName]|filter(v => v is not empty)|join(' • ') }}</p>
                                 {% endif %}
+                                {% if exp.exclusiveDedication %}
+                                    <p><strong class="font-semibold text-slate-700 dark:text-slate-200">Regime:</strong> Dedicação Exclusiva (DE)</p>
+                                {% endif %}
                                 {% if exp.otherInfo %}
                                     <p class="italic text-slate-500 dark:text-slate-400 pt-1">{{ exp.otherInfo }}</p>
                                 {% endif %}

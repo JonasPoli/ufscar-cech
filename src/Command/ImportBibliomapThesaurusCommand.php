@@ -12,10 +12,19 @@ use Doctrine\DBAL\Connection;
 
 #[AsCommand(
     name: 'app:import:bibliomap',
-    description: 'Imports thesaurus data (Countries, States, Cities, Institutions, Authors) directly from the BiblioMap database'
+    description: 'Imports thesaurus data (Countries, States, Cities, Institutions, Authors) directly from the BiblioMap database. Erases those tables: refuses to run if they have data, unless --force (and a confirmation).'
 )]
-class ImportBibliomapThesaurusCommand extends Command
+class ImportBibliomapThesaurusCommand extends AbstractBibliomapImportCommand
 {
+    /** Tabelas que a importação limpa antes de copiar. */
+    private const DESTINATION_TABLES = [
+        'countries', 'country_name_variants',
+        'states', 'state_name_variants',
+        'cities', 'city_name_variants',
+        'institutions', 'institution_name_variants',
+        'author_identities', 'author_name_variants', 'author_external_identifiers',
+    ];
+
     public function __construct(
         private readonly Connection $conn
     ) {
@@ -24,6 +33,7 @@ class ImportBibliomapThesaurusCommand extends Command
 
     protected function configure(): void
     {
+        parent::configure();
         $this
             ->addOption('source-db', null, InputOption::VALUE_OPTIONAL, 'Source MySQL database name', 'bibliomap');
     }
@@ -34,6 +44,19 @@ class ImportBibliomapThesaurusCommand extends Command
         $io->title('Importing Thesaurus & Controlled Data from BiblioMap');
 
         $srcDb = $input->getOption('source-db');
+
+        // Antes de apagar qualquer coisa: com dados no destino, recusa; com --force, só depois de confirmar
+        $refused = $this->guardDestination(
+            $io,
+            $input,
+            $this->conn,
+            self::DESTINATION_TABLES,
+            'Perderiam-se países, estados, cidades, instituições e identidades de autores (com as variantes de nome), '
+            . 'inclusive o que foi curado à mão depois da primeira importação.'
+        );
+        if ($refused !== null) {
+            return $refused;
+        }
 
         try {
             $this->conn->executeStatement('SET FOREIGN_KEY_CHECKS=0');

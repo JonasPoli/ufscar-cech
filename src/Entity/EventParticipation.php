@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Support\LattesText;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
@@ -39,7 +40,7 @@ class EventParticipation
     public function getResearcher(): ?Researcher { return $this->researcher; }
     public function setResearcher(?Researcher $r): static { $this->researcher = $r; return $this; }
 
-    public function getEventName(): string { return $this->eventName; }
+    public function getEventName(): string { return (string)LattesText::display($this->eventName); }
     public function setEventName(string $v): static { $this->eventName = $v; return $this; }
 
     public function getEventType(): ?string { return $this->eventType; }
@@ -48,7 +49,7 @@ class EventParticipation
     public function getParticipationType(): ?string { return $this->participationType; }
     public function setParticipationType(?string $v): static { $this->participationType = $v; return $this; }
 
-    public function getPresentationTitle(): ?string { return $this->presentationTitle; }
+    public function getPresentationTitle(): ?string { return LattesText::display($this->presentationTitle); }
     public function setPresentationTitle(?string $v): static { $this->presentationTitle = $v; return $this; }
 
     public function getYear(): ?int { return $this->year; }

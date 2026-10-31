@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\OrientationRepository;
+use App\Support\LattesText;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: OrientationRepository::class)]
@@ -108,10 +109,10 @@ class Orientation
     public function getNature(): string { return $this->nature; }
     public function setNature(string $v): static { $this->nature = $v; return $this; }
 
-    public function getStudentName(): string { return $this->studentName; }
+    public function getStudentName(): string { return (string)LattesText::display($this->studentName); }
     public function setStudentName(string $v): static { $this->studentName = $v; return $this; }
 
-    public function getTitle(): ?string { return $this->title; }
+    public function getTitle(): ?string { return LattesText::display($this->title); }
     public function setTitle(?string $v): static { $this->title = $v; return $this; }
 
     public function getAlternativeTitle(): ?string { return $this->alternativeTitle; }
@@ -120,10 +121,10 @@ class Orientation
     public function getYear(): ?int { return $this->year; }
     public function setYear(?int $v): static { $this->year = $v; return $this; }
 
-    public function getInstitutionName(): ?string { return $this->institutionName; }
+    public function getInstitutionName(): ?string { return LattesText::display($this->institutionName); }
     public function setInstitutionName(?string $v): static { $this->institutionName = $v; return $this; }
 
-    public function getCourseName(): ?string { return $this->courseName; }
+    public function getCourseName(): ?string { return LattesText::display($this->courseName); }
     public function setCourseName(?string $v): static { $this->courseName = $v; return $this; }
 
     public function getHandleUrl(): ?string { return $this->handleUrl; }

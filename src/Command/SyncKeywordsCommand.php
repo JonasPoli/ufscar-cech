@@ -16,7 +16,7 @@ use Symfony\Component\Finder\Finder;
 
 #[AsCommand(
     name: 'app:sync:keywords',
-    description: 'Extrai as palavras-chave oficiais cadastradas pelos docentes nos XMLs do Lattes e atualiza o banco de dados'
+    description: 'Só para dados antigos: grava as palavras-chave dos XMLs do Lattes nas produções que ainda não as têm (o importador já as grava)'
 )]
 class SyncKeywordsCommand extends Command
 {
@@ -30,7 +30,15 @@ class SyncKeywordsCommand extends Command
     {
         $this
             ->addOption('dir', null, InputOption::VALUE_OPTIONAL, 'Diretório com os arquivos XML', 'docs/banco/CECH')
-            ->addOption('file', null, InputOption::VALUE_OPTIONAL, 'Arquivo XML específico para sincronizar');
+            ->addOption('file', null, InputOption::VALUE_OPTIONAL, 'Arquivo XML específico para sincronizar')
+            ->setHelp(<<<'HELP'
+                O importador de currículos (app:import:lattes) já grava as palavras-chave de cada produção. Este comando serve só
+                para dados importados antes disso. Ele casa a produção do banco com a do XML pelo título e, por segurança:
+
+                  - ignora título repetido dentro do mesmo docente (não há como saber qual item é qual);
+                  - não sobrescreve produção que já tem palavras-chave;
+                  - termina com erro se algum arquivo falhar.
+                HELP);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -71,13 +79,16 @@ class SyncKeywordsCommand extends Command
         $conn = $this->em->getConnection();
         $updatedCount = 0;
         $totalFoundKws = 0;
+        $ambiguousTitles = 0;
+        $alreadyHadKeywords = 0;
+        $unmatchedFiles = 0;
+        $errors = [];
 
         foreach ($files as $index => $file) {
             try {
                 $xml = @simplexml_load_file($file->getRealPath());
-                if (!$xml) {
-                    $progressBar->advance();
-                    continue;
+                if (!$xml || $xml->getName() !== 'CURRICULO-VITAE') {
+                    throw new \RuntimeException('XML inválido: não é um currículo Lattes (sem CURRICULO-VITAE).');
                 }
 
                 $idLattes = trim((string)($xml['NUMERO-IDENTIFICADOR'] ?? ''));
@@ -95,18 +106,14 @@ class SyncKeywordsCommand extends Command
                     }
                 }
 
-                if ($idLattes === '') {
-                    $progressBar->advance();
-                    continue;
-                }
-
                 // Find researcher ID in database
-                $researcherId = $conn->fetchOne(
+                $researcherId = $idLattes === '' ? false : $conn->fetchOne(
                     'SELECT id FROM researchers WHERE id_lattes = ? OR REPLACE(id_lattes, " ", "") = ? LIMIT 1',
                     [$idLattes, $idLattes]
                 );
 
                 if (!$researcherId) {
+                    $unmatchedFiles++;
                     $progressBar->advance();
                     continue;
                 }
@@ -117,44 +124,65 @@ class SyncKeywordsCommand extends Command
                     [$researcherId]
                 );
 
-                $titleToIdMap = [];
+                // Itens do banco por título normalizado: um título que aparece mais de uma vez não identifica um item só
+                $itemsByTitle = [];
                 $existingExtras = [];
                 foreach ($dbItems as $dbItem) {
                     $normTitle = $this->normalizeTitle($dbItem['title']);
-                    if ($normTitle !== '') {
-                        $titleToIdMap[$normTitle] = (int)$dbItem['id'];
-                        $existingExtras[(int)$dbItem['id']] = $dbItem['extra_data'] ? json_decode($dbItem['extra_data'], true) : [];
+                    if ($normTitle === '') {
+                        continue;
+                    }
+                    $itemsByTitle[$normTitle][] = (int)$dbItem['id'];
+                    $extra = $dbItem['extra_data'] ? json_decode($dbItem['extra_data'], true) : [];
+                    $existingExtras[(int)$dbItem['id']] = is_array($extra) ? $extra : [];
+                }
+
+                // Idem no XML: dois itens com o mesmo título e palavras-chave diferentes não dizem qual vai para qual item
+                $xmlProductions = [];
+                $this->collectXmlProductions($xml, $xmlProductions);
+                $keywordsByTitle = [];
+                foreach ($xmlProductions as $xp) {
+                    $normXpTitle = $this->normalizeTitle($xp['title']);
+                    if ($normXpTitle !== '') {
+                        $keywordsByTitle[$normXpTitle][] = $xp['keywords'];
                     }
                 }
 
-                // Extract all productions from XML and match with database
-                $xmlProductions = [];
-                $this->collectXmlProductions($xml, $xmlProductions);
-
-                foreach ($xmlProductions as $xp) {
-                    $normXpTitle = $this->normalizeTitle($xp['title']);
-                    if (!isset($titleToIdMap[$normXpTitle]) || empty($xp['keywords'])) {
+                foreach ($keywordsByTitle as $normXpTitle => $keywordLists) {
+                    $dbIds = $itemsByTitle[$normXpTitle] ?? [];
+                    if ($dbIds === []) {
+                        continue;
+                    }
+                    if (count($keywordLists) !== 1 || count($dbIds) !== 1) {
+                        $ambiguousTitles++;
                         continue;
                     }
 
-                    $prodId = $titleToIdMap[$normXpTitle];
-                    $currentExtra = $existingExtras[$prodId] ?? [];
-                    $currentKws = $currentExtra['keywords'] ?? [];
-
-                    // Check if update is needed
-                    if ($currentKws !== $xp['keywords']) {
-                        $currentExtra['keywords'] = $xp['keywords'];
-                        $conn->executeStatement(
-                            'UPDATE production_items SET extra_data = ? WHERE id = ?',
-                            [json_encode($currentExtra, JSON_UNESCAPED_UNICODE), $prodId]
-                        );
-                        $existingExtras[$prodId] = $currentExtra;
-                        $updatedCount++;
-                        $totalFoundKws += count($xp['keywords']);
+                    $keywords = $keywordLists[0];
+                    if ($keywords === []) {
+                        continue;
                     }
+
+                    $prodId = $dbIds[0];
+                    $currentExtra = $existingExtras[$prodId] ?? [];
+                    // Palavras-chave que já estão no item (gravadas pelo importador ou à mão) não são trocadas
+                    if (!empty($currentExtra['keywords'])) {
+                        $alreadyHadKeywords++;
+                        continue;
+                    }
+
+                    $currentExtra['keywords'] = $keywords;
+                    $conn->executeStatement(
+                        'UPDATE production_items SET extra_data = ? WHERE id = ?',
+                        [json_encode($currentExtra, JSON_UNESCAPED_UNICODE), $prodId]
+                    );
+                    $existingExtras[$prodId] = $currentExtra;
+                    $updatedCount++;
+                    $totalFoundKws += count($keywords);
                 }
             } catch (\Throwable $e) {
-                // Continue on error
+                // O erro não pode sumir: o arquivo seguinte continua, mas o comando termina com falha
+                $errors[] = sprintf('%s: %s', $file->getFilename(), $e->getMessage());
             }
 
             $progressBar->advance();
@@ -171,6 +199,23 @@ class SyncKeywordsCommand extends Command
             $updatedCount,
             $totalFoundKws
         ));
+
+        if ($alreadyHadKeywords > 0) {
+            $io->note(sprintf('%d produção(ões) já tinham palavras-chave e foram mantidas como estavam.', $alreadyHadKeywords));
+        }
+        if ($ambiguousTitles > 0) {
+            $io->note(sprintf('%d título(s) repetido(s) no mesmo docente foram ignorados: não dá para saber qual item recebe as palavras-chave.', $ambiguousTitles));
+        }
+        if ($unmatchedFiles > 0) {
+            $io->note(sprintf('%d arquivo(s) sem docente correspondente no banco foram ignorados.', $unmatchedFiles));
+        }
+
+        if ($errors !== []) {
+            $io->warning(sprintf('%d arquivo(s) apresentaram erro:', count($errors)));
+            $io->listing(array_slice($errors, 0, 10));
+
+            return Command::FAILURE;
+        }
 
         return Command::SUCCESS;
     }

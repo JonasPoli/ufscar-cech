@@ -7,16 +7,37 @@ use App\Entity\Orientation;
 use App\Entity\ProductionItem;
 use App\Entity\Researcher;
 use App\Service\Import\LattesHtmlParserService;
+use App\Service\Thesaurus\StringNormalizer;
+use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 class LattesHtmlParserServiceTest extends KernelTestCase
 {
     private LattesHtmlParserService $parser;
+    private Connection $conn;
+    private string $uniq;
+
+    /** @var string[] IDs Lattes criados pelos testes que usam sufixo único (saem no tearDown) */
+    private array $createdIds = [];
 
     protected function setUp(): void
     {
         self::bootKernel();
         $this->parser = static::getContainer()->get(LattesHtmlParserService::class);
+        $this->conn = static::getContainer()->get(Connection::class);
+        $this->uniq = 'qz' . bin2hex(random_bytes(4));
+    }
+
+    protected function tearDown(): void
+    {
+        foreach ($this->createdIds as $idLattes) {
+            // Produções, autores e demais filhos saem junto com o docente (ON DELETE CASCADE)
+            $this->conn->executeStatement('DELETE FROM researchers WHERE id_lattes = ?', [$idLattes]);
+        }
+        // O tesauro de autores ganha uma identidade por nome; as variantes saem em cascata
+        $this->conn->executeStatement('DELETE FROM author_identities WHERE normalized_name LIKE ?', ['%' . strtoupper($this->uniq) . '%']);
+
+        parent::tearDown();
     }
 
     public function testParseComprehensiveLattesHtml(): void
@@ -233,5 +254,147 @@ class LattesHtmlParserServiceTest extends KernelTestCase
 
         // Event participations check
         $this->assertGreaterThanOrEqual(1, count($researcher->getEventParticipations()));
+    }
+
+    public function testTwoArticlesWithTheSameAuthorBlockAreBothKept(): void
+    {
+        $idLattes = $this->newId();
+        // O bloco de autores passa de 100 caracteres: a assinatura antiga (tipo + 100 primeiros caracteres) fundia os dois
+        $authors = 'SILVA, A. B. ; SOUZA, C. D. ; OLIVEIRA, E. F. ; SANTOS, G. H. ; PEREIRA, I. J. ; LIMA, K. L. ; COSTA, M. N. ; ALVES, O. P. ;';
+        $html = $this->html($idLattes, "Docente Dedup {$this->uniq}", '
+            <div id="artigos-completos">
+                <div class="cita-artigos"><b><a name="ArtigosCompletos"></a>Artigos completos publicados em periódicos</b></div>
+                <div class="artigo-completo">
+                    <div class="layout-cell layout-cell-1"><b>1. </b></div>
+                    <div class="layout-cell layout-cell-11"><span class="transform">' . $authors . ' . Primeiro artigo sobre formação docente. REVISTA A, v. 1, p. 1-10, 2020.</span></div>
+                </div>
+                <div class="artigo-completo">
+                    <div class="layout-cell layout-cell-1"><b>2. </b></div>
+                    <div class="layout-cell layout-cell-11"><span class="transform">' . $authors . ' . Segundo artigo sobre avaliação escolar. REVISTA B, v. 2, p. 11-20, 2020.</span></div>
+                </div>
+            </div>');
+
+        $researcher = $this->parser->parseHtmlAndSave($html);
+
+        $titles = [];
+        foreach ($researcher->getProductions() as $production) {
+            $titles[] = $production->getTitle();
+        }
+        sort($titles);
+
+        // Cada artigo é visitado por mais de um seletor (div externa, célula, texto) e continua entrando uma vez só
+        $this->assertSame(
+            ['Primeiro artigo sobre formação docente', 'Segundo artigo sobre avaliação escolar'],
+            $titles
+        );
+    }
+
+    public function testSameTitleInDifferentYearsAreDifferentProductions(): void
+    {
+        $idLattes = $this->newId();
+        $html = $this->html($idLattes, "Docente Anos {$this->uniq}", '
+            <div id="artigos-completos">
+                <div class="cita-artigos"><b><a name="ArtigosCompletos"></a>Artigos completos publicados em periódicos</b></div>
+                <div class="artigo-completo">
+                    <div class="layout-cell layout-cell-1"><b>1. </b></div>
+                    <div class="layout-cell layout-cell-11"><span class="transform">SILVA, A. B. . Editorial. REVISTA A, v. 1, p. 1-2, 2021.</span></div>
+                </div>
+                <div class="artigo-completo">
+                    <div class="layout-cell layout-cell-1"><b>2. </b></div>
+                    <div class="layout-cell layout-cell-11"><span class="transform">SILVA, A. B. . Editorial. REVISTA A, v. 2, p. 1-2, 2022.</span></div>
+                </div>
+            </div>');
+
+        $researcher = $this->parser->parseHtmlAndSave($html);
+
+        $years = [];
+        foreach ($researcher->getProductions() as $production) {
+            $years[] = $production->getYear();
+        }
+        sort($years);
+        $this->assertSame([2021, 2022], $years);
+    }
+
+    public function testNewResearcherFromHtmlGetsASlugLikeTheXmlParser(): void
+    {
+        $idLattes = $this->newId();
+        $name = "Docente Slug {$this->uniq}";
+
+        $researcher = $this->parser->parseHtmlAndSave($this->html($idLattes, $name, ''));
+
+        $this->assertSame(StringNormalizer::slugify($name), $researcher->getSlug());
+        $this->assertNotSame('', $researcher->getSlug());
+        $this->assertSame($researcher->getSlug(), $this->conn->fetchOne('SELECT slug FROM researchers WHERE id_lattes = ?', [$idLattes]));
+    }
+
+    public function testResearcherWithoutNameInTheHtmlStillGetsASlug(): void
+    {
+        $idLattes = $this->newId();
+        $html = '<ul class="informacoes-autor"><li>Endereço para acessar este CV: http://lattes.cnpq.br/' . $idLattes . '</li></ul>';
+
+        $researcher = $this->parser->parseHtmlAndSave($html);
+
+        $this->assertSame('pesquisador-lattes-' . $idLattes, $researcher->getSlug());
+    }
+
+    public function testCitationNamesAreNotCutAtFiveHundredCharacters(): void
+    {
+        $idLattes = $this->newId();
+        $tokens = [];
+        for ($i = 1; $i <= 60; $i++) {
+            $tokens[] = sprintf('SOBRENOME%02d, N. %s', $i, strtoupper($this->uniq));
+        }
+        $citations = implode(';', $tokens);
+        $this->assertGreaterThan(1000, strlen($citations));
+
+        $html = $this->html($idLattes, "Docente Citações {$this->uniq}", '
+            <div class="layout-cell layout-cell-12 data-cell">
+                <div class="layout-cell layout-cell-3"><b>Nome em citações bibliográficas</b></div>
+                <div class="layout-cell layout-cell-9"><div class="layout-cell-pad-5">' . $citations . '</div></div>
+            </div>');
+
+        $researcher = $this->parser->parseHtmlAndSave($html);
+
+        $this->assertSame($citations, $researcher->getCitationNames());
+        $this->assertSame($citations, $this->conn->fetchOne('SELECT citation_names FROM researchers WHERE id_lattes = ?', [$idLattes]), 'A coluna é TEXT e guarda o texto inteiro.');
+    }
+
+    public function testRawLattesTextIsStoredAsItCameWithoutDecodingEntitiesOrCollapsingSpaces(): void
+    {
+        $idLattes = $this->newId();
+        // No HTML o texto vem como "Educa&amp;ccedil;&amp;atilde;o": depois do DOM sobram as entidades do Lattes, que são o dado
+        // bruto. Quem decodifica para exibir é App\Support\LattesText.
+        $html = $this->html($idLattes, "Docente Educa&amp;ccedil;&amp;atilde;o  {$this->uniq}   Espaços", '');
+
+        $researcher = $this->parser->parseHtmlAndSave($html);
+
+        $this->assertSame("Docente Educa&ccedil;&atilde;o  {$this->uniq}   Espaços", $researcher->getFullName());
+    }
+
+    public function testTheKIdFromTheSearchFormIsNotTakenAsTheLattesId(): void
+    {
+        $idLattes = $this->newId();
+        // A busca textual tem um campo `id` com o K-ID (10 caracteres); o ID Lattes tem 16 dígitos e vem do endereço do currículo
+        $html = '<form><input type="hidden" name="id" value="K4123456A7"></form>' . $this->html($idLattes, "Docente Kid {$this->uniq}", '');
+
+        $researcher = $this->parser->parseHtmlAndSave($html);
+
+        $this->assertSame($idLattes, $researcher->getIdLattes());
+    }
+
+    private function newId(): string
+    {
+        $id = '9944' . str_pad((string)random_int(0, 999999999999), 12, '0', STR_PAD_LEFT);
+        $this->createdIds[] = $id;
+
+        return $id;
+    }
+
+    /** Página mínima de currículo: nome, ID e o trecho informado dentro do corpo. */
+    private function html(string $idLattes, string $name, string $body): string
+    {
+        return '<div class="infpessoa"><h2 class="nome">' . $name . '</h2></div>'
+            . '<ul class="informacoes-autor"><li>Endereço para acessar este CV: http://lattes.cnpq.br/' . $idLattes . '</li></ul>'
+            . $body;
     }
 }

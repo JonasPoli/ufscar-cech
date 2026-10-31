@@ -4,10 +4,13 @@
  * Sincroniza qualquer currículo Lattes aberto no navegador diretamente com o CECH.
  * Exibe relatório detalhado no console F12 (console.table) e no toast flutuante.
  *
- * O endpoint de importação exige o token de sincronização da instalação.
- * Copie o script já preenchido em /admin/curriculum/new (ou cole o token abaixo).
+ * O endpoint de importação exige o token de sincronização da instalação e o endereço do portal.
+ * Copie o script já preenchido em /admin/curriculum/new (ou cole o token e o endereço abaixo).
  */
 const CECH_SYNC_TOKEN = 'COLE_AQUI_O_TOKEN_DE_SINCRONIZACAO';
+// Endereço do portal onde o administrador está logado, sem barra no final (ex.: https://cech.wab.com.br).
+// O script roda na página do Lattes, cujo `location.origin` é o do CNPq: sem este endereço ele nunca chega ao portal.
+const CECH_PORTAL_URL = 'COLE_AQUI_O_ENDERECO_DO_PORTAL';
 
 (async function importFullLattesToCech() {
     console.log('%c🚀 [CECH] INICIANDO SINCRONIZAÇÃO DO CURRÍCULO LATTES...', 'color: #0284c7; font-size: 14px; font-weight: bold;');
@@ -46,8 +49,11 @@ const CECH_SYNC_TOKEN = 'COLE_AQUI_O_TOKEN_DE_SINCRONIZACAO';
     toast.textContent = '⏳ Sincronizando com CECH... Tentando conectar ao servidor local...';
     document.body.appendChild(toast);
 
+    // O portal vem primeiro e os endereços locais ficam depois, para desenvolvimento. O origin da página do Lattes não
+    // entra: é o do CNPq, e o token não pode ir para lá. Sem o endereço do portal preenchido, só os locais são tentados.
+    const portalEndpoint = /^https?:\/\//.test(CECH_PORTAL_URL) ? CECH_PORTAL_URL.replace(/\/+$/, '') + '/api/curriculum/import-html' : null;
     const endpoints = Array.from(new Set([
-        window.location.origin + '/api/curriculum/import-html',
+        portalEndpoint,
         'https://127.0.0.1:8002/api/curriculum/import-html',
         'https://localhost:8002/api/curriculum/import-html',
         'http://127.0.0.1:8002/api/curriculum/import-html',
@@ -56,7 +62,7 @@ const CECH_SYNC_TOKEN = 'COLE_AQUI_O_TOKEN_DE_SINCRONIZACAO';
         'https://localhost:8000/api/curriculum/import-html',
         'http://127.0.0.1:8000/api/curriculum/import-html',
         'http://localhost:8000/api/curriculum/import-html'
-    ]));
+    ].filter(Boolean)));
 
     let success = false;
     let lastError = null;
@@ -145,6 +151,14 @@ const CECH_SYNC_TOKEN = 'COLE_AQUI_O_TOKEN_DE_SINCRONIZACAO';
                     + '<b>Total Orientações:</b> ' + (data.researcher.orientationsCount ?? 0) + '<br>'
                     + detailsHtml + '<br>'
                     + '<small style="opacity:0.7">Clique para fechar | F12 para ver a tabela completa no console</small>';
+                // Avisos do servidor e o que esta importação não atualiza (textContent: o texto não é HTML)
+                [].concat((data.warnings || []).map(w => '⚠️ ' + w), data.notice ? ['ℹ️ ' + data.notice] : []).forEach(msg => {
+                    const line = document.createElement('div');
+                    line.style.cssText = 'margin-top:8px; font-size:12px; opacity:0.9;';
+                    line.textContent = msg;
+                    toast.appendChild(line);
+                });
+                if (data.notice) console.log('ℹ️ Aviso:', data.notice);
                 toast.onclick = () => toast.remove();
                 setTimeout(() => { if (toast.parentNode) toast.remove(); }, 12000);
                 success = true;

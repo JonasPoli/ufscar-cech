@@ -9,6 +9,7 @@ use App\Entity\Researcher;
 use App\Repository\ProductionItemRepository;
 use App\Repository\ResearcherRepository;
 use App\Service\Export\CurriculumExporterService;
+use App\Service\Thesaurus\StringNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -61,6 +62,7 @@ class ProfessorController extends AbstractController
         return $this->render('pub/professor/show.html.twig', array_merge([
             'researcher' => $researcher,
             'kpiStats' => $kpiStats,
+            'usualJournalNames' => $this->usualJournalNames($researcher, $prods['articles']),
         ], $prods, $orients, $keywords));
     }
 
@@ -94,6 +96,7 @@ class ProfessorController extends AbstractController
             'productions' => $this->render('pub/professor/_tab_productions.html.twig', array_merge([
                 'researcher' => $researcher,
                 'kpiStats' => $kpiStats,
+                'usualJournalNames' => $this->usualJournalNames($researcher, $prods['articles']),
             ], $prods, $this->extractKeywords($researcher))),
             'orientations' => $this->render('pub/professor/_tab_orientations.html.twig', array_merge([
                 'researcher' => $researcher,
@@ -127,6 +130,7 @@ class ProfessorController extends AbstractController
         $newspaperTexts = [];
         $events = [];
         $techWorks = [];
+        $otherTechnical = [];
         $software = [];
         $patents = [];
         $artistic = [];
@@ -149,6 +153,7 @@ class ProfessorController extends AbstractController
                 ProductionItem::TYPE_TEXTO_JORNAL => $newspaperTexts[] = $prod,
                 ProductionItem::TYPE_EVENTO => $events[] = $prod,
                 ProductionItem::TYPE_TRABALHO_TECNICO => $techWorks[] = $prod,
+                ProductionItem::TYPE_OUTRA_TECNICA => $otherTechnical[] = $prod,
                 ProductionItem::TYPE_SOFTWARE => $software[] = $prod,
                 ProductionItem::TYPE_PATENTE, ProductionItem::TYPE_MARCA => $patents[] = $prod,
                 ProductionItem::TYPE_ARTISTICA => $artistic[] = $prod,
@@ -163,6 +168,7 @@ class ProfessorController extends AbstractController
         usort($newspaperTexts, $sortFn);
         usort($events, $sortFn);
         usort($techWorks, $sortFn);
+        usort($otherTechnical, $sortFn);
         usort($software, $sortFn);
         usort($patents, $sortFn);
         usort($artistic, $sortFn);
@@ -174,6 +180,7 @@ class ProfessorController extends AbstractController
             'Textos em Jornais/Revistas' => count($newspaperTexts),
             'Trabalhos em Eventos' => count($events),
             'Trabalhos Técnicos' => count($techWorks),
+            'Demais Produções Técnicas' => count($otherTechnical),
             'Inovação (Softwares & Patentes)' => count($software) + count($patents),
             'Produção Artística' => count($artistic),
             'Outras Produções' => count($otherProds),
@@ -268,6 +275,7 @@ class ProfessorController extends AbstractController
             'newspaperTexts' => $newspaperTexts,
             'events' => $events,
             'techWorks' => $techWorks,
+            'otherTechnical' => $otherTechnical,
             'software' => $software,
             'patents' => $patents,
             'artistic' => $artistic,
@@ -276,6 +284,39 @@ class ProfessorController extends AbstractController
             'categoryDistribution' => $categoryDistribution,
             'academicDatabases' => $academicDatabasesStats,
         ];
+    }
+
+    /**
+     * Nome usual do periódico dos artigos cujo nome, como o docente escreveu, é outro (id do item => nome usual).
+     *
+     * O nome do Lattes continua sendo o exibido (é o dado do docente) e o nome usual da família do periódico entra como
+     * dica e como texto extra do filtro da página, para a busca por «Cadernos de Pesquisa» achar o artigo escrito
+     * «Cad. Pesqui.». Uma consulta só por página; quando a diferença é só de caixa, acento ou pontuação, não há nome usual.
+     *
+     * @param ProductionItem[] $articles
+     * @return array<int, string>
+     */
+    private function usualJournalNames(Researcher $researcher, array $articles): array
+    {
+        if ($articles === [] || $researcher->getId() === null) {
+            return [];
+        }
+
+        $canonical = $this->productionRepo->getUsualJournalNamesForResearcher($researcher->getId());
+
+        $usual = [];
+        foreach ($articles as $article) {
+            $name = $canonical[$article->getId()] ?? null;
+            if ($name === null) {
+                continue;
+            }
+
+            if (StringNormalizer::normalizeString($name, true) !== StringNormalizer::normalizeString((string)$article->getJournalName(), true)) {
+                $usual[(int)$article->getId()] = $name;
+            }
+        }
+
+        return $usual;
     }
 
     /**
@@ -378,7 +419,7 @@ class ProfessorController extends AbstractController
             'booksCount' => count($prods['books']),
             'chaptersCount' => count($prods['chapters']),
             'eventsCount' => count($prods['events']),
-            'techCount' => count($prods['techWorks']) + count($prods['software']) + count($prods['patents']),
+            'techCount' => count($prods['techWorks']) + count($prods['otherTechnical']) + count($prods['software']) + count($prods['patents']),
             'newspaperCount' => count($prods['newspaperTexts']),
             'orientationsCompleted' => count($completedOrientations),
             'orientationsOngoing' => count($ongoingOrientations),
@@ -427,7 +468,7 @@ class ProfessorController extends AbstractController
                 ProductionItem::TYPE_LIVRO, ProductionItem::TYPE_CAPITULO => $productionTimeline['livros_capitulos'][$y]++,
                 ProductionItem::TYPE_TEXTO_JORNAL => $productionTimeline['jornais_revistas'][$y]++,
                 ProductionItem::TYPE_EVENTO => $productionTimeline['eventos'][$y]++,
-                ProductionItem::TYPE_TRABALHO_TECNICO, ProductionItem::TYPE_SOFTWARE, ProductionItem::TYPE_PATENTE, ProductionItem::TYPE_MARCA => $productionTimeline['tecnicos_inovacao'][$y]++,
+                ProductionItem::TYPE_TRABALHO_TECNICO, ProductionItem::TYPE_OUTRA_TECNICA, ProductionItem::TYPE_SOFTWARE, ProductionItem::TYPE_PATENTE, ProductionItem::TYPE_MARCA => $productionTimeline['tecnicos_inovacao'][$y]++,
                 default => $productionTimeline['outras'][$y]++,
             };
         }

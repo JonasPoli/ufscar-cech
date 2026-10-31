@@ -136,6 +136,9 @@
                                     {% if exp.contractType %}
                                         <p><strong class="font-semibold text-slate-700 dark:text-slate-200">Vínculo:</strong> {{ exp.contractType }} {% if exp.workloadHours %}({{ exp.workloadHours }}h semanais){% endif %}</p>
                                     {% endif %}
+                                    {% if exp.exclusiveDedication %}
+                                        <p><strong class="font-semibold text-slate-700 dark:text-slate-200">Regime:</strong> Dedicação Exclusiva (DE)</p>
+                                    {% endif %}
                                     {% if exp.otherInfo %}
                                         <p class="italic text-slate-500 dark:text-slate-400 pt-1">{{ exp.otherInfo }}</p>
                                     {% endif %}

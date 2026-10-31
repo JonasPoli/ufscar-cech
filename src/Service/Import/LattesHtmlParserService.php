@@ -16,6 +16,7 @@ use App\Entity\ResearchProject;
 use App\Entity\Researcher;
 use App\Service\Indexing\CurriculumNormalizationService;
 use App\Service\Thesaurus\AuthorThesaurusService;
+use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -54,18 +55,17 @@ class LattesHtmlParserService
     }
 
     /**
-     * Trunca uma string de forma segura em UTF-8 para evitar estouro de tamanho de colunas no banco de dados.
+     * Apara as pontas e corta só o que não cabe na coluna. O texto fica como veio do Lattes: entidades HTML e espaços
+     * repetidos não são mexidos aqui (regra de preservação do AGENTS.md); quem decodifica para exibir é LattesText.
      *
      * @param string|null $str String de entrada
-     * @param int $length Tamanho máximo permitido
-     * @return string|null String decodificada e truncada
+     * @param int|null $length Tamanho da coluna em caracteres; null para coluna TEXT
      */
-    private function truncate(?string $str, int $length): ?string
+    private function truncate(?string $str, ?int $length = null): ?string
     {
         if ($str === null) return null;
-        $str = html_entity_decode($str, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $str = trim(preg_replace('/\s+/', ' ', $str));
-        if (mb_strlen($str) <= $length) return $str;
+        $str = trim($str);
+        if ($length === null || mb_strlen($str) <= $length) return $str;
         return mb_substr($str, 0, $length);
     }
 
@@ -101,8 +101,9 @@ class LattesHtmlParserService
         if (!$idLattes) {
             $lattesNode = $xpath->query('//li[contains(text(), "Endereço para acessar este CV")] | //span[contains(text(), "lattes.cnpq.br")] | //input[@name="id"]')->item(0);
             if ($lattesNode) {
-                if ($lattesNode instanceof \DOMElement && $lattesNode->hasAttribute('value') && $lattesNode->getAttribute('value')) {
-                    $idLattes = $lattesNode->getAttribute('value');
+                // O campo `id` da busca textual traz o K-ID de 10 caracteres, que não é ID Lattes: só vale valor de 16 dígitos
+                if ($lattesNode instanceof \DOMElement && preg_match('~^\d{16}$~', trim($lattesNode->getAttribute('value'))) === 1) {
+                    $idLattes = trim($lattesNode->getAttribute('value'));
                 } elseif (preg_match('~\b(\d{16})\b~', $lattesNode->textContent, $m)) {
                     $idLattes = $m[1];
                 }
@@ -131,6 +132,12 @@ class LattesHtmlParserService
 
         if ($fullName && $fullName !== '') {
             $researcher->setFullName($this->truncate($fullName, 255));
+            // Como no parser XML: sem o slug, o docente novo fica com '' e a página pública dele não tem endereço.
+            $researcher->setSlug($this->em->getRepository(Researcher::class)->uniqueSlug(StringNormalizer::slugify($fullName), (string)$researcher->getIdLattes()));
+        }
+        // HTML sem o nome do docente: o slug vem do ID Lattes, em vez de ficar vazio
+        if ($researcher->getSlug() === '') {
+            $researcher->setSlug(StringNormalizer::slugify($researcher->getFullName() ?: "Pesquisador Lattes {$idLattes}"));
         }
 
         // 4. Extrair Resumo
@@ -156,7 +163,8 @@ class LattesHtmlParserService
         // 7. Dados de Identificação adicionais (Citação, Nacionalidade)
         $identNodes = $xpath->query('//div[contains(@class, "layout-cell-3") and .//b[contains(text(), "Nome em citações")]]/following-sibling::div[1]');
         if ($identNodes->length > 0) {
-            $researcher->setCitationNames($this->truncate($identNodes->item(0)->textContent, 500));
+            // A coluna é TEXT: sem corte (o limite antigo de 500 caracteres perdia nomes de quem tem muitas formas de citação)
+            $researcher->setCitationNames($this->truncate($identNodes->item(0)->textContent));
         }
         $nacNodes = $xpath->query('//div[contains(@class, "layout-cell-3") and .//b[contains(text(), "Nacionalidade")]]/following-sibling::div[1]');
         if ($nacNodes->length > 0) {
@@ -187,7 +195,12 @@ class LattesHtmlParserService
         // 9. Limpar coleções existentes para sincronização limpa e idempotente
         foreach ($researcher->getProductions() as $oldProd) $this->em->remove($oldProd);
         foreach ($researcher->getEducations() as $oldEdu) $this->em->remove($oldEdu);
-        foreach ($researcher->getOrientations() as $oldOrient) $this->em->remove($oldOrient);
+        // Teses vindas do Repositório UFSCar não estão no currículo: só as do Lattes são substituídas.
+        foreach ($researcher->getOrientations() as $oldOrient) {
+            if ($oldOrient->getSource() === Orientation::SOURCE_LATTES) {
+                $this->em->remove($oldOrient);
+            }
+        }
         foreach ($researcher->getAwards() as $oldAward) $this->em->remove($oldAward);
         foreach ($researcher->getKnowledgeAreas() as $oldKa) $this->em->remove($oldKa);
         foreach ($researcher->getProfessionalExperiences() as $oldPe) $this->em->remove($oldPe);
@@ -687,29 +700,8 @@ class LattesHtmlParserService
                 }
             }
 
-            // Deduplication signature
-            $cleanForSig = preg_replace('~^\d+[\.\)]\s*~', '', $rawText);
-            $sig = md5($itemType . '|' . mb_substr($cleanForSig, 0, 100));
-            if (isset($seenSignatures[$sig])) continue;
-            $seenSignatures[$sig] = true;
-
-            $item = new ProductionItem();
-            $item->setResearcher($researcher);
-            $item->setItemType($itemType);
-
             // Year
-            if (preg_match('~\b(19\d{2}|20\d{2})\b~', $rawText, $ym)) {
-                $item->setYear((int)$ym[1]);
-            }
-
-            // DOI
-            $doiNode = $xpath->query('.//a[contains(@href, "doi.org") or contains(@href, "dx.doi") or contains(@class, "icone-doi")]', $node)->item(0);
-            if ($doiNode) {
-                $href = $doiNode->getAttribute('href');
-                if (preg_match('~(10\.\d{4,9}/[-._;()/:A-Za-z0-9]+)~', $href, $dm)) {
-                    $item->setDoi($dm[1]);
-                }
-            }
+            $year = preg_match('~\b(19\d{2}|20\d{2})\b~', $rawText, $ym) ? (int)$ym[1] : null;
 
             // Extract Authors, Title, Details
             $clean = preg_replace('~^\d+[\.\)]\s*~', '', trim($rawText));
@@ -730,6 +722,34 @@ class LattesHtmlParserService
             }
 
             $title = preg_replace('~\.$~', '', $title);
+
+            // Assinatura para desduplicar: o mesmo item é visitado por mais de um seletor (a div externa, a célula, o texto),
+            // mas dois itens diferentes podem começar igual (o mesmo bloco de autores). Por isso o título e o ano entram junto.
+            $sig = md5(implode('|', [
+                $itemType,
+                (string)$year,
+                mb_strtolower($title !== '' ? $title : mb_substr($clean, 0, 100)),
+                mb_strtolower(mb_substr($authorsStr, 0, 100)),
+            ]));
+            if (isset($seenSignatures[$sig])) continue;
+            $seenSignatures[$sig] = true;
+
+            $item = new ProductionItem();
+            $item->setResearcher($researcher);
+            $item->setItemType($itemType);
+            if ($year !== null) {
+                $item->setYear($year);
+            }
+
+            // DOI
+            $doiNode = $xpath->query('.//a[contains(@href, "doi.org") or contains(@href, "dx.doi") or contains(@class, "icone-doi")]', $node)->item(0);
+            if ($doiNode) {
+                $href = $doiNode->getAttribute('href');
+                if (preg_match('~(10\.\d{4,9}/[-._;()/:A-Za-z0-9]+)~', $href, $dm)) {
+                    $item->setDoi($dm[1]);
+                }
+            }
+
             $item->setTitle($this->truncate($title ?: 'Produção Científica/Técnica', 500));
 
             // Extract specific details depending on Item Type

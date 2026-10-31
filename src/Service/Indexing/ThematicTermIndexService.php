@@ -312,7 +312,10 @@ class ThematicTermIndexService
     }
 
     /**
-     * Persiste os termos filtrados usando batch inserts diretos no MySQL.
+     * Grava o índice em tabelas de trabalho (`*_new`, criadas com `CREATE TABLE ... LIKE`) e só então as coloca no lugar das
+     * atuais, numa única instrução `RENAME TABLE`, que é atômica. Se a reconstrução falhar no meio, as tabelas atuais
+     * não foram tocadas e a busca temática continua com o índice anterior. Antes, `TRUNCATE` rodava no começo e uma falha
+     * deixava a busca vazia. Nenhuma migration é necessária: as tabelas de trabalho nascem e somem aqui.
      *
      * @param array<string, array{
      *     c: string,
@@ -327,11 +330,57 @@ class ThematicTermIndexService
     {
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
-        $conn->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
-        $conn->executeStatement('TRUNCATE TABLE thematic_term_researchers');
-        $conn->executeStatement('TRUNCATE TABLE thematic_terms');
-        $conn->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+        // Sobras de uma execução que caiu no meio (ou da troca que não chegou a apagar as tabelas antigas)
+        $this->dropWorkTables($conn);
+        $foreignKeys = $this->liveForeignKeyNames($conn);
 
+        $conn->executeStatement('CREATE TABLE thematic_terms_new LIKE thematic_terms');
+        $conn->executeStatement('CREATE TABLE thematic_term_researchers_new LIKE thematic_term_researchers');
+
+        try {
+            $stats = $this->fillWorkTables($termsMap, $conn, $now);
+
+            $conn->executeStatement(
+                'RENAME TABLE thematic_term_researchers TO thematic_term_researchers_old, thematic_terms TO thematic_terms_old, '
+                . 'thematic_terms_new TO thematic_terms, thematic_term_researchers_new TO thematic_term_researchers'
+            );
+        } catch (\Throwable $e) {
+            // As tabelas atuais não foram alteradas: só as de trabalho são descartadas.
+            try {
+                $this->dropWorkTables($conn);
+            } catch (\Throwable $dropError) {
+                $this->logger->warning('Não foi possível apagar as tabelas de trabalho do índice temático: ' . $dropError->getMessage());
+            }
+
+            throw $e;
+        }
+
+        // O índice novo já está no ar. Se algo abaixo falhar, só ficam sobras, que a próxima indexação apaga.
+        try {
+            $conn->executeStatement('DROP TABLE IF EXISTS thematic_term_researchers_old');
+            $conn->executeStatement('DROP TABLE IF EXISTS thematic_terms_old');
+            $this->restoreForeignKeyNames($conn, $foreignKeys);
+        } catch (\Throwable $e) {
+            $this->logger->warning('Índice temático trocado, mas a limpeza das tabelas antigas falhou: ' . $e->getMessage());
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Preenche `thematic_terms_new` e `thematic_term_researchers_new`, que ninguém lê ainda.
+     *
+     * @param array<string, array{
+     *     c: string,
+     *     t: string,
+     *     totalOccurrences: int,
+     *     researcherCount: int,
+     *     r: array<int, array{o: int, s: string}>
+     * }> $termsMap
+     * @return array{totalTerms: int, totalLinks: int}
+     */
+    private function fillWorkTables(array &$termsMap, Connection $conn, string $now): array
+    {
         $totalTerms = 0;
         $totalLinks = 0;
 
@@ -379,7 +428,7 @@ class ThematicTermIndexService
             }
 
             // Mapeia IDs gerados
-            $rows = $conn->fetchAllAssociative('SELECT id, normalized_term FROM thematic_terms');
+            $rows = $conn->fetchAllAssociative('SELECT id, normalized_term FROM thematic_terms_new');
             $normToId = [];
             foreach ($rows as $row) {
                 $normToId[(string)$row['normalized_term']] = (int)$row['id'];
@@ -419,9 +468,19 @@ class ThematicTermIndexService
 
             $conn->commit();
         } catch (\Throwable $e) {
-            $conn->rollBack();
+            if ($conn->isTransactionActive()) {
+                $conn->rollBack();
+            }
             throw $e;
         }
+
+        // `CREATE TABLE ... LIKE` não copia chaves estrangeiras. Elas entram depois da carga, com nomes provisórios (os
+        // nomes definitivos ainda são das tabelas atuais) e valem desde a troca: apagar docente ou termo continua em cascata.
+        $conn->executeStatement(
+            'ALTER TABLE thematic_term_researchers_new '
+            . 'ADD CONSTRAINT fk_thematic_new_term FOREIGN KEY (term_id) REFERENCES thematic_terms_new (id) ON DELETE CASCADE, '
+            . 'ADD CONSTRAINT fk_thematic_new_researcher FOREIGN KEY (researcher_id) REFERENCES researchers (id) ON DELETE CASCADE'
+        );
 
         return [
             'totalTerms' => $totalTerms,
@@ -430,9 +489,59 @@ class ThematicTermIndexService
     }
 
     /**
+     * Apaga as tabelas de trabalho e as antigas que uma execução anterior possa ter deixado. Os vínculos vão primeiro:
+     * a chave estrangeira impede apagar a tabela de termos enquanto ela é referenciada.
+     */
+    private function dropWorkTables(Connection $conn): void
+    {
+        foreach (['thematic_term_researchers_new', 'thematic_terms_new', 'thematic_term_researchers_old', 'thematic_terms_old'] as $table) {
+            $conn->executeStatement('DROP TABLE IF EXISTS ' . $table);
+        }
+    }
+
+    /**
+     * Nomes das chaves estrangeiras da tabela de vínculos que está no ar (as geradas pelo Doctrine nas migrations).
+     *
+     * @return array{term: string, researcher: string}
+     */
+    private function liveForeignKeyNames(Connection $conn): array
+    {
+        $rows = $conn->fetchAllKeyValue(
+            'SELECT REFERENCED_TABLE_NAME, CONSTRAINT_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS '
+            . 'WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+            ['thematic_term_researchers']
+        );
+
+        return [
+            'term' => (string)($rows['thematic_terms'] ?? 'FK_49F94465E2C35FC'),
+            'researcher' => (string)($rows['researchers'] ?? 'FK_49F94465C7533BDE'),
+        ];
+    }
+
+    /**
+     * Devolve às chaves estrangeiras os nomes que o Doctrine espera (as futuras migrations os citam). Os nomes só ficam
+     * livres depois que as tabelas antigas somem; as chaves provisórias saem por último, para a tabela nunca ficar sem chave.
+     *
+     * @param array{term: string, researcher: string} $names
+     */
+    private function restoreForeignKeyNames(Connection $conn, array $names): void
+    {
+        $conn->executeStatement(sprintf(
+            'ALTER TABLE thematic_term_researchers '
+            . 'ADD CONSTRAINT %s FOREIGN KEY (term_id) REFERENCES thematic_terms (id) ON DELETE CASCADE, '
+            . 'ADD CONSTRAINT %s FOREIGN KEY (researcher_id) REFERENCES researchers (id) ON DELETE CASCADE',
+            $conn->quoteIdentifier($names['term']),
+            $conn->quoteIdentifier($names['researcher'])
+        ));
+        $conn->executeStatement('ALTER TABLE thematic_term_researchers DROP FOREIGN KEY fk_thematic_new_term, DROP FOREIGN KEY fk_thematic_new_researcher');
+    }
+
+    /**
+     * Insere um lote em `thematic_terms_new`. Protegido para que os testes simulem uma falha no meio da carga.
+     *
      * @param array<int, array<string, mixed>> $batch
      */
-    private function insertBatchTerms(Connection $conn, array $batch): void
+    protected function insertBatchTerms(Connection $conn, array $batch): void
     {
         if (empty($batch)) {
             return;
@@ -440,7 +549,7 @@ class ThematicTermIndexService
 
         $cols = ['term', 'slug', 'normalized_term', 'total_occurrences', 'researcher_count', 'source_type', 'created_at', 'updated_at'];
         $rowPlaceholder = '(' . implode(',', array_fill(0, count($cols), '?')) . ')';
-        $sql = 'INSERT INTO thematic_terms (' . implode(',', $cols) . ') VALUES ';
+        $sql = 'INSERT INTO thematic_terms_new (' . implode(',', $cols) . ') VALUES ';
         $sql .= implode(',', array_fill(0, count($batch), $rowPlaceholder));
 
         $params = [];
@@ -454,9 +563,11 @@ class ThematicTermIndexService
     }
 
     /**
+     * Insere um lote em `thematic_term_researchers_new`. Protegido para que os testes simulem uma falha no meio da carga.
+     *
      * @param array<int, array<string, mixed>> $batch
      */
-    private function insertBatchLinks(Connection $conn, array $batch): void
+    protected function insertBatchLinks(Connection $conn, array $batch): void
     {
         if (empty($batch)) {
             return;
@@ -464,7 +575,7 @@ class ThematicTermIndexService
 
         $cols = ['term_id', 'researcher_id', 'occurrences', 'sample_titles', 'created_at'];
         $rowPlaceholder = '(' . implode(',', array_fill(0, count($cols), '?')) . ')';
-        $sql = 'INSERT INTO thematic_term_researchers (' . implode(',', $cols) . ') VALUES ';
+        $sql = 'INSERT INTO thematic_term_researchers_new (' . implode(',', $cols) . ') VALUES ';
         $sql .= implode(',', array_fill(0, count($batch), $rowPlaceholder));
 
         $params = [];

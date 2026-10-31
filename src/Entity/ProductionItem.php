@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\ProductionItemRepository;
 use App\Service\Thesaurus\StringNormalizer;
+use App\Support\LattesText;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -30,6 +31,8 @@ class ProductionItem
     public const TYPE_EVENTO = 'EVENTO';
     public const TYPE_TEXTO_JORNAL = 'TEXTO_JORNAL';
     public const TYPE_TRABALHO_TECNICO = 'TRABALHO_TECNICO';
+    /** Filhos de DEMAIS-TIPOS-DE-PRODUCAO-TECNICA no XML: apresentações, cursos ministrados, organização de eventos... */
+    public const TYPE_OUTRA_TECNICA = 'OUTRA_TECNICA';
     public const TYPE_SOFTWARE = 'SOFTWARE';
     public const TYPE_PATENTE = 'PATENTE';
     public const TYPE_MARCA = 'MARCA';
@@ -154,7 +157,7 @@ class ProductionItem
     public function getNature(): ?string { return $this->nature; }
     public function setNature(?string $v): static { $this->nature = $v; return $this; }
 
-    public function getTitle(): string { return $this->title; }
+    public function getTitle(): string { return (string)LattesText::display($this->title); }
     public function setTitle(string $v): static { $this->title = $v; return $this; }
 
     public function getYear(): ?int { return $this->year; }
@@ -187,7 +190,7 @@ class ProductionItem
     public function getCountry(): ?string { return $this->country; }
     public function setCountry(?string $v): static { $this->country = $v; return $this; }
 
-    public function getJournalName(): ?string { return $this->journalName; }
+    public function getJournalName(): ?string { return LattesText::display($this->journalName); }
     public function setJournalName(?string $v): static
     {
         $this->journalName = $v;
@@ -210,7 +213,7 @@ class ProductionItem
     public function getIndexedDatabases(): ?array { return $this->indexedDatabases; }
     public function setIndexedDatabases(?array $dbs): static { $this->indexedDatabases = $dbs; return $this; }
 
-    public function getPublisher(): ?string { return $this->publisher; }
+    public function getPublisher(): ?string { return LattesText::display($this->publisher); }
     public function setPublisher(?string $v): static { $this->publisher = $v; return $this; }
 
     public function getIsbn(): ?string { return $this->isbn; }
@@ -225,10 +228,10 @@ class ProductionItem
     public function getPages(): ?string { return $this->pages; }
     public function setPages(?string $v): static { $this->pages = $v; return $this; }
 
-    public function getEventName(): ?string { return $this->eventName; }
+    public function getEventName(): ?string { return LattesText::display($this->eventName); }
     public function setEventName(?string $v): static { $this->eventName = $v; return $this; }
 
-    public function getEventCity(): ?string { return $this->eventCity; }
+    public function getEventCity(): ?string { return LattesText::display($this->eventCity); }
     public function setEventCity(?string $v): static { $this->eventCity = $v; return $this; }
 
     public function isScientificDissemination(): bool { return $this->isScientificDissemination; }

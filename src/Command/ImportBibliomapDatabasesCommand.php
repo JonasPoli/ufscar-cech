@@ -12,10 +12,13 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'app:import-bibliomap-databases',
-    description: 'Import academic databases and journal relationships from the bibliomap database into CECH.'
+    description: 'Import academic databases and journal relationships from the bibliomap database into CECH. Erases academic_database and its journal links: refuses to run if they have data, unless --force (and a confirmation).'
 )]
-class ImportBibliomapDatabasesCommand extends Command
+class ImportBibliomapDatabasesCommand extends AbstractBibliomapImportCommand
 {
+    /** Tabelas que a importação limpa antes de copiar. */
+    private const DESTINATION_TABLES = ['academic_database', 'qualis_journal_academic_database'];
+
     public function __construct(
         private readonly EntityManagerInterface $em
     ) {
@@ -28,6 +31,18 @@ class ImportBibliomapDatabasesCommand extends Command
         $io->title('Importando Bases de Indexação Acadêmica do BiblioMap');
 
         $conn = $this->em->getConnection();
+
+        // Antes de ler ou apagar qualquer coisa: com dados no destino, recusa; com --force, só depois de confirmar
+        $refused = $this->guardDestination(
+            $io,
+            $input,
+            $conn,
+            self::DESTINATION_TABLES,
+            'Perderiam-se as bases de indexação cadastradas e os vínculos dos periódicos com elas (inclusive os replicados nas famílias).'
+        );
+        if ($refused !== null) {
+            return $refused;
+        }
 
         // 1. Fetch from bibliomap.academic_database
         $io->section('Lendo dados de bibliomap.academic_database...');

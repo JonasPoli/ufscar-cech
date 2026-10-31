@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Support\LattesText;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
@@ -49,7 +50,7 @@ class ResearchProject
     public function getResearcher(): ?Researcher { return $this->researcher; }
     public function setResearcher(?Researcher $r): static { $this->researcher = $r; return $this; }
 
-    public function getName(): string { return $this->name; }
+    public function getName(): string { return (string)LattesText::display($this->name); }
     public function setName(string $v): static { $this->name = $v; return $this; }
 
     public function getNature(): string { return $this->nature; }
@@ -64,10 +65,10 @@ class ResearchProject
     public function getEndYear(): ?int { return $this->endYear; }
     public function setEndYear(?int $v): static { $this->endYear = $v; return $this; }
 
-    public function getDescription(): ?string { return $this->description; }
+    public function getDescription(): ?string { return LattesText::display($this->description); }
     public function setDescription(?string $v): static { $this->description = $v; return $this; }
 
-    public function getAgencyFinancier(): ?string { return $this->agencyFinancier; }
+    public function getAgencyFinancier(): ?string { return LattesText::display($this->agencyFinancier); }
     public function setAgencyFinancier(?string $v): static { $this->agencyFinancier = $v; return $this; }
 
     public function isCoordinator(): bool { return $this->isCoordinator; }

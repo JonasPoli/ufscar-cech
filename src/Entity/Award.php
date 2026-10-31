@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\AwardRepository;
+use App\Support\LattesText;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: AwardRepository::class)]
@@ -33,13 +34,13 @@ class Award
     public function getResearcher(): ?Researcher { return $this->researcher; }
     public function setResearcher(?Researcher $r): static { $this->researcher = $r; return $this; }
 
-    public function getName(): string { return $this->name; }
+    public function getName(): string { return (string)LattesText::display($this->name); }
     public function setName(string $v): static { $this->name = $v; return $this; }
 
     public function getYear(): ?int { return $this->year; }
     public function setYear(?int $v): static { $this->year = $v; return $this; }
 
-    public function getPromoterEntity(): ?string { return $this->promoterEntity; }
+    public function getPromoterEntity(): ?string { return LattesText::display($this->promoterEntity); }
     public function setPromoterEntity(?string $v): static { $this->promoterEntity = $v; return $this; }
 
     public function __toString(): string { return $this->name; }

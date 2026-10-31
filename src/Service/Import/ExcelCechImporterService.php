@@ -14,6 +14,10 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
  * Utiliza o PhpSpreadsheet para ler as planilhas institucionais (.xlsx),
  * mapeando códigos de departamento (ex: 'LE', 'FIL', 'CS', 'DPsi'), nomes completos,
  * e-mails institucionais e datas de admissão, cruzando os dados com a base Lattes pelo ID de 16 dígitos.
+ *
+ * Só complementa os docentes (departamento, ORCID, anos de entrada e saída). O Qualis de um artigo vem sempre de
+ * `qualis_journals` (indexação de periódicos, `app:index:journals`): a planilha de produção, que trazia na coluna N os
+ * textos "Qualis" e "sem qualis", gravava esse lixo em `production_items.qualis` e não é mais lida.
  */
 class ExcelCechImporterService
 {
@@ -125,61 +129,6 @@ class ExcelCechImporterService
         }
 
         $this->em->flush();
-        return $count;
-    }
-
-    /**
-     * Imports Qualis and production metadata from "Producao cientifica-tecnologica-cultura.xlsx"
-     */
-    public function importProductionQualis(string $filePath): int
-    {
-        if (!file_exists($filePath)) {
-            throw new \InvalidArgumentException("File not found: {$filePath}");
-        }
-
-        $reader = IOFactory::createReaderForFile($filePath);
-        $reader->setReadDataOnly(true);
-        $spreadsheet = $reader->load($filePath);
-        $sheet = $spreadsheet->getActiveSheet();
-
-        $count = 0;
-        $conn = $this->em->getConnection();
-
-        $rowIterator = $sheet->getRowIterator();
-        $isFirst = true;
-
-        foreach ($rowIterator as $row) {
-            if ($isFirst) {
-                $isFirst = false;
-                continue;
-            }
-
-            $cellIterator = $row->getCellIterator('A', 'S');
-            $cellIterator->setIterateOnlyExistingCells(false);
-            $cells = [];
-            foreach ($cellIterator as $cell) {
-                $cells[] = $cell->getValue();
-            }
-
-            $idLattes = trim((string)($cells[6] ?? ''));
-            $qualis = trim((string)($cells[13] ?? ''));
-            $doi = trim((string)($cells[18] ?? ''));
-
-            if ($idLattes === '' || $qualis === '') continue;
-
-            if ($doi !== '') {
-                $cleanDoi = preg_replace('#^https?://(dx\.)?doi\.org/#i', '', $doi);
-                $conn->executeStatement(
-                    'UPDATE production_items p 
-                     JOIN researchers r ON p.researcher_id = r.id 
-                     SET p.qualis = ? 
-                     WHERE r.id_lattes = ? AND p.doi LIKE ? AND (p.qualis IS NULL OR p.qualis = \'\')',
-                    [$qualis, $idLattes, '%' . $cleanDoi . '%']
-                );
-                $count++;
-            }
-        }
-
         return $count;
     }
 }

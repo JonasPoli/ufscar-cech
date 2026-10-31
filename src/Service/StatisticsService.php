@@ -723,6 +723,7 @@ class StatisticsService
             'CAPITULO' => 'Capítulos de Livros',
             'EVENTO' => 'Trabalhos em Eventos',
             'TRABALHO_TECNICO' => 'Trabalhos Técnicos',
+            'OUTRA_TECNICA' => 'Demais Produções Técnicas',
             'TEXTO_JORNAL' => 'Textos em Jornais/Revistas',
             'PRODUCAO_ARTISTICA' => 'Produção Artística/Cultural',
             'SOFTWARE' => 'Softwares & Patentes',
@@ -741,13 +742,19 @@ class StatisticsService
 
         foreach ($rows as $r) {
             $y = (int)$r['year'];
-            $t = $r['itemType'];
+            // A coluna "Softwares & Patentes" reúne os três tipos.
+            $t = in_array($r['itemType'], ['PATENTE', 'MARCA'], true) ? 'SOFTWARE' : $r['itemType'];
             $cnt = (int)$r['total'];
             if (isset($matrix[$y][$t])) {
-                $matrix[$y][$t] = $cnt;
+                $matrix[$y][$t] += $cnt;
                 $columnTotals[$t] += $cnt;
                 $rowTotals[$y] += $cnt;
             }
+        }
+
+        // Só aparece depois que os currículos forem reimportados com esse tipo.
+        if ($columnTotals['OUTRA_TECNICA'] === 0) {
+            unset($typeLabels['OUTRA_TECNICA']);
         }
 
         return [

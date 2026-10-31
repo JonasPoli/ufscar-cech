@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Support\LattesText;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
@@ -42,13 +43,13 @@ class ExaminationBoard
     public function getBoardType(): string { return $this->boardType; }
     public function setBoardType(string $v): static { $this->boardType = $v; return $this; }
 
-    public function getCandidateName(): ?string { return $this->candidateName; }
+    public function getCandidateName(): ?string { return LattesText::display($this->candidateName); }
     public function setCandidateName(?string $v): static { $this->candidateName = $v; return $this; }
 
-    public function getTitle(): ?string { return $this->title; }
+    public function getTitle(): ?string { return LattesText::display($this->title); }
     public function setTitle(?string $v): static { $this->title = $v; return $this; }
 
-    public function getInstitutionName(): ?string { return $this->institutionName; }
+    public function getInstitutionName(): ?string { return LattesText::display($this->institutionName); }
     public function setInstitutionName(?string $v): static { $this->institutionName = $v; return $this; }
 
     public function getYear(): ?int { return $this->year; }

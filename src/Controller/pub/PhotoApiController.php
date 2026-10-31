@@ -4,6 +4,7 @@ namespace App\Controller\pub;
 
 use App\Repository\ResearcherRepository;
 use App\Service\Crawler\LattesPhotoCrawlerService;
+use App\Service\Import\CurriculumPostImportService;
 use App\Service\Import\LattesHtmlParserService;
 use App\Service\Security\SyncTokenProvider;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -83,7 +84,8 @@ class PhotoApiController extends AbstractController
     public function importHtml(
         Request $request,
         LattesHtmlParserService $htmlParser,
-        LattesPhotoCrawlerService $photoCrawler
+        LattesPhotoCrawlerService $photoCrawler,
+        CurriculumPostImportService $postImport
     ): JsonResponse {
         @ini_set('memory_limit', '512M');
         if (\function_exists('set_time_limit')) {
@@ -96,7 +98,13 @@ class PhotoApiController extends AbstractController
             return $this->failure('Token de sincronização ausente ou inválido.', Response::HTTP_UNAUTHORIZED);
         }
 
+        // O script manda o que achar na página (link do Lattes, `?id=` da busca textual ou o fim do caminho): só vale ID de
+        // 16 dígitos. Qualquer outra coisa, como o K-ID de 10 caracteres, viraria o ID Lattes de um docente novo; sem um ID
+        // válido o parser o procura no próprio HTML.
         $idLattes = trim((string)($data['idLattes'] ?? ''));
+        if (preg_match('/^\d{16}$/', $idLattes) !== 1) {
+            $idLattes = '';
+        }
         $html = (string)($data['html'] ?? '');
 
         if (!$html) {
@@ -104,33 +112,47 @@ class PhotoApiController extends AbstractController
         }
 
         try {
-            $existing = $idLattes ? $this->researcherRepo->findOneBy(['idLattes' => $idLattes]) : null;
+            $existing = $idLattes !== '' ? $this->researcherRepo->findOneBy(['idLattes' => $idLattes]) : null;
             $researcher = $htmlParser->parseHtmlAndSave($html, $existing, $idLattes ?: null);
-
-            // Se não tiver foto, buscar foto oficial automaticamente via K-ID
-            if (!$researcher->getPhotoUrl()) {
-                $photoCrawler->crawlPhoto($researcher);
-            }
-
-            $report = $htmlParser->getLastReport();
-
-            return new JsonResponse([
-                'success' => true,
-                'message' => $report['summaryMessage'] ?? "Currículo de {$researcher->getFullName()} importado e atualizado com sucesso!",
-                'researcher' => [
-                    'id' => $researcher->getId(),
-                    'fullName' => $researcher->getFullName(),
-                    'idLattes' => $researcher->getIdLattes(),
-                    'orcid' => $researcher->getOrcid(),
-                    'photoUrl' => $researcher->getPhotoUrl(),
-                    'productionsCount' => count($researcher->getProductions()),
-                    'orientationsCount' => count($researcher->getOrientations()),
-                ],
-                'report' => $report,
-            ]);
         } catch (\Throwable $e) {
             return $this->failure('Erro ao processar HTML: ' . $e->getMessage(), Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+
+        // O currículo já está gravado: o que falhar daqui para a frente vira aviso, não erro da importação
+        $warnings = [];
+
+        // Se não tiver foto, buscar foto oficial automaticamente via K-ID
+        if (!$researcher->getPhotoUrl()) {
+            try {
+                $photoCrawler->crawlPhoto($researcher);
+            } catch (\Throwable $e) {
+                $warnings[] = 'Importado, mas a foto oficial não pôde ser baixada: ' . $e->getMessage();
+            }
+        }
+
+        $report = $htmlParser->getLastReport();
+        $researcherData = [
+            'id' => $researcher->getId(),
+            'fullName' => $researcher->getFullName(),
+            'idLattes' => $researcher->getIdLattes(),
+            'orcid' => $researcher->getOrcid(),
+            'photoUrl' => $researcher->getPhotoUrl(),
+            'productionsCount' => count($researcher->getProductions()),
+            'orientationsCount' => count($researcher->getOrientations()),
+        ];
+
+        // Teses do Repositório e cache de páginas públicas, como nas telas do painel
+        $warnings = array_merge($warnings, $postImport->run([$researcher])['warnings']);
+
+        return new JsonResponse([
+            'success' => true,
+            'message' => ($report['summaryMessage'] ?? "Currículo de {$researcherData['fullName']} importado e atualizado com sucesso!")
+                . ' ' . CurriculumPostImportService::HEAVY_STEPS_NOTICE,
+            'notice' => CurriculumPostImportService::HEAVY_STEPS_NOTICE,
+            'warnings' => $warnings,
+            'researcher' => $researcherData,
+            'report' => $report,
+        ]);
     }
 
     /**

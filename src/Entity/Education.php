@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\EducationRepository;
+use App\Support\LattesText;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: EducationRepository::class)]
@@ -58,10 +59,10 @@ class Education
     public function getLevel(): string { return $this->level; }
     public function setLevel(string $v): static { $this->level = $v; return $this; }
 
-    public function getCourseName(): ?string { return $this->courseName; }
+    public function getCourseName(): ?string { return LattesText::display($this->courseName); }
     public function setCourseName(?string $v): static { $this->courseName = $v; return $this; }
 
-    public function getInstitutionName(): ?string { return $this->institutionName; }
+    public function getInstitutionName(): ?string { return LattesText::display($this->institutionName); }
     public function setInstitutionName(?string $v): static { $this->institutionName = $v; return $this; }
 
     public function getInstitution(): ?Institution { return $this->institution; }
@@ -73,10 +74,10 @@ class Education
     public function getEndYear(): ?int { return $this->endYear; }
     public function setEndYear(?int $v): static { $this->endYear = $v; return $this; }
 
-    public function getMonographTitle(): ?string { return $this->monographTitle; }
+    public function getMonographTitle(): ?string { return LattesText::display($this->monographTitle); }
     public function setMonographTitle(?string $v): static { $this->monographTitle = $v; return $this; }
 
-    public function getAdvisorName(): ?string { return $this->advisorName; }
+    public function getAdvisorName(): ?string { return LattesText::display($this->advisorName); }
     public function setAdvisorName(?string $v): static { $this->advisorName = $v; return $this; }
 
     public function getWorkloadHours(): ?int { return $this->workloadHours; }

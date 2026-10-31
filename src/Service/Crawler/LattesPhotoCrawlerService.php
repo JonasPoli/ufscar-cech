@@ -100,6 +100,23 @@ class LattesPhotoCrawlerService
      */
     public function storeBinaryPhoto(Researcher $researcher, string $binary): ?string
     {
+        $publicUrl = $this->writePhoto($researcher, $binary);
+        if ($publicUrl !== null) {
+            $this->em->flush();
+        }
+
+        return $publicUrl;
+    }
+
+    /**
+     * Valida e grava a foto e suas variantes WebP e aponta o pesquisador para ela, sem dar flush: quem chama decide
+     * quando gravar (o lote de `importFromDirectory` faz um flush só). É daqui que todo caminho de foto passa, para
+     * que `-256.webp` exista sempre e que um arquivo que não se grava nunca conte como importado.
+     *
+     * @return string|null URL pública salva, ou null se o conteúdo não for uma imagem suportada ou o arquivo não puder ser gravado
+     */
+    private function writePhoto(Researcher $researcher, string $binary): ?string
+    {
         $idLattes = $researcher->getIdLattes();
         if (empty($idLattes) || strlen($binary) < self::MIN_PHOTO_BYTES) {
             return null;
@@ -136,7 +153,6 @@ class LattesPhotoCrawlerService
 
         $publicUrl = '/uploads/photos/' . $filename;
         $researcher->setPhotoUrl($publicUrl);
-        $this->em->flush();
 
         return $publicUrl;
     }
@@ -193,6 +209,9 @@ class LattesPhotoCrawlerService
      * 1. Exact 16-digit ID Lattes: 1012351287140134.jpg
      * 2. Slug: roniberto-morato-do-amaral.jpg
      * 3. Normalized full name: roniberto_morato_do_amaral.jpg
+     *
+     * @return array{imported: int, unmatched: int, failed: string[], matched: array<int, array{researcher: string, idLattes: string, file: string}>}
+     *         `failed` lista os arquivos que casaram com um docente mas não puderam ser importados (não são imagem ou não foram gravados)
      */
     public function importFromDirectory(string $sourceDir): array
     {
@@ -212,7 +231,8 @@ class LattesPhotoCrawlerService
         }
 
         $imported = 0;
-        $failed = 0;
+        $unmatched = 0;
+        $failed = [];
         $matched = [];
 
         $files = scandir($sourceDir);
@@ -247,30 +267,36 @@ class LattesPhotoCrawlerService
                 }
             }
 
-            if ($targetResearcher) {
-                $destFilename = $targetResearcher->getIdLattes() . '.' . $ext;
-                $destPath = $this->photosDir . '/' . $destFilename;
-                copy($sourcePath, $destPath);
-                $this->generateWebpVariants($destPath);
-
-                $publicUrl = '/uploads/photos/' . $destFilename;
-                $targetResearcher->setPhotoUrl($publicUrl);
-                $matched[] = [
-                    'researcher' => $targetResearcher->getFullName(),
-                    'idLattes' => $targetResearcher->getIdLattes(),
-                    'file' => $file,
-                ];
-                $imported++;
-            } else {
-                $failed++;
+            if (!$targetResearcher) {
+                $unmatched++;
+                continue;
             }
+
+            // Mesmo caminho do upload e do crawler: confere o conteúdo, converte WebP para JPEG, grava a foto e as
+            // variantes (inclusive `-256.webp`) e só então aponta o docente para ela. Arquivo ilegível, que não é imagem
+            // ou que não se consegue gravar não conta como importado.
+            $binary = @file_get_contents($sourcePath);
+            $publicUrl = is_string($binary) ? $this->writePhoto($targetResearcher, $binary) : null;
+            if ($publicUrl === null) {
+                $failed[] = $file;
+                $this->logger?->warning(sprintf('Foto %s não importada para %s (%s): arquivo inválido ou não gravável.', $file, $targetResearcher->getFullName(), $targetResearcher->getIdLattes()));
+                continue;
+            }
+
+            $matched[] = [
+                'researcher' => $targetResearcher->getFullName(),
+                'idLattes' => $targetResearcher->getIdLattes(),
+                'file' => $file,
+            ];
+            $imported++;
         }
 
         $this->em->flush();
 
         return [
             'imported' => $imported,
-            'unmatched' => $failed,
+            'unmatched' => $unmatched,
+            'failed' => $failed,
             'matched' => $matched,
         ];
     }

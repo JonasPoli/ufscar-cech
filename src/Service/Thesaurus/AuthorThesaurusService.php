@@ -232,16 +232,33 @@ class AuthorThesaurusService
     }
 
     /**
-     * Cleans and completely rebuilds the author thesaurus from existing CECH Researchers
-     * and their Production Authors.
+     * Apaga o tesauro e o refaz do zero a partir dos docentes do CECH e dos autores das produções.
+     *
+     * Destrói as fusões e correções feitas à mão e zera `production_authors.author_identity_id`: depois, rode
+     * `app:curriculum:normalize` para religar as produções às identidades. Para só completar o tesauro, use
+     * {@see syncAuthorThesaurus()}.
      *
      * @return array{researchersProcessed: int, identitiesCreated: int, variantsCreated: int, coauthorsProcessed: int}
      */
     public function rebuildAuthorThesaurus(): array
     {
-        // 1. Wipe old polluted author tables
         $this->truncateAuthorThesaurus();
 
+        return $this->syncAuthorThesaurus();
+    }
+
+    /**
+     * Completa o tesauro com os docentes do CECH e os autores das produções, sem apagar nada.
+     *
+     * O que já está gravado (identidades, variantes, ORCID, inclusive as fusões e correções manuais) entra nos mapas
+     * de busca antes de começar: nada é recriado nem duplicado, e `production_authors.author_identity_id` não é mexido.
+     * Rodar de novo não recria identidades. Só a grafia de citação em ordem ABNT ("SILVA, J.") de um coautor novo pode
+     * ficar para a segunda passada, porque a primeira a reconhece em memória, sem gravá-la como variante.
+     *
+     * @return array{researchersProcessed: int, identitiesCreated: int, variantsCreated: int, coauthorsProcessed: int}
+     */
+    public function syncAuthorThesaurus(): array
+    {
         $researcherRows = $this->conn->fetchAllAssociative('
             SELECT id, full_name, slug, id_lattes, orcid, citation_names 
             FROM researchers 
@@ -250,12 +267,27 @@ class AuthorThesaurusService
 
         $identityMap = []; // normalized_name => identity_id
         $variantsMap = []; // normalized_variant => identity_id
+        $withOrcid = [];   // identity_id => true, para as identidades que já têm ORCID
         $identitiesCount = 0;
         $variantsCount = 0;
 
+        // O que já existe vem do banco; em caso de nome repetido vale a identidade mais antiga (a que o findOneBy acharia)
+        foreach ($this->conn->executeQuery('SELECT id, normalized_name FROM author_identities ORDER BY id ASC')->iterateAssociative() as $row) {
+            $identityMap[(string)$row['normalized_name']] ??= (int)$row['id'];
+        }
+        foreach ($this->conn->executeQuery('SELECT normalized_name, author_identity_id FROM author_name_variants ORDER BY id ASC')->iterateAssociative() as $row) {
+            $variantsMap[(string)$row['normalized_name']] ??= (int)$row['author_identity_id'];
+        }
+        foreach ($this->conn->executeQuery('SELECT DISTINCT author_identity_id FROM author_external_identifiers WHERE provider = \'orcid\'')->iterateAssociative() as $row) {
+            $withOrcid[(int)$row['author_identity_id']] = true;
+        }
+        // Só as variantes que já estavam gravadas: o nome de um docente que virou variante de outra identidade (fusão
+        // manual) não pode gerar uma identidade nova. As variantes criadas nesta execução não entram aqui.
+        $knownVariants = $variantsMap;
+
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
-        // 2. Register all CECH Researchers as Master AuthorIdentities
+        // 1. Register all CECH Researchers as Master AuthorIdentities
         foreach ($researcherRows as $r) {
             $fullName = trim((string)($r['full_name'] ?? ''));
             if ($fullName === '') continue;
@@ -265,8 +297,9 @@ class AuthorThesaurusService
             if ($normName === '') continue;
             $normName = mb_substr($normName, 0, 250, 'UTF-8');
 
-            // Check if identity already exists
-            if (!isset($identityMap[$normName])) {
+            // A identidade pode já existir, ou o nome já ser variante de outra identidade (fusão feita à mão)
+            $identityId = $identityMap[$normName] ?? $knownVariants[$normName] ?? null;
+            if ($identityId === null) {
                 $this->conn->insert('author_identities', [
                     'preferred_name' => $fullName,
                     'normalized_name' => $normName,
@@ -278,8 +311,6 @@ class AuthorThesaurusService
                 $identityId = (int)$this->conn->lastInsertId();
                 $identityMap[$normName] = $identityId;
                 $identitiesCount++;
-            } else {
-                $identityId = $identityMap[$normName];
             }
 
             // Register researcher's full name as a variant
@@ -326,19 +357,20 @@ class AuthorThesaurusService
                 }
             }
 
-            // Register ORCID if present
+            // Register ORCID if present (uma identidade que já tem ORCID, inclusive o corrigido à mão, fica como está)
             $orcid = trim((string)($r['orcid'] ?? ''));
-            if ($orcid !== '') {
+            if ($orcid !== '' && !isset($withOrcid[$identityId])) {
                 $this->conn->insert('author_external_identifiers', [
                     'author_identity_id' => $identityId,
                     'provider' => 'orcid',
                     'identifier' => mb_substr($orcid, 0, 50, 'UTF-8'),
                     'created_at' => $now,
                 ]);
+                $withOrcid[$identityId] = true;
             }
         }
 
-        // 3. Process Production Authors
+        // 2. Process Production Authors
         $prodAuthors = $this->conn->fetchAllAssociative('
             SELECT DISTINCT author_name, citation_name, id_lattes 
             FROM production_authors 
