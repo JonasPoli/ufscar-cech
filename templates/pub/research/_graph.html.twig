@@ -17,7 +17,10 @@
          data-cech-graph data-src="{{ src }}" data-pair-src="{{ pairSrc }}">
     <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
-            <h2 id="{{ graphId }}-title" class="font-heading text-lg font-bold text-slate-900 dark:text-white">{{ heading|default('Rede de coautoria') }}</h2>
+            <h2 id="{{ graphId }}-title" class="flex items-center gap-2.5 font-heading text-xl font-bold text-slate-900 dark:text-white">
+                <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-cech-blue to-cech-teal text-white shadow-sm" aria-hidden="true"><sl-icon name="diagram-3"></sl-icon></span>
+                {{ heading|default('Rede de coautoria') }}
+            </h2>
             <p class="text-xs text-slate-500 dark:text-slate-400">Clique numa pessoa para ver sua vizinhança e numa ligação para ver as publicações em comum.</p>
         </div>
         {% if limits is defined and limits %}
@@ -55,26 +58,24 @@
     </div>
 
     {% if pairs is defined and pairs %}
-        <div class="space-y-2">
-            <h3 class="text-sm font-bold text-slate-800 dark:text-slate-100">Pares que mais publicam juntos{% if totalPairs is defined and totalPairs %} <span class="font-normal text-slate-500 dark:text-slate-400">({{ totalPairs|number_format(0, ',', '.') }} pares no total)</span>{% endif %}</h3>
-            <ul class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {% import 'pub/research/_macros.html.twig' as rs %}
+        <div class="space-y-3" data-graph-pairs>
+            <div class="flex flex-wrap items-end justify-between gap-2">
+                <h3 class="font-heading text-base font-bold text-slate-900 dark:text-white" data-graph-pairs-title>
+                    Pares que mais publicam juntos{% if totalPairs is defined and totalPairs %} <span class="text-sm font-normal text-slate-500 dark:text-slate-400">({{ totalPairs|number_format(0, ',', '.') }} pares no total)</span>{% endif %}
+                </h3>
+                <button type="button" data-graph-pairs-reset hidden class="inline-flex items-center gap-1 text-xs font-semibold text-cech-blue hover:underline dark:text-cech-teal">
+                    <sl-icon name="x-circle" aria-hidden="true"></sl-icon> Mostrar todos os pares
+                </button>
+            </div>
+            <ol class="grid grid-cols-1 gap-3 md:grid-cols-2" data-graph-pairs-list>
                 {% for pair in pairs %}
-                    <li>
-                        <button type="button" data-graph-pair data-a="{{ pair.a.id }}" data-b="{{ pair.b.id }}" class="w-full text-left rounded-2xl border border-slate-200 bg-white px-4 py-3 hover:border-sky-500 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900 flex items-center justify-between gap-3">
-                            <span class="min-w-0">
-                                <span class="block text-sm font-semibold text-slate-900 dark:text-white truncate">{{ pair.a.name }}</span>
-                                <span class="block text-xs text-slate-500 dark:text-slate-400 truncate">com {{ pair.b.name }}</span>
-                            </span>
-                            <span class="shrink-0 text-right">
-                                <span class="block font-heading text-lg font-bold text-sky-700 dark:text-sky-400">{{ pair.weight }}</span>
-                                <span class="block text-[11px] text-slate-500 dark:text-slate-400">{{ pair.weight == 1 ? 'publicação' : 'publicações' }}</span>
-                            </span>
-                        </button>
-                    </li>
+                    <li>{{ rs.pair_card(pair, loop.index) }}</li>
                 {% endfor %}
-            </ul>
+            </ol>
+            <ol class="grid grid-cols-1 gap-3 md:grid-cols-2" data-graph-pairs-focus hidden aria-live="polite"></ol>
             {% if morePairs is defined and morePairs %}
-                <a href="{{ morePairs }}" class="inline-flex items-center gap-1 rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Ver mais pares <sl-icon name="chevron-down"></sl-icon></a>
+                <a href="{{ morePairs }}" data-graph-pairs-more class="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-cech-teal hover:text-cech-blue dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">Ver mais pares <sl-icon name="chevron-down" aria-hidden="true"></sl-icon></a>
             {% endif %}
         </div>
     {% endif %}

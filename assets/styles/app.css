@@ -395,3 +395,8 @@ html.a11y-text-scaled .inst-layout { display: block; }
     -webkit-hyphens: auto;
     hyphens: auto;
 }
+
+/* O atributo hidden sempre esconde, mesmo com uma classe de display do Tailwind (grid, flex, inline-flex…) no mesmo elemento */
+[hidden]:not([hidden="until-found"]) {
+    display: none !important;
+}

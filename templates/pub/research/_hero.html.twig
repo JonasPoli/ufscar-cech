@@ -1,0 +1,63 @@
+{#
+    Capa das páginas da pesquisa (busca, coautorias, explorar, projetos, novidades), nas cores da marca CECH.
+    Uso com embed, para pôr conteúdo dentro da capa (ex.: o formulário de busca):
+
+    {% embed 'pub/research/_hero.html.twig' with {eyebrow: '…', icon: 'compass', title: 'Encontre', highlight: 'especialistas', subtitle: '…', stats: [...]} only %}
+        {% block hero_after %}…{% endblock %}
+    {% endembed %}
+
+    stats: lista de {value, label, icon}
+    trail: lista opcional de {label, url} para a trilha de navegação
+#}
+<section class="relative isolate overflow-hidden border-b border-slate-200/70 dark:border-white/10">
+    <div class="absolute inset-0 -z-10 bg-gradient-to-br from-cech-blue-light via-white to-cech-teal-light dark:from-slate-900 dark:via-slate-950 dark:to-slate-900" aria-hidden="true"></div>
+    <div class="absolute inset-0 -z-10 bg-[radial-gradient(#3C7497_1px,transparent_1px)] [background-size:22px_22px] opacity-[0.10] dark:opacity-[0.18]" aria-hidden="true"></div>
+    <div class="absolute -right-24 -top-28 -z-10 h-80 w-80 rounded-full bg-cech-teal/25 blur-3xl dark:bg-cech-teal/15" aria-hidden="true"></div>
+    <div class="absolute -bottom-32 -left-16 -z-10 h-80 w-80 rounded-full bg-cech-blue/20 blur-3xl dark:bg-cech-blue/20" aria-hidden="true"></div>
+    <div class="absolute right-1/3 top-10 -z-10 h-40 w-40 rounded-full bg-cech-red/10 blur-3xl" aria-hidden="true"></div>
+
+    <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+        {% if trail is defined and trail %}
+            <nav class="mb-5 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400" aria-label="Trilha">
+                {% for t in trail %}
+                    {% if t.url is defined and t.url %}
+                        <a href="{{ t.url }}" class="hover:text-cech-blue dark:hover:text-cech-teal">{{ t.label }}</a>
+                        <sl-icon name="chevron-right" class="text-[10px]" aria-hidden="true"></sl-icon>
+                    {% else %}
+                        <span class="font-medium text-slate-800 dark:text-slate-200" aria-current="page">{{ t.label }}</span>
+                    {% endif %}
+                {% endfor %}
+            </nav>
+        {% endif %}
+
+        <div class="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+            <div class="max-w-3xl space-y-4">
+                <span class="inline-flex items-center gap-2 rounded-full bg-white/80 py-1 pl-1 pr-3.5 text-[11px] font-bold uppercase tracking-wider text-cech-blue shadow-sm ring-1 ring-cech-blue/15 backdrop-blur dark:bg-white/5 dark:text-cech-teal dark:ring-white/10">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-cech-blue to-cech-teal text-white shadow-sm" aria-hidden="true"><sl-icon name="{{ icon|default('stars') }}" class="text-xs"></sl-icon></span>
+                    {{ eyebrow }}
+                </span>
+                <h1 class="font-heading font-extrabold tracking-tight text-slate-900 dark:text-white {{ (title ~ (highlight ?? ''))|length > 60 ? 'text-2xl leading-tight sm:text-3xl lg:text-4xl' : 'text-4xl leading-[1.05] sm:text-5xl' }}">
+                    {{ title }}{% if highlight is defined and highlight %} <span class="bg-gradient-to-r from-cech-blue via-cech-teal to-cech-blue bg-clip-text text-transparent dark:from-sky-300 dark:via-cech-teal dark:to-sky-300">{{ highlight }}</span>{% endif %}
+                </h1>
+                {% if subtitle is defined and subtitle %}
+                    <p class="max-w-2xl text-base leading-relaxed text-slate-600 sm:text-lg dark:text-slate-300">{{ subtitle }}</p>
+                {% endif %}
+            </div>
+
+            {% if stats is defined and stats %}
+                <dl class="grid shrink-0 grid-cols-{{ stats|length > 2 ? 3 : stats|length }} gap-3">
+                    {% for s in stats %}
+                        <div class="min-w-[7.5rem] rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-slate-200/70 backdrop-blur dark:bg-slate-900/70 dark:ring-white/10">
+                            <dt class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                                {% if s.icon is defined %}<sl-icon name="{{ s.icon }}" class="text-cech-teal" aria-hidden="true"></sl-icon>{% endif %}{{ s.label }}
+                            </dt>
+                            <dd class="mt-0.5 font-heading text-2xl font-extrabold text-slate-900 dark:text-white">{{ s.value is iterable ? s.value : ((s.value ~ '') matches '/^\\d+$/' ? s.value|number_format(0, ',', '.') : s.value) }}</dd>
+                        </div>
+                    {% endfor %}
+                </dl>
+            {% endif %}
+        </div>
+
+        {% block hero_after %}{% endblock %}
+    </div>
+</section>

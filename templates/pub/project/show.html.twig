@@ -11,28 +11,33 @@
 {% block canonical_url %}{{ canonicalUrl }}{% endblock %}
 
 {% block body %}
-<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-    <div class="border-b border-slate-200/60 pb-6 dark:border-white/10">
-        <a href="{{ path('app_pub_projects') }}" class="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300"><sl-icon name="arrow-left"></sl-icon> Voltar aos projetos</a>
-        <div class="mb-2 flex flex-wrap items-center gap-2">
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
-                <sl-icon name="kanban"></sl-icon> Projeto de {{ project.nature_label|lower }}
-            </span>
+{% embed 'pub/research/_hero.html.twig' with {
+    trail: [{label: 'Projetos', url: path('app_pub_projects')}, {label: 'Projeto de ' ~ project.nature_label|lower}],
+    eyebrow: 'Projeto de ' ~ project.nature_label|lower,
+    icon: 'kanban',
+    title: project.title,
+    stats: [
+        {value: project.period, label: 'Período', icon: 'calendar3'},
+        {value: project.members|length, label: 'Integrantes', icon: 'people'},
+        {value: project.declared_by|length, label: 'No CECH', icon: 'person-vcard'},
+    ],
+    project: project,
+} only %}
+    {% block hero_after %}
+        {% import 'pub/project/_badges.html.twig' as badges %}
+        <div class="mt-5 flex flex-wrap items-center gap-2">
             {{ badges.status(project.status, project.status_label) }}
+            {{ badges.nature(project.nature, project.nature_label) }}
         </div>
-        <h1 class="font-heading text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight text-slate-900 break-words dark:text-white">{{ project.title }}</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span class="inline-flex items-center gap-1"><sl-icon name="calendar3"></sl-icon> {{ project.period }}</span>
-            <span class="inline-flex items-center gap-1"><sl-icon name="people"></sl-icon> {{ project.members|length }} {{ project.members|length == 1 ? 'integrante' : 'integrantes' }}</span>
-            <span class="inline-flex items-center gap-1"><sl-icon name="person-vcard"></sl-icon> Declarado por {{ project.declared_by|length }} {{ project.declared_by|length == 1 ? 'docente' : 'docentes' }} do CECH</span>
-        </p>
-    </div>
+    {% endblock %}
+{% endembed %}
 
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
     <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
         <div class="space-y-6 lg:col-span-2">
             <section class="glass-card rounded-3xl p-5 sm:p-6" aria-labelledby="project-description-title">
                 <h2 id="project-description-title" class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-3">
-                    <sl-icon name="card-text" class="text-sky-600 dark:text-sky-400"></sl-icon> Descrição
+                    <sl-icon name="card-text" class="text-cech-teal"></sl-icon> Descrição
                 </h2>
                 {% if project.description %}
                     <p class="mt-4 whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-slate-300">{{ project.description }}</p>
@@ -43,7 +48,7 @@
 
             <section class="glass-card rounded-3xl p-5 sm:p-6" aria-labelledby="project-team-title">
                 <h2 id="project-team-title" class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-3">
-                    <sl-icon name="people" class="text-sky-600 dark:text-sky-400"></sl-icon> Integrantes ({{ project.members|length }})
+                    <sl-icon name="people" class="text-cech-teal"></sl-icon> Integrantes ({{ project.members|length }})
                 </h2>
                 {% if project.members is empty %}
                     <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">A equipe não foi informada no Currículo Lattes.</p>

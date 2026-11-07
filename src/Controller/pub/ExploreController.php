@@ -41,10 +41,11 @@ class ExploreController extends AbstractController
                 'url' => $this->generateUrl('app_pub_explore_topic', ['slug' => $t['slug']]),
                 'count' => $t['occurrences'],
                 'countLabel' => 'ocorrências',
-                'detail' => $t['researchers'] . ' docentes',
+                'researchers' => $t['researchers'],
+                'group' => null,
             ], $this->catalog->topics()),
             'total' => $this->catalog->topicCount(),
-        ]);
+        ] + $this->catalogTotals());
     }
 
     #[Route('/explorar/areas', name: 'app_pub_explore_areas', methods: ['GET'])]
@@ -55,10 +56,11 @@ class ExploreController extends AbstractController
             'url' => $this->generateUrl('app_pub_explore_area', ['slug' => $a['slug']]),
             'count' => $a['publications'],
             'countLabel' => 'publicações',
-            'detail' => $a['researchers'] . ' ' . ($a['researchers'] === 1 ? 'docente' : 'docentes') . ' · ' . $a['majorLabel'],
+            'researchers' => $a['researchers'],
+            'group' => $a['majorCode'] !== '' ? $a['majorCode'] : 'OUTROS',
         ], array_values(array_filter($this->catalog->areas(), static fn($a) => $a['slug'] !== '')));
 
-        return $this->render('pub/explore/catalog.html.twig', ['tab' => 'areas', 'items' => $items, 'total' => count($items)]);
+        return $this->render('pub/explore/catalog.html.twig', ['tab' => 'areas', 'items' => $items, 'total' => count($items)] + $this->catalogTotals());
     }
 
     #[Route('/explorar/grandes-areas', name: 'app_pub_explore_major_areas', methods: ['GET'])]
@@ -69,10 +71,23 @@ class ExploreController extends AbstractController
             'url' => $this->generateUrl('app_pub_explore_major_area', ['slug' => $m['slug']]),
             'count' => $m['publications'],
             'countLabel' => 'publicações',
-            'detail' => $m['researchers'] . ' ' . ($m['researchers'] === 1 ? 'docente' : 'docentes'),
+            'researchers' => $m['researchers'],
+            'group' => $m['code'],
         ], $this->catalog->majorAreas());
 
-        return $this->render('pub/explore/catalog.html.twig', ['tab' => 'grandes-areas', 'items' => $items, 'total' => count($items)]);
+        return $this->render('pub/explore/catalog.html.twig', ['tab' => 'grandes-areas', 'items' => $items, 'total' => count($items)] + $this->catalogTotals());
+    }
+
+    /** Números da capa do Explorar: quantos assuntos, áreas e grandes áreas há. */
+    private function catalogTotals(): array
+    {
+        return [
+            'totals' => [
+                'topics' => $this->catalog->topicCount(),
+                'areas' => count(array_filter($this->catalog->areas(), static fn($a) => $a['slug'] !== '')),
+                'majorAreas' => count($this->catalog->majorAreas()),
+            ],
+        ];
     }
 
     #[Route('/explorar/assunto/{slug}', name: 'app_pub_explore_topic', methods: ['GET'])]

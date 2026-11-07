@@ -1,0 +1,17 @@
+{#
+    Ícone e cor de cada grande área do conhecimento (código do Lattes), usados nos cartões do Explorar.
+    Uso: {% set st = include('pub/explore/_major_area_style.html.twig', {code: 'CIENCIAS_HUMANAS'})|trim|split('|') %}
+         st[0] = ícone, st[1] = degradê
+#}
+{%- set styles = {
+    'CIENCIAS_HUMANAS': 'people|from-cech-blue to-cech-teal',
+    'LINGUISTICA_LETRAS_E_ARTES': 'palette|from-violet-500 to-fuchsia-500',
+    'CIENCIAS_SOCIAIS_APLICADAS': 'buildings|from-amber-500 to-orange-500',
+    'CIENCIAS_DA_SAUDE': 'heart-pulse|from-rose-500 to-cech-red',
+    'CIENCIAS_EXATAS_E_DA_TERRA': 'calculator|from-sky-500 to-indigo-500',
+    'CIENCIAS_BIOLOGICAS': 'tree|from-emerald-500 to-teal-500',
+    'CIENCIAS_AGRARIAS': 'flower1|from-lime-500 to-emerald-600',
+    'ENGENHARIAS': 'gear|from-slate-500 to-slate-700',
+    'OUTROS': 'grid|from-slate-400 to-slate-600',
+} -%}
+{{- styles[code] ?? 'grid|from-slate-400 to-slate-600' -}}

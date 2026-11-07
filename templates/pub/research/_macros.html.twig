@@ -14,22 +14,46 @@
     {{- icons[type] ?? 'file-earmark' -}}
 {%- endmacro %}
 
-{# Avatar do docente: foto, se houver, ou iniciais #}
-{% macro avatar(person, size = 'h-11 w-11 text-sm') %}
-    {% if person.photoUrl %}
-        <img src="{{ person.photoUrl|replace({'.jpg': '-256.webp', '.jpeg': '-256.webp', '.png': '-256.webp'}) }}" alt="" width="44" height="44" loading="lazy" decoding="async" class="{{ size }} shrink-0 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10" onerror="this.onerror=null;this.src='{{ person.photoUrl }}'">
-    {% else %}
-        <span class="{{ size }} shrink-0 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 font-bold flex items-center justify-center" aria-hidden="true">{{ person.initials }}</span>
-    {% endif %}
+{# Avatar do docente: foto, se houver, ou iniciais. ring = true dá o anel em degradê da marca #}
+{% macro avatar(person, size = 'h-11 w-11 text-sm', ring = false) %}
+    {% set photo = person.photoUrl ?? person.photo_url ?? null %}
+    {% set initials = person.initials ?? (person.name|default('?')|split(' ')|first|slice(0, 1) ~ person.name|default('?')|split(' ')|last|slice(0, 1))|upper %}
+    <span class="{{ ring ? 'rounded-full bg-gradient-to-br from-cech-blue via-cech-teal to-cech-red p-[2px] shadow-sm' : '' }} inline-flex shrink-0">
+        {% if photo %}
+            <img src="{{ photo|replace({'.jpg': '-256.webp', '.jpeg': '-256.webp', '.png': '-256.webp'}) }}" alt="" width="44" height="44" loading="lazy" decoding="async" class="{{ size }} shrink-0 rounded-full object-cover {{ ring ? 'ring-2 ring-white dark:ring-slate-900' : 'ring-1 ring-slate-200 dark:ring-white/10' }} bg-slate-100" onerror="this.onerror=null;this.src='{{ photo }}'">
+        {% else %}
+            <span class="{{ size }} shrink-0 rounded-full bg-gradient-to-br from-cech-blue-light to-cech-teal-light font-heading font-bold text-cech-blue-dark {{ ring ? 'ring-2 ring-white dark:ring-slate-900' : 'ring-1 ring-cech-blue/15' }} flex items-center justify-center dark:from-slate-800 dark:to-slate-700 dark:text-cech-teal" aria-hidden="true">{{ initials }}</span>
+        {% endif %}
+    </span>
+{% endmacro %}
+
+{# Selo do departamento, no mesmo degradê dos cartões de departamento #}
+{% macro dept_badge(code, name = null) %}
+    {% if code %}<abbr title="{{ name ?: code }}" class="no-underline rounded-md bg-gradient-to-tr from-cech-blue to-cech-teal px-1.5 py-0.5 text-[10px] font-extrabold tracking-wide text-white shadow-sm">{{ code }}</abbr>{% endif %}
 {% endmacro %}
 
 {# Departamento · vínculo · período #}
 {% macro person_meta(person) %}
-    <span class="text-xs text-slate-500 dark:text-slate-400">
-        {%- if person.departmentCode %}<abbr title="{{ person.department }}" class="no-underline">{{ person.departmentCode }}</abbr> · {% endif -%}
-        <span class="{{ person.affiliation == 'vigente' ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400' }}">{{ person.affiliationLabel }}</span>
-        {%- if person.period %} · {{ person.period }}{% endif -%}
+    {% import _self as rs %}
+    <span class="inline-flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+        {{ rs.dept_badge(person.departmentCode, person.department) }}
+        <span class="inline-flex items-center gap-1 {{ person.affiliation == 'vigente' ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400' }}">
+            <span class="h-1.5 w-1.5 rounded-full {{ person.affiliation == 'vigente' ? 'bg-emerald-500' : 'bg-slate-400' }}" aria-hidden="true"></span>{{ person.affiliationLabel }}
+        </span>
+        {%- if person.period %}<span>{{ person.period }}</span>{% endif -%}
     </span>
+{% endmacro %}
+
+{# Selo colorido do tipo de publicação #}
+{% macro type_badge(type, label) %}
+    {% import _self as rs %}
+    {%- set tone = {
+        'ARTIGO': 'bg-sky-50 text-sky-800 ring-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:ring-sky-800/60',
+        'LIVRO': 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:ring-amber-800/60',
+        'CAPITULO': 'bg-violet-50 text-violet-800 ring-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:ring-violet-800/60',
+        'EVENTO': 'bg-teal-50 text-teal-800 ring-teal-200 dark:bg-teal-950/60 dark:text-teal-300 dark:ring-teal-800/60',
+    }[type] ?? 'bg-slate-100 text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-white/10' -%}
+    <span class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ring-inset {{ tone }}"><sl-icon name="{{ rs.type_icon(type) }}" aria-hidden="true"></sl-icon>{{ label }}</span>
 {% endmacro %}
 
 {#
@@ -39,15 +63,14 @@
 {% macro work(work, showAuthors = true) %}
     {% import _self as rs %}
     <div class="flex gap-3 py-3">
-        <div class="w-12 shrink-0 text-xs text-slate-500 dark:text-slate-400 flex flex-col items-start gap-1 pt-0.5">
-            <span class="font-mono font-semibold">{{ work.year ?: '—' }}</span>
-            <sl-icon name="{{ rs.type_icon(work.type) }}" label="{{ work.typeLabel }}" class="text-slate-400 text-sm"></sl-icon>
+        <div class="w-12 shrink-0 pt-0.5 text-center">
+            <span class="block rounded-lg bg-slate-100 py-1 font-heading text-xs font-bold text-slate-700 dark:bg-white/5 dark:text-slate-200">{{ work.year ?: '—' }}</span>
         </div>
         <div class="min-w-0 flex-1 space-y-1">
             <p class="text-sm font-semibold text-slate-900 dark:text-white leading-snug" data-work-title>{{ work.title }}</p>
             <p class="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span class="sr-only">Tipo: </span><span>{{ work.typeLabel }}</span>
-                {% if work.venue %}<span aria-hidden="true">·</span><span class="italic">{{ work.venue }}</span>{% endif %}
+                <span class="sr-only">Tipo: </span>{{ rs.type_badge(work.type, work.typeLabel) }}
+                {% if work.venue %}<span class="italic">{{ work.venue }}</span>{% endif %}
                 {% if work.issn %}<span class="font-mono text-[11px]">ISSN {{ work.issn }}</span>{% endif %}
                 {% if work.qualis %}<span class="rounded px-1.5 py-0.5 text-[10px] font-bold badge-qualis-{{ work.qualis|lower }}">Qualis {{ work.qualis }}</span>{% endif %}
                 {% if work.doi %}
@@ -99,11 +122,48 @@
     {% endif %}
 {% endmacro %}
 
-{# Número em destaque (cartões de indicadores) #}
-{% macro stat(value, label, hint = null) %}
-    <div class="glass-card rounded-2xl p-4 sm:p-5">
-        <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">{{ (value ~ '') matches '/^\\d+$/' ? value|number_format(0, ',', '.') : value }}</div>
-        <div class="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 mt-1">{{ label }}</div>
-        {% if hint %}<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{{ hint }}</div>{% endif %}
+{# Número em destaque, no estilo dos cartões de Indicadores: rótulo, ícone e número colorido #}
+{% macro stat(value, label, hint = null, icon = 'bar-chart', tone = 'blue') %}
+    {%- set tones = {
+        blue: ['text-cech-blue dark:text-sky-300', 'bg-cech-blue/10', 'text-cech-blue dark:text-sky-300'],
+        teal: ['text-cech-teal-dark dark:text-cech-teal', 'bg-cech-teal/15', 'text-cech-teal-dark dark:text-cech-teal'],
+        red: ['text-cech-red dark:text-rose-400', 'bg-cech-red/10', 'text-cech-red dark:text-rose-400'],
+        amber: ['text-amber-600 dark:text-amber-400', 'bg-amber-500/10', 'text-amber-600 dark:text-amber-400'],
+        violet: ['text-violet-600 dark:text-violet-400', 'bg-violet-500/10', 'text-violet-600 dark:text-violet-400'],
+    } -%}
+    {%- set t = tones[tone] ?? tones.blue -%}
+    <div class="glass-card group relative overflow-hidden rounded-2xl p-4 shadow-sm sm:p-5">
+        <div class="absolute -bottom-6 -right-6 h-20 w-20 rounded-full {{ t[1] }} blur-xl transition-transform duration-500 group-hover:scale-150" aria-hidden="true"></div>
+        <div class="flex items-center justify-between gap-2 text-slate-500 dark:text-slate-400">
+            <span class="text-[11px] font-semibold uppercase tracking-wider">{{ label }}</span>
+            <sl-icon name="{{ icon }}" class="text-lg {{ t[2] }}" aria-hidden="true"></sl-icon>
+        </div>
+        <div class="mt-2 font-heading text-3xl font-extrabold {{ t[0] }}">{{ (value ~ '') matches '/^\\d+$/' ? value|number_format(0, ',', '.') : value }}</div>
+        {% if hint %}<div class="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{{ hint }}</div>{% endif %}
     </div>
+{% endmacro %}
+
+{#
+    Cartão de um par de coautores: as duas fotos sobrepostas, os nomes e o número de publicações.
+    pair: {a, b, weight} de CoauthorshipGraphService::topPairs(); rank: posição na lista
+#}
+{% macro pair_card(pair, rank = null) %}
+    {% import _self as rs %}
+    <button type="button" data-graph-pair data-a="{{ pair.a.id }}" data-b="{{ pair.b.id }}" class="group flex w-full items-center gap-4 rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-cech-teal/60 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cech-teal dark:border-white/10 dark:bg-slate-900/80">
+        {% if rank %}<span class="hidden w-6 shrink-0 text-center font-heading text-sm font-extrabold text-slate-300 sm:block dark:text-slate-600">{{ rank }}</span>{% endif %}
+        <span class="flex shrink-0 -space-x-3">
+            {{ rs.avatar(pair.a, 'h-11 w-11 text-sm', true) }}
+            {{ rs.avatar(pair.b, 'h-11 w-11 text-sm', true) }}
+        </span>
+        <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-bold text-slate-900 dark:text-white">{{ pair.a.name }}</span>
+            <span class="flex items-center gap-1.5 truncate text-xs text-slate-500 dark:text-slate-400">
+                <sl-icon name="arrow-left-right" class="shrink-0 text-cech-teal" aria-hidden="true"></sl-icon><span class="truncate">{{ pair.b.name }}</span>
+            </span>
+        </span>
+        <span class="shrink-0 text-right">
+            <span class="block bg-gradient-to-br from-cech-blue to-cech-teal bg-clip-text font-heading text-2xl font-extrabold leading-none text-transparent">{{ pair.weight }}</span>
+            <span class="block text-[11px] text-slate-500 dark:text-slate-400">{{ pair.weight == 1 ? 'publicação' : 'publicações' }}</span>
+        </span>
+    </button>
 {% endmacro %}

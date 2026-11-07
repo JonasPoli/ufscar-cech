@@ -11,10 +11,10 @@
 {% set maxKind = metrics.kinds|length > 0 ? (metrics.kinds|map(k => k.count)|reduce((a, b) => max(a, b), 1)) : 1 %}
 <div id="{{ panoramaId }}" class="space-y-6">
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {{ rs.stat(metrics.publications, 'Publicações', 'Sem repetição entre currículos') }}
-        {{ rs.stat(metrics.researchers, 'Docentes com produção') }}
-        {{ rs.stat(metrics.sharedWorks, 'Publicações compartilhadas', 'Com dois ou mais docentes do CECH') }}
-        {{ rs.stat(metrics.pairs, 'Pares de coautoria') }}
+        {{ rs.stat(metrics.publications, 'Publicações', 'Sem repetição entre currículos', 'journal-text', 'blue') }}
+        {{ rs.stat(metrics.researchers, 'Docentes com produção', null, 'people', 'teal') }}
+        {{ rs.stat(metrics.sharedWorks, 'Publicações compartilhadas', 'Com dois ou mais docentes do CECH', 'share', 'violet') }}
+        {{ rs.stat(metrics.pairs, 'Pares de coautoria', null, 'diagram-3', 'red') }}
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">

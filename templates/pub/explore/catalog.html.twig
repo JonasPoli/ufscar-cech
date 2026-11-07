@@ -1,60 +1,149 @@
 {% extends 'pub/base.html.twig' %}
 
 {% set titles = {
-    'assuntos': ['Assuntos de pesquisa', 'Explore os assuntos mais presentes nas publicações dos docentes do CECH.', 'Encontre um assunto'],
-    'areas': ['Áreas de atuação', 'Explore a produção dos docentes pelas áreas de atuação declaradas no Lattes.', 'Encontre uma área'],
-    'grandes-areas': ['Grandes áreas', 'Explore a produção dos docentes pelas grandes áreas do conhecimento.', 'Encontre uma grande área'],
+    'assuntos': {title: 'Assuntos de', highlight: 'pesquisa', subtitle: 'Os assuntos mais presentes nas publicações dos docentes do CECH. Cada um abre um panorama com a produção, os docentes e a rede de coautoria.', find: 'Encontre um assunto', icon: 'hash', label: 'Assuntos'},
+    'areas': {title: 'Áreas de', highlight: 'atuação', subtitle: 'As áreas do conhecimento que os docentes declaram no Lattes, agrupadas por grande área.', find: 'Encontre uma área', icon: 'diagram-2', label: 'Áreas'},
+    'grandes-areas': {title: 'Grandes', highlight: 'áreas', subtitle: 'As grandes áreas do conhecimento do CNPq e quanto da produção do CECH está em cada uma.', find: 'Encontre uma grande área', icon: 'globe2', label: 'Grandes áreas'},
 } %}
 {% set current = titles[tab] %}
+{% set majorLabels = constant('App\\Service\\Research\\MajorAreaCatalog::LABELS') %}
 
-{% block title %}{{ current[0] }} | Explorar pesquisa | Portal CECH UFSCar{% endblock %}
-{% block meta_description %}{{ current[1] }}{% endblock %}
+{% block title %}{{ current.label }} | Explorar pesquisa | Portal CECH UFSCar{% endblock %}
+{% block meta_description %}{{ current.subtitle }}{% endblock %}
 
 {% block body %}
-<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-6">
-    <header class="space-y-2">
-        <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
-            <sl-icon name="stars"></sl-icon> Explorar pesquisa
-        </span>
-        <h1 class="font-heading text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">{{ current[0] }}</h1>
-        <p class="text-sm text-slate-600 dark:text-slate-300">{{ current[1] }}</p>
-    </header>
+{% set maxCount = items|length > 0 ? items|map(i => i.count)|reduce((a, b) => max(a, b), 1) : 1 %}
+{% set sumCount = items|map(i => i.count)|reduce((a, b) => a + b, 0) %}
 
-    <div class="glass-card rounded-2xl overflow-hidden">
-        <nav class="flex flex-wrap gap-1 border-b border-slate-200/70 dark:border-white/10 px-4 pt-3" aria-label="Catálogos">
-            {% for key, route in {'assuntos': 'app_pub_explore', 'areas': 'app_pub_explore_areas', 'grandes-areas': 'app_pub_explore_major_areas'} %}
-                <a href="{{ path(route) }}" {% if tab == key %}aria-current="page"{% endif %} class="rounded-t-xl px-4 py-2.5 text-sm font-semibold border-b-2 {{ tab == key ? 'border-sky-600 text-sky-700 dark:text-sky-400' : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white' }}">{{ titles[key][0] }}</a>
-            {% endfor %}
-        </nav>
-        <div class="p-4">
-            <label for="catalog-filter" class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">{{ current[2] }}</label>
-            <input id="catalog-filter" type="search" placeholder="Filtrar por nome" autocomplete="off" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-            <p class="mt-2 text-xs text-slate-500 dark:text-slate-400" id="catalog-count" aria-live="polite">
-                {{ items|length|number_format(0, ',', '.') }} {{ tab == 'assuntos' ? 'assuntos' : (tab == 'areas' ? 'áreas' : 'grandes áreas') }}
-                {% if tab == 'assuntos' and total > items|length %}(os {{ items|length }} mais frequentes de {{ total|number_format(0, ',', '.') }}; para outros, use a <a href="{{ path('app_pub_search') }}" class="font-semibold text-sky-700 hover:underline dark:text-sky-400">busca</a>){% endif %}
-            </p>
+{% embed 'pub/research/_hero.html.twig' with {
+    eyebrow: 'Explorar pesquisa',
+    icon: 'stars',
+    title: current.title,
+    highlight: current.highlight,
+    subtitle: current.subtitle,
+    stats: [
+        {value: totals.topics, label: 'Assuntos', icon: 'hash'},
+        {value: totals.areas, label: 'Áreas', icon: 'diagram-2'},
+        {value: totals.majorAreas, label: 'Grandes áreas', icon: 'globe2'},
+    ],
+    tab: tab, titles: titles, current: current, items: items, total: total,
+} only %}
+    {% block hero_after %}
+        <div class="mt-8 flex flex-col gap-3 rounded-3xl bg-white/90 p-3 shadow-xl shadow-cech-blue/5 ring-1 ring-slate-200/80 backdrop-blur md:flex-row md:items-center dark:bg-slate-900/80 dark:ring-white/10">
+            <nav class="inline-flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-white/5" aria-label="Catálogos">
+                {% for key, route in {'assuntos': 'app_pub_explore', 'areas': 'app_pub_explore_areas', 'grandes-areas': 'app_pub_explore_major_areas'} %}
+                    <a href="{{ path(route) }}" {% if tab == key %}aria-current="page"{% endif %} class="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition {{ tab == key ? 'bg-white text-cech-blue shadow-sm dark:bg-slate-800 dark:text-cech-teal' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white' }}">
+                        <sl-icon name="{{ titles[key].icon }}" aria-hidden="true"></sl-icon>{{ titles[key].label }}
+                    </a>
+                {% endfor %}
+            </nav>
+            <div class="relative flex-1">
+                <label for="catalog-filter" class="sr-only">{{ current.find }}</label>
+                <sl-icon name="search" class="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"></sl-icon>
+                <input id="catalog-filter" type="search" placeholder="{{ current.find }}…" autocomplete="off" class="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm text-slate-900 shadow-sm focus:border-cech-teal focus:outline-none focus:ring-4 focus:ring-cech-teal/15 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+            </div>
         </div>
-    </div>
+        <p class="mt-3 text-xs text-slate-600 dark:text-slate-300" id="catalog-count" aria-live="polite">
+            {{ items|length|number_format(0, ',', '.') }} {{ tab == 'assuntos' ? 'assuntos' : (tab == 'areas' ? 'áreas' : 'grandes áreas') }}
+            {% if tab == 'assuntos' and total > items|length %}· os {{ items|length }} mais frequentes de {{ total|number_format(0, ',', '.') }}; para outros, use a <a href="{{ path('app_pub_search') }}" class="font-semibold text-cech-blue hover:underline dark:text-cech-teal">busca</a>{% endif %}
+        </p>
+    {% endblock %}
+{% endembed %}
 
-    <ul id="catalog-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {% for item in items %}
-            <li data-name="{{ item.name|lower }}">
-                <a href="{{ item.url }}" class="glass-card rounded-2xl p-4 flex flex-col gap-1 h-full hover:border-sky-500/60 hover:shadow-md transition-all">
-                    <span class="font-heading text-base font-bold text-slate-900 dark:text-white">{{ item.name }}</span>
-                    <span class="text-xs text-slate-600 dark:text-slate-300">{{ item.count|number_format(0, ',', '.') }} {{ item.countLabel }} · {{ item.detail }}</span>
-                </a>
-            </li>
-        {% else %}
-            <li class="text-sm text-slate-500">Nada para mostrar ainda.</li>
-        {% endfor %}
-    </ul>
-    <p id="catalog-empty" hidden class="text-sm text-slate-600 dark:text-slate-300">Nenhum item com esse nome. Experimente a <a href="{{ path('app_pub_search') }}" class="font-semibold text-sky-700 hover:underline dark:text-sky-400">busca de especialistas</a>.</p>
+<div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    {% if tab == 'grandes-areas' %}
+        {# Grandes áreas: cartões grandes, com ícone e cor próprios e a parcela da produção #}
+        <ul id="catalog-list" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {% for item in items %}
+                {% set st = include('pub/explore/_major_area_style.html.twig', {code: item.group})|trim|split('|') %}
+                {% set share = sumCount > 0 ? (item.count / sumCount * 100) : 0 %}
+                <li data-name="{{ item.name|lower }}">
+                    <a href="{{ item.url }}" class="group glass-card relative flex h-full flex-col gap-4 overflow-hidden rounded-3xl p-6 transition hover:-translate-y-1 hover:shadow-2xl">
+                        <span class="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br {{ st[1] }} opacity-10 blur-2xl transition group-hover:opacity-25" aria-hidden="true"></span>
+                        <span class="flex items-start justify-between gap-3">
+                            <span class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br {{ st[1] }} text-2xl text-white shadow-lg" aria-hidden="true"><sl-icon name="{{ st[0] }}"></sl-icon></span>
+                            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 dark:bg-white/5 dark:text-slate-300">{{ share|number_format(share < 1 ? 1 : 0, ',', '.') }}% da produção</span>
+                        </span>
+                        <span class="font-heading text-xl font-bold text-slate-900 dark:text-white">{{ item.name }}</span>
+                        <span class="flex items-end gap-6">
+                            <span><span class="block font-heading text-3xl font-extrabold text-slate-900 dark:text-white">{{ item.count|number_format(0, ',', '.') }}</span><span class="text-xs text-slate-500 dark:text-slate-400">publicações</span></span>
+                            <span><span class="block font-heading text-xl font-bold text-slate-700 dark:text-slate-200">{{ item.researchers }}</span><span class="text-xs text-slate-500 dark:text-slate-400">{{ item.researchers == 1 ? 'docente' : 'docentes' }}</span></span>
+                        </span>
+                        <span class="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5" aria-hidden="true"><span class="block h-2 rounded-full bg-gradient-to-r {{ st[1] }}" style="width: {{ max(2, (item.count / maxCount * 100)|round) }}%"></span></span>
+                        <span class="inline-flex items-center gap-1 text-sm font-semibold text-cech-blue transition group-hover:gap-2 dark:text-cech-teal">Explorar <sl-icon name="arrow-right" aria-hidden="true"></sl-icon></span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% elseif tab == 'areas' %}
+        {# Áreas agrupadas pela grande área, cada grupo com a cor da grande área #}
+        {% set groups = items|reduce((carry, i) => carry|merge({(i.group): (carry[i.group] ?? [])|merge([i])}), {}) %}
+        {# Grupos da grande área com mais produção primeiro #}
+        {% set groups = groups|sort((a, b) => (b|map(i => i.count)|reduce((x, y) => x + y, 0)) <=> (a|map(i => i.count)|reduce((x, y) => x + y, 0))) %}
+        <div id="catalog-list" class="space-y-10">
+            {% for code, groupItems in groups %}
+                {% set st = include('pub/explore/_major_area_style.html.twig', {code: code})|trim|split('|') %}
+                <section data-group class="space-y-4" aria-labelledby="grupo-{{ code|lower }}">
+                    <h2 id="grupo-{{ code|lower }}" class="flex items-center gap-3 font-heading text-lg font-bold text-slate-900 dark:text-white">
+                        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br {{ st[1] }} text-white shadow-md" aria-hidden="true"><sl-icon name="{{ st[0] }}"></sl-icon></span>
+                        {{ majorLabels[code] ?? 'Outras' }}
+                        <span class="text-sm font-normal text-slate-500 dark:text-slate-400">{{ groupItems|length }} {{ groupItems|length == 1 ? 'área' : 'áreas' }}</span>
+                    </h2>
+                    <ul class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {% for item in groupItems|sort((a, b) => b.count <=> a.count) %}
+                            <li data-name="{{ item.name|lower }}">
+                                <a href="{{ item.url }}" class="group glass-card flex h-full flex-col gap-2 rounded-2xl p-4 transition hover:-translate-y-0.5 hover:shadow-xl">
+                                    <span class="flex items-center justify-between gap-2">
+                                        <span class="font-heading text-base font-bold text-slate-900 dark:text-white">{{ item.name }}</span>
+                                        <sl-icon name="arrow-right" class="shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-cech-teal" aria-hidden="true"></sl-icon>
+                                    </span>
+                                    <span class="text-xs text-slate-600 dark:text-slate-300"><strong class="text-slate-900 dark:text-white">{{ item.count|number_format(0, ',', '.') }}</strong> publicações · {{ item.researchers }} {{ item.researchers == 1 ? 'docente' : 'docentes' }}</span>
+                                    <span class="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5" aria-hidden="true"><span class="block h-1.5 rounded-full bg-gradient-to-r {{ st[1] }}" style="width: {{ max(2, (item.count / maxCount * 100)|round) }}%"></span></span>
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endfor %}
+        </div>
+    {% else %}
+        {# Assuntos: tons alternados e barra da frequência #}
+        {% set tones = [
+            ['from-cech-blue to-cech-teal', 'text-cech-blue dark:text-sky-300'],
+            ['from-cech-teal to-emerald-500', 'text-cech-teal-dark dark:text-cech-teal'],
+            ['from-amber-500 to-orange-500', 'text-amber-700 dark:text-amber-300'],
+            ['from-violet-500 to-fuchsia-500', 'text-violet-700 dark:text-violet-300'],
+            ['from-rose-500 to-cech-red', 'text-rose-700 dark:text-rose-300'],
+            ['from-sky-500 to-indigo-500', 'text-sky-700 dark:text-sky-300'],
+        ] %}
+        <ul id="catalog-list" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {% for item in items %}
+                {% set tone = tones[loop.index0 % tones|length] %}
+                <li data-name="{{ item.name|lower }}">
+                    <a href="{{ item.url }}" class="group glass-card flex h-full items-center gap-4 rounded-2xl p-4 transition hover:-translate-y-0.5 hover:shadow-xl">
+                        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br {{ tone[0] }} font-heading text-base font-extrabold text-white shadow-md" aria-hidden="true">{{ item.name|slice(0, 1)|upper }}</span>
+                        <span class="min-w-0 flex-1 space-y-1.5">
+                            <span class="block truncate font-heading text-base font-bold text-slate-900 dark:text-white">{{ item.name }}</span>
+                            <span class="block text-xs text-slate-600 dark:text-slate-300"><strong class="{{ tone[1] }}">{{ item.count|number_format(0, ',', '.') }}</strong> ocorrências · {{ item.researchers }} docentes</span>
+                            <span class="block h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-white/5" aria-hidden="true"><span class="block h-1.5 rounded-full bg-gradient-to-r {{ tone[0] }}" style="width: {{ max(3, (item.count / maxCount * 100)|round) }}%"></span></span>
+                        </span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <div id="catalog-empty" hidden class="mt-6 rounded-3xl border border-dashed border-slate-300 p-10 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300">
+        Nenhum item com esse nome. Experimente a <a href="{{ path('app_pub_search') }}" class="font-semibold text-cech-blue hover:underline dark:text-cech-teal">busca de especialistas</a>.
+    </div>
 </div>
 
 <script>
     (function () {
         var input = document.getElementById('catalog-filter');
-        var items = Array.prototype.slice.call(document.querySelectorAll('#catalog-list > li[data-name]'));
+        if (!input) return;
+        var items = Array.prototype.slice.call(document.querySelectorAll('#catalog-list li[data-name]'));
+        var groups = Array.prototype.slice.call(document.querySelectorAll('#catalog-list [data-group]'));
         var count = document.getElementById('catalog-count');
         var empty = document.getElementById('catalog-empty');
         var initial = count ? count.innerHTML : '';
@@ -67,6 +156,7 @@
                 li.hidden = !match;
                 if (match) shown++;
             });
+            groups.forEach(function (g) { g.hidden = !g.querySelector('li[data-name]:not([hidden])'); });
             empty.hidden = shown > 0;
             count.innerHTML = q ? shown + (shown === 1 ? ' item encontrado' : ' itens encontrados') : initial;
         });

@@ -134,6 +134,8 @@ final class CoauthorshipGraphService
                 'id' => (string)$id,
                 'name' => $card['name'],
                 'slug' => $card['slug'],
+                'initials' => $card['initials'],
+                'photoUrl' => $card['photoUrl'],
                 'department' => $code,
                 'affiliation' => $card['affiliation'],
                 'degree' => $degree[$id] ?? 0,

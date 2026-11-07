@@ -76,7 +76,7 @@ class ProjectCatalogService
         }
 
         $select = 'SELECT rp.id, rp.name, rp.status, rp.nature, rp.start_year, rp.end_year, rp.description, rp.agency_financier,
-                          rp.is_coordinator, r.id AS researcher_id, r.full_name, r.slug, r.id_lattes, r.department, r.department_code
+                          rp.is_coordinator, r.id AS researcher_id, r.full_name, r.slug, r.id_lattes, r.department, r.department_code, r.photo_url
                      FROM research_projects rp JOIN researchers r ON r.id = rp.researcher_id';
         $records = $key['project_group_key'] !== null
             ? $this->conn->fetchAllAssociative("$select WHERE rp.project_group_key = ? ORDER BY " . self::REPRESENTATIVE_ORDER, [$key['project_group_key']])
@@ -90,7 +90,7 @@ class ProjectCatalogService
 
         $members = $this->conn->fetchAllAssociative(
             'SELECT m.research_project_id, m.full_name, m.member_order, m.is_responsible, m.id_lattes,
-                    r.id AS researcher_id, r.full_name AS researcher_name, r.slug, r.id_lattes AS researcher_lattes, r.department_code
+                    r.id AS researcher_id, r.full_name AS researcher_name, r.slug, r.id_lattes AS researcher_lattes, r.department_code, r.photo_url
                FROM research_project_members m LEFT JOIN researchers r ON r.id = m.matched_researcher_id
               WHERE m.research_project_id IN (?) ORDER BY m.id',
             [$recordIds],
@@ -231,7 +231,7 @@ class ProjectCatalogService
         $match = '(rp.project_group_key IN (:keys) OR (rp.project_group_key IS NULL AND rp.id IN (:ids)))';
         $params = ['keys' => $keys ?: ['-'], 'ids' => $ids ?: [0]];
         $types = ['keys' => ArrayParameterType::STRING, 'ids' => ArrayParameterType::INTEGER];
-        $columns = self::GROUP_KEY . ' AS gk, r.id, r.full_name, r.slug, r.id_lattes, r.department_code';
+        $columns = self::GROUP_KEY . ' AS gk, r.id, r.full_name, r.slug, r.id_lattes, r.department_code, r.photo_url';
 
         $rows = $this->conn->fetchAllAssociative(
             "SELECT $columns, 1 AS declares, rp.is_coordinator AS responsible
@@ -352,9 +352,10 @@ class ProjectCatalogService
                 'slug' => $member['slug'],
                 'id_lattes' => $member['researcher_lattes'],
                 'department_code' => $member['department_code'],
+                'photo_url' => $member['photo_url'] ?? null,
             ]);
             if ($researcher === null && ($declarer = $declarerByName[StringNormalizer::normalizeString($name, true)] ?? null) !== null) {
-                $researcher = array_intersect_key($declarer, array_flip(['id', 'name', 'slug_or_id', 'department_code']));
+                $researcher = array_intersect_key($declarer, array_flip(['id', 'name', 'slug_or_id', 'department_code', 'photo_url']));
             }
             $team[] = ['name' => $name, 'is_responsible' => (bool)$member['is_responsible'], 'researcher' => $researcher];
         }
@@ -410,7 +411,7 @@ class ProjectCatalogService
     /**
      * @param array<string, mixed> $row id, full_name, slug, id_lattes, department_code
      *
-     * @return array{id: int, name: string, slug_or_id: string, department_code: ?string}
+     * @return array{id: int, name: string, slug_or_id: string, department_code: ?string, photo_url: ?string}
      */
     private function presentResearcher(array $row): array
     {
@@ -419,6 +420,7 @@ class ProjectCatalogService
             'name' => (string)$row['full_name'],
             'slug_or_id' => (string)($row['slug'] ?: $row['id_lattes']),
             'department_code' => $row['department_code'] ?: null,
+            'photo_url' => $row['photo_url'] ?? null,
         ];
     }
 

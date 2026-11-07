@@ -1,5 +1,6 @@
 {% extends 'pub/base.html.twig' %}
 {% import 'pub/project/_badges.html.twig' as badges %}
+{% import 'pub/research/_macros.html.twig' as rs %}
 
 {% set pageSuffix = result.page > 1 ? ' — página ' ~ result.page : '' %}
 {% set canonicalQuery = filterQuery|merge(result.page > 1 ? {'page': result.page} : {}) %}
@@ -13,35 +14,20 @@
 
 {% block body %}
 {% set n = result.count %}
-<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-    <div class="border-b border-slate-200/60 pb-6 dark:border-white/10">
-        <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300 mb-2">
-            <sl-icon name="kanban"></sl-icon> Pesquisa e extensão
-        </span>
-        <h1 class="font-heading text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">Projetos do CECH</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Projetos de pesquisa, extensão, ensino e desenvolvimento declarados no Currículo Lattes pelos docentes do CECH. Quando vários docentes declaram o mesmo projeto, ele aparece uma vez só.
-        </p>
-        <ul class="m-0 mt-4 flex list-none flex-wrap gap-2 p-0">
-            <li class="rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs text-slate-600 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-300"><strong class="font-heading text-sm text-slate-900 dark:text-white">{{ totals.projects|number_format(0, ',', '.') }}</strong> {{ totals.projects == 1 ? 'projeto' : 'projetos' }}</li>
-            <li class="rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs text-slate-600 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-300"><strong class="font-heading text-sm text-slate-900 dark:text-white">{{ totals.ongoing|number_format(0, ',', '.') }}</strong> em andamento</li>
-            <li class="rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs text-slate-600 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-300"><strong class="font-heading text-sm text-slate-900 dark:text-white">{{ totals.researchers|number_format(0, ',', '.') }}</strong> {{ totals.researchers == 1 ? 'docente com projetos' : 'docentes com projetos' }}</li>
-        </ul>
-    </div>
-
+{% set formHtml %}
     {# Filtros: tudo via GET. Sem JavaScript o formulário funciona e o servidor limpa os campos vazios com um redirecionamento; com JavaScript, os campos vazios nem são enviados. #}
-    <form method="GET" action="{{ path('app_pub_projects') }}" class="glass-card rounded-2xl p-4 shadow-sm" data-project-filter role="search" aria-label="Buscar projetos">
+    <form method="GET" action="{{ path('app_pub_projects') }}" class="rounded-3xl bg-white/90 p-4 shadow-xl shadow-cech-blue/5 ring-1 ring-slate-200/80 backdrop-blur sm:p-5 dark:bg-slate-900/80 dark:ring-white/10" data-project-filter role="search" aria-label="Buscar projetos">
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
             <div class="sm:col-span-2 lg:col-span-12">
                 <label for="project-q" class="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Nome do projeto</label>
                 <div class="relative">
                     <sl-icon name="search" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></sl-icon>
-                    <input id="project-q" type="search" name="q" value="{{ filter.q }}" maxlength="200" placeholder="Ex.: formação de professores, PIBID, letramento…" class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <input id="project-q" type="search" name="q" value="{{ filter.q }}" maxlength="200" placeholder="Ex.: formação de professores, PIBID, letramento…" class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-400 focus:border-cech-teal focus:outline-none focus:ring-4 focus:ring-cech-teal/15 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
                 </div>
             </div>
             <div class="lg:col-span-2">
                 <label for="project-status" class="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Situação</label>
-                <select id="project-status" name="situacao" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                <select id="project-status" name="situacao" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-cech-teal focus:outline-none focus:ring-4 focus:ring-cech-teal/15 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
                     <option value="">Todas</option>
                     {% for code, label in statusOptions %}
                         <option value="{{ code }}"{% if filter.status == code %} selected{% endif %}>{{ label }}</option>
@@ -50,7 +36,7 @@
             </div>
             <div class="lg:col-span-2">
                 <label for="project-nature" class="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Natureza</label>
-                <select id="project-nature" name="natureza" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                <select id="project-nature" name="natureza" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-cech-teal focus:outline-none focus:ring-4 focus:ring-cech-teal/15 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
                     <option value="">Todas</option>
                     {% for code, label in natureOptions %}
                         <option value="{{ code }}"{% if filter.nature == code %} selected{% endif %}>{{ label }}</option>
@@ -59,7 +45,7 @@
             </div>
             <div class="sm:col-span-2 lg:col-span-4">
                 <label for="project-department" class="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Departamento</label>
-                <select id="project-department" name="departamento" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                <select id="project-department" name="departamento" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-cech-teal focus:outline-none focus:ring-4 focus:ring-cech-teal/15 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
                     <option value="">Todos os departamentos</option>
                     {% for dept in departments %}
                         <option value="{{ dept.code }}"{% if filter.department == dept.code %} selected{% endif %}>{{ dept.name }} ({{ dept.code }})</option>
@@ -70,14 +56,14 @@
                 <legend class="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300" title="Projetos em execução em algum ano do intervalo">Em execução entre</legend>
                 <div class="flex items-center gap-1.5">
                     <label for="project-from" class="sr-only">Ano inicial</label>
-                    <input id="project-from" type="number" name="ano_inicial" value="{{ filter.fromYear }}" min="{{ constant('App\\Service\\Project\\ProjectFilter::MIN_YEAR') }}" max="{{ constant('App\\Service\\Project\\ProjectFilter::MAX_YEAR') }}" placeholder="{{ totals.min_year ?: 'de' }}" inputmode="numeric" class="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-2.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <input id="project-from" type="number" name="ano_inicial" value="{{ filter.fromYear }}" min="{{ constant('App\\Service\\Project\\ProjectFilter::MIN_YEAR') }}" max="{{ constant('App\\Service\\Project\\ProjectFilter::MAX_YEAR') }}" placeholder="{{ totals.min_year ?: 'de' }}" inputmode="numeric" class="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-2.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-cech-teal focus:outline-none focus:ring-4 focus:ring-cech-teal/15 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
                     <span class="text-xs text-slate-400" aria-hidden="true">e</span>
                     <label for="project-to" class="sr-only">Ano final</label>
-                    <input id="project-to" type="number" name="ano_final" value="{{ filter.toYear }}" min="{{ constant('App\\Service\\Project\\ProjectFilter::MIN_YEAR') }}" max="{{ constant('App\\Service\\Project\\ProjectFilter::MAX_YEAR') }}" placeholder="{{ currentYear }}" inputmode="numeric" class="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-2.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <input id="project-to" type="number" name="ano_final" value="{{ filter.toYear }}" min="{{ constant('App\\Service\\Project\\ProjectFilter::MIN_YEAR') }}" max="{{ constant('App\\Service\\Project\\ProjectFilter::MAX_YEAR') }}" placeholder="{{ currentYear }}" inputmode="numeric" class="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-2.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-cech-teal focus:outline-none focus:ring-4 focus:ring-cech-teal/15 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
                 </div>
             </fieldset>
             <div class="flex gap-2 sm:col-span-2 lg:col-span-2">
-                <button type="submit" class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-sky-500 cursor-pointer disabled:opacity-60 disabled:cursor-wait"><span data-filter-spinner class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true"></span><span data-filter-label>Filtrar</span></button>
+                <button type="submit" class="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cech-blue to-cech-teal px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-cech-blue/20 transition hover:brightness-110 cursor-pointer disabled:opacity-60 disabled:cursor-wait"><span data-filter-spinner class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" aria-hidden="true"></span><span data-filter-label>Filtrar</span></button>
                 {% if not filter.isEmpty %}
                     <a href="{{ path('app_pub_projects') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" title="Limpar os filtros"><sl-icon name="x-lg"></sl-icon><span class="sr-only">Limpar os filtros</span></a>
                 {% endif %}
@@ -110,7 +96,24 @@
             });
         })();
     </script>
+{% endset %}
+{% embed 'pub/research/_hero.html.twig' with {
+    eyebrow: 'Pesquisa e extensão',
+    icon: 'kanban',
+    title: 'Projetos que abrem',
+    highlight: 'caminhos',
+    subtitle: 'Projetos de pesquisa, extensão, ensino e desenvolvimento declarados no Currículo Lattes pelos docentes do CECH. Quando vários docentes declaram o mesmo projeto, ele aparece uma vez só.',
+    stats: [
+        {value: totals.projects, label: 'Projetos', icon: 'kanban'},
+        {value: totals.ongoing, label: 'Em andamento', icon: 'activity'},
+        {value: totals.researchers, label: 'Docentes', icon: 'people'},
+    ],
+    formHtml: formHtml,
+} only %}
+    {% block hero_after %}<div class="mt-8">{{ formHtml|raw }}</div>{% endblock %}
+{% endembed %}
 
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
     <section aria-labelledby="project-results-title" class="space-y-5">
         <div class="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="project-results-title" class="font-heading text-lg font-bold text-slate-900 dark:text-white">
@@ -133,7 +136,9 @@
             <ol class="m-0 grid list-none grid-cols-1 gap-5 p-0 lg:grid-cols-2" data-project-list>
                 {% for project in result.results %}
                     {% set people = project.researchers %}
-                    <li class="project-card glass-card flex min-w-0 flex-col rounded-3xl p-5 sm:p-6 transition-all hover:border-sky-500/50 hover:shadow-xl">
+                    {% set accent = {'EM_ANDAMENTO': 'from-emerald-400 via-cech-teal to-emerald-500', 'CONCLUIDO': 'from-cech-blue via-sky-400 to-cech-blue', 'DESATIVADO': 'from-rose-400 via-cech-red to-rose-500'}[project.status] ?? 'from-slate-300 to-slate-400' %}
+                    <li class="project-card group glass-card relative flex min-w-0 flex-col overflow-hidden rounded-3xl p-5 pt-6 transition-all hover:-translate-y-0.5 hover:border-cech-teal/40 hover:shadow-2xl sm:p-6 sm:pt-7">
+                        <span class="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r {{ accent }}" aria-hidden="true"></span>
                         <div class="flex-1">
                         <div class="flex flex-wrap items-center justify-between gap-2">
                             <div class="flex flex-wrap items-center gap-1.5">
@@ -144,7 +149,7 @@
                         </div>
 
                         <h3 class="mt-3 font-heading text-base sm:text-lg font-bold leading-snug text-slate-900 break-words dark:text-white">
-                            <a href="{{ path('app_pub_project_show', {'id': project.id}) }}" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">{{ project.title }}</a>
+                            <a href="{{ path('app_pub_project_show', {'id': project.id}) }}" class="transition-colors hover:text-cech-blue dark:hover:text-cech-teal">{{ project.title }}</a>
                         </h3>
 
                         {% if project.summary %}
@@ -154,16 +159,17 @@
                         {% if people is not empty %}
                             <div class="mt-4">
                                 <p class="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{{ people|length == 1 ? 'Docente do CECH' : 'Docentes do CECH' }}</p>
-                                <ul class="m-0 flex list-none flex-wrap gap-1.5 p-0">
+                                <ul class="m-0 flex list-none flex-wrap gap-2 p-0">
                                     {% for person in people|slice(0, 4) %}
-                                        <li><a href="{{ path('app_pub_professor_show', {'slugOrId': person.slug_or_id}) }}" class="inline-flex max-w-full items-center gap-1 rounded-full border border-slate-200 bg-white/80 px-2.5 py-0.5 text-xs text-slate-700 transition-colors hover:border-sky-400 hover:text-sky-700 dark:border-white/10 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:text-sky-300"{% if person.is_responsible %} title="Responsável pelo projeto"{% endif %}>
-                                            {% if person.is_responsible %}<sl-icon name="star-fill" class="text-[10px] text-amber-500"></sl-icon>{% endif %}
+                                        <li><a href="{{ path('app_pub_professor_show', {'slugOrId': person.slug_or_id}) }}" class="inline-flex max-w-full items-center gap-2 rounded-full bg-white/90 py-1 pl-1 pr-3 text-xs font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:ring-cech-teal dark:bg-slate-900/70 dark:text-slate-200 dark:ring-white/10"{% if person.is_responsible %} title="Responsável pelo projeto"{% endif %}>
+                                            {{ rs.avatar(person, 'h-7 w-7 text-[10px]', person.is_responsible) }}
                                             <span class="truncate">{{ person.name }}</span>
-                                            {% if person.department_code %}<span class="text-[10px] font-semibold text-slate-400">{{ person.department_code }}</span>{% endif %}
+                                            {% if person.is_responsible %}<sl-icon name="star-fill" class="text-[10px] text-amber-500" aria-label="Responsável"></sl-icon>{% endif %}
+                                            {% if person.department_code %}<span class="text-[10px] font-bold text-slate-400">{{ person.department_code }}</span>{% endif %}
                                         </a></li>
                                     {% endfor %}
                                     {% if people|length > 4 %}
-                                        <li class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">+{{ people|length - 4 }}</li>
+                                        <li class="inline-flex items-center rounded-full bg-gradient-to-r from-cech-blue to-cech-teal px-2.5 py-1 text-xs font-bold text-white">+{{ people|length - 4 }}</li>
                                     {% endif %}
                                 </ul>
                             </div>
@@ -173,7 +179,7 @@
 
                         <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-200/60 pt-4 text-xs text-slate-500 dark:border-white/10 dark:text-slate-400">
                             <span>{% if project.records > 1 %}Declarado em {{ project.records }} currículos{% else %}Declarado em 1 currículo{% endif %}</span>
-                            <a href="{{ path('app_pub_project_show', {'id': project.id}) }}" class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300" aria-label="Ver o projeto {{ project.title }}">Ver projeto <sl-icon name="arrow-right"></sl-icon></a>
+                            <a href="{{ path('app_pub_project_show', {'id': project.id}) }}" class="inline-flex items-center gap-1 font-semibold text-cech-blue transition-all group-hover:gap-2 dark:text-cech-teal" aria-label="Ver o projeto {{ project.title }}">Ver projeto <sl-icon name="arrow-right"></sl-icon></a>
                         </div>
                     </li>
                 {% endfor %}
@@ -189,7 +195,7 @@
                         {% if p is null %}
                             <span class="px-1 text-slate-400" aria-hidden="true">…</span>
                         {% elseif p == result.page %}
-                            <span class="{{ linkClass }} border-sky-600 bg-sky-600 text-white" aria-current="page">{{ p }}</span>
+                            <span class="{{ linkClass }} border-transparent bg-gradient-to-r from-cech-blue to-cech-teal text-white shadow-sm" aria-current="page">{{ p }}</span>
                         {% else %}
                             <a href="{{ path('app_pub_projects', filterQuery|merge(p > 1 ? {'page': p} : {})) }}" class="{{ linkClass }} border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">{{ p }}</a>
                         {% endif %}

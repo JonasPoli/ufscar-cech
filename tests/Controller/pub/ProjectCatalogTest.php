@@ -75,7 +75,15 @@ class ProjectCatalogTest extends WebTestCase
         $this->assertStringContainsString('Declarado em 2 currículos', $shared->text());
         $this->assertStringContainsString('Resumo longo', $shared->text());
         $this->assertSame('/projeto/' . $this->ids['shared_ana'], $shared->filter('h3 a')->attr('href'), 'O link usa o registro representante (o do responsável)');
-        $people = $shared->filter('a[href^="/professor/"]')->each(static fn (Crawler $a): string => trim(preg_replace('/\s+/', ' ', $a->text())));
+        // As iniciais do avatar ficam ocultas para leitores de tela (aria-hidden) e não entram no texto comparado
+        $people = $shared->filter('a[href^="/professor/"]')->each(static function (Crawler $a): string {
+            $node = $a->getNode(0)->cloneNode(true);
+            foreach (iterator_to_array((new \DOMXPath($node->ownerDocument))->query('.//*[@aria-hidden="true"]', $node)) as $hidden) {
+                $hidden->parentNode->removeChild($hidden);
+            }
+
+            return trim(preg_replace('/\s+/', ' ', $node->textContent));
+        });
         $this->assertSame(["Ana {$this->t} {$this->dept}", "Bia {$this->t} {$this->dept}"], $people);
     }
 

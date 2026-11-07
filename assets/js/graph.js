@@ -69,6 +69,25 @@
             (authors ? '<p class="text-xs text-slate-600 dark:text-slate-300">' + authors + '</p>' : '') + '</div></li>';
     }
 
+    function avatarHtml(n) {
+        var ring = '<span class="inline-flex shrink-0 rounded-full bg-gradient-to-br from-cech-blue via-cech-teal to-cech-red p-[2px] shadow-sm">';
+        if (n && n.photoUrl) {
+            var webp = String(n.photoUrl).replace(/\.(jpe?g|png)$/i, '-256.webp');
+            return ring + '<img src="' + esc(webp) + '" alt="" width="44" height="44" loading="lazy" decoding="async" class="h-11 w-11 rounded-full bg-slate-100 object-cover ring-2 ring-white dark:ring-slate-900" onerror="this.onerror=null;this.src=\'' + esc(n.photoUrl) + '\'"></span>';
+        }
+        return ring + '<span class="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-cech-blue-light to-cech-teal-light font-heading text-sm font-bold text-cech-blue-dark ring-2 ring-white dark:from-slate-800 dark:to-slate-700 dark:text-cech-teal dark:ring-slate-900" aria-hidden="true">' + esc(n ? n.initials : '?') + '</span></span>';
+    }
+
+    function pairCardHtml(a, b, weight, rank) {
+        return '<li><button type="button" data-graph-pair data-a="' + esc(a.id) + '" data-b="' + esc(b.id) + '" class="group flex w-full items-center gap-4 rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-cech-teal/60 hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-cech-teal dark:border-white/10 dark:bg-slate-900/80">' +
+            '<span class="hidden w-6 shrink-0 text-center font-heading text-sm font-extrabold text-slate-300 sm:block dark:text-slate-600">' + rank + '</span>' +
+            '<span class="flex shrink-0 -space-x-3">' + avatarHtml(a) + avatarHtml(b) + '</span>' +
+            '<span class="min-w-0 flex-1"><span class="block truncate text-sm font-bold text-slate-900 dark:text-white">' + esc(a.name) + '</span>' +
+            '<span class="flex items-center gap-1.5 truncate text-xs text-slate-500 dark:text-slate-400"><sl-icon name="arrow-left-right" class="shrink-0 text-cech-teal" aria-hidden="true"></sl-icon><span class="truncate">' + esc(b.name) + '</span></span></span>' +
+            '<span class="shrink-0 text-right"><span class="block bg-gradient-to-br from-cech-blue to-cech-teal bg-clip-text font-heading text-2xl font-extrabold leading-none text-transparent">' + weight + '</span>' +
+            '<span class="block text-[11px] text-slate-500 dark:text-slate-400">' + (weight === 1 ? 'publicação' : 'publicações') + '</span></span></button></li>';
+    }
+
     function Graph(root) {
         this.root = root;
         this.canvas = root.querySelector('[data-graph-canvas]');
@@ -77,6 +96,8 @@
         this.focusSelect = root.querySelector('[data-graph-focus]');
         this.info = root.querySelector('[data-graph-info]');
         this.dialog = root.querySelector('[data-graph-dialog]');
+        this.pairsBox = root.querySelector('[data-graph-pairs]');
+        this.pairsTitleHtml = this.pairsBox ? this.pairsBox.querySelector('[data-graph-pairs-title]').innerHTML : '';
         this.showNames = root.dataset.names !== 'off';
         this.selected = null;
         this.data = null;
@@ -110,9 +131,12 @@
                 if (id) { self.select(id); } else { self.clearSelection(); }
             });
         }
-        this.root.querySelectorAll('[data-graph-pair]').forEach(function (btn) {
-            btn.addEventListener('click', function () { self.openPair(btn.dataset.a, btn.dataset.b); });
+        // Um só ouvinte para os cartões de par, inclusive os que a seleção de um docente desenha depois
+        this.root.addEventListener('click', function (e) {
+            var btn = e.target.closest ? e.target.closest('[data-graph-pair]') : null;
+            if (btn && self.root.contains(btn)) self.openPair(btn.dataset.a, btn.dataset.b);
         });
+        on('[data-graph-pairs-reset]', function () { self.clearSelection(); });
         if (this.dialog) {
             var close = this.dialog.querySelector('[data-graph-dialog-close]');
             if (close) close.addEventListener('click', function () { self.dialog.close(); });
@@ -230,7 +254,7 @@
                 type: 'graph', layout: 'force', roam: true, draggable: true,
                 data: nodes, links: edges,
                 categories: codes.map(function (c) { return { name: c }; }),
-                force: { repulsion: 140, edgeLength: [40, 140], gravity: 0.08, layoutAnimation: !reducedMotion() },
+                force: { repulsion: 85, edgeLength: [25, 90], gravity: 0.16, friction: 0.15, layoutAnimation: !reducedMotion() },
                 label: { position: 'right', fontSize: 11, color: text, textBorderColor: dark ? '#020617' : '#fff', textBorderWidth: 3 },
                 lineStyle: { color: dark ? '#64748b' : '#94a3b8', opacity: 0.75, curveness: 0.08 },
                 emphasis: { focus: 'adjacency', label: { show: true }, lineStyle: { opacity: 1 } },
@@ -272,7 +296,67 @@
             this.info.querySelector('[data-graph-clear]').addEventListener('click', function () { self.clearSelection(); });
             this.info.hidden = false;
         }
-        if (!silent) this.updateStatus();
+        if (!silent) {
+            this.updateStatus();
+            this.showPairsFor(node);
+        }
+    };
+
+    // Lista de pares do docente selecionado: pede a vizinhança completa (o grafo desenha só as ligações mais fortes)
+    Graph.prototype.showPairsFor = function (node) {
+        if (!this.pairsBox) return;
+        var self = this;
+        var box = this.pairsBox;
+        var list = box.querySelector('[data-graph-pairs-list]');
+        var focusList = box.querySelector('[data-graph-pairs-focus]');
+        var more = box.querySelector('[data-graph-pairs-more]');
+        var title = box.querySelector('[data-graph-pairs-title]');
+        var reset = box.querySelector('[data-graph-pairs-reset]');
+        var token = {};
+        this.pairsToken = token;
+
+        title.innerHTML = 'Pares de ' + esc(node.name) + ' <span class="text-sm font-normal text-slate-500 dark:text-slate-400">(carregando…)</span>';
+        reset.hidden = false;
+        if (more) more.hidden = true;
+
+        var url = this.root.dataset.src.replace(/([?&])(docente|ligacoes)=[^&]*/g, '$1').replace(/[?&]+$/, '');
+        url += (url.indexOf('?') >= 0 ? '&' : '?') + 'ligacoes=0&docente=' + encodeURIComponent(node.slug);
+        fetch(url, { headers: { Accept: 'application/json' } }).then(function (r) {
+            if (!r.ok) throw new Error();
+            return r.json();
+        }).then(function (data) {
+            if (self.pairsToken !== token) return;
+            var byId = {};
+            data.nodes.forEach(function (n) { byId[n.id] = n; });
+            var focusId = data.focus ? String(data.focus.id) : node.id;
+            var pairs = data.edges.filter(function (e) { return e.source === focusId || e.target === focusId; })
+                .sort(function (a, b) { return b.weight - a.weight; });
+            title.innerHTML = 'Pares de ' + esc(node.name) + ' <span class="text-sm font-normal text-slate-500 dark:text-slate-400">(' + plural(pairs.length, 'coautor', 'coautores') + ' no CECH)</span>';
+            focusList.innerHTML = pairs.length ? pairs.map(function (e, i) {
+                var other = byId[e.source === focusId ? e.target : e.source];
+                return pairCardHtml(byId[focusId] || node, other || { id: '', name: '' }, e.weight, i + 1);
+            }).join('') : '<li class="text-sm text-slate-500 dark:text-slate-400">Nenhuma coautoria neste recorte.</li>';
+            list.hidden = true;
+            focusList.hidden = false;
+        }).catch(function () {
+            if (self.pairsToken !== token) return;
+            title.innerHTML = 'Pares de ' + esc(node.name);
+            focusList.innerHTML = '<li class="text-sm text-rose-700">Não foi possível carregar os pares. Tente novamente.</li>';
+            list.hidden = true;
+            focusList.hidden = false;
+        });
+    };
+
+    Graph.prototype.resetPairs = function () {
+        if (!this.pairsBox) return;
+        var box = this.pairsBox;
+        this.pairsToken = null;
+        box.querySelector('[data-graph-pairs-title]').innerHTML = this.pairsTitleHtml;
+        box.querySelector('[data-graph-pairs-list]').hidden = false;
+        box.querySelector('[data-graph-pairs-focus]').hidden = true;
+        box.querySelector('[data-graph-pairs-reset]').hidden = true;
+        var more = box.querySelector('[data-graph-pairs-more]');
+        if (more) more.hidden = false;
     };
 
     Graph.prototype.clearSelection = function () {
@@ -280,6 +364,7 @@
         if (this.focusSelect) this.focusSelect.value = '';
         if (this.chart) this.chart.dispatchAction({ type: 'downplay', seriesIndex: 0 });
         if (this.info) { this.info.hidden = true; this.info.innerHTML = ''; }
+        this.resetPairs();
         this.updateStatus();
     };
 

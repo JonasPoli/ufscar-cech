@@ -9,18 +9,26 @@
       hidden        parâmetros fixos da página, opcional: {nome: valor}
       heading       rótulo do bloco, opcional
 #}
-{% set inputClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white' %}
-{% set labelClass = 'block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1' %}
+{% set inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm transition focus:border-cech-teal focus:outline-none focus:ring-4 focus:ring-cech-teal/15 dark:border-slate-700 dark:bg-slate-900 dark:text-white' %}
+{% set labelClass = 'mb-1 block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400' %}
 {% set uid = 'f' ~ random(99999) %}
-<form method="GET" action="{{ action }}" class="glass-card rounded-2xl overflow-hidden" aria-label="{{ heading|default('Filtrar') }}">
-    <p class="px-4 sm:px-5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100/70 dark:bg-white/5 border-b border-slate-200/70 dark:border-white/10">{{ heading|default('Filtrar') }}</p>
-    <div class="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+{% set hasFilters = filter.q or filter.department or filter.from or filter.to or (topics is defined and topics and filter.topicSlug) %}
+<form method="GET" action="{{ action }}" class="rounded-3xl bg-white/90 p-4 shadow-xl shadow-cech-blue/5 ring-1 ring-slate-200/80 backdrop-blur sm:p-5 dark:bg-slate-900/80 dark:ring-white/10" aria-label="{{ heading|default('Filtrar') }}">
+    <p class="mb-3 flex items-center gap-2 text-sm font-bold text-slate-800 dark:text-slate-100">
+        <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-cech-blue to-cech-teal text-white" aria-hidden="true"><sl-icon name="funnel" class="text-xs"></sl-icon></span>
+        {{ heading|default('Filtrar') }}
+        {% if hasFilters %}<span class="rounded-full bg-cech-teal/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cech-teal-dark dark:text-cech-teal">Filtros ativos</span>{% endif %}
+    </p>
+    <div class="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-12">
         {% for name, value in hidden|default({}) %}
             <input type="hidden" name="{{ name }}" value="{{ value }}">
         {% endfor %}
         <div class="lg:col-span-3">
             <label for="{{ uid }}-q" class="{{ labelClass }}">Assunto</label>
-            <input id="{{ uid }}-q" type="search" name="q" value="{{ filter.q }}" maxlength="200" placeholder="Título ou palavra-chave" class="{{ inputClass }}">
+            <div class="relative">
+                <sl-icon name="search" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true"></sl-icon>
+                <input id="{{ uid }}-q" type="search" name="q" value="{{ filter.q }}" maxlength="200" placeholder="Título ou palavra-chave" class="{{ inputClass }} pl-9">
+            </div>
         </div>
         <div class="lg:col-span-3">
             <label for="{{ uid }}-d" class="{{ labelClass }}">Departamento</label>
@@ -56,11 +64,11 @@
             </div>
         </fieldset>
         <div class="{{ topics is defined and topics ? 'lg:col-span-2' : 'lg:col-span-4' }} flex gap-2">
-            <button type="submit" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-600">
-                <sl-icon name="funnel"></sl-icon> Aplicar
+            <button type="submit" class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-cech-blue to-cech-teal px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-cech-blue/20 transition hover:brightness-110">
+                <sl-icon name="funnel" aria-hidden="true"></sl-icon> Aplicar
             </button>
-            {% if filter.q or filter.department or filter.from or filter.to or (topics is defined and topics and filter.topicSlug) %}
-                <a href="{{ action }}{% if hidden is defined and hidden %}?{{ hidden|url_encode }}{% endif %}" class="inline-flex items-center justify-center rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Limpar filtros"><sl-icon name="x-lg"></sl-icon></a>
+            {% if hasFilters %}
+                <a href="{{ action }}{% if hidden is defined and hidden %}?{{ hidden|url_encode }}{% endif %}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-600 shadow-sm transition hover:border-cech-red/40 hover:text-cech-red dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300" aria-label="Limpar filtros" title="Limpar filtros"><sl-icon name="x-lg"></sl-icon></a>
             {% endif %}
         </div>
     </div>

@@ -249,7 +249,24 @@ class MainController extends AbstractController
             'areas' => $this->catalog->areas(),
             'topTopics' => $hasSearch ? [] : array_slice($this->catalog->topics(), 0, 14),
             'currentYear' => (int)date('Y'),
+            'heroStats' => $this->heroStats(),
         ]);
+    }
+
+    /**
+     * Números da capa da busca (guardados no cache da pesquisa): docentes com produção, publicações únicas e assuntos.
+     *
+     * @return array{researchers: int, publications: int, topics: int}
+     */
+    private function heroStats(): array
+    {
+        $all = $this->metrics->metrics(new ResearchFilter(), false);
+
+        return [
+            'researchers' => (int)$all['researchers'],
+            'publications' => (int)$all['publications'],
+            'topics' => $this->catalog->topicCount(),
+        ];
     }
 
     /** Modo da busca: `modo` na URL, o `type` antigo ou, para um DOI digitado, publicações. */
