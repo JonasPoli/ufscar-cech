@@ -87,6 +87,7 @@ entradas:
           - {hash: "39b143e", texto: "Busca de especialistas, coautorias, explorar, panorama, perfil, acessibilidade e páginas sobre o portal."}
           - {hash: "3c55d44", texto: "Documentação: comparação com a Plataforma Jabuticaba e plano das mudanças."}
           - {hash: "b197a5e", texto: "Página de novidades com o histórico de manutenções, dicas nas páginas que mudaram e selo \"Novo\" no menu."}
+          - {hash: "e370de1", texto: "Cabeçalho em duas linhas: menu em cima e busca logo abaixo."}
 
     - data: 2026-10-31
       titulo: Periódicos, Qualis e bases internacionais
