@@ -37,15 +37,33 @@ Sobre essa camada, entrega dois produtos:
 
 ### Portal público (sem login)
 
-- **Home** (`/`) — métricas institucionais, publicações recentes com link DOI, docentes em destaque.
-- **Perfil do docente** (`/professor/{slug}`) — biografia, vínculos, Lattes/ORCID, produções por
-  categoria, orientações, nuvens de palavras-chave, rede de coautoria, bases internacionais e
-  exportação individual em **BibTeX, JSON e CSV**.
-- **Pesquisa temática** (`/temas`) — descoberta por conceito, cruzando palavras-chave do Lattes e do
-  repositório institucional, com autocomplete e distribuição por departamento.
-- **Indicadores** (`/indicadores`) — 18 figuras cienciométricas (corpo docente, formação de recursos
-  humanos, produção/Qualis, redes de colaboração), carregadas por aba sob demanda.
-- **Busca** (`/busca`) e **Departamentos** (`/departamentos`).
+- **Home** (`/`) — busca de especialistas, assuntos para começar, métricas institucionais, atalhos,
+  publicações recentes com link DOI e docentes em destaque.
+- **Busca** (`/busca`) — quatro modos: *especialistas* (por assunto, agrupados por docente, com as
+  publicações que comprovam), *publicações* (sem repetição entre currículos, também por periódico, DOI e
+  família da revista), *pesquisador* (por nome) e *teses e orientações*. Filtros de departamento,
+  grande área, área de atuação, vínculo, tipo, período e expressão exata; ordenação por relevância.
+- **Perfil do docente** (`/professor/{slug}`) — biografia, vínculo (vigente ou encerrado, com o
+  período no CECH), assuntos em destaque, coautores e publicações compartilhadas no CECH, aba
+  "Publicações da busca" com "Voltar à busca", Lattes/ORCID, produções por categoria, orientações,
+  nuvens de palavras-chave, grafo de coautoria da pessoa, bases internacionais e exportação em
+  **BibTeX, JSON e CSV**.
+- **Coautorias** (`/coautorias`) — grafo interativo da rede (destacar docente, vizinhança, publicações
+  de cada par, zoom, tela cheia, legenda por cor e forma) com os filtros da pesquisa.
+- **Explorar pesquisa** (`/explorar`, `/explorar/areas`, `/explorar/grandes-areas`) — catálogos de
+  assuntos, áreas de atuação e grandes áreas; cada um tem página com panorama, docentes, rede e
+  publicações (`/explorar/assunto/{slug}`, `/explorar/area/{slug}`, `/explorar/grande-area/{slug}`).
+- **Projetos** (`/projetos`, `/projeto/{id}`) — catálogo dos projetos declarados no Lattes, unificados
+  entre currículos, com equipe e financiadores.
+- **Pesquisa temática** (`/temas`) — análise editorial de um conceito (Qualis e periódicos), com
+  autocomplete e distribuição por departamento.
+- **Indicadores** (`/indicadores`) — panorama filtrável (assunto, departamento, tema, período) com
+  pontes entre departamentos e grandes áreas, e as 18 figuras cienciométricas por aba.
+- **Departamentos** (`/departamentos`) e **páginas institucionais** (`/sobre`, `/sobre-os-dados`,
+  `/duvidas`).
+- **Acessibilidade** — painel de preferências de leitura (texto até 200%, tema, contraste,
+  espaçamento, animações) e link para pular ao conteúdo.
+- **API pública** (`/api/v1`) — catálogo, busca, publicações, métricas, grafo, docente e projetos, em JSON.
 - **SEO** — `sitemap.xml` e `robots.txt` gerados dinamicamente.
 
 ### Painel administrativo (`/admin`)
