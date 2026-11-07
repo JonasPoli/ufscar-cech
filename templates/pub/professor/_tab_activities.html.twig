@@ -8,7 +8,20 @@
 
     {% if researcher.researchProjects|length > 0 %}
     <!-- 1. PROJETOS DE PESQUISA & EXTENSÃO -->
-    <div class="act-subsection space-y-4">
+    {#
+        Cada projeto leva à página dele no catálogo (/projeto/{id}). O filtro rápido (nome e situação) só esconde itens com
+        a classe `hidden` e não mexe no `style.display` que o filtro global da página (applyGlobalFilter, em show.html.twig)
+        usa: um item aparece quando passa nos dois. A seção continua visível enquanto o filtro global achar algo nela.
+    #}
+    {% import 'pub/project/_badges.html.twig' as projectBadges %}
+    {% set projectStatusLabels = {'EM_ANDAMENTO': 'Em andamento', 'CONCLUIDO': 'Concluído', 'DESATIVADO': 'Desativado'} %}
+    {% set projectNatureLabels = {'PESQUISA': 'Pesquisa', 'EXTENSAO': 'Extensão', 'ENSINO': 'Ensino', 'DESENVOLVIMENTO': 'Desenvolvimento', 'OUTRA': 'Outra'} %}
+    {% set sortedProjects = researcher.researchProjects|sort((a, b) => (b.startYear ?? 0) <=> (a.startYear ?? 0) ?: (b.endYear ?? 9999) <=> (a.endYear ?? 9999)) %}
+    {% set projectStatusCounts = {} %}
+    {% for proj in sortedProjects %}
+        {% set projectStatusCounts = projectStatusCounts|merge({(proj.status): (projectStatusCounts[proj.status] ?? 0) + 1}) %}
+    {% endfor %}
+    <div class="act-subsection space-y-4" id="profile-projects">
                     <!-- Empty State Message for Projects -->
                     <div id="empty-projects" class="empty-filter-state hidden p-8 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
                         <sl-icon name="search" class="text-3xl text-slate-400 mb-2"></sl-icon>
@@ -19,17 +32,32 @@
                         <sl-icon name="kanban" class="text-sky-600 dark:text-sky-400"></sl-icon>
                         Projetos de Pesquisa, Extensão & Desenvolvimento ({{ researcher.researchProjects|length }})
                     </h3>
-                    <div class="space-y-4">
-                        {% for proj in researcher.researchProjects %}
-                            <div class="project-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-2.5 bg-white/50 dark:bg-slate-900/50 hover:border-slate-300 transition-colors">
+
+                    {% if sortedProjects|length > 1 %}
+                    <div id="project-quick-filter" class="flex flex-col gap-2 sm:flex-row sm:items-center" role="search" aria-label="Filtrar os projetos do docente">
+                        <div class="relative flex-1">
+                            <sl-icon name="funnel" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></sl-icon>
+                            <label for="project-quick-name" class="sr-only">Filtrar projetos pelo nome</label>
+                            <input id="project-quick-name" type="search" placeholder="Filtrar projetos pelo nome…" autocomplete="off" class="w-full rounded-xl border border-slate-300 bg-white/90 py-2 pl-9 pr-3 text-sm text-slate-900 placeholder-slate-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900/90 dark:text-white">
+                        </div>
+                        <label for="project-quick-status" class="sr-only">Situação do projeto</label>
+                        <select id="project-quick-status" class="rounded-xl border border-slate-300 bg-white/90 px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900/90 dark:text-white">
+                            <option value="">Todas as situações</option>
+                            {% for code, count in projectStatusCounts %}
+                                <option value="{{ code }}">{{ projectStatusLabels[code] ?? code|replace({'_': ' '})|capitalize }} ({{ count }})</option>
+                            {% endfor %}
+                        </select>
+                        <span id="project-quick-count" class="text-xs text-slate-500 dark:text-slate-400 sm:whitespace-nowrap" aria-live="polite"></span>
+                    </div>
+                    {% endif %}
+
+                    <div class="space-y-4" id="project-quick-list">
+                        {% for proj in sortedProjects %}
+                            <div class="project-item rounded-2xl border border-slate-200/80 dark:border-white/10 p-5 space-y-2.5 bg-white/50 dark:bg-slate-900/50 hover:border-slate-300 transition-colors" data-project-name="{{ proj.name }}" data-project-status="{{ proj.status }}">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
-                                    <div class="flex items-center gap-2">
-                                        <span class="rounded-md {% if proj.nature == 'EXTENSAO' %}bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300{% elseif proj.nature == 'DESENVOLVIMENTO' %}bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300{% else %}bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300{% endif %} px-2.5 py-0.5 text-[11px] font-bold">
-                                            {{ proj.nature }}
-                                        </span>
-                                        <span class="rounded-md {% if proj.status == 'EM_ANDAMENTO' %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300{% else %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300{% endif %} px-2 py-0.5 text-[11px] font-semibold">
-                                            {{ proj.status|replace({'_': ' '}) }}
-                                        </span>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        {{ projectBadges.nature(proj.nature, projectNatureLabels[proj.nature] ?? proj.nature|replace({'_': ' '})|capitalize) }}
+                                        {{ projectBadges.status(proj.status, projectStatusLabels[proj.status] ?? proj.status|replace({'_': ' '})|capitalize) }}
                                         {% if proj.isCoordinator %}
                                             <span class="rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 text-[10px] font-bold">
                                                 Coordenador
@@ -42,21 +70,70 @@
                                 </div>
 
                                 <h4 class="font-heading text-base font-bold text-slate-900 dark:text-white leading-snug">
-                                    {{ proj.name }}
+                                    <a href="{{ path('app_pub_project_show', {'id': proj.id}) }}" class="hover:text-sky-600 dark:hover:text-sky-400 transition-colors">{{ proj.name }}</a>
                                 </h4>
 
                                 {% if proj.description %}
                                     <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed pt-1">{{ proj.description }}</p>
                                 {% endif %}
 
-                                {% if proj.agencyFinancier %}
-                                    <div class="flex items-center gap-1.5 pt-1 text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
-                                        <sl-icon name="cash-coin"></sl-icon> Financiador(es): {{ proj.agencyFinancier }}
-                                    </div>
-                                {% endif %}
+                                <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+                                    {% if proj.agencyFinancier %}
+                                        <div class="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+                                            <sl-icon name="cash-coin"></sl-icon> Financiador(es): {{ proj.agencyFinancier }}
+                                        </div>
+                                    {% else %}
+                                        <span></span>
+                                    {% endif %}
+                                    <a href="{{ path('app_pub_project_show', {'id': proj.id}) }}" class="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300">Equipe e detalhes <sl-icon name="arrow-right"></sl-icon></a>
+                                </div>
                             </div>
                         {% endfor %}
                     </div>
+
+                    <div id="project-quick-empty" class="hidden p-6 text-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                        <p class="text-xs font-medium text-slate-500 dark:text-slate-400">Nenhum projeto com esse nome e situação.</p>
+                    </div>
+                    {% if sortedProjects|length > 1 %}
+                    <script>
+                        (() => {
+                            const box = document.getElementById('project-quick-filter');
+                            const list = document.getElementById('project-quick-list');
+                            if (!box || !list || box.dataset.ready) return;
+                            box.dataset.ready = '1';
+                            const nameInput = document.getElementById('project-quick-name');
+                            const statusSelect = document.getElementById('project-quick-status');
+                            const counter = document.getElementById('project-quick-count');
+                            const empty = document.getElementById('project-quick-empty');
+                            const items = [...list.querySelectorAll('.project-item')];
+                            const norm = (s) => (s || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+                            // Contagem e aviso consideram também o filtro global (itens com style display:none)
+                            const refresh = () => {
+                                const active = nameInput.value.trim() !== '' || statusSelect.value !== '';
+                                const visible = items.filter((item) => !item.classList.contains('hidden') && item.style.display !== 'none').length;
+                                const globallyVisible = items.filter((item) => item.style.display !== 'none').length;
+                                counter.textContent = active ? `${visible} de ${globallyVisible}` : '';
+                                empty.classList.toggle('hidden', !active || visible > 0 || globallyVisible === 0);
+                            };
+
+                            const apply = () => {
+                                const term = norm(nameInput.value.trim());
+                                const status = statusSelect.value;
+                                items.forEach((item) => {
+                                    const ok = (term === '' || norm(item.dataset.projectName).includes(term))
+                                        && (status === '' || item.dataset.projectStatus === status);
+                                    item.classList.toggle('hidden', !ok);
+                                });
+                                refresh();
+                            };
+
+                            nameInput.addEventListener('input', apply);
+                            statusSelect.addEventListener('change', apply);
+                            new MutationObserver(refresh).observe(list, { subtree: true, attributes: true, attributeFilter: ['style'] });
+                        })();
+                    </script>
+                    {% endif %}
     </div>
     {% endif %}
 

@@ -169,6 +169,8 @@ Base: os 414 XML reais e `src/Service/Import/LattesXmlParserService.php`. "Arqui
 | `awards` | `DADOS-GERAIS/PREMIOS-TITULOS/PREMIO-TITULO` | 270 | `NOME-DO-PREMIO-OU-TITULO` → `name`; `NOME-DA-ENTIDADE-PROMOTORA` → `promoter_entity`; `ANO-DA-PREMIACAO` → `year` |
 | `language_proficiencies` | `DADOS-GERAIS/IDIOMAS/IDIOMA` | 400 | `DESCRICAO-DO-IDIOMA` ("Inglês"), senão `IDIOMA` (o código, "EN") → `language`; `PROFICIENCIA-DE-LEITURA`, `-ESCRITA`, `-FALA`, `-COMPREENSAO` → `reading`, `writing`, `speaking`, `comprehension` |
 | `research_projects` | qualquer `PROJETO-DE-PESQUISA` dentro de `DADOS-GERAIS` | 392 | `NOME-DO-PROJETO` → `name`; `NATUREZA` → `nature`; `SITUACAO` → `status`; `ANO-INICIO`, `ANO-FIM` → `start_year`, `end_year`; `DESCRICAO-DO-PROJETO` → `description`; `FINANCIADORES-DO-PROJETO/FINANCIADOR-DO-PROJETO` `NOME-INSTITUICAO` → `agency_financier`; `EQUIPE-DO-PROJETO/INTEGRANTES-DO-PROJETO` com `NRO-ID-CNPQ` do docente e `FLAG-RESPONSAVEL=SIM` → `is_coordinator` |
+| `research_project_members` | `EQUIPE-DO-PROJETO/INTEGRANTES-DO-PROJETO` de cada projeto (391 arquivos, 32.815 integrantes) | 391 | `NOME-COMPLETO` → `full_name`; `NOME-PARA-CITACAO` → `citation_name`; `ORDEM-DE-INTEGRACAO` → `member_order`; `FLAG-RESPONSAVEL=SIM` → `is_responsible`; `NRO-ID-CNPQ` → `id_lattes`. Calculado: `matched_researcher_id` (docente com o mesmo ID Lattes) |
+| `research_project_funders` | `FINANCIADORES-DO-PROJETO/FINANCIADOR-DO-PROJETO` de cada projeto; o nó vazio (`NAO_INFORMADO`, sem nome nem código) não é gravado | — | `NOME-INSTITUICAO` → `name`; `CODIGO-INSTITUICAO` → `institution_code`; `NATUREZA` → `nature`; ordem no XML → `funder_order` |
 
 ### Produção (`production_items`, `item_type`)
 
@@ -216,6 +218,14 @@ Todos os itens gravam ainda `AUTORES` e `PALAVRAS-CHAVE`, descritos depois desta
 | Títulos e nomes em inglês (`*-INGLES`), `HOME-PAGE`, `MEIO-DE-DIVULGACAO`, `FLAG-RELEVANCIA`, códigos de instituição | variável | |
 
 Para guardar algum deles, é preciso coluna nova por migration e leitura no parser.
+
+### Projetos unificados
+
+`research_projects.project_group_key` (sha1 do nome normalizado + ano de início) junta o mesmo projeto declarado
+em vários currículos; é calculado pela entidade e conferido por `app:index:projects`. O catálogo `/projetos` mostra um
+item por grupo. Para preencher integrantes e financiadores de projetos importados antes de 07/11/2026, sem
+reimportar, use `app:projects:backfill-members --dir=docs/banco/CECH` (relê os XML, confere a data de atualização
+de cada currículo e só grava integrantes e financiadores).
 
 ## Regras da importação
 

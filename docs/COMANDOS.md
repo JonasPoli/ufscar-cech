@@ -24,6 +24,8 @@ Catálogo de tudo o que roda no terminal. Em produção, use `/RunCloud/Packages
 | `app:import:repository` | Importa e enriquece teses e dissertações do Repositório UFSCar. | `--file`, `--center`, `--researcher`, `--limit`, `--dry-run` | [REPOSITORY_IMPORT.md](REPOSITORY_IMPORT.md) |
 | `app:thesaurus:sync-authors` | Completa o tesauro de autores. Só acrescenta; `--clean` apaga e refaz, com confirmação. | `--clean`, `--researchers-only` |  |
 | `app:index:topics` | Reconstrói o índice da pesquisa temática. Troca as tabelas de uma vez: se falhar, o índice antigo fica. |  | [SISTEMA_DE_PALAVRAS_CHAVE.md](SISTEMA_DE_PALAVRAS_CHAVE.md) |
+| `app:index:projects` | Recalcula a chave que une o mesmo projeto em vários currículos e liga os integrantes aos docentes pelo ID Lattes. O importador já faz isso; o comando serve para conferir ou refazer. | `--researcher` | [LATTES_IMPORT.md](LATTES_IMPORT.md) |
+| `app:projects:backfill-members` | Só para dados antigos: relê os XML e grava integrantes e financiadores dos projetos já importados, sem reimportar. Pula currículo com data de atualização diferente da do banco. | `--dir`, `--file`, `--dry-run`, `--ignore-date` | [LATTES_IMPORT.md](LATTES_IMPORT.md) |
 
 ## Fotos
 

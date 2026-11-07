@@ -14,10 +14,14 @@ use App\Entity\ProductionItem;
 use App\Entity\ProfessionalExperience;
 use App\Entity\Researcher;
 use App\Entity\ResearchProject;
+use App\Entity\ResearchProjectFunder;
+use App\Entity\ResearchProjectMember;
 use App\Service\Indexing\CurriculumNormalizationService;
+use App\Service\Project\LattesProjectXmlReader;
 use App\Service\Thesaurus\AuthorResolverService;
 use App\Service\Thesaurus\AuthorThesaurusService;
 use App\Service\Thesaurus\StringNormalizer;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -991,16 +995,43 @@ class LattesXmlParserService
         }
     }
 
+    /**
+     * Projetos do currículo, com a equipe e todos os financiadores como vieram ({@see LattesProjectXmlReader}).
+     * `is_coordinator` e `agency_financier` (o primeiro financiador) continuam como antes. A chave de agrupamento é
+     * calculada pela entidade, e cada integrante com o ID Lattes de um docente do banco já sai ligado a ele; os
+     * integrantes de projetos de outros currículos que têm o ID deste docente também são ligados aqui, para o docente
+     * novo aparecer nas equipes sem esperar o `app:index:projects`.
+     */
     private function parseResearchProjects(?\SimpleXMLElement $generalData, Researcher $researcher): void
     {
-        if (!$generalData) return;
+        $conn = $this->em->getConnection();
+        $conn->executeStatement(
+            'UPDATE research_project_members SET matched_researcher_id = ? WHERE id_lattes = ? AND NOT (matched_researcher_id <=> ?)',
+            [$researcher->getId(), $researcher->getIdLattes(), $researcher->getId()]
+        );
 
-        $projectNodes = $generalData->xpath('.//PROJETO-DE-PESQUISA');
+        $projectNodes = LattesProjectXmlReader::projectNodes($generalData);
         if (!$projectNodes) return;
 
+        $parsed = [];
+        $memberIds = [];
         foreach ($projectNodes as $item) {
+            $members = LattesProjectXmlReader::members($item);
+            foreach ($members as $member) {
+                if ($member['id_lattes'] !== null) {
+                    $memberIds[$member['id_lattes']] = true;
+                }
+            }
+            $parsed[] = [$item, $members, LattesProjectXmlReader::funders($item)];
+        }
+        $researcherIdsByLattes = $memberIds === [] ? [] : $conn->fetchAllKeyValue(
+            'SELECT id_lattes, id FROM researchers WHERE id_lattes IN (?)',
+            [array_map('strval', array_keys($memberIds))],
+            [ArrayParameterType::STRING]
+        );
+
+        foreach ($parsed as [$item, $members, $funders]) {
             $name = trim((string)($item['NOME-DO-PROJETO'] ?? ''));
-            if ($name === '') continue;
 
             $proj = new ResearchProject();
             $proj->setResearcher($researcher);
@@ -1015,7 +1046,8 @@ class LattesXmlParserService
 
             $proj->setDescription($this->truncate((string)($item['DESCRICAO-DO-PROJETO'] ?? '')));
 
-            foreach ($item->{'EQUIPE-DO-PROJETO'}->{'INTEGRANTES-DO-PROJETO'} as $member) {
+            // Projeto sem EQUIPE-DO-PROJETO: o foreach receberia null
+            foreach ($item->{'EQUIPE-DO-PROJETO'}->{'INTEGRANTES-DO-PROJETO'} ?? [] as $member) {
                 if ((string)$member['NRO-ID-CNPQ'] === $researcher->getIdLattes() && strtoupper((string)$member['FLAG-RESPONSAVEL']) === 'SIM') {
                     $proj->setIsCoordinator(true);
                     break;
@@ -1026,6 +1058,28 @@ class LattesXmlParserService
             if (isset($item->{'FINANCIADORES-DO-PROJETO'}->{'FINANCIADOR-DO-PROJETO'})) {
                 $fin = $item->{'FINANCIADORES-DO-PROJETO'}->{'FINANCIADOR-DO-PROJETO'};
                 $proj->setAgencyFinancier($this->truncate((string)($fin['NOME-INSTITUICAO'] ?? ''), 255));
+            }
+
+            foreach ($members as $row) {
+                $member = (new ResearchProjectMember())
+                    ->setFullName($row['full_name'])
+                    ->setCitationName($row['citation_name'])
+                    ->setMemberOrder($row['member_order'])
+                    ->setIsResponsible($row['is_responsible'])
+                    ->setIdLattes($row['id_lattes']);
+                $matchedId = $row['id_lattes'] !== null ? ($researcherIdsByLattes[$row['id_lattes']] ?? null) : null;
+                if ($matchedId !== null) {
+                    $member->setMatchedResearcher($this->em->getReference(Researcher::class, (int)$matchedId));
+                }
+                $proj->addMember($member);
+            }
+
+            foreach ($funders as $row) {
+                $proj->addFunder((new ResearchProjectFunder())
+                    ->setName($row['name'])
+                    ->setInstitutionCode($row['institution_code'])
+                    ->setNature($row['nature'])
+                    ->setFunderOrder($row['funder_order']));
             }
 
             $this->em->persist($proj);

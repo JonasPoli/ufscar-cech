@@ -1,0 +1,25 @@
+{#
+    Selos de situação e natureza dos projetos, iguais no catálogo, na página do projeto e no perfil do docente.
+    Recebem o código do Lattes (EM_ANDAMENTO, PESQUISA...) e o rótulo já traduzido.
+#}
+{% macro status(code, label) %}
+{%- set tone = {
+    'EM_ANDAMENTO': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+    'CONCLUIDO': 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+    'DESATIVADO': 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300',
+}[code]|default('bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300') -%}
+<span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold {{ tone }}">
+    {%- if code == 'EM_ANDAMENTO' %}<span class="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>{% endif -%}
+    {{ label }}
+</span>
+{%- endmacro %}
+
+{% macro nature(code, label) %}
+{%- set tone = {
+    'PESQUISA': 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300',
+    'EXTENSAO': 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300',
+    'DESENVOLVIMENTO': 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+    'ENSINO': 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300',
+}[code]|default('bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300') -%}
+<span class="inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-bold {{ tone }}">{{ label }}</span>
+{%- endmacro %}

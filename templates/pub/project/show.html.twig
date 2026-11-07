@@ -1,0 +1,142 @@
+{% extends 'pub/base.html.twig' %}
+{% import 'pub/project/_badges.html.twig' as badges %}
+
+{% set responsibles = project.members|filter(m => m.is_responsible) %}
+{% set metaDescription = project.summary ?: ('Projeto de ' ~ project.nature_label|lower ~ ' (' ~ project.period ~ ') declarado no Currículo Lattes por ' ~ project.declared_by|length ~ (project.declared_by|length == 1 ? ' docente' : ' docentes') ~ ' do CECH UFSCar.') %}
+
+{% block title %}{{ project.title|length > 90 ? project.title|slice(0, 89)|trim ~ '…' : project.title }} | Projetos | Portal CECH UFSCar{% endblock %}
+{% block meta_description %}{{ metaDescription }}{% endblock %}
+{% block og_title %}{{ project.title }}{% endblock %}
+{% block og_description %}{{ metaDescription }}{% endblock %}
+{% block canonical_url %}{{ canonicalUrl }}{% endblock %}
+
+{% block body %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div class="border-b border-slate-200/60 pb-6 dark:border-white/10">
+        <a href="{{ path('app_pub_projects') }}" class="mb-3 inline-flex items-center gap-1 text-sm font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300"><sl-icon name="arrow-left"></sl-icon> Voltar aos projetos</a>
+        <div class="mb-2 flex flex-wrap items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                <sl-icon name="kanban"></sl-icon> Projeto de {{ project.nature_label|lower }}
+            </span>
+            {{ badges.status(project.status, project.status_label) }}
+        </div>
+        <h1 class="font-heading text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight text-slate-900 break-words dark:text-white">{{ project.title }}</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span class="inline-flex items-center gap-1"><sl-icon name="calendar3"></sl-icon> {{ project.period }}</span>
+            <span class="inline-flex items-center gap-1"><sl-icon name="people"></sl-icon> {{ project.members|length }} {{ project.members|length == 1 ? 'integrante' : 'integrantes' }}</span>
+            <span class="inline-flex items-center gap-1"><sl-icon name="person-vcard"></sl-icon> Declarado por {{ project.declared_by|length }} {{ project.declared_by|length == 1 ? 'docente' : 'docentes' }} do CECH</span>
+        </p>
+    </div>
+
+    <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+        <div class="space-y-6 lg:col-span-2">
+            <section class="glass-card rounded-3xl p-5 sm:p-6" aria-labelledby="project-description-title">
+                <h2 id="project-description-title" class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-3">
+                    <sl-icon name="card-text" class="text-sky-600 dark:text-sky-400"></sl-icon> Descrição
+                </h2>
+                {% if project.description %}
+                    <p class="mt-4 whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-slate-300">{{ project.description }}</p>
+                {% else %}
+                    <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">O projeto não tem descrição no Currículo Lattes.</p>
+                {% endif %}
+            </section>
+
+            <section class="glass-card rounded-3xl p-5 sm:p-6" aria-labelledby="project-team-title">
+                <h2 id="project-team-title" class="font-heading text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-200/60 dark:border-white/10 pb-3">
+                    <sl-icon name="people" class="text-sky-600 dark:text-sky-400"></sl-icon> Integrantes ({{ project.members|length }})
+                </h2>
+                {% if project.members is empty %}
+                    <p class="mt-4 text-sm text-slate-500 dark:text-slate-400">A equipe não foi informada no Currículo Lattes.</p>
+                {% else %}
+                    {% if project.team_source %}
+                        <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">Equipe como informada no Currículo Lattes de <a href="{{ path('app_pub_professor_show', {'slugOrId': project.team_source.slug_or_id}) }}" class="font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300">{{ project.team_source.name }}</a>.</p>
+                    {% endif %}
+                    <ul class="m-0 mt-2 list-none divide-y divide-slate-200/70 p-0 dark:divide-white/10" data-project-members>
+                        {% for member in project.members %}
+                            <li class="project-member flex flex-wrap items-center justify-between gap-2 py-2.5">
+                                <div class="flex min-w-0 items-center gap-2">
+                                    {% if member.researcher %}
+                                        <a href="{{ path('app_pub_professor_show', {'slugOrId': member.researcher.slug_or_id}) }}" class="truncate text-sm font-semibold text-sky-700 hover:text-sky-500 dark:text-sky-300 dark:hover:text-sky-200">{{ member.name }}</a>
+                                        <span class="shrink-0 rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-bold text-sky-700 ring-1 ring-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:ring-sky-800">Docente do CECH{% if member.researcher.department_code %} · {{ member.researcher.department_code }}{% endif %}</span>
+                                    {% else %}
+                                        <span class="truncate text-sm text-slate-800 dark:text-slate-200">{{ member.name }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if member.is_responsible %}
+                                    <span class="rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">Responsável</span>
+                                {% else %}
+                                    <span class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Participante</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </section>
+        </div>
+
+        <aside class="space-y-6">
+            <section class="glass-card rounded-3xl p-5 sm:p-6" aria-labelledby="project-facts-title">
+                <h2 id="project-facts-title" class="font-heading text-lg font-bold text-slate-900 dark:text-white border-b border-slate-200/60 dark:border-white/10 pb-3">Resumo</h2>
+                <dl class="mt-3 space-y-3 text-sm">
+                    <div>
+                        <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Situação</dt>
+                        <dd class="mt-0.5 text-slate-800 dark:text-slate-200">{{ project.status_label }}{% if project.other_status_labels is not empty %} <span class="text-xs text-slate-500 dark:text-slate-400">(outros currículos: {{ project.other_status_labels|join(', ')|lower }})</span>{% endif %}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Natureza</dt>
+                        <dd class="mt-0.5 text-slate-800 dark:text-slate-200">{{ project.nature_label }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Período</dt>
+                        <dd class="mt-0.5 font-mono text-slate-800 dark:text-slate-200">{{ project.period }}</dd>
+                    </div>
+                    {% if responsibles is not empty %}
+                        <div>
+                            <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{{ responsibles|length == 1 ? 'Responsável' : 'Responsáveis' }}</dt>
+                            <dd class="mt-0.5 text-slate-800 dark:text-slate-200">{{ responsibles|map(m => m.name)|join(', ') }}</dd>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <dt class="text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Financiadores</dt>
+                        <dd class="mt-0.5">
+                            {% if project.funders is empty %}
+                                <span class="text-slate-500 dark:text-slate-400">Não informados</span>
+                            {% else %}
+                                <ul class="m-0 list-none space-y-1.5 p-0" data-project-funders>
+                                    {% for funder in project.funders %}
+                                        <li class="flex items-start gap-1.5 text-slate-800 dark:text-slate-200">
+                                            <sl-icon name="cash-coin" class="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400"></sl-icon>
+                                            <span>{{ funder.name }}{% if funder.natures is not empty %} <span class="text-xs text-slate-500 dark:text-slate-400">· {{ funder.natures|join(', ') }}</span>{% endif %}</span>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="glass-card rounded-3xl p-5 sm:p-6" aria-labelledby="project-declared-title">
+                <h2 id="project-declared-title" class="font-heading text-lg font-bold text-slate-900 dark:text-white border-b border-slate-200/60 dark:border-white/10 pb-3">Declarado no Lattes por</h2>
+                <ul class="m-0 mt-3 list-none space-y-3 p-0" data-project-declared-by>
+                    {% for researcher in project.declared_by %}
+                        <li class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <a href="{{ path('app_pub_professor_show', {'slugOrId': researcher.slug_or_id}) }}" class="text-sm font-semibold text-sky-700 hover:text-sky-500 dark:text-sky-300 dark:hover:text-sky-200">{{ researcher.name }}</a>
+                                {% if researcher.department %}<p class="text-xs text-slate-500 dark:text-slate-400">{{ researcher.department }}</p>{% endif %}
+                            </div>
+                            {% if researcher.is_coordinator %}
+                                <span class="shrink-0 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">Coordenação</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+        </aside>
+    </div>
+
+    <p class="text-xs text-slate-500 dark:text-slate-400">
+        Fonte: Currículo Lattes dos docentes que declaram o projeto. Quando mais de um docente o declara, os financiadores juntam o que cada currículo informa; situação, período, descrição e equipe vêm do currículo do responsável, quando ele é docente do CECH. Também em <a href="{{ path('app_api_project_show', {'id': project.id}) }}" class="font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300">JSON</a>.
+    </p>
+</div>
+{% endblock %}

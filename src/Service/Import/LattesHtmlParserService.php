@@ -13,6 +13,8 @@ use App\Entity\ProductionAuthor;
 use App\Entity\ProductionItem;
 use App\Entity\ProfessionalExperience;
 use App\Entity\ResearchProject;
+use App\Entity\ResearchProjectFunder;
+use App\Entity\ResearchProjectMember;
 use App\Entity\Researcher;
 use App\Service\Indexing\CurriculumNormalizationService;
 use App\Service\Thesaurus\AuthorThesaurusService;
@@ -488,10 +490,61 @@ class LattesHtmlParserService
                     $proj->setIsCoordinator(true);
                 }
 
+                // Equipe e financiadores, como o XML grava. O HTML não traz o ID Lattes nem o nome para citação dos
+                // integrantes, então eles não se ligam ao perfil de um docente; e a natureza do financiador vem como
+                // rótulo ("Bolsa"), não como código.
+                foreach ($this->parseProjectListSection($descText, 'Integrantes:') as $i => [$memberName, $role]) {
+                    $proj->addMember((new ResearchProjectMember())
+                        ->setFullName((string)$this->truncate($memberName, 255))
+                        ->setMemberOrder($i + 1)
+                        ->setIsResponsible(str_starts_with(mb_strtolower($role), 'coordenador')));
+                }
+                foreach ($this->parseProjectListSection($descText, 'Financiador(es):') as $i => [$funderName, $funderNature]) {
+                    $proj->addFunder((new ResearchProjectFunder())
+                        ->setName((string)$this->truncate($funderName, 255))
+                        ->setNature($funderNature !== '' ? $this->truncate($funderNature, 50) : null)
+                        ->setFunderOrder($i + 1));
+                }
+
                 $this->em->persist($proj);
                 $researcher->addResearchProject($proj);
             }
         }
+    }
+
+    /**
+     * Lista "Nome - Papel / Nome - Papel." que o HTML do Lattes escreve depois de `Integrantes:` e `Financiador(es):`.
+     * Vai até o próximo rótulo conhecido ou o fim do texto; o papel é o que vem depois do último " - " (pode faltar).
+     *
+     * @return list<array{0: string, 1: string}>
+     */
+    private function parseProjectListSection(string $text, string $label): array
+    {
+        $start = mb_stripos($text, $label);
+        if ($start === false) {
+            return [];
+        }
+        $section = mb_substr($text, $start + mb_strlen($label));
+        foreach (['Integrantes:', 'Financiador(es):', 'Número de produções', 'Número de orientações', 'Alunos envolvidos:'] as $nextLabel) {
+            $end = mb_stripos($section, $nextLabel);
+            if ($end !== false) {
+                $section = mb_substr($section, 0, $end);
+            }
+        }
+
+        $items = [];
+        foreach (explode('/', rtrim(trim($section), '. ')) as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            $dash = mb_strrpos($part, ' - ');
+            $items[] = $dash === false
+                ? [$part, '']
+                : [trim(mb_substr($part, 0, $dash)), trim(mb_substr($part, $dash + 3), '. ')];
+        }
+
+        return $items;
     }
 
     /**
