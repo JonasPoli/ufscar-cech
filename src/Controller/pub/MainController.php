@@ -6,8 +6,12 @@ use App\Entity\ProductionItem;
 use App\Entity\Researcher;
 use App\Repository\OrientationRepository;
 use App\Repository\ProductionItemRepository;
-use App\Repository\QualisJournalRepository;
 use App\Repository\ResearcherRepository;
+use App\Service\Research\ExpertSearchService;
+use App\Service\Research\ResearchCatalogService;
+use App\Service\Research\ResearchFilter;
+use App\Service\Research\ResearchFilterFactory;
+use App\Service\Research\ResearchMetricsService;
 use App\Service\StatisticsService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,12 +20,17 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class MainController extends AbstractController
 {
+    public const SEARCH_MODES = ['especialistas', 'publicacoes', 'pesquisador', 'orientacoes'];
+
     public function __construct(
         private readonly ResearcherRepository $researcherRepo,
         private readonly ProductionItemRepository $productionRepo,
         private readonly OrientationRepository $orientationRepo,
         private readonly StatisticsService $statisticsService,
-        private readonly QualisJournalRepository $journalRepo
+        private readonly ResearchFilterFactory $filterFactory,
+        private readonly ExpertSearchService $expertSearch,
+        private readonly ResearchCatalogService $catalog,
+        private readonly ResearchMetricsService $metrics,
     ) {}
 
     #[Route('/', name: 'app_pub_home')]
@@ -58,6 +67,8 @@ class MainController extends AbstractController
             'topDepartments' => $topDepartments,
             'featuredResearchers' => $featuredResearchers,
             'yearlyStats' => $yearlyStats,
+            'topTopics' => array_slice($this->catalog->topics(), 0, 14),
+            'topicCount' => $this->catalog->topicCount(),
         ]);
     }
 
@@ -78,10 +89,17 @@ class MainController extends AbstractController
         // Carrega apenas os dados da aba inicial solicitada para manter baixo uso de memória
         $tabData = $this->getIndicatorTabData($isPrintAll ? 'all' : $tab);
 
+        // Panorama filtrável (assunto, departamento, tema, período), calculado e guardado por filtro
+        $panoramaFilter = $this->filterFactory->fromRequest($request);
+
         return $this->render('pub/main/indicadores.html.twig', array_merge([
             'summary' => $summary,
             'initialTab' => $isPrintAll ? 'all' : $tab,
             'isPrintAll' => $isPrintAll,
+            'panoramaFilter' => $panoramaFilter,
+            'panorama' => $isPrintAll ? null : $this->metrics->metrics($panoramaFilter),
+            'departments' => $this->catalog->departments(),
+            'topics' => $this->catalog->topics(),
         ], $tabData));
     }
 
@@ -169,55 +187,93 @@ class MainController extends AbstractController
         return [];
     }
 
+    /**
+     * Busca pública em quatro modos: especialistas (por assunto), publicações (por assunto, periódico ou DOI),
+     * pesquisador (por nome) e teses/orientações. Os filtros são os do {@see ResearchFilter}.
+     *
+     * Os parâmetros antigos continuam valendo para os links já publicados: `type` (all, researchers, productions,
+     * orientations), `dept` e `page`.
+     */
     #[Route('/busca', name: 'app_pub_search')]
     public function search(Request $request): Response
     {
-        $q = trim((string)$request->query->get('q', ''));
-        $type = trim((string)$request->query->get('type', 'all'));
-        $department = trim((string)$request->query->get('dept', ''));
-        $page = max(1, (int)$request->query->get('page', 1));
-        $limit = 15;
+        $filter = $this->filterFactory->fromRequest($request);
+        $mode = self::searchMode($request, $filter);
+        $page = max(1, $request->query->getInt('pagina', $request->query->getInt('page', 1)));
+        $sorts = $mode === 'publicacoes' ? ExpertSearchService::PUBLICATION_SORTS : ExpertSearchService::EXPERT_SORTS;
+        $sort = (string)$request->query->get('ordem', '');
+        if (!isset($sorts[$sort])) {
+            $sort = ($filter->hasTextCriteria() || $mode === 'pesquisador') ? ($mode === 'pesquisador' ? 'nome' : 'relevancia') : 'recentes';
+        }
 
-        $researchers = [];
-        $productions = [];
+        $result = null;
+        $nameMatches = null;
         $orientations = [];
-        $totalResearchers = 0;
-        $totalProductions = 0;
         $totalOrientations = 0;
+        $hasSearch = !$filter->isEmpty();
 
-        if ($q !== '' || $department !== '') {
-            if ($type === 'all' || $type === 'researchers') {
-                $researchers = $this->researcherRepo->searchResearchers($q, $department, $page, $limit);
-                $totalResearchers = $this->researcherRepo->countSearchResearchers($q, $department);
-            }
-            if ($type === 'all' || $type === 'productions') {
-                // A revista também é achada por qualquer nome da sua família (título, nome de exibição, variantes),
-                // não só pela grafia que o docente escreveu; os ids são buscados uma vez para a lista e a contagem
-                $journalRowIds = $q !== '' ? $this->journalRepo->findFamilyRowIdsByName($q) : [];
-                $productions = $this->productionRepo->searchProductions($q, $department, $page, $limit, $journalRowIds);
-                $totalProductions = $this->productionRepo->countSearchProductions($q, $department, $journalRowIds);
-            }
-            if ($type === 'all' || $type === 'orientations') {
-                $orientations = $this->orientationRepo->searchOrientations($q, $department, $page, $limit);
-                $totalOrientations = $this->orientationRepo->countSearchOrientations($q, $department);
+        if ($hasSearch) {
+            switch ($mode) {
+                case 'publicacoes':
+                    $result = $this->expertSearch->publications($filter, $sort, $page);
+                    break;
+                case 'pesquisador':
+                    $result = $this->expertSearch->researchers($filter, $page);
+                    break;
+                case 'orientacoes':
+                    $orientations = $this->orientationRepo->searchOrientations($filter->q, $filter->department, $page, 15);
+                    $totalOrientations = $this->orientationRepo->countSearchOrientations($filter->q, $filter->department);
+                    $result = ['count' => $totalOrientations, 'page' => $page, 'pages' => max(1, (int)ceil($totalOrientations / 15)), 'results' => []];
+                    break;
+                default:
+                    $result = $this->expertSearch->experts($filter, $sort, $page);
+                    // Quem digita um nome na busca rápida também vê os docentes com esse nome
+                    if ($filter->q !== '' && $page === 1) {
+                        $nameMatches = $this->expertSearch->researchers($filter, 1, 6);
+                    }
             }
         }
 
-        $allDepartments = $this->researcherRepo->findAllDistinctDepartments();
-
         return $this->render('pub/main/search.html.twig', [
-            'q' => $q,
-            'type' => $type,
-            'department' => $department,
+            'filter' => $filter,
+            'mode' => $mode,
+            'sort' => $sort,
+            'sorts' => $sorts,
             'page' => $page,
-            'limit' => $limit,
-            'researchers' => $researchers,
-            'productions' => $productions,
+            'result' => $result,
+            'nameMatches' => $nameMatches,
             'orientations' => $orientations,
-            'totalResearchers' => $totalResearchers,
-            'totalProductions' => $totalProductions,
-            'totalOrientations' => $totalOrientations,
-            'allDepartments' => $allDepartments,
+            'hasSearch' => $hasSearch,
+            'allDepartments' => $this->catalog->departments(),
+            'majorAreas' => $this->catalog->majorAreas(),
+            'areas' => $this->catalog->areas(),
+            'topTopics' => $hasSearch ? [] : array_slice($this->catalog->topics(), 0, 14),
+            'currentYear' => (int)date('Y'),
         ]);
+    }
+
+    /** Modo da busca: `modo` na URL, o `type` antigo ou, para um DOI digitado, publicações. */
+    public static function searchMode(Request $request, ResearchFilter $filter): string
+    {
+        $mode = (string)$request->query->get('modo', '');
+        if (in_array($mode, self::SEARCH_MODES, true)) {
+            return $mode;
+        }
+
+        $legacy = [
+            'researchers' => 'pesquisador',
+            'productions' => 'publicacoes',
+            'orientations' => 'orientacoes',
+        ];
+        $type = (string)$request->query->get('type', '');
+        if (isset($legacy[$type])) {
+            return $legacy[$type];
+        }
+
+        if (preg_match('#^(https?://(dx\.)?doi\.org/)?10\.\d{4,}/#i', $filter->q)) {
+            return 'publicacoes';
+        }
+
+        return 'especialistas';
     }
 }

@@ -127,6 +127,13 @@
             </style>
         {% endblock %}
 
+        {# Componente de grafo de coautoria (carrega o ECharts sob demanda) #}
+        <script src="{{ asset('js/graph.js') }}" defer></script>
+
+        {# Painel "Preferências de leitura" e fórmulas em títulos (KaTeX só é baixado se houver \(…\) ou $$…$$ no <main>) #}
+        <script src="{{ asset('js/a11y.js') }}" defer></script>
+        <script src="{{ asset('js/math.js') }}" defer></script>
+
         {# ── Schema.org Structured Data (JSON-LD) Block ── #}
         {% block schema_json_ld %}
             <script type="application/ld+json">
@@ -175,42 +182,181 @@
             </script>
         {% endblock %}
 
+        {#
+            Preferências de leitura (tema e acessibilidade), aplicadas aqui, antes da pintura da página.
+            - Tema: localStorage.theme = 'light' | 'dark'; sem a chave, o tema é automático e acompanha
+              prefers-color-scheme ao vivo. Classes 'dark' (Tailwind) e 'sl-theme-dark' (Shoelace) no <html>.
+            - Demais preferências: localStorage['cech-a11y'] = {"fontScale":100-200,"contrast":bool,"spacing":bool,
+              "reduceMotion":bool|null} (só as diferentes do padrão; null = segue prefers-reduced-motion).
+              Classes no <html>: a11y-text-scaled, a11y-contrast, a11y-spacing, a11y-reduce-motion, a11y-motion-full
+              e a11y-compact-nav (menu recolhido quando o texto ampliado não cabe no cabeçalho); CSS em assets/styles/app.css.
+            - API: window.CechA11y (state, set, setTheme, reset, fitHeader) e window.setDarkMode(isDark).
+              O painel "Preferências de leitura" é ligado por assets/js/a11y.js.
+        #}
         <script>
-            (function() {
-                var darkLink = document.getElementById('shoelace-dark-theme');
-                var isDark = localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                if (isDark) {
-                    document.documentElement.classList.add('dark', 'sl-theme-dark');
-                    if (darkLink) darkLink.media = 'all';
-                } else {
-                    document.documentElement.classList.remove('dark', 'sl-theme-dark');
-                }
-            })();
+            (function (w, d) {
+                var KEY = 'cech-a11y';
+                var root = d.documentElement;
+                var DEFAULTS = { fontScale: 100, contrast: false, spacing: false, reduceMotion: null };
+                var mqDark = w.matchMedia ? w.matchMedia('(prefers-color-scheme: dark)') : null;
+                var mqMotion = w.matchMedia ? w.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
-            function setDarkMode(isDark) {
-                var darkLink = document.getElementById('shoelace-dark-theme');
-                if (isDark) {
-                    document.documentElement.classList.add('dark', 'sl-theme-dark');
-                    localStorage.theme = 'dark';
-                    if (darkLink) darkLink.media = 'all';
-                } else {
-                    document.documentElement.classList.remove('dark', 'sl-theme-dark');
-                    localStorage.theme = 'light';
+                // O armazenamento pode falhar (modo privado, bloqueio de cookies): tudo passa por try/catch
+                function read(key) { try { return w.localStorage.getItem(key); } catch (e) { return null; } }
+                function write(key, value) {
+                    try {
+                        if (value === null) { w.localStorage.removeItem(key); } else { w.localStorage.setItem(key, value); }
+                    } catch (e) {}
                 }
-            }
+
+                function has(obj, key) { return Object.prototype.hasOwnProperty.call(obj, key); }
+
+                // Valida valores vindos do armazenamento ou da API (qualquer valor estranho volta ao padrão)
+                function normalize(saved) {
+                    var out = {}, key;
+                    for (key in DEFAULTS) { out[key] = has(saved, key) ? saved[key] : DEFAULTS[key]; }
+                    var scale = parseInt(out.fontScale, 10);
+                    out.fontScale = (scale >= 100 && scale <= 200) ? scale : 100;
+                    out.contrast = out.contrast === true;
+                    out.spacing = out.spacing === true;
+                    out.reduceMotion = (out.reduceMotion === true || out.reduceMotion === false) ? out.reduceMotion : null;
+                    return out;
+                }
+
+                function loadPrefs() {
+                    var saved;
+                    try { saved = JSON.parse(read(KEY) || '{}'); } catch (e) { saved = null; }
+                    return normalize(saved && typeof saved === 'object' ? saved : {});
+                }
+
+                function savePrefs() {
+                    var out = {}, any = false, key;
+                    for (key in DEFAULTS) { if (prefs[key] !== DEFAULTS[key]) { out[key] = prefs[key]; any = true; } }
+                    write(KEY, any ? JSON.stringify(out) : null);
+                }
+
+                var prefs = loadPrefs();
+
+                function getTheme() { var t = read('theme'); return (t === 'dark' || t === 'light') ? t : 'auto'; }
+
+                function applyTheme() {
+                    var theme = getTheme();
+                    var dark = theme === 'dark' || (theme === 'auto' && !!(mqDark && mqDark.matches));
+                    var darkLink = d.getElementById('shoelace-dark-theme');
+                    root.classList.toggle('dark', dark);
+                    root.classList.toggle('sl-theme-dark', dark);
+                    root.style.colorScheme = dark ? 'dark' : 'light';
+                    root.setAttribute('data-theme', theme);
+                    if (darkLink) { darkLink.media = dark ? 'all' : '(prefers-color-scheme: dark)'; }
+                }
+
+                function applyPrefs() {
+                    var scale = prefs.fontScale;
+                    if (scale !== 100) {
+                        root.style.fontSize = scale + '%';
+                        root.style.setProperty('--a11y-scale', String(scale / 100));
+                    } else {
+                        root.style.fontSize = '';
+                        root.style.removeProperty('--a11y-scale');
+                    }
+                    root.classList.toggle('a11y-text-scaled', scale !== 100);
+                    root.classList.toggle('a11y-contrast', prefs.contrast);
+                    root.classList.toggle('a11y-spacing', prefs.spacing);
+                    var reduce = prefs.reduceMotion === null ? !!(mqMotion && mqMotion.matches) : prefs.reduceMotion;
+                    root.classList.toggle('a11y-reduce-motion', reduce);
+                    root.classList.toggle('a11y-motion-full', prefs.reduceMotion === false);
+                }
+
+                function notify() {
+                    api.fitHeader();
+                    try { d.dispatchEvent(new CustomEvent('cech:a11y-change', { detail: api.state() })); } catch (e) {}
+                }
+
+                var api = w.CechA11y = {
+                    steps: [100, 110, 125, 150, 175, 200],
+                    state: function () {
+                        return {
+                            theme: getTheme(),
+                            dark: root.classList.contains('dark'),
+                            fontScale: prefs.fontScale,
+                            contrast: prefs.contrast,
+                            spacing: prefs.spacing,
+                            reduceMotion: root.classList.contains('a11y-reduce-motion')
+                        };
+                    },
+                    set: function (key, value) {
+                        if (!has(DEFAULTS, key)) return;
+                        prefs[key] = value;
+                        prefs = normalize(prefs);
+                        savePrefs();
+                        applyPrefs();
+                        notify();
+                    },
+                    setTheme: function (theme) {
+                        write('theme', (theme === 'dark' || theme === 'light') ? theme : null);
+                        applyTheme();
+                        notify();
+                    },
+                    reset: function () {
+                        write(KEY, null);
+                        write('theme', null);
+                        prefs = loadPrefs();
+                        applyTheme();
+                        applyPrefs();
+                        notify();
+                    },
+                    // Com texto ampliado ou espaçamento maior, recolhe a navegação no botão de menu se o cabeçalho não couber
+                    fitHeader: function () {
+                        var row = d.getElementById('site-header-row');
+                        root.classList.remove('a11y-compact-nav');
+                        if (!row || !(root.classList.contains('a11y-text-scaled') || root.classList.contains('a11y-spacing'))) return;
+                        root.classList.add('a11y-measuring');
+                        var overflows = row.scrollWidth > row.clientWidth + 1;
+                        root.classList.remove('a11y-measuring');
+                        root.classList.toggle('a11y-compact-nav', overflows);
+                    }
+                };
+
+                // Mantida por compatibilidade: escolher claro ou escuro grava localStorage.theme
+                w.setDarkMode = function (isDark) { api.setTheme(isDark ? 'dark' : 'light'); };
+
+                applyTheme();
+                applyPrefs();
+
+                function onChange(mq, fn) {
+                    if (!mq) return;
+                    if (mq.addEventListener) { mq.addEventListener('change', fn); } else if (mq.addListener) { mq.addListener(fn); }
+                }
+                onChange(mqDark, function () { if (getTheme() === 'auto') { applyTheme(); notify(); } });
+                onChange(mqMotion, function () { if (prefs.reduceMotion === null) { applyPrefs(); notify(); } });
+
+                // Outra aba mudou as preferências
+                w.addEventListener('storage', function (e) {
+                    if (e.key === KEY || e.key === 'theme' || e.key === null) {
+                        prefs = loadPrefs();
+                        applyTheme();
+                        applyPrefs();
+                        notify();
+                    }
+                });
+            })(window, document);
         </script>
     </head>
     <body class="min-h-screen bg-slate-50 text-slate-800 antialiased dark:bg-slate-950 dark:text-slate-100 flex flex-col justify-between">
+        {# Primeiro elemento focável da página: aparece ao receber foco pelo teclado #}
+        <a href="#conteudo" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-[100] focus:rounded-xl focus:bg-slate-900 focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lg focus:outline-none focus:ring-4 focus:ring-sky-400 dark:focus:bg-white dark:focus:text-slate-900">Pular para o conteúdo</a>
+
         {# ── Navbar ── #}
         <header class="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-md dark:border-white/10 dark:bg-slate-950/80">
-            <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+            <div id="site-header-row" class="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
                 <!-- Brand / Logo -->
                 <a href="{{ path('app_pub_home') }}" class="flex items-center gap-3 group">
                     <div class="h-10 px-2 py-1 flex items-center justify-center rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-white/10 shadow-sm group-hover:scale-105 transition-transform">
                         <img src="{{ asset('images/logo-colorido.svg') }}" alt="Logo CECH UFSCar" width="74" height="28" class="h-7 w-auto dark:hidden">
                         <img src="{{ asset('images/logo-colorido-dark.svg') }}" alt="Logo CECH UFSCar" width="74" height="28" class="h-7 w-auto hidden dark:block">
                     </div>
-                    <div class="flex flex-col">
+                    {# Com os sete links do menu na barra (lg e xl), o nome por extenso não cabe: fica o logo #}
+                    <div class="flex flex-col lg:hidden 2xl:flex">
                         <span class="font-heading text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white group-hover:text-cech-blue dark:group-hover:text-cech-teal transition-colors">
                             Portal de Produção
                         </span>
@@ -221,44 +367,38 @@
                 </a>
 
                 <!-- Navigation Links -->
-                <nav class="hidden md:flex items-center gap-4 lg:gap-6 text-sm font-medium">
-                    <a href="{{ path('app_pub_home') }}" class="text-slate-600 hover:text-cech-blue dark:text-slate-300 dark:hover:text-cech-teal transition-colors">
-                        Início
-                    </a>
-                    <a href="{{ path('app_pub_indicators') }}" class="text-slate-600 hover:text-cech-blue dark:text-slate-300 dark:hover:text-cech-teal transition-colors">
-                        Indicadores
-                    </a>
-                    <a href="{{ path('app_pub_journals_index') }}" class="text-slate-600 hover:text-cech-blue dark:text-slate-300 dark:hover:text-cech-teal transition-colors">
-                        Periódicos
-                    </a>
-                    <a href="{{ path('app_pub_department_list') }}" class="text-slate-600 hover:text-cech-blue dark:text-slate-300 dark:hover:text-cech-teal transition-colors">
-                        Departamentos
-                    </a>
-                    <a href="{{ path('app_pub_thematic_search') }}" class="text-slate-600 hover:text-cech-blue dark:text-slate-300 dark:hover:text-cech-teal transition-colors">
-                        Temas
-                    </a>
-                    <a href="{{ path('app_pub_search') }}" class="text-slate-600 hover:text-cech-blue dark:text-slate-300 dark:hover:text-cech-teal transition-colors">
-                        Busca
-                    </a>
+                {% set currentRoute = app.request.attributes.get('_route') ?? '' %}
+                {% set navItems = [
+                    {route: 'app_pub_search', label: 'Especialistas', match: 'app_pub_search'},
+                    {route: 'app_pub_explore', label: 'Explorar', match: 'app_pub_explore'},
+                    {route: 'app_pub_coauthorship', label: 'Coautorias', match: 'app_pub_coauthorship'},
+                    {route: 'app_pub_projects', label: 'Projetos', match: 'app_pub_project'},
+                    {route: 'app_pub_indicators', label: 'Indicadores', match: 'app_pub_indicators'},
+                    {route: 'app_pub_journals_index', label: 'Periódicos', match: 'app_pub_journals'},
+                    {route: 'app_pub_department_list', label: 'Departamentos', match: 'app_pub_department'},
+                ] %}
+                <nav class="hidden lg:flex items-center gap-4 xl:gap-5 text-sm font-medium" aria-label="Navegação principal">
+                    {% for item in navItems %}
+                        {% set isActive = currentRoute starts with item.match %}
+                        <a href="{{ path(item.route) }}" {% if isActive %}aria-current="page"{% endif %} class="{{ isActive ? 'text-cech-blue dark:text-cech-teal font-semibold' : 'text-slate-600 dark:text-slate-300' }} hover:text-cech-blue dark:hover:text-cech-teal transition-colors">
+                            {{ item.label }}
+                        </a>
+                    {% endfor %}
                 </nav>
 
                 <!-- Actions: Theme Toggle & Quick Search & Admin Link & Hamburger -->
                 <div class="flex items-center gap-2 sm:gap-3">
-                    {# Entre md e lg o campo de busca rápida sai da barra: com o link "Periódicos" a navegação não cabe em 768-914px (o link "Busca" continua lá) #}
-                    <form action="{{ path('app_pub_search') }}" method="GET" class="relative hidden sm:block md:hidden lg:block">
+                    {# Com sete links na barra, o campo de busca rápida só cabe a partir de xl; abaixo disso o link "Especialistas" leva à busca #}
+                    <form id="header-search" action="{{ path('app_pub_search') }}" method="GET" role="search" class="relative hidden sm:block lg:hidden xl:block">
                         <input type="text" name="q" placeholder="Buscar docente, artigo, DOI..." class="w-48 lg:w-64 rounded-full border border-slate-300 bg-slate-100/80 px-4 py-1.5 pl-9 text-xs text-slate-900 placeholder:text-slate-400 focus:border-cech-blue focus:bg-white focus:outline-none focus:ring-2 focus:ring-cech-blue/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500">
                         <sl-icon name="search" class="absolute left-3 top-2 text-slate-400 text-xs"></sl-icon>
                     </form>
 
-                    <!-- Dark/Light Mode Switch -->
-                    <div class="flex items-center rounded-full border border-slate-200 p-0.5 dark:border-slate-800 bg-slate-100 dark:bg-slate-900">
-                        <button type="button" onclick="setDarkMode(false)" title="Modo Claro" aria-label="Ativar modo claro" class="min-w-[40px] min-h-[40px] rounded-full p-2 flex items-center justify-center text-slate-600 hover:text-amber-500 dark:text-slate-400 dark:hover:text-amber-400 transition-colors">
-                            <sl-icon name="sun-fill" class="text-base"></sl-icon>
-                        </button>
-                        <button type="button" onclick="setDarkMode(true)" title="Modo Escuro" aria-label="Ativar modo escuro" class="min-w-[40px] min-h-[40px] rounded-full p-2 flex items-center justify-center text-slate-600 hover:text-cech-teal dark:text-slate-400 dark:hover:text-cech-teal transition-colors">
-                            <sl-icon name="moon-stars-fill" class="text-base"></sl-icon>
-                        </button>
-                    </div>
+                    <!-- Acessibilidade: abre o painel "Preferências de leitura" (tamanho do texto, tema, contraste, espaçamento, animações) -->
+                    <button type="button" id="a11y-toggle" data-a11y-open aria-controls="a11y-panel" aria-expanded="false" aria-haspopup="dialog" title="Acessibilidade: tamanho do texto, tema e contraste" class="hidden sm:inline-flex min-w-[40px] min-h-[40px] items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-2.5 text-slate-700 hover:text-cech-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:text-cech-teal dark:focus-visible:ring-offset-slate-950 transition-colors">
+                        <sl-icon name="universal-access-circle" class="text-lg" aria-hidden="true"></sl-icon>
+                        <span class="sr-only md:not-sr-only lg:sr-only 2xl:not-sr-only text-xs font-semibold">Acessibilidade</span>
+                    </button>
 
                     {% if is_granted('ROLE_ADMIN') %}
                         <a href="{{ path('app_admin_dashboard') }}" class="hidden sm:inline-flex rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 dark:bg-cech-blue dark:hover:bg-cech-blue-dark transition-colors">
@@ -271,7 +411,7 @@
                         type="button" 
                         id="mobile-menu-btn" 
                         onclick="toggleMobileMenu()" 
-                        class="md:hidden flex items-center justify-center p-2 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shadow-2xs" 
+                        class="lg:hidden flex items-center justify-center p-2 rounded-xl border border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shadow-2xs" 
                         aria-label="Abrir Menu" 
                         aria-expanded="false"
                     >
@@ -280,11 +420,13 @@
                 </div>
             </div>
         </header>
+        {# Com texto ampliado, decide já aqui (antes da pintura) se a navegação precisa ir para o botão de menu #}
+        <script>window.CechA11y && window.CechA11y.fitHeader();</script>
 
         {# ── Mobile Slide-Over Drawer & Backdrop ── #}
-        <div id="mobile-menu-backdrop" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 md:hidden" onclick="closeMobileMenu()" aria-hidden="true"></div>
+        <div id="mobile-menu-backdrop" class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 lg:hidden" onclick="closeMobileMenu()" aria-hidden="true"></div>
 
-        <div id="mobile-menu-drawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-xs sm:max-w-sm bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl shadow-2xl border-l border-slate-200 dark:border-slate-800 translate-x-full transition-transform duration-300 ease-in-out md:hidden flex flex-col justify-between overflow-y-auto" role="dialog" aria-modal="true" aria-label="Menu Principal">
+        <div id="mobile-menu-drawer" class="fixed inset-y-0 right-0 z-50 w-full max-w-xs sm:max-w-sm bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl shadow-2xl border-l border-slate-200 dark:border-slate-800 translate-x-full transition-transform duration-300 ease-in-out lg:hidden flex flex-col justify-between overflow-y-auto" role="dialog" aria-modal="true" aria-label="Menu Principal" inert>
             <!-- Header do Menu -->
             <div class="p-5 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -370,30 +512,33 @@
                         </div>
                     </a>
 
-                    {# Temas #}
-                    <a href="{{ path('app_pub_thematic_search') }}" class="flex items-center gap-3.5 px-3 py-2.5 rounded-2xl text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-sky-950/50 hover:text-sky-600 dark:hover:text-sky-400 transition-colors group {% if 'thematic' in app.request.attributes.get('_route') %}bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-semibold{% endif %}">
-                        <div class="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:bg-sky-500 group-hover:text-white transition-colors">
-                            <sl-icon name="stars" class="text-sm"></sl-icon>
-                        </div>
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2">
-                                <span class="text-sm font-semibold">Temas</span>
-                                <span class="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">Descoberta</span>
+                    {# Especialistas, Explorar, Coautorias e Projetos #}
+                    {% set drawerItems = [
+                        {route: 'app_pub_search', match: 'app_pub_search', icon: 'search', label: 'Especialistas', hint: 'Quem pesquisa cada assunto'},
+                        {route: 'app_pub_explore', match: 'app_pub_explore', icon: 'stars', label: 'Explorar pesquisa', hint: 'Assuntos, áreas e grandes áreas'},
+                        {route: 'app_pub_coauthorship', match: 'app_pub_coauthorship', icon: 'diagram-3', label: 'Coautorias', hint: 'Quem publica junto no CECH'},
+                        {route: 'app_pub_projects', match: 'app_pub_project', icon: 'kanban', label: 'Projetos', hint: 'Projetos e equipes declarados no Lattes'},
+                    ] %}
+                    {% for item in drawerItems %}
+                        {% set isActive = (app.request.attributes.get('_route') ?? '') starts with item.match %}
+                        <a href="{{ path(item.route) }}" {% if isActive %}aria-current="page"{% endif %} class="flex items-center gap-3.5 px-3 py-2.5 rounded-2xl text-slate-700 dark:text-slate-200 hover:bg-sky-50 dark:hover:bg-sky-950/50 hover:text-sky-600 dark:hover:text-sky-400 transition-colors group {% if isActive %}bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 font-semibold{% endif %}">
+                            <div class="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                                <sl-icon name="{{ item.icon }}" class="text-sm"></sl-icon>
                             </div>
-                            <div class="text-[11px] text-slate-400">Palavras-chave e conceitos</div>
-                        </div>
-                    </a>
+                            <div class="flex-1">
+                                <div class="text-sm font-semibold">{{ item.label }}</div>
+                                <div class="text-[11px] text-slate-400">{{ item.hint }}</div>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
 
-                    {# Busca #}
-                    <a href="{{ path('app_pub_search') }}" class="flex items-center gap-3.5 px-3 py-2.5 rounded-2xl text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/50 hover:text-purple-600 dark:hover:text-purple-400 transition-colors group {% if app.request.attributes.get('_route') == 'app_pub_search' %}bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 font-semibold{% endif %}">
-                        <div class="h-8 w-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 group-hover:bg-purple-500 group-hover:text-white transition-colors">
-                            <sl-icon name="search" class="text-sm"></sl-icon>
-                        </div>
-                        <div class="flex-1">
-                            <div class="text-sm font-semibold">Busca Geral</div>
-                            <div class="text-[11px] text-slate-400">Pesquisa avançada com filtros</div>
-                        </div>
-                    </a>
+                <!-- Sobre o portal -->
+                <div class="space-y-1 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2">Sobre o portal</span>
+                    <a href="{{ path('app_pub_about') }}" class="block px-3 py-2 rounded-xl text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Sobre nós</a>
+                    <a href="{{ path('app_pub_about_data') }}" class="block px-3 py-2 rounded-xl text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Sobre os dados</a>
+                    <a href="{{ path('app_pub_faq') }}" class="block px-3 py-2 rounded-xl text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Dúvidas frequentes</a>
                 </div>
 
                 <!-- Atalhos Rápidos de Pesquisa -->
@@ -416,19 +561,16 @@
                 </div>
             </div>
 
-            <!-- Rodapé do Menu: Modo Claro/Escuro & Admin -->
+            <!-- Rodapé do Menu: Acessibilidade (tema, texto e contraste) & Admin -->
             <div class="p-5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/40 space-y-3">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Aparência</span>
-                    <div class="flex items-center rounded-full border border-slate-200 p-0.5 dark:border-slate-800 bg-white dark:bg-slate-900">
-                        <button type="button" onclick="setDarkMode(false)" title="Modo Claro" aria-label="Ativar modo claro" class="min-w-[44px] min-h-[44px] rounded-full px-3 py-2 text-xs flex items-center justify-center gap-1.5 text-slate-700 hover:text-amber-500 dark:text-slate-300 transition-colors">
-                            <sl-icon name="sun-fill" class="text-sm"></sl-icon> Claro
-                        </button>
-                        <button type="button" onclick="setDarkMode(true)" title="Modo Escuro" aria-label="Ativar modo escuro" class="min-w-[44px] min-h-[44px] rounded-full px-3 py-2 text-xs flex items-center justify-center gap-1.5 text-slate-700 hover:text-teal-500 dark:text-slate-300 transition-colors">
-                            <sl-icon name="moon-stars-fill" class="text-sm"></sl-icon> Escuro
-                        </button>
-                    </div>
-                </div>
+                <button type="button" data-a11y-open aria-controls="a11y-panel" aria-expanded="false" aria-haspopup="dialog" class="w-full min-h-[44px] flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-left text-slate-800 hover:border-cech-blue hover:text-cech-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-cech-teal dark:hover:text-cech-teal transition-colors">
+                    <sl-icon name="universal-access-circle" class="text-xl shrink-0" aria-hidden="true"></sl-icon>
+                    <span class="flex-1">
+                        <span class="block text-sm font-semibold">Acessibilidade</span>
+                        <span class="block text-[11px] text-slate-500 dark:text-slate-400">Tamanho do texto, tema, contraste e animações</span>
+                    </span>
+                    <sl-icon name="chevron-right" class="text-sm shrink-0" aria-hidden="true"></sl-icon>
+                </button>
 
                 {% if is_granted('ROLE_ADMIN') %}
                     <a href="{{ path('app_admin_dashboard') }}" class="block w-full text-center py-2.5 rounded-xl bg-slate-900 dark:bg-sky-600 text-white font-semibold text-xs shadow-sm hover:opacity-90 transition">
@@ -436,6 +578,89 @@
                     </a>
                 {% endif %}
             </div>
+        </div>
+
+        {# ── Painel "Preferências de leitura" (comportamento em assets/js/a11y.js; estilos em assets/styles/app.css) ── #}
+        {# O atributo hidden fica num elemento sem classe de display (uma classe .flex/.block o anularia) #}
+        <div id="a11y-panel" role="dialog" aria-modal="false" aria-labelledby="a11y-panel-title" aria-describedby="a11y-panel-desc" tabindex="-1" hidden
+             class="a11y-panel fixed z-[60] left-3 right-3 top-[4.5rem] sm:left-auto sm:right-4 lg:right-8 sm:w-[24rem] overflow-y-auto overscroll-contain rounded-3xl border border-slate-200 bg-white p-5 text-slate-800 shadow-2xl focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h2 id="a11y-panel-title" class="font-heading flex items-center gap-2 text-lg font-bold text-slate-900 dark:text-white">
+                        <sl-icon name="universal-access-circle" class="text-cech-blue dark:text-cech-teal" aria-hidden="true"></sl-icon> Preferências de leitura
+                    </h2>
+                    <p id="a11y-panel-desc" class="mt-0.5 text-xs text-slate-600 dark:text-slate-400">Valem para todas as páginas e ficam salvas neste navegador.</p>
+                </div>
+                <button type="button" data-a11y-close title="Fechar (Esc)" aria-label="Fechar as preferências de leitura" class="shrink-0 min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white">
+                    <sl-icon name="x-lg" aria-hidden="true"></sl-icon>
+                </button>
+            </div>
+
+            {# Tamanho do texto #}
+            <div class="mt-5" role="group" aria-labelledby="a11y-font-label">
+                <div class="flex items-center justify-between gap-3">
+                    <span id="a11y-font-label" class="text-sm font-semibold">Tamanho do texto</span>
+                    <output id="a11y-font-value" for="a11y-font-down a11y-font-up" aria-live="polite" class="rounded-lg bg-slate-100 px-2 py-0.5 text-sm font-bold tabular-nums dark:bg-slate-800">100%</output>
+                </div>
+                <div class="mt-2 flex items-center gap-3">
+                    <button type="button" id="a11y-font-down" data-a11y-font="-1" title="Diminuir o texto" class="a11y-step-btn min-w-[44px] min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 hover:border-cech-blue hover:text-cech-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-cech-teal dark:hover:text-cech-teal">
+                        <span aria-hidden="true">A−</span><span class="sr-only">Diminuir o texto</span>
+                    </button>
+                    <div class="flex-1 h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden" aria-hidden="true">
+                        <div data-a11y-font-bar class="h-full w-0 rounded-full bg-cech-blue dark:bg-cech-teal transition-[width] duration-200"></div>
+                    </div>
+                    <button type="button" id="a11y-font-up" data-a11y-font="1" title="Aumentar o texto" class="a11y-step-btn min-w-[44px] min-h-[44px] rounded-xl border border-slate-300 bg-white px-3 text-base font-bold text-slate-800 hover:border-cech-blue hover:text-cech-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-cech-teal dark:hover:text-cech-teal">
+                        <span aria-hidden="true">A+</span><span class="sr-only">Aumentar o texto</span>
+                    </button>
+                </div>
+                <p class="mt-1.5 text-xs text-slate-600 dark:text-slate-400">De 100% a 200%. O zoom do navegador também funciona.</p>
+            </div>
+
+            {# Tema #}
+            <fieldset class="mt-5">
+                <legend class="text-sm font-semibold">Tema</legend>
+                <div class="mt-2 grid grid-cols-3 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-800">
+                    {% for themeOption in [
+                        {value: 'auto', label: 'Automático', icon: 'circle-half'},
+                        {value: 'light', label: 'Claro', icon: 'sun-fill'},
+                        {value: 'dark', label: 'Escuro', icon: 'moon-stars-fill'},
+                    ] %}
+                        <label class="a11y-seg block">
+                            <input type="radio" name="a11y-theme" value="{{ themeOption.value }}" class="peer sr-only" aria-describedby="a11y-theme-hint" {% if themeOption.value == 'auto' %}checked{% endif %}>
+                            <span class="flex min-h-[44px] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-center text-xs font-semibold text-slate-600 transition-colors hover:text-slate-900 peer-checked:bg-white peer-checked:text-cech-blue peer-checked:shadow peer-focus-visible:ring-2 peer-focus-visible:ring-sky-500 dark:text-slate-300 dark:hover:text-white dark:peer-checked:bg-slate-950 dark:peer-checked:text-cech-teal">
+                                <sl-icon name="{{ themeOption.icon }}" class="text-base" aria-hidden="true"></sl-icon>
+                                {{ themeOption.label }}
+                            </span>
+                        </label>
+                    {% endfor %}
+                </div>
+                <p id="a11y-theme-hint" class="mt-1.5 text-xs text-slate-600 dark:text-slate-400">No automático, o portal segue o tema claro ou escuro do seu aparelho.</p>
+            </fieldset>
+
+            {# Alto contraste, espaçamento e animações #}
+            <div class="mt-5 space-y-4">
+                {% for toggle in [
+                    {key: 'contrast', label: 'Alto contraste', hint: 'Textos mais fortes, bordas mais visíveis e links sublinhados.'},
+                    {key: 'spacing', label: 'Espaçamento ampliado', hint: 'Mais espaço entre linhas, parágrafos, letras e palavras.'},
+                    {key: 'reduceMotion', label: 'Reduzir animações', hint: 'Desliga transições e movimentos. Já vem ligado se o seu aparelho pede menos movimento.'},
+                ] %}
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <label for="a11y-{{ toggle.key }}" class="block cursor-pointer text-sm font-semibold">{{ toggle.label }}</label>
+                            <p id="a11y-{{ toggle.key }}-hint" class="text-xs text-slate-600 dark:text-slate-400">{{ toggle.hint }}</p>
+                        </div>
+                        <input type="checkbox" role="switch" id="a11y-{{ toggle.key }}" data-a11y-toggle="{{ toggle.key }}" aria-describedby="a11y-{{ toggle.key }}-hint" class="a11y-switch mt-0.5">
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">
+                <button type="button" data-a11y-reset class="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-slate-300 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">
+                    <sl-icon name="arrow-counterclockwise" aria-hidden="true"></sl-icon> Restaurar
+                </button>
+                <a href="{{ path('app_pub_faq') }}#acessibilidade" class="text-xs font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200">Dúvidas sobre acessibilidade</a>
+            </div>
+            <p id="a11y-status" class="sr-only" role="status" aria-live="polite"></p>
         </div>
 
         <script>
@@ -462,6 +687,8 @@
                 if (drawer) {
                     drawer.classList.remove('translate-x-full');
                     drawer.classList.add('translate-x-0');
+                    // Fechado, o menu fica fora da tela e inerte: o Tab não cai em links invisíveis
+                    drawer.inert = false;
                 }
                 document.body.classList.add('overflow-hidden');
                 if (btn) btn.setAttribute('aria-expanded', 'true');
@@ -479,6 +706,7 @@
                 if (drawer) {
                     drawer.classList.remove('translate-x-0');
                     drawer.classList.add('translate-x-full');
+                    drawer.inert = true;
                 }
                 document.body.classList.remove('overflow-hidden');
                 if (btn) btn.setAttribute('aria-expanded', 'false');
@@ -492,7 +720,7 @@
         </script>
 
         {# ── Main Content ── #}
-        <main class="flex-1">
+        <main id="conteudo" tabindex="-1" class="flex-1 focus:outline-none">
             {% block body %}{% endblock %}
         </main>
 
@@ -512,7 +740,12 @@
                     <a href="{{ path('app_pub_indicators') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Indicadores</a>
                     <a href="{{ path('app_pub_journals_index') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Periódicos</a>
                     <a href="{{ path('app_pub_department_list') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Departamentos</a>
-                    <a href="{{ path('app_pub_thematic_search') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Temas de Pesquisa</a>
+                    <a href="{{ path('app_pub_explore') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Explorar pesquisa</a>
+                    <a href="{{ path('app_pub_coauthorship') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Coautorias</a>
+                    <a href="{{ path('app_pub_projects') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Projetos</a>
+                    <a href="{{ path('app_pub_about') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Sobre nós</a>
+                    <a href="{{ path('app_pub_about_data') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Sobre os dados</a>
+                    <a href="{{ path('app_pub_faq') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Dúvidas frequentes</a>
                     <a href="{{ path('app_pub_sitemap') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Sitemap XML</a>
                     <a href="{{ path('app_admin_dashboard') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Acesso Restrito</a>
                 </div>

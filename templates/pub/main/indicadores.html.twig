@@ -114,6 +114,25 @@
         </div>
     </div>
 
+    {# ── Panorama da pesquisa: o mesmo recorte da busca, da rede e do Explorar ── #}
+    {% if not isPrintAll %}
+        <section id="panorama" class="space-y-4 border-t border-slate-200/60 pt-8 dark:border-white/10" aria-labelledby="panorama-titulo">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">Panorama da pesquisa</p>
+                <h2 id="panorama-titulo" class="font-heading text-2xl font-extrabold text-slate-900 dark:text-white">Produção, assuntos e pontes entre áreas</h2>
+                <p class="text-sm text-slate-600 dark:text-slate-300">Filtre por assunto, departamento, tema e período. Os filtros valem para este panorama; as figuras das abas abaixo mostram o CECH inteiro.</p>
+            </div>
+            {% include 'pub/research/_filters.html.twig' with {
+                action: path('app_pub_indicators') ~ '#panorama',
+                filter: panoramaFilter,
+                departments: departments,
+                topics: topics,
+                heading: 'Filtrar indicadores do panorama',
+            } only %}
+            {% include 'pub/research/_panorama.html.twig' with {metrics: panorama, panoramaId: 'panorama-cech'} only %}
+        </section>
+    {% endif %}
+
     {# ── Interactive Mobile-Responsive Navigation Pill Tabs ── #}
     <div class="sticky top-16 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-y border-slate-200/80 dark:border-slate-800/80 shadow-xs">
         <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none scroll-smooth" id="indicatorsTabList" role="tablist">

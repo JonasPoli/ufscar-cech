@@ -1,0 +1,109 @@
+{#
+    Macros da pesquisa pública (busca, perfil, explorar, coautorias).
+    Uso: {% import 'pub/research/_macros.html.twig' as rs %}
+#}
+
+{% macro type_icon(type) -%}
+    {%- set icons = {
+        'ARTIGO': 'file-earmark-text',
+        'LIVRO': 'book',
+        'CAPITULO': 'journal-bookmark',
+        'EVENTO': 'easel',
+        'TEXTO_JORNAL': 'newspaper',
+    } -%}
+    {{- icons[type] ?? 'file-earmark' -}}
+{%- endmacro %}
+
+{# Avatar do docente: foto, se houver, ou iniciais #}
+{% macro avatar(person, size = 'h-11 w-11 text-sm') %}
+    {% if person.photoUrl %}
+        <img src="{{ person.photoUrl|replace({'.jpg': '-256.webp', '.jpeg': '-256.webp', '.png': '-256.webp'}) }}" alt="" width="44" height="44" loading="lazy" decoding="async" class="{{ size }} shrink-0 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10" onerror="this.onerror=null;this.src='{{ person.photoUrl }}'">
+    {% else %}
+        <span class="{{ size }} shrink-0 rounded-full bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 font-bold flex items-center justify-center" aria-hidden="true">{{ person.initials }}</span>
+    {% endif %}
+{% endmacro %}
+
+{# Departamento · vínculo · período #}
+{% macro person_meta(person) %}
+    <span class="text-xs text-slate-500 dark:text-slate-400">
+        {%- if person.departmentCode %}<abbr title="{{ person.department }}" class="no-underline">{{ person.departmentCode }}</abbr> · {% endif -%}
+        <span class="{{ person.affiliation == 'vigente' ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400' }}">{{ person.affiliationLabel }}</span>
+        {%- if person.period %} · {{ person.period }}{% endif -%}
+    </span>
+{% endmacro %}
+
+{#
+    Uma publicação: ano, tipo, título, veículo, ISSN, DOI e autoria (docentes do CECH com link).
+    work: array de ExpertSearchService::loadWorks()
+#}
+{% macro work(work, showAuthors = true) %}
+    {% import _self as rs %}
+    <div class="flex gap-3 py-3">
+        <div class="w-12 shrink-0 text-xs text-slate-500 dark:text-slate-400 flex flex-col items-start gap-1 pt-0.5">
+            <span class="font-mono font-semibold">{{ work.year ?: '—' }}</span>
+            <sl-icon name="{{ rs.type_icon(work.type) }}" label="{{ work.typeLabel }}" class="text-slate-400 text-sm"></sl-icon>
+        </div>
+        <div class="min-w-0 flex-1 space-y-1">
+            <p class="text-sm font-semibold text-slate-900 dark:text-white leading-snug" data-work-title>{{ work.title }}</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span class="sr-only">Tipo: </span><span>{{ work.typeLabel }}</span>
+                {% if work.venue %}<span aria-hidden="true">·</span><span class="italic">{{ work.venue }}</span>{% endif %}
+                {% if work.issn %}<span class="font-mono text-[11px]">ISSN {{ work.issn }}</span>{% endif %}
+                {% if work.qualis %}<span class="rounded px-1.5 py-0.5 text-[10px] font-bold badge-qualis-{{ work.qualis|lower }}">Qualis {{ work.qualis }}</span>{% endif %}
+                {% if work.doi %}
+                    <a href="https://doi.org/{{ work.doi }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-semibold text-sky-700 hover:underline dark:text-sky-400">
+                        DOI <sl-icon name="box-arrow-up-right" class="text-[10px]"></sl-icon><span class="sr-only"> (abre em nova aba)</span>
+                    </a>
+                {% endif %}
+            </p>
+            {% if showAuthors and work.authors|length > 0 %}
+                <p class="text-xs text-slate-600 dark:text-slate-300">
+                    {% for a in work.authors -%}
+                        {%- if a.slug -%}
+                            <a href="{{ path('app_pub_professor_show', {slugOrId: a.slug}) }}" class="underline decoration-sky-500/50 underline-offset-2 hover:text-sky-700 dark:hover:text-sky-400">{{ a.name }}</a>
+                        {%- else -%}
+                            {{ a.name }}
+                        {%- endif -%}
+                        {%- if not loop.last %}; {% endif -%}
+                    {%- endfor -%}
+                    {%- if work.moreAuthors > 0 %}; et al.{% endif %}
+                </p>
+            {% endif %}
+        </div>
+    </div>
+{% endmacro %}
+
+{#
+    Paginação acessível.
+    route/params: rota e parâmetros atuais (sem a página); pageParam: nome do parâmetro de página.
+#}
+{% macro pagination(route, params, page, pages, pageParam = 'pagina') %}
+    {% if pages > 1 %}
+        <nav class="flex flex-wrap items-center justify-center gap-2 pt-4" aria-label="Paginação">
+            {% if page > 1 %}
+                <a href="{{ path(route, params|merge({(pageParam): page - 1})) }}" class="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" rel="prev">
+                    <sl-icon name="arrow-left"></sl-icon> Anterior
+                </a>
+            {% else %}
+                <span class="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-400 dark:border-slate-800" aria-disabled="true"><sl-icon name="arrow-left"></sl-icon> Anterior</span>
+            {% endif %}
+            <span class="px-2 text-xs text-slate-600 dark:text-slate-300" aria-current="page">Página {{ page }} de {{ pages }}</span>
+            {% if page < pages %}
+                <a href="{{ path(route, params|merge({(pageParam): page + 1})) }}" class="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" rel="next">
+                    Próxima <sl-icon name="arrow-right"></sl-icon>
+                </a>
+            {% else %}
+                <span class="inline-flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-400 dark:border-slate-800" aria-disabled="true">Próxima <sl-icon name="arrow-right"></sl-icon></span>
+            {% endif %}
+        </nav>
+    {% endif %}
+{% endmacro %}
+
+{# Número em destaque (cartões de indicadores) #}
+{% macro stat(value, label, hint = null) %}
+    <div class="glass-card rounded-2xl p-4 sm:p-5">
+        <div class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">{{ (value ~ '') matches '/^\\d+$/' ? value|number_format(0, ',', '.') : value }}</div>
+        <div class="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 mt-1">{{ label }}</div>
+        {% if hint %}<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{{ hint }}</div>{% endif %}
+    </div>
+{% endmacro %}

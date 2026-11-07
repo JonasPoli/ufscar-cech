@@ -199,3 +199,193 @@
         }
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+   Acessibilidade do portal público: painel "Preferências de leitura" (templates/pub/base.html.twig,
+   assets/js/a11y.js). O script do <head> aplica no <html>:
+     a11y-text-scaled (+ font-size em % e --a11y-scale), a11y-contrast, a11y-spacing, a11y-reduce-motion,
+     a11y-motion-full (o usuário desligou "reduzir animações") e a11y-compact-nav (menu recolhido).
+   Estas regras ficam fora das camadas do Tailwind para virem depois dos utilitários.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+/* Âncoras e elementos focados não ficam escondidos atrás do cabeçalho fixo (WCAG 2.4.11) */
+html:has(#site-header-row) {
+    scroll-padding-top: 5rem;
+}
+
+/* ── Tamanho do texto ──
+   O Tailwind usa rem, então o font-size do <html> amplia quase tudo. Os poucos tamanhos fixos em px dos
+   templates acompanham a escala por --a11y-scale. Atenção: o Tailwind 3 põe as variantes (sm:, lg:, dark:,
+   hover:…) no fim do CSS gerado, depois destas regras; por isso as regras que disputam com uma variante
+   precisam de especificidade maior (html.classe …), e as de :where() valem só contra utilitários sem variante. */
+:where(html.a11y-text-scaled) .text-\[9px\] { font-size: calc(9px * var(--a11y-scale, 1)); }
+:where(html.a11y-text-scaled) .text-\[10px\] { font-size: calc(10px * var(--a11y-scale, 1)); }
+:where(html.a11y-text-scaled) .text-\[11px\] { font-size: calc(11px * var(--a11y-scale, 1)); }
+@media (min-width: 640px) {
+    html.a11y-text-scaled .sm\:text-\[11px\] { font-size: calc(11px * var(--a11y-scale, 1)); }
+}
+
+/* Cabeçalho com texto ampliado: pode quebrar em duas linhas; se a navegação não couber, vai para o botão de menu */
+html.a11y-text-scaled #site-header-row,
+html.a11y-spacing #site-header-row {
+    height: auto;
+    min-height: 4rem;
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+html.a11y-measuring #site-header-row { flex-wrap: nowrap !important; }
+html.a11y-measuring #site-header-row * { white-space: nowrap !important; }
+html.a11y-compact-nav #site-header-row nav[aria-label="Navegação principal"],
+html.a11y-compact-nav #header-search { display: none !important; }
+html.a11y-compact-nav #mobile-menu-btn,
+html.a11y-compact-nav #mobile-menu-drawer { display: flex !important; }
+html.a11y-compact-nav #mobile-menu-backdrop { display: block !important; }
+
+/* ── Espaçamento ampliado (WCAG 1.4.12): entrelinha 1,5; parágrafos 2 em; letras 0,12 em; palavras 0,16 em ── */
+html.a11y-spacing body *:not(sl-icon):not(.katex):not(.katex *) {
+    line-height: 1.5 !important;
+    letter-spacing: 0.12em !important;
+    word-spacing: 0.16em !important;
+}
+html.a11y-spacing main p:not(:last-child) {
+    margin-bottom: 2em !important;
+}
+
+/* ── Reduzir animações: escolha do usuário ou, por padrão, prefers-reduced-motion ── */
+html.a11y-reduce-motion *,
+html.a11y-reduce-motion *::before,
+html.a11y-reduce-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    html:not(.a11y-motion-full) *,
+    html:not(.a11y-motion-full) *::before,
+    html:not(.a11y-motion-full) *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0s !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ── Alto contraste, tema claro: cinzas escurecidos (todos com 7:1 ou mais sobre branco), cores de destaque
+   mais escuras, bordas visíveis (3:1), fundos opacos e links do texto sublinhados ── */
+html.a11y-contrast:not(.dark) body { background-color: #fff; color: #000; }
+html.a11y-contrast:not(.dark) .text-slate-400 { color: #475569; }
+html.a11y-contrast:not(.dark) .text-slate-500 { color: #334155; }
+html.a11y-contrast:not(.dark) .text-slate-600 { color: #1e293b; }
+html.a11y-contrast:not(.dark) :is(.text-slate-700, .text-slate-800) { color: #0f172a; }
+html.a11y-contrast:not(.dark) :is(.text-cech-teal, .text-teal-500, .text-teal-600) { color: #1f5c5b; }
+html.a11y-contrast:not(.dark) :is(.text-cech-blue, .text-primary) { color: #234a63; }
+html.a11y-contrast:not(.dark) :is(.text-sky-500, .text-sky-600, .text-sky-700) { color: #075985; }
+html.a11y-contrast:not(.dark) :is(.text-emerald-500, .text-emerald-600, .text-emerald-700) { color: #065f46; }
+html.a11y-contrast:not(.dark) :is(.text-amber-500, .text-amber-600, .text-amber-700) { color: #92400e; }
+html.a11y-contrast:not(.dark) :is(.text-indigo-500, .text-indigo-600, .text-indigo-700) { color: #3730a3; }
+html.a11y-contrast:not(.dark) :is(.text-red-500, .text-red-600, .text-cech-red) { color: #991b1b; }
+/* Texto claro sobre fundo escuro no tema claro (dicas e botões escuros) continua claro */
+html.a11y-contrast:not(.dark) :is(.bg-slate-800, .bg-slate-900, .bg-slate-900\/95, .bg-slate-950) :is(.text-slate-300, .text-slate-400, .text-slate-500) { color: #e2e8f0; }
+html.a11y-contrast:not(.dark) :is(.border-slate-100, .border-slate-200, .border-slate-200\/40, .border-slate-200\/50, .border-slate-200\/60, .border-slate-200\/70, .border-slate-200\/80, .border-slate-200\/90, .border-slate-300, .border-slate-300\/40) { border-color: #64748b; }
+html.a11y-contrast:not(.dark) :is(.bg-white\/70, .bg-white\/80, .bg-white\/90, .bg-white\/95) { background-color: #fff; }
+html.a11y-contrast:not(.dark) .glass-card { background: #fff; border-color: #475569; backdrop-filter: none; }
+html.a11y-contrast:not(.dark) ::placeholder { color: #475569; opacity: 1; }
+
+/* ── Alto contraste, tema escuro: fundo preto, cinzas clareados, bordas visíveis ── */
+html.a11y-contrast.dark body { background-color: #000; color: #fff; }
+html.a11y-contrast.dark :is(.dark\:text-slate-300, .dark\:text-slate-400, .dark\:text-slate-500, .dark\:text-slate-600) { color: #e2e8f0; }
+html.a11y-contrast.dark :is(.dark\:text-slate-100, .dark\:text-slate-200) { color: #f8fafc; }
+html.a11y-contrast.dark :is(.dark\:bg-slate-950, .dark\:bg-slate-950\/70, .dark\:bg-slate-950\/80, .dark\:bg-slate-950\/95) { background-color: #000; }
+html.a11y-contrast.dark :is(.dark\:border-white\/5, .dark\:border-white\/10, .dark\:border-slate-700, .dark\:border-slate-700\/40, .dark\:border-slate-700\/50, .dark\:border-slate-700\/60, .dark\:border-slate-800, .dark\:border-slate-800\/50, .dark\:border-slate-800\/60, .dark\:border-slate-800\/80) { border-color: rgba(255, 255, 255, 0.6); }
+html.a11y-contrast.dark .glass-card { background: #000; border-color: rgba(255, 255, 255, 0.7); backdrop-filter: none; }
+html.a11y-contrast.dark ::placeholder { color: #cbd5e1; opacity: 1; }
+
+/* ── Alto contraste, nos dois temas: links do texto sublinhados e foco com contorno duplo ── */
+html.a11y-contrast main :is(p, dd, td) a,
+html.a11y-contrast a:hover {
+    text-decoration-line: underline;
+    text-underline-offset: 0.18em;
+}
+html.a11y-contrast :focus-visible {
+    outline: 3px solid #000 !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 5px #fff !important;
+}
+html.a11y-contrast.dark :focus-visible {
+    outline-color: #facc15 !important;
+    box-shadow: 0 0 0 5px #000 !important;
+}
+
+/* ── Componentes do painel ── */
+.a11y-panel {
+    max-height: calc(100vh - 5.5rem);
+    max-height: calc(100dvh - 5.5rem);
+    max-width: calc(100vw - 2.5rem);
+}
+@media (max-width: 639px) {
+    .a11y-panel { max-width: none; }
+}
+
+.a11y-step-btn[aria-disabled="true"] {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+html.a11y-contrast .a11y-seg input:checked + span {
+    outline: 2px solid currentColor;
+    outline-offset: -2px;
+}
+
+/* Interruptor (checkbox com role="switch"): o estado aparece pela posição da bolinha, não só pela cor */
+.a11y-switch {
+    -webkit-appearance: none;
+    appearance: none;
+    position: relative;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 1.5rem;
+    margin: 0;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-color: #64748b;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.a11y-switch::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0.125rem;
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: 9999px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.35);
+    transform: translateY(-50%);
+    transition: transform 0.2s ease;
+}
+.a11y-switch:checked { background-color: #3C7497; }
+.a11y-switch:checked::before { transform: translate(1.125rem, -50%); }
+.a11y-switch:focus { outline: none; }
+.a11y-switch:focus-visible { outline: 2px solid #0ea5e9; outline-offset: 2px; }
+.dark .a11y-switch { background-color: #64748b; }
+.dark .a11y-switch:checked { background-color: #488584; }
+html.a11y-contrast .a11y-switch { border-color: currentColor; }
+
+/* Perguntas frequentes: sem o triângulo padrão do <summary> no Safari (a seta é um ícone) */
+.faq-summary::-webkit-details-marker { display: none; }
+
+/* Páginas institucionais: com texto ampliado, o índice "Nesta página" sai da lateral e vai para cima do texto */
+html.a11y-text-scaled .inst-layout { display: block; }
+
+/* Com texto ampliado ou espaçamento maior, palavras longas quebram (com hifenização em pt-BR) em vez de vazar da tela (WCAG 1.4.10) */
+:where(html.a11y-text-scaled, html.a11y-spacing) body {
+    overflow-wrap: anywhere;
+    -webkit-hyphens: auto;
+    hyphens: auto;
+}

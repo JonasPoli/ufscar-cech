@@ -1,0 +1,351 @@
+{% extends 'pub/base.html.twig' %}
+
+{% block title %}Dúvidas frequentes | Portal CECH UFSCar{% endblock %}
+{% block meta_description %}Respostas sobre a busca de especialistas, os perfis e coautorias, os projetos, os dados e a acessibilidade do Portal de Produção do CECH/UFSCar.{% endblock %}
+{% block og_title %}Dúvidas frequentes sobre o Portal CECH/UFSCar{% endblock %}
+
+{#
+    Cada pergunta é um <details> com id próprio: o endereço /duvidas#id abre a resposta (script no fim da página).
+    Os textos descrevem as funcionalidades da busca, das coautorias, do explorar e dos projetos como ficam depois da
+    implementação em andamento.
+#}
+{% macro item(id, question, answer) %}
+    <details id="{{ id }}" class="group rounded-2xl border border-slate-200/80 bg-white/70 open:bg-white open:shadow-sm dark:border-white/10 dark:bg-slate-900/60 dark:open:bg-slate-900 scroll-mt-24">
+        <summary class="faq-summary flex cursor-pointer list-none items-start justify-between gap-4 rounded-2xl px-5 py-4 text-base font-semibold text-slate-900 hover:text-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:text-white dark:hover:text-sky-300">
+            <span>{{ question }}</span>
+            <sl-icon name="chevron-down" class="mt-1 shrink-0 text-slate-500 transition-transform group-open:rotate-180 dark:text-slate-400" aria-hidden="true"></sl-icon>
+        </summary>
+        <div class="faq-answer space-y-3 px-5 pb-5 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+            {{ answer }}
+        </div>
+    </details>
+{% endmacro %}
+
+{% macro category(id, icon, title, intro) %}
+    <div class="flex items-start gap-3">
+        <span class="h-10 w-10 shrink-0 rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 flex items-center justify-center" aria-hidden="true">
+            <sl-icon name="{{ icon }}" class="text-lg"></sl-icon>
+        </span>
+        <div>
+            <h2 id="{{ id }}-titulo" class="font-heading text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{{ title }}</h2>
+            <p class="text-sm text-slate-600 dark:text-slate-400">{{ intro }}</p>
+        </div>
+    </div>
+{% endmacro %}
+
+{% block body %}
+{% import _self as faq %}
+{% set link = 'font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200' %}
+{% set categories = [
+    {id: 'busca-e-resultados', label: 'Busca e resultados', icon: 'search'},
+    {id: 'perfis-e-coautorias', label: 'Perfis e coautorias', icon: 'person-badge'},
+    {id: 'projetos', label: 'Projetos', icon: 'kanban'},
+    {id: 'dados-e-cobertura', label: 'Dados e cobertura', icon: 'database'},
+    {id: 'acessibilidade', label: 'Acessibilidade', icon: 'universal-access-circle'},
+] %}
+<div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div class="border-b border-slate-200/60 pb-6 dark:border-white/10">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300 mb-2">
+            <sl-icon name="question-circle-fill" aria-hidden="true"></sl-icon> Ajuda
+        </span>
+        <h1 class="font-heading text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
+            Dúvidas frequentes
+        </h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-3xl">
+            Como buscar especialistas, ler os perfis e a rede de coautorias, consultar projetos, entender os dados e ajustar o portal às suas necessidades.
+        </p>
+    </div>
+
+    {% include 'pub/institutional/_subnav.html.twig' with {current: 'faq'} only %}
+
+    {# ── Categorias ── #}
+    <nav aria-labelledby="categorias-titulo" class="glass-card rounded-3xl p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="categorias-titulo" class="font-heading text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Categorias</h2>
+            {# O atributo hidden fica num elemento sem classe de display: .flex o anularia #}
+            <div data-faq-tools hidden><div class="flex flex-wrap gap-2">
+                <button type="button" data-faq-expand="open" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                    <sl-icon name="arrows-expand" aria-hidden="true"></sl-icon> Abrir todas as respostas
+                </button>
+                <button type="button" data-faq-expand="close" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                    <sl-icon name="arrows-collapse" aria-hidden="true"></sl-icon> Fechar todas
+                </button>
+            </div></div>
+        </div>
+        <ul class="mt-3 flex flex-wrap gap-2">
+            {% for cat in categories %}
+                <li>
+                    <a href="#{{ cat.id }}" class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-cech-blue hover:text-cech-blue focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cech-teal dark:hover:text-cech-teal">
+                        <sl-icon name="{{ cat.icon }}" aria-hidden="true"></sl-icon> {{ cat.label }}
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </nav>
+
+    {# ═════════════ Busca e resultados ═════════════ #}
+    <section id="busca-e-resultados" class="space-y-4 scroll-mt-24" aria-labelledby="busca-e-resultados-titulo">
+        {{ faq.category('busca-e-resultados', 'search', 'Busca e resultados', 'Como encontrar especialistas, publicações e docentes.') }}
+
+        {% set a %}
+            <p>Acesse <a href="{{ path('app_pub_search') }}" class="{{ link }}">Especialistas</a>, no menu, digite o assunto e mantenha o modo <strong>Especialistas por assunto</strong>. O resultado mostra os docentes que pesquisam o tema, cada um com as publicações que o levaram à lista.</p>
+            <p>Use palavras que apareceriam no título de um trabalho, como “educação especial” ou “políticas linguísticas”.</p>
+        {% endset %}
+        {{ faq.item('como-encontrar-especialistas', 'Como encontro quem pesquisa um assunto?', a) }}
+
+        {% set a %}
+            <p>A busca tem quatro modos, escolhidos no topo da página:</p>
+            <ul class="list-disc space-y-1 pl-5">
+                <li><strong>Especialistas por assunto:</strong> os docentes que pesquisam o tema, com as publicações de cada um sobre ele.</li>
+                <li><strong>Publicações por assunto:</strong> os trabalhos sobre o tema, de todos os docentes.</li>
+                <li><strong>Pesquisador por nome:</strong> leva ao perfil de um docente a partir do nome.</li>
+                <li><strong>Teses e orientações:</strong> teses, dissertações e outras orientações dos docentes, pelo título, pelo nome do orientando ou pelas palavras-chave.</li>
+            </ul>
+        {% endset %}
+        {{ faq.item('modos-de-busca', 'Quais são os modos de busca?', a) }}
+
+        {% set a %}
+            <p>Os filtros podem ser combinados:</p>
+            <ul class="list-disc space-y-1 pl-5">
+                <li><strong>Departamento</strong> do docente.</li>
+                <li><strong>Grande área</strong> e <strong>área de atuação</strong>, as que o docente declara no Lattes.</li>
+                <li><strong>Vínculo:</strong> vigente ou encerrado.</li>
+                <li><strong>Tipo de publicação:</strong> artigo, livro, capítulo, trabalho em evento e outros.</li>
+                <li><strong>Período:</strong> anos de publicação, nos campos De e Até.</li>
+                <li><strong>Buscar a expressão exata:</strong> procura as palavras juntas e na ordem digitada.</li>
+            </ul>
+        {% endset %}
+        {{ faq.item('filtros-da-busca', 'Quais filtros posso usar?', a) }}
+
+        {% set a %}
+            <p>Com essa opção marcada, só aparecem resultados que trazem as palavras juntas e na ordem em que você digitou. Por exemplo, “formação de professores” não traz um trabalho que fala apenas de “professores em formação”.</p>
+            <p>Sem ela, as palavras são procuradas separadamente, e o resultado fica mais amplo.</p>
+        {% endset %}
+        {{ faq.item('expressao-exata', 'O que faz a opção “buscar a expressão exata”?', a) }}
+
+        {% set a %}
+            <p>Você escolhe a ordem dos resultados:</p>
+            <ul class="list-disc space-y-1 pl-5">
+                <li><strong>Relevância:</strong> considera onde o termo aparece. O termo no título pesa mais do que nas palavras-chave, e a expressão completa no título soma pontos.</li>
+                <li><strong>Mais recentes:</strong> publicações mais novas primeiro.</li>
+                <li><strong>Mais publicações:</strong> docentes com mais trabalhos sobre o assunto primeiro.</li>
+                <li><strong>Nome:</strong> ordem alfabética.</li>
+            </ul>
+        {% endset %}
+        {{ faq.item('ordem-dos-resultados', 'Como os resultados são ordenados?', a) }}
+
+        {% set a %}
+            <p>No perfil, a aba <strong>Publicações da busca</strong> mostra apenas os trabalhos daquele docente que correspondem ao que você procurou. As outras abas continuam com o currículo completo.</p>
+            <p>Para voltar à lista de resultados com os mesmos filtros, use <strong>Voltar à busca</strong>.</p>
+        {% endset %}
+        {{ faq.item('publicacoes-da-busca', 'Abri um perfil a partir da busca. Como vejo só as publicações do assunto?', a) }}
+
+        {% set a %}
+            <ul class="list-disc space-y-1 pl-5">
+                <li>Tente um sinônimo ou um termo mais geral.</li>
+                <li>Desmarque “buscar a expressão exata”.</li>
+                <li>Remova alguns filtros ou amplie o período.</li>
+                <li>Tente o termo em inglês: muitos títulos estão nessa língua.</li>
+                <li>Navegue pelos assuntos já indexados em <a href="{{ path('app_pub_explore') }}" class="{{ link }}">Explorar</a>.</li>
+            </ul>
+        {% endset %}
+        {{ faq.item('nada-encontrado', 'A busca não encontrou nada. O que faço?', a) }}
+
+        {% set a %}
+            <p>Em <a href="{{ path('app_pub_explore') }}" class="{{ link }}">Explorar</a>, você navega pelos <strong>assuntos</strong>, pelas <strong>áreas de atuação</strong> e pelas <strong>grandes áreas</strong>, sem precisar digitar nada.</p>
+            <p>Cada assunto, área ou grande área tem uma página de panorama, com os docentes que atuam nele e a produção relacionada.</p>
+        {% endset %}
+        {{ faq.item('explorar-por-assunto', 'Posso navegar pelos assuntos sem fazer uma busca?', a) }}
+    </section>
+
+    {# ═════════════ Perfis e coautorias ═════════════ #}
+    <section id="perfis-e-coautorias" class="space-y-4 scroll-mt-24" aria-labelledby="perfis-e-coautorias-titulo">
+        {{ faq.category('perfis-e-coautorias', 'person-badge', 'Perfis e coautorias', 'O que há na página de cada docente e como ler a rede de quem publica junto.') }}
+
+        {% set a %}
+            <p>O departamento e o vínculo, a formação, os links para o Lattes e para o ORCID (quando informado), as publicações por tipo, as orientações, os projetos, as palavras-chave e os temas frequentes, as coautorias com outros docentes do CECH e as bases internacionais dos periódicos.</p>
+            <p>O perfil também mostra a data em que o docente atualizou o Lattes pela última vez.</p>
+        {% endset %}
+        {{ faq.item('o-que-tem-no-perfil', 'O que aparece no perfil de um docente?', a) }}
+
+        {% set a %}
+            <p>Sim. No perfil, há opções para exportar as publicações em <strong>BibTeX</strong>, para gerenciadores de referências como Zotero, Mendeley e JabRef, em <strong>JSON</strong> e em <strong>CSV</strong>, que abre em planilhas.</p>
+        {% endset %}
+        {{ faq.item('exportar-publicacoes', 'Posso baixar as publicações de um docente?', a) }}
+
+        {% set a %}
+            <p>Em <a href="{{ path('app_pub_coauthorship') }}" class="{{ link }}">Coautorias</a>, cada pessoa é um ponto, e cada ligação indica que duas pessoas publicaram juntas.</p>
+            <ul class="list-disc space-y-1 pl-5">
+                <li><strong>Destacar um docente:</strong> escolha um nome para encontrá-lo no grafo.</li>
+                <li><strong>Clicar numa pessoa:</strong> mostra a vizinhança dela, isto é, com quem ela publicou.</li>
+                <li><strong>Clicar numa ligação:</strong> mostra as publicações em comum entre as duas pessoas.</li>
+                <li><strong>Controles:</strong> ampliar, reduzir, centralizar, tela cheia e mostrar ou esconder os nomes.</li>
+            </ul>
+        {% endset %}
+        {{ faq.item('grafo-de-coautorias', 'Como uso o grafo de coautorias?', a) }}
+
+        {% set a %}
+            <p>A <strong>cor</strong> e a <strong>forma</strong> de cada ponto indicam o departamento. A forma ajuda quem tem dificuldade para distinguir cores.</p>
+            <p>A <strong>espessura</strong> da ligação acompanha o número de publicações em comum: quanto mais grossa, mais trabalhos as duas pessoas fizeram juntas.</p>
+        {% endset %}
+        {{ faq.item('cores-formas-espessura', 'O que significam as cores, as formas e a espessura das ligações?', a) }}
+
+        {% set a %}
+            <p>A rede mostra as coautorias entre docentes do CECH: há ligação quando dois docentes do Centro aparecem na mesma publicação. Autores de fora do CECH não entram na rede, mas continuam na lista de autores de cada publicação.</p>
+        {% endset %}
+        {{ faq.item('quem-entra-na-rede', 'Quem entra na rede de coautorias?', a) }}
+
+        {% set a %}
+            <p>Sim. Em <a href="{{ path('app_pub_indicators', {tab: 'network'}) }}" class="{{ link }}">Indicadores › Redes de colaboração</a>, a rede pode ser baixada em um formato aceito pelo <strong>VOSviewer</strong>, programa gratuito de análise de redes bibliométricas, e a matriz de coautoria em CSV. A página de <a href="{{ path('app_pub_coauthorship') }}" class="{{ link }}">Coautorias</a> leva até lá.</p>
+        {% endset %}
+        {{ faq.item('exportar-rede', 'Posso analisar a rede em outro programa?', a) }}
+    </section>
+
+    {# ═════════════ Projetos ═════════════ #}
+    <section id="projetos" class="space-y-4 scroll-mt-24" aria-labelledby="projetos-titulo">
+        {{ faq.category('projetos', 'kanban', 'Projetos', 'O catálogo de projetos declarados pelos docentes.') }}
+
+        {% set a %}
+            <p>Em <a href="{{ path('app_pub_projects') }}" class="{{ link }}">Projetos</a> estão os projetos que os docentes declaram no Lattes, como os de pesquisa e de extensão. Você pode buscar pelo nome do projeto e filtrar pela situação (em andamento, concluído ou desativado), pela natureza (pesquisa, extensão, ensino, desenvolvimento), pelo departamento e pelo período de execução. Quando vários docentes declaram o mesmo projeto, ele aparece uma vez só.</p>
+        {% endset %}
+        {{ faq.item('catalogo-de-projetos', 'O que há no catálogo de projetos?', a) }}
+
+        {% set a %}
+            <p>A descrição, o período, a situação e a equipe, conforme informados no Lattes. Os integrantes que são docentes do CECH têm link para o perfil.</p>
+        {% endset %}
+        {{ faq.item('pagina-do-projeto', 'O que mostra a página de um projeto?', a) }}
+
+        {% set a %}
+            <p>O catálogo depende do que cada docente registra no Lattes. Se o projeto não foi declarado ou se a situação não foi atualizada no currículo, o portal mostra o que está lá. A correção é feita no Lattes e aparece aqui depois da próxima importação.</p>
+        {% endset %}
+        {{ faq.item('projeto-ausente', 'Por que um projeto não aparece ou está desatualizado?', a) }}
+    </section>
+
+    {# ═════════════ Dados e cobertura ═════════════ #}
+    <section id="dados-e-cobertura" class="space-y-4 scroll-mt-24" aria-labelledby="dados-e-cobertura-titulo">
+        {{ faq.category('dados-e-cobertura', 'database', 'Dados e cobertura', 'De onde vêm as informações, quem está no portal e como os números são contados.') }}
+
+        {% set a %}
+            <p>Principalmente do Currículo Lattes de cada docente, somado à planilha de docentes do CECH, ao Repositório Institucional da UFSCar (TeD-UFSCar), ao Qualis CAPES e às listas de periódicos de bases internacionais.</p>
+            <p>Os detalhes e os números atualizados estão em <a href="{{ path('app_pub_about_data') }}" class="{{ link }}">Sobre os dados</a>.</p>
+        {% endset %}
+        {{ faq.item('origem-dos-dados', 'De onde vêm os dados?', a) }}
+
+        {% set a %}
+            <p>Os docentes do CECH com vínculo vigente e também os que já tiveram vínculo com o Centro, segundo a planilha de docentes. Quem tem o vínculo encerrado continua no portal com a produção registrada.</p>
+        {% endset %}
+        {{ faq.item('quem-esta-no-portal', 'Quem está no portal?', a) }}
+
+        {% set a %}
+            <p>Os currículos são importados de novo de tempos em tempos. Cada perfil mostra a data em que o docente atualizou o Lattes pela última vez, e uma mudança feita no Lattes aparece no portal depois da próxima importação.</p>
+        {% endset %}
+        {{ faq.item('frequencia-de-atualizacao', 'Com que frequência os dados são atualizados?', a) }}
+
+        {% set a %}
+            <p>Porque é um único trabalho. Nos totais do Centro, a publicação conta uma vez quando tem o mesmo DOI ou, sem DOI, o mesmo tipo, ano e título. No perfil de cada autor, ela aparece normalmente.</p>
+        {% endset %}
+        {{ faq.item('publicacao-contada-uma-vez', 'Por que uma publicação de dois docentes conta uma vez nos totais?', a) }}
+
+        {% set a %}
+            <p>Em <a href="{{ path('app_pub_indicators') }}" class="{{ link }}">Indicadores</a>, o <strong>panorama</strong> do topo pode ser filtrado por assunto, departamento, tema e período: ele mostra os totais, a produção por ano, os assuntos em destaque e as pontes entre departamentos e entre grandes áreas. Abaixo dele, as figuras estão organizadas em abas (corpo docente, formação de pessoas, produção e redes de colaboração) e mostram o CECH inteiro, sem os filtros do panorama. Cada assunto, área e departamento também tem o próprio panorama, em <a href="{{ path('app_pub_explore') }}" class="{{ link }}">Explorar</a> e nas páginas de departamento.</p>
+        {% endset %}
+        {{ faq.item('como-usar-indicadores', 'Como uso os indicadores?', a) }}
+
+        {% set a %}
+            <p>O <strong>Qualis</strong> é o estrato que a CAPES atribui ao periódico, de A1 a C. As <strong>bases internacionais</strong>, como Scopus, Web of Science, SciELO, Latindex, PubMed e DOAJ, indicam onde o periódico está indexado.</p>
+            <p>Os dois informam sobre o periódico, não sobre a qualidade de cada artigo. Veja a lista em <a href="{{ path('app_pub_journals_index') }}" class="{{ link }}">Periódicos</a>.</p>
+        {% endset %}
+        {{ faq.item('qualis-e-bases', 'O que significam o Qualis e as bases internacionais?', a) }}
+
+        {% set a %}
+            <p>Confira primeiro o Currículo Lattes do docente, que é a fonte dos dados. O link para ele está no perfil.</p>
+            <ul class="list-disc space-y-1 pl-5">
+                <li><strong>Se o erro está no Lattes:</strong> o próprio docente corrige o currículo na Plataforma Lattes, e a correção aparece aqui depois da próxima importação.</li>
+                <li><strong>Se o Lattes está certo e o portal mostra outra coisa</strong>, como uma publicação duplicada, um departamento errado ou um periódico trocado: comunique à direção do CECH, informando o endereço da página e o que está errado.</li>
+            </ul>
+        {% endset %}
+        {{ faq.item('reportar-erro', 'Encontrei um dado errado. Como corrijo?', a) }}
+    </section>
+
+    {# ═════════════ Acessibilidade ═════════════ #}
+    <section id="acessibilidade" class="space-y-4 scroll-mt-24" aria-labelledby="acessibilidade-titulo">
+        {{ faq.category('acessibilidade', 'universal-access-circle', 'Acessibilidade', 'Como ajustar a leitura e navegar pelo portal com teclado ou leitor de tela.') }}
+
+        {% set a %}
+            <p>Use o botão <strong>Acessibilidade</strong>, no topo da página. No celular, ele fica dentro do menu. O botão abre o painel <strong>Preferências de leitura</strong>, com estas opções:</p>
+            <ul class="list-disc space-y-1 pl-5">
+                <li><strong>Tamanho do texto:</strong> de 100% a 200%, com os botões A− e A+.</li>
+                <li><strong>Tema:</strong> automático (segue o tema do seu aparelho), claro ou escuro.</li>
+                <li><strong>Alto contraste:</strong> textos mais fortes, bordas mais visíveis e links sublinhados.</li>
+                <li><strong>Espaçamento ampliado:</strong> mais espaço entre linhas, parágrafos, letras e palavras.</li>
+                <li><strong>Reduzir animações:</strong> desliga transições e movimentos. Já vem ligado se o seu aparelho pede menos movimento.</li>
+                <li><strong>Restaurar:</strong> volta tudo ao padrão.</li>
+            </ul>
+            <p>As escolhas ficam salvas neste navegador e valem para todas as páginas.</p>
+        {% endset %}
+        {{ faq.item('preferencias-de-leitura', 'Como aumento o texto ou mudo o tema?', a) }}
+
+        {% set a %}
+            <ul class="list-disc space-y-1 pl-5">
+                <li><strong>Tab</strong> e <strong>Shift + Tab</strong> percorrem links, botões e campos, com destaque visível em cada um.</li>
+                <li>O primeiro Tab mostra o link <strong>Pular para o conteúdo</strong>, que leva direto ao texto principal.</li>
+                <li><strong>Enter</strong> ou <strong>Espaço</strong> acionam botões e abrem as respostas desta página.</li>
+                <li><strong>Esc</strong> fecha o painel de acessibilidade e o menu do celular.</li>
+            </ul>
+        {% endset %}
+        {{ faq.item('navegar-pelo-teclado', 'Posso navegar só pelo teclado?', a) }}
+
+        {% set a %}
+            <p>As páginas usam títulos em ordem, rótulos nos botões e regiões identificadas (menu, conteúdo principal e rodapé), o que facilita a navegação com leitores de tela como NVDA, JAWS, VoiceOver e TalkBack.</p>
+            <p>Gráficos e o grafo de coautorias são recursos visuais. Boa parte dessas informações também aparece em texto, nos perfis, na busca e nas listas de cada página.</p>
+        {% endset %}
+        {{ faq.item('leitor-de-tela', 'O portal funciona com leitores de tela?', a) }}
+
+        {% set a %}
+            <p>Sim. O zoom do navegador (Ctrl e + no Windows e no Linux, ⌘ e + no Mac) funciona em todas as páginas e pode ser combinado com o tamanho do texto escolhido no painel.</p>
+        {% endset %}
+        {{ faq.item('zoom-do-navegador', 'Posso usar o zoom do navegador?', a) }}
+
+        {% set a %}
+            <p>Comunique à direção do CECH, informando a página, o que você tentava fazer e, se possível, o navegador e a tecnologia assistiva que usa. Esse retorno nos ajuda a corrigir o problema.</p>
+        {% endset %}
+        {{ faq.item('barreira-de-acessibilidade', 'Encontrei uma barreira de acessibilidade. O que faço?', a) }}
+    </section>
+
+    <section class="rounded-3xl border border-sky-200/70 bg-sky-50/70 p-6 dark:border-sky-900/50 dark:bg-sky-950/30" aria-labelledby="nao-encontrou">
+        <h2 id="nao-encontrou" class="font-heading text-lg font-bold text-slate-900 dark:text-white">Não encontrou sua dúvida?</h2>
+        <p class="mt-1 text-sm text-slate-700 dark:text-slate-300">Veja também <a href="{{ path('app_pub_about') }}" class="{{ link }}">Sobre nós</a> e <a href="{{ path('app_pub_about_data') }}" class="{{ link }}">Sobre os dados</a>.</p>
+    </section>
+</div>
+
+<script>
+    (function () {
+        var items = Array.prototype.slice.call(document.querySelectorAll('details.group[id]'));
+
+        // /duvidas#id abre a resposta correspondente (também ao trocar de âncora sem recarregar a página)
+        function openFromHash() {
+            var id = '';
+            try { id = decodeURIComponent(window.location.hash.slice(1)); } catch (e) { return; }
+            if (!id) return;
+            var target = document.getElementById(id);
+            if (target && target.tagName === 'DETAILS') {
+                target.open = true;
+            }
+        }
+        openFromHash();
+        window.addEventListener('hashchange', openFromHash);
+
+        // "Abrir todas" e "Fechar todas" só aparecem com JavaScript
+        var tools = document.querySelector('[data-faq-tools]');
+        if (tools) {
+            tools.hidden = false;
+            tools.addEventListener('click', function (event) {
+                var button = event.target.closest('[data-faq-expand]');
+                if (!button) return;
+                var open = button.getAttribute('data-faq-expand') === 'open';
+                items.forEach(function (details) { details.open = open; });
+            });
+        }
+    })();
+</script>
+{% endblock %}

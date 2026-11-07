@@ -1,0 +1,223 @@
+{% extends 'pub/base.html.twig' %}
+
+{% block title %}Sobre os dados | Portal CECH UFSCar{% endblock %}
+{% block meta_description %}De onde vêm os dados do Portal CECH/UFSCar (Currículo Lattes, planilha do CECH, Repositório TeD-UFSCar, Qualis CAPES e bases internacionais), quando foram atualizados e como interpretar os números.{% endblock %}
+{% block og_title %}Sobre os dados do Portal CECH/UFSCar{% endblock %}
+
+{% macro stat(label, value, note, icon) %}
+    <div class="glass-card rounded-3xl p-5 flex flex-col">
+        <dt class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            <sl-icon name="{{ icon }}" class="text-sky-600 dark:text-sky-400 text-sm" aria-hidden="true"></sl-icon> {{ label }}
+        </dt>
+        <dd class="mt-2 font-heading text-3xl font-extrabold text-slate-900 dark:text-white tabular-nums">{{ value }}</dd>
+        <dd class="mt-1 text-sm leading-snug text-slate-600 dark:text-slate-400">{{ note }}</dd>
+    </div>
+{% endmacro %}
+
+{% block body %}
+{% import _self as ui %}
+{% set fmt = 'd/m/Y' %}
+{% set newest = newestLattesUpdate ? newestLattesUpdate|date(fmt) : null %}
+{% set oldest = oldestLattesUpdate ? oldestLattesUpdate|date(fmt) : null %}
+{% set tocItems = [
+    {id: 'numeros', label: 'Os números de hoje'},
+    {id: 'fontes', label: 'Fontes'},
+    {id: 'atualizacao', label: 'Atualização'},
+    {id: 'como-interpretar', label: 'Como interpretar os números'},
+    {id: 'periodicos-qualis-e-bases', label: 'Periódicos, Qualis e bases'},
+    {id: 'limites', label: 'Limites e cuidados'},
+    {id: 'correcoes', label: 'Encontrou um erro?'},
+] %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div class="border-b border-slate-200/60 pb-6 dark:border-white/10">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300 mb-2">
+            <sl-icon name="database-fill" aria-hidden="true"></sl-icon> Sobre o portal
+        </span>
+        <h1 class="font-heading text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
+            Sobre os dados
+        </h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-3xl">
+            De onde vêm as informações do portal, quantas são, quando foram atualizadas e como interpretar os números.
+        </p>
+    </div>
+
+    {% include 'pub/institutional/_subnav.html.twig' with {current: 'data'} only %}
+
+    <div class="inst-layout lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10">
+        {% include 'pub/institutional/_toc.html.twig' with {items: tocItems} only %}
+
+        <div class="space-y-8 min-w-0">
+            {# ── Números ── #}
+            <section id="numeros" class="scroll-mt-24" aria-labelledby="numeros-titulo">
+                <h2 id="numeros-titulo" class="font-heading flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                    <sl-icon name="bar-chart-line" class="text-sky-600 dark:text-sky-400" aria-hidden="true"></sl-icon> Os números de hoje
+                </h2>
+                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">Contados no banco de dados do portal quando esta página foi gerada.</p>
+                <dl class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,13rem),1fr))] gap-4">
+                    {{ ui.stat('Docentes com vínculo vigente', activeResearchers|number_format(0, ',', '.'), 'Segundo a planilha de docentes do CECH.', 'person-check') }}
+                    {{ ui.stat('Currículos no portal', allResearchers|number_format(0, ',', '.'), formerResearchers > 0 ? 'Inclui ' ~ formerResearchers|number_format(0, ',', '.') ~ ' docentes com vínculo encerrado.' : 'Todos com vínculo vigente.', 'people') }}
+                    {{ ui.stat('Publicações únicas', uniqueProductions|number_format(0, ',', '.'), 'Cada publicação conta uma vez, mesmo quando está em vários currículos.', 'journal-richtext') }}
+                    {{ ui.stat('Assuntos no índice temático', thematicTerms|number_format(0, ',', '.'), 'Palavras-chave e expressões recorrentes dos títulos.', 'tags') }}
+                    {{ ui.stat('Orientações concluídas', concludedOrientations|number_format(0, ',', '.'), 'Iniciação científica, TCC, mestrado, doutorado e outras.', 'mortarboard') }}
+                    {{ ui.stat('Orientações em andamento', ongoingOrientations|number_format(0, ',', '.'), 'Como declaradas no Lattes de cada docente.', 'hourglass-split') }}
+                    {{ ui.stat('Atualização mais recente', newest ?? 'Sem dados', 'Último currículo atualizado pelo docente na Plataforma Lattes.', 'clock-history') }}
+                    {{ ui.stat('Atualização mais antiga', oldest ?? 'Sem dados', 'Currículo há mais tempo sem atualização no Lattes.', 'calendar-x') }}
+                </dl>
+            </section>
+
+            {# ── Fontes ── #}
+            <section id="fontes" class="glass-card rounded-3xl p-6 sm:p-8 scroll-mt-24" aria-labelledby="fontes-titulo">
+                <h2 id="fontes-titulo" class="font-heading flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                    <sl-icon name="diagram-2" class="text-sky-600 dark:text-sky-400" aria-hidden="true"></sl-icon> Fontes
+                </h2>
+                <ul class="mt-5 space-y-5">
+                    <li class="flex gap-4">
+                        <span class="mt-0.5 h-10 w-10 shrink-0 rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 flex items-center justify-center" aria-hidden="true"><sl-icon name="person-vcard" class="text-lg"></sl-icon></span>
+                        <div>
+                            <h3 class="font-heading text-base font-bold text-slate-900 dark:text-white">Currículo Lattes (CNPq)</h3>
+                            <p class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">É a fonte principal. Dele vêm a formação, a atuação profissional, as publicações, as orientações, os projetos, as palavras-chave e as áreas de atuação de cada docente. O currículo é importado em XML, o formato completo da Plataforma Lattes, ou a partir da página do currículo em HTML, quando o XML não está disponível.</p>
+                        </div>
+                    </li>
+                    <li class="flex gap-4">
+                        <span class="mt-0.5 h-10 w-10 shrink-0 rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 flex items-center justify-center" aria-hidden="true"><sl-icon name="table" class="text-lg"></sl-icon></span>
+                        <div>
+                            <h3 class="font-heading text-base font-bold text-slate-900 dark:text-white">Planilha de docentes do CECH</h3>
+                            <p class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">Informa o departamento de cada docente e os anos de início e de fim do vínculo com o Centro. É ela que define se o vínculo está vigente ou encerrado.</p>
+                        </div>
+                    </li>
+                    <li class="flex gap-4">
+                        <span class="mt-0.5 h-10 w-10 shrink-0 rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 flex items-center justify-center" aria-hidden="true"><sl-icon name="archive" class="text-lg"></sl-icon></span>
+                        <div>
+                            <h3 class="font-heading text-base font-bold text-slate-900 dark:text-white">Repositório Institucional da UFSCar (TeD-UFSCar)</h3>
+                            <p class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">Completa as teses e dissertações orientadas pelos docentes com assuntos e títulos alternativos, em geral em inglês, que ajudam na busca por assunto.</p>
+                        </div>
+                    </li>
+                    <li class="flex gap-4">
+                        <span class="mt-0.5 h-10 w-10 shrink-0 rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 flex items-center justify-center" aria-hidden="true"><sl-icon name="award" class="text-lg"></sl-icon></span>
+                        <div>
+                            <h3 class="font-heading text-base font-bold text-slate-900 dark:text-white">Qualis CAPES</h3>
+                            <p class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">Classificação dos periódicos feita pela CAPES, em estratos de A1 a C. O estrato aparece nos artigos e na página de periódicos.</p>
+                        </div>
+                    </li>
+                    <li class="flex gap-4">
+                        <span class="mt-0.5 h-10 w-10 shrink-0 rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 flex items-center justify-center" aria-hidden="true"><sl-icon name="globe2" class="text-lg"></sl-icon></span>
+                        <div>
+                            <h3 class="font-heading text-base font-bold text-slate-900 dark:text-white">Bases internacionais</h3>
+                            <p class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">Listas públicas de periódicos da Scopus, da Web of Science, da SciELO, do Latindex, da PubMed e do DOAJ, entre outras. Elas mostram em quais bases estão os periódicos em que os docentes publicam.</p>
+                        </div>
+                    </li>
+                </ul>
+            </section>
+
+            {# ── Atualização ── #}
+            <section id="atualizacao" class="glass-card rounded-3xl p-6 sm:p-8 scroll-mt-24" aria-labelledby="atualizacao-titulo">
+                <h2 id="atualizacao-titulo" class="font-heading flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                    <sl-icon name="arrow-repeat" class="text-sky-600 dark:text-sky-400" aria-hidden="true"></sl-icon> Atualização
+                </h2>
+                <div class="mt-4 space-y-4 text-base leading-relaxed text-slate-700 dark:text-slate-300">
+                    <p>A data de atualização que aparece em cada perfil é a data em que <strong class="text-slate-900 dark:text-white">o próprio docente atualizou o currículo na Plataforma Lattes</strong>. Ela não é a data em que o portal importou o currículo.</p>
+                    <p>Os currículos são importados de novo de tempos em tempos. Uma mudança feita hoje no Lattes aparece no portal depois da próxima importação.</p>
+                    {% if newest and oldest %}
+                        <p>Hoje, o currículo atualizado mais recentemente no Lattes é de <strong class="text-slate-900 dark:text-white">{{ newest }}</strong>, e o que está há mais tempo sem atualização é de <strong class="text-slate-900 dark:text-white">{{ oldest }}</strong>.</p>
+                    {% endif %}
+                    <p>Na importação, nada do que veio do Lattes é alterado: nomes, títulos e periódicos ficam como o docente escreveu. As padronizações, como reconhecer que “Univ. Federal de São Carlos” e “UFSCar” são a mesma instituição, ficam gravadas à parte.</p>
+                </div>
+            </section>
+
+            {# ── Como interpretar ── #}
+            <section id="como-interpretar" class="glass-card rounded-3xl p-6 sm:p-8 scroll-mt-24" aria-labelledby="como-interpretar-titulo">
+                <h2 id="como-interpretar-titulo" class="font-heading flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                    <sl-icon name="lightbulb" class="text-sky-600 dark:text-sky-400" aria-hidden="true"></sl-icon> Como interpretar os números
+                </h2>
+                <dl class="mt-5 divide-y divide-slate-200/80 dark:divide-white/10">
+                    <div id="publicacao-unica" class="py-4 first:pt-0 scroll-mt-24">
+                        <dt class="font-heading text-base font-bold text-slate-900 dark:text-white">Publicação única</dt>
+                        <dd class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">A mesma publicação pode estar em vários currículos, quando dois ou mais docentes do CECH são autores dela. Nos totais do Centro, ela conta uma vez. O portal considera que é a mesma publicação quando o DOI é igual ou, sem DOI, quando o tipo, o ano e o título são iguais. No perfil de cada docente, a publicação aparece normalmente.</dd>
+                    </div>
+                    <div id="coautoria" class="py-4 scroll-mt-24">
+                        <dt class="font-heading text-base font-bold text-slate-900 dark:text-white">Coautoria</dt>
+                        <dd class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">Há coautoria quando dois docentes do CECH aparecem na mesma publicação. Autores de fora do Centro não entram na rede de coautorias, mas continuam na lista de autores de cada publicação.</dd>
+                    </div>
+                    <div id="vinculo" class="py-4 scroll-mt-24">
+                        <dt class="font-heading text-base font-bold text-slate-900 dark:text-white">Vínculo vigente ou encerrado</dt>
+                        <dd class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">Vem da planilha de docentes do CECH. Quem tem o vínculo encerrado, por aposentadoria, transferência ou outro motivo, continua no portal com a produção registrada, e a busca permite filtrar por vínculo.</dd>
+                    </div>
+                    <div id="orientacoes" class="py-4 scroll-mt-24">
+                        <dt class="font-heading text-base font-bold text-slate-900 dark:text-white">Orientações</dt>
+                        <dd class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">São as orientações declaradas no Lattes: iniciação científica, trabalho de conclusão de curso, mestrado, doutorado e supervisão de pós-doutorado, entre outras. O portal separa as concluídas das que estão em andamento. As em andamento dependem de o docente manter o currículo atualizado.</dd>
+                    </div>
+                    <div id="qualis" class="py-4 scroll-mt-24">
+                        <dt class="font-heading text-base font-bold text-slate-900 dark:text-white">Qualis</dt>
+                        <dd class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">É o estrato que a CAPES atribui ao periódico, registrado no artigo. Um artigo sem Qualis não é necessariamente pior: o periódico pode não ter sido avaliado ou não constar da lista consultada. O estrato informa sobre o periódico, não mede a qualidade de cada artigo.</dd>
+                    </div>
+                    <div id="bases-internacionais" class="py-4 scroll-mt-24">
+                        <dt class="font-heading text-base font-bold text-slate-900 dark:text-white">Bases internacionais</dt>
+                        <dd class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">Indicam que o periódico consta da lista de títulos de cada base, como Scopus, Web of Science, SciELO, Latindex, PubMed e DOAJ. A verificação é feita pelo ISSN e pelo título e pode ter omissões. Estar numa base é uma característica do periódico, não do artigo.</dd>
+                    </div>
+                    <div id="assuntos" class="py-4 scroll-mt-24">
+                        <dt class="font-heading text-base font-bold text-slate-900 dark:text-white">Assuntos</dt>
+                        <dd class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">Os assuntos do índice temático vêm das palavras-chave que os docentes declaram no Lattes e das registradas no Repositório Institucional, além de expressões que se repetem nos títulos das publicações. O índice é gerado automaticamente. Por isso, pode juntar termos parecidos ou deixar de fora um assunto pouco frequente.</dd>
+                    </div>
+                    <div id="areas" class="py-4 scroll-mt-24">
+                        <dt class="font-heading text-base font-bold text-slate-900 dark:text-white">Áreas de atuação e grandes áreas</dt>
+                        <dd class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">As áreas de atuação são as que o docente declara no Lattes, organizadas em grandes áreas do conhecimento. A área dos periódicos é atribuída automaticamente a partir das categorias das bases, segundo a taxonomia da CAPES, e pode ter imprecisões.</dd>
+                    </div>
+                    <div id="departamento" class="py-4 last:pb-0 scroll-mt-24">
+                        <dt class="font-heading text-base font-bold text-slate-900 dark:text-white">Departamento</dt>
+                        <dd class="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">Vem da planilha de docentes do CECH. A produção de um docente é contada no departamento em que ele está registrado.</dd>
+                    </div>
+                </dl>
+            </section>
+
+            {# ── Periódicos, Qualis e bases (texto adaptado de pub/journal/_methodology.html.twig) ── #}
+            <section id="periodicos-qualis-e-bases" class="glass-card rounded-3xl p-6 sm:p-8 scroll-mt-24" aria-labelledby="periodicos-qualis-e-bases-titulo">
+                <h2 id="periodicos-qualis-e-bases-titulo" class="font-heading flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                    <sl-icon name="journal-text" class="text-sky-600 dark:text-sky-400" aria-hidden="true"></sl-icon> Periódicos, Qualis e bases
+                </h2>
+                <div class="mt-4 space-y-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                    <p><strong class="text-slate-900 dark:text-white">Fonte dos artigos:</strong> os itens do tipo “artigo em periódico” dos Currículos Lattes dos docentes do CECH.</p>
+                    <p><strong class="text-slate-900 dark:text-white">Identificação do periódico:</strong> pelo ISSN informado no currículo e, na sua falta, pelo título, com um tesauro de variações de nomes mantido pela equipe do portal.</p>
+                    <p><strong class="text-slate-900 dark:text-white">Listas das bases:</strong> Scopus (lista de títulos de julho de 2026), SciELO (coleção Brasil, agosto de 2026), Web of Science (listas de periódicos da Clarivate, agosto de 2026), PubMed (lista de periódicos da NLM, agosto de 2026) e Latindex (catálogo, agosto de 2026).</p>
+                    <p><strong class="text-slate-900 dark:text-white">Área de conhecimento:</strong> taxonomia de áreas de avaliação da CAPES, atribuída automaticamente a partir das categorias das próprias bases e, quando elas faltam, pelo título do periódico, inclusive com apoio de inteligência artificial. Por ser automática, pode conter imprecisões.</p>
+                    <p><strong class="text-slate-900 dark:text-white">Qualis:</strong> estrato da CAPES registrado nos artigos do periódico. Se houver mais de um, aparece o que tem mais artigos. O selo é informativo.</p>
+                    <p><strong class="text-slate-900 dark:text-white">Ordem das listas:</strong> é apenas decrescente de quantidade de artigos e <strong class="text-slate-900 dark:text-white">não representa avaliação de qualidade, prestígio ou impacto</strong> dos periódicos.</p>
+                    <p>
+                        <a href="{{ path('app_pub_journals_index') }}" class="inline-flex items-center gap-1.5 font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200">
+                            Ver os periódicos em que o CECH publica <sl-icon name="arrow-right" aria-hidden="true"></sl-icon>
+                        </a>
+                    </p>
+                </div>
+            </section>
+
+            {# ── Limites ── #}
+            <section id="limites" class="glass-card rounded-3xl p-6 sm:p-8 scroll-mt-24" aria-labelledby="limites-titulo">
+                <h2 id="limites-titulo" class="font-heading flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                    <sl-icon name="exclamation-triangle" class="text-amber-600 dark:text-amber-400" aria-hidden="true"></sl-icon> Limites e cuidados
+                </h2>
+                <ul class="mt-4 list-disc space-y-2 pl-5 text-sm leading-relaxed text-slate-700 dark:text-slate-300 marker:text-slate-400">
+                    <li>O Lattes é preenchido pelo próprio docente. Publicações não declaradas, dados desatualizados ou erros de digitação no currículo aparecem também no portal.</li>
+                    <li>Quando o currículo é importado pela página em HTML, as palavras-chave das publicações não são lidas.</li>
+                    <li>As classificações automáticas, como assuntos, áreas dos periódicos e reconhecimento de nomes e instituições, podem ter imprecisões, que a equipe revisa aos poucos.</li>
+                    <li>Os números descrevem a produção registrada. Eles não são uma avaliação de docentes, departamentos ou periódicos.</li>
+                </ul>
+            </section>
+
+            {# ── Correções ── #}
+            <section id="correcoes" class="rounded-3xl border border-sky-200/70 bg-sky-50/70 p-6 sm:p-8 dark:border-sky-900/50 dark:bg-sky-950/30 scroll-mt-24" aria-labelledby="correcoes-titulo">
+                <h2 id="correcoes-titulo" class="font-heading flex items-center gap-2 text-xl font-bold text-slate-900 dark:text-white">
+                    <sl-icon name="pencil-square" class="text-sky-600 dark:text-sky-400" aria-hidden="true"></sl-icon> Encontrou um erro?
+                </h2>
+                <div class="mt-3 space-y-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                    <p>Primeiro, confira o Currículo Lattes do docente, que é a fonte dos dados. O link para ele está no perfil.</p>
+                    <p>Se o erro estiver no Lattes, a correção é feita lá, pelo próprio docente, e aparece no portal depois da próxima importação. Se o Lattes estiver certo e o portal mostrar outra coisa, comunique à direção do CECH, informando o endereço da página e o que está errado.</p>
+                    <p>
+                        <a href="{{ path('app_pub_faq') }}#reportar-erro" class="inline-flex items-center gap-1.5 font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200">
+                            Mais detalhes em Dúvidas frequentes <sl-icon name="arrow-right" aria-hidden="true"></sl-icon>
+                        </a>
+                    </p>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

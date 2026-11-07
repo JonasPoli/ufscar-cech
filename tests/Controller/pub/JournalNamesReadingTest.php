@@ -60,19 +60,20 @@ class JournalNamesReadingTest extends WebTestCase
         $this->insertItem($researcher, 'ARTIGO', "Artigo escrito com a sigla $t", 'Rev. Cano', $member);
         $this->insertItem($researcher, 'CAPITULO', "Capítulo com vínculo antigo $t", 'Livro qualquer', $canonical);
 
-        // Pelo título da família: o nome escrito pelo docente («Rev. Cano») não contém o termo
-        $crawler = $this->client->request('GET', '/busca?q=' . rawurlencode("Revista Canônica $t"));
+        // Pelo título da família: o nome escrito pelo docente («Rev. Cano») não contém o termo. A busca por periódico
+        // é a do modo "Publicações"; a de especialistas olha só título e palavras-chave
+        $crawler = $this->client->request('GET', '/busca?modo=publicacoes&q=' . rawurlencode("Revista Canônica $t"));
         $this->assertResponseIsSuccessful();
         $this->assertStringContainsString("Artigo escrito com a sigla $t", $crawler->filter('body')->text());
-        $this->assertStringContainsString('Produções Científicas (1)', $crawler->filter('body')->text(), 'O capítulo não entra por vínculo');
+        $this->assertStringContainsString('1 publicação', $crawler->filter('#resultados')->text(), 'O capítulo não entra por vínculo');
         $this->assertStringNotContainsString("Capítulo com vínculo antigo $t", $crawler->filter('body')->text());
 
         // Por uma variante ativa da família
-        $crawler = $this->client->request('GET', '/busca?q=' . rawurlencode("Rev. Can. $t"));
+        $crawler = $this->client->request('GET', '/busca?modo=publicacoes&q=' . rawurlencode("Rev. Can. $t"));
         $this->assertStringContainsString("Artigo escrito com a sigla $t", $crawler->filter('body')->text());
 
         // O filtro de sempre continua valendo: título do próprio artigo
-        $crawler = $this->client->request('GET', '/busca?q=' . rawurlencode("Capítulo com vínculo antigo $t"));
+        $crawler = $this->client->request('GET', '/busca?modo=publicacoes&q=' . rawurlencode("Capítulo com vínculo antigo $t"));
         $this->assertStringContainsString("Capítulo com vínculo antigo $t", $crawler->filter('body')->text());
 
         // Termo curto: a busca de sempre, sem erro

@@ -1,258 +1,322 @@
 {% extends 'pub/base.html.twig' %}
+{% import 'pub/research/_macros.html.twig' as rs %}
 
-{% block title %}{% if q %}{{ q }} | Busca no Catálogo Acadêmico — CECH UFSCar{% else %}Busca no Catálogo Acadêmico | Portal CECH UFSCar{% endif %}{% endblock %}
-{% block meta_description %}{% if q %}Resultados da busca por "{{ q }}" no catálogo de produção científica e corpo docente do CECH UFSCar.{% else %}Pesquise docentes, pesquisadores, artigos, livros, teses e produções intelectuais do CECH UFSCar.{% endif %}{% endblock %}
-{% block meta_robots %}{% if q %}noindex, follow{% else %}index, follow{% endif %}{% endblock %}
-{% block og_title %}{{ block('title') }}{% endblock %}
-{% block og_description %}{{ block('meta_description') }}{% endblock %}
+{% set q = filter.q %}
+{% set modeLabels = {
+    especialistas: 'Especialistas',
+    publicacoes: 'Publicações',
+    pesquisador: 'Pesquisador',
+    orientacoes: 'Teses e orientações',
+} %}
+{% set modeHints = {
+    especialistas: 'Quem pesquisa o assunto, com as publicações que comprovam',
+    publicacoes: 'Trabalhos sobre o assunto, sem repetição entre currículos',
+    pesquisador: 'Docentes pelo nome, nome de citação, ID Lattes ou ORCID',
+    orientacoes: 'Teses, dissertações e orientações dos docentes',
+} %}
+{% set placeholders = {
+    especialistas: 'O que você quer pesquisar? Ex.: formação de professores',
+    publicacoes: 'Título, palavra-chave, periódico ou DOI',
+    pesquisador: 'Nome do docente',
+    orientacoes: 'Título, orientando(a) ou palavra-chave',
+} %}
+{% set searchParams = filter.toQuery|merge({modo: mode}) %}
+{% set sortParams = sort is defined and sort ? searchParams|merge({ordem: sort}) : searchParams %}
+{% set inputClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white' %}
+{% set labelClass = 'block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1' %}
+
+{% block title %}{% if q %}{{ q }} — {{ modeLabels[mode] }} | Portal CECH UFSCar{% else %}Encontre especialistas | Portal CECH UFSCar{% endif %}{% endblock %}
+{% block meta_description %}{% if q %}Resultados da busca por "{{ q }}" na produção científica do CECH UFSCar.{% else %}Encontre especialistas do CECH UFSCar por assunto, publicação ou nome, com filtros por departamento, área, vínculo, tipo de publicação e período.{% endif %}{% endblock %}
+{% block meta_robots %}{% if hasSearch %}noindex, follow{% else %}index, follow{% endif %}{% endblock %}
 
 {% block body %}
 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
-    <!-- Header & Search Box -->
-    <div class="space-y-4">
-        <h1 class="font-heading text-3xl font-bold text-slate-900 dark:text-white">
-            Busca no Catálogo Acadêmico
-        </h1>
+    <header class="space-y-2">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+            <sl-icon name="compass"></sl-icon> Pesquisa institucional
+        </span>
+        <h1 class="font-heading text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">Encontre especialistas</h1>
+        <p class="text-sm text-slate-600 dark:text-slate-300">Busque por assunto, publicação ou nome de docente do CECH.</p>
+    </header>
 
-        <form action="{{ path('app_pub_search') }}" method="GET" class="glass-card rounded-2xl p-4 shadow-sm space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-3">
-                <div class="md:col-span-6 relative">
-                    <input type="text" name="q" value="{{ q }}" placeholder="Buscar por pesquisador, título, DOI, periódico..." class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 pl-10 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                    <sl-icon name="search" class="absolute left-3.5 top-3.5 text-slate-400 text-sm"></sl-icon>
+    <form id="searchForm" action="{{ path('app_pub_search') }}" method="GET" class="glass-card rounded-3xl shadow-sm" role="search" aria-label="Busca de especialistas">
+        <fieldset class="border-b border-slate-200/70 dark:border-white/10 px-4 sm:px-6 pt-4">
+            <legend class="sr-only">Tipo de busca</legend>
+            <div class="flex flex-wrap gap-1" role="radiogroup">
+                {% for key, label in modeLabels %}
+                    <label class="cursor-pointer">
+                        <input type="radio" name="modo" value="{{ key }}" class="peer sr-only" {% if mode == key %}checked{% endif %} data-placeholder="{{ placeholders[key] }}">
+                        <span class="inline-block rounded-t-xl px-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 border-b-2 border-transparent peer-checked:border-sky-600 peer-checked:text-sky-700 dark:peer-checked:text-sky-400 peer-focus-visible:ring-2 peer-focus-visible:ring-sky-500 hover:text-slate-900 dark:hover:text-white">{{ label }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </fieldset>
+
+        <div class="p-4 sm:p-6 space-y-4">
+            <div class="flex flex-col sm:flex-row gap-3">
+                <div class="relative flex-1">
+                    <label for="search-q" class="sr-only">Termos da busca</label>
+                    <input id="search-q" type="search" name="q" value="{{ q }}" maxlength="200" placeholder="{{ placeholders[mode] }}" class="{{ inputClass }} pl-10 py-3 text-base">
+                    <sl-icon name="search" class="absolute left-3.5 top-4 text-slate-400"></sl-icon>
                 </div>
+                <button type="submit" class="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-700 px-6 py-3 text-sm font-semibold text-white hover:bg-sky-600 shadow-sm transition-colors cursor-pointer">
+                    Buscar <sl-icon name="arrow-right"></sl-icon>
+                </button>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400" id="mode-hint">{{ modeHints[mode] }}</p>
 
-                <div class="md:col-span-3">
-                    <select name="dept" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                        <option value="">Todos os Departamentos</option>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                <div class="lg:col-span-2">
+                    <label for="f-departamento" class="{{ labelClass }}">Departamento</label>
+                    <select id="f-departamento" name="departamento" class="{{ inputClass }}">
+                        <option value="">Todos os departamentos</option>
                         {% for d in allDepartments %}
-                            <option value="{{ d.code }}" {% if department == d.code or department == d.name %}selected{% endif %}>
-                                {{ d.name }} ({{ d.code }})
-                            </option>
+                            <option value="{{ d.code }}" {% if filter.department == d.code or filter.department == d.name %}selected{% endif %}>{{ d.name }} ({{ d.code }})</option>
                         {% endfor %}
                     </select>
                 </div>
-
-                <div class="md:col-span-3 flex gap-2">
-                    <select name="type" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                        <option value="all" {% if type == 'all' %}selected{% endif %}>Tudo (Docentes, Produções & Teses)</option>
-                        <option value="researchers" {% if type == 'researchers' %}selected{% endif %}>Apenas Pesquisadores</option>
-                        <option value="productions" {% if type == 'productions' %}selected{% endif %}>Apenas Produções</option>
-                        <option value="orientations" {% if type == 'orientations' %}selected{% endif %}>Apenas Teses & Orientações</option>
+                <div>
+                    <label for="f-grande-area" class="{{ labelClass }}">Grande área</label>
+                    <select id="f-grande-area" name="grande_area" class="{{ inputClass }}">
+                        <option value="">Todas</option>
+                        {% for m in majorAreas %}
+                            <option value="{{ m.code }}" {% if filter.majorArea == m.code %}selected{% endif %}>{{ m.label }}</option>
+                        {% endfor %}
                     </select>
-                    <button type="submit" class="rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-500 shadow-sm transition-colors cursor-pointer">
-                        Buscar
-                    </button>
+                </div>
+                <div class="lg:col-span-2">
+                    <label for="f-area" class="{{ labelClass }}">Área de atuação</label>
+                    <select id="f-area" name="area" class="{{ inputClass }}">
+                        <option value="">Todas as áreas</option>
+                        {% for group, items in areas|filter(a => a.researchers > 0)|reduce((carry, a) => carry|merge({(a.majorLabel): (carry[a.majorLabel] ?? [])|merge([a])}), {}) %}
+                            <optgroup label="{{ group }}">
+                                {% for a in items %}
+                                    <option value="{{ a.area }}" {% if filter.area == a.area %}selected{% endif %}>{{ a.area }}</option>
+                                {% endfor %}
+                            </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="f-vinculo" class="{{ labelClass }}">Vínculo</label>
+                    <select id="f-vinculo" name="vinculo" class="{{ inputClass }}">
+                        <option value="">Todos</option>
+                        <option value="vigente" {% if filter.affiliation == 'vigente' %}selected{% endif %}>Vínculo vigente</option>
+                        <option value="encerrado" {% if filter.affiliation == 'encerrado' %}selected{% endif %}>Vínculo encerrado</option>
+                    </select>
+                </div>
+                <div class="lg:col-span-2">
+                    <label for="f-tipo" class="{{ labelClass }}">Tipo de publicação</label>
+                    <select id="f-tipo" name="tipo" class="{{ inputClass }}">
+                        <option value="">Todos os tipos</option>
+                        {% for key, label in constant('App\\Service\\Research\\ResearchFilter::TYPE_LABELS') %}
+                            <option value="{{ key }}" {% if filter.type == key %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <fieldset class="lg:col-span-2">
+                    <legend class="{{ labelClass }}">Período de publicação</legend>
+                    <div class="flex items-center gap-2">
+                        <label for="f-de" class="sr-only">Ano inicial</label>
+                        <input id="f-de" type="number" name="de" value="{{ filter.from }}" min="1950" max="{{ currentYear }}" placeholder="De" inputmode="numeric" class="{{ inputClass }}">
+                        <span class="text-slate-400" aria-hidden="true">–</span>
+                        <label for="f-ate" class="sr-only">Ano final</label>
+                        <input id="f-ate" type="number" name="ate" value="{{ filter.to }}" min="1950" max="{{ currentYear }}" placeholder="Até" inputmode="numeric" class="{{ inputClass }}">
+                    </div>
+                </fieldset>
+                <div class="lg:col-span-2 flex flex-col justify-end gap-2">
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 cursor-pointer">
+                        <input type="checkbox" name="exata" value="1" {% if filter.exact %}checked{% endif %} class="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500">
+                        Buscar a expressão exata
+                    </label>
                 </div>
             </div>
-        </form>
-    </div>
 
-    <!-- Search Summary -->
-    {% if q or department %}
-        <div class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-            Resultados para <strong class="text-slate-900 dark:text-white">"{{ q }}"</strong>
-            {% if department %} no departamento <strong class="text-slate-900 dark:text-white">{{ department }}</strong>{% endif %}:
-            {{ totalResearchers }} pesquisador(es), {{ totalProductions }} produção(ões) e {{ totalOrientations }} tese(s)/orientação(ões) encontrada(s).
-        </div>
-    {% endif %}
+            {% if filter.topicSlug %}
+                <input type="hidden" name="tema" value="{{ filter.topicSlug }}">
+            {% endif %}
 
-    <!-- Researchers Results -->
-    {% if researchers|length > 0 %}
-        <div class="space-y-4">
-            <h2 class="font-heading text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <sl-icon name="people" class="text-sky-600 dark:text-sky-400"></sl-icon> Pesquisadores ({{ totalResearchers }})
-            </h2>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {% for r in researchers %}
-                    <a href="{{ path('app_pub_professor_show', {'slugOrId': r.slug ?: r.idLattes}) }}" class="glass-card rounded-2xl p-4 hover:border-sky-500/50 hover:shadow-md transition-all flex items-center gap-3.5 group">
-                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-sm group-hover:scale-105 transition-transform {% if not r.photoUrl %}bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-sm{% endif %}">
-                            {% if r.photoUrl %}
-                                <picture class="h-full w-full">
-                                    <source srcset="{{ r.photoUrl|replace({'.jpg': '-256.webp', '.jpeg': '-256.webp', '.png': '-256.webp'}) }}" type="image/webp">
-                                    <img src="{{ r.photoUrl }}" alt="{{ r.fullName }}" width="48" height="48" loading="lazy" decoding="async" class="h-full w-full object-cover">
-                                </picture>
-                            {% else %}
-                                {{ r.fullName|slice(0, 2)|upper }}
-                            {% endif %}
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <h3 class="font-heading text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
-                                {{ r.fullName }}
-                            </h3>
-                            <p class="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                {{ r.department ?: 'CECH / UFSCar' }}
-                            </p>
-                            <div class="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
-                                <span>{{ r.productions|length }} produções</span>
-                                {% if r.admissionYear or r.leaveYear %}
-                                    {% if r.isActiveInCech %}
-                                        <span>• Desde {{ r.admissionYear }}</span>
-                                    {% else %}
-                                        <span class="text-amber-600 dark:text-amber-400 font-medium">• {{ r.admissionYear ? r.admissionYear ~ '–' ~ (r.leaveYear ?: 'Saída') : 'Histórico' }}</span>
-                                    {% endif %}
-                                {% endif %}
-                            </div>
-                        </div>
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+                {% if filter.topicText %}
+                    <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 px-3 py-1 font-semibold">
+                        Tema: {{ filter.topicText }}
+                        <a href="{{ path('app_pub_search', searchParams|filter((v, k) => k != 'tema')) }}" class="hover:underline" aria-label="Remover o tema {{ filter.topicText }}"><sl-icon name="x-lg"></sl-icon></a>
+                    </span>
+                {% endif %}
+                {% if hasSearch %}
+                    <a href="{{ path('app_pub_search', {modo: mode}) }}" class="inline-flex items-center gap-1 font-semibold text-rose-700 hover:underline dark:text-rose-400">
+                        <sl-icon name="x-circle"></sl-icon> Limpar filtros
                     </a>
-                {% endfor %}
+                {% endif %}
             </div>
         </div>
-    {% endif %}
+    </form>
 
-    <!-- Productions Results -->
-    {% if productions|length > 0 %}
-        <div class="space-y-4">
-            <h2 class="font-heading text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <sl-icon name="journal-text" class="text-sky-600 dark:text-sky-400"></sl-icon> Produções Científicas ({{ totalProductions }})
-            </h2>
-
-            <div class="space-y-3">
-                {% for prod in productions %}
-                    <div class="glass-card rounded-2xl p-5 hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between">
-                        <div>
-                            <div class="flex flex-wrap items-center gap-2 mb-2">
-                                <span class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                    {{ prod.itemType }}
-                                </span>
-                                {% if prod.year %}
-                                    <span class="rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
-                                        {{ prod.year }}
-                                    </span>
-                                {% endif %}
-                                {% set jBadges = prod.journalName ? journal_badges(prod, prod.issn, prod.qualis) : '' %}
-                                {% if jBadges %}
-                                    {{ jBadges|raw }}
-                                {% elseif prod.qualis %}
-                                    <span class="rounded-md px-2 py-0.5 text-[11px] font-bold badge-qualis-{{ prod.qualis|lower }}">
-                                        Qualis {{ prod.qualis }}
-                                    </span>
-                                {% endif %}
-                            </div>
-
-                            <h3 class="font-heading text-base font-semibold text-slate-900 dark:text-white leading-snug">
-                                {{ prod.title }}
-                            </h3>
-
-                            <div class="mt-2 text-xs text-slate-600 dark:text-slate-400">
-                                {% if prod.journalName %}
-                                    <span class="font-medium text-slate-700 dark:text-slate-300 italic">{{ prod.journalName }}</span>
-                                    {% if prod.issn %} • ISSN: {{ prod.issn }}{% endif %}
-                                {% elseif prod.publisher %}
-                                    <span>Editora: {{ prod.publisher }}</span>
-                                    {% if prod.isbn %} • ISBN: {{ prod.isbn }}{% endif %}
-                                {% elseif prod.eventName %}
-                                    <span>Evento: {{ prod.eventName }}</span>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <div class="mt-4 pt-3 border-t border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
-                            <div class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-                                <sl-icon name="person" class="text-slate-400"></sl-icon>
-                                <a href="{{ path('app_pub_professor_show', {'slugOrId': prod.researcher.slug ?: prod.researcher.idLattes}) }}" class="font-medium hover:text-sky-600 dark:hover:text-sky-400 underline">
-                                    {{ prod.researcher.fullName }}
-                                </a>
-                                {% if prod.researcher.departmentCode %}
-                                    <span class="text-[11px] text-slate-400">({{ prod.researcher.departmentCode }})</span>
-                                {% endif %}
-                            </div>
-
-                            {% if prod.doi %}
-                                <a href="{{ prod.doiUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-semibold text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300 hover:underline">
-                                    <sl-icon name="box-arrow-up-right" class="text-[11px]"></sl-icon> DOI: {{ prod.doi }}
-                                </a>
-                            {% endif %}
-                        </div>
+    {% if not hasSearch %}
+        <section class="space-y-4" aria-labelledby="comecar">
+            <div class="flex items-end justify-between gap-4">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">Caminhos da pesquisa</p>
+                    <h2 id="comecar" class="font-heading text-xl font-bold text-slate-900 dark:text-white">Por onde você quer começar?</h2>
+                </div>
+                <a href="{{ path('app_pub_explore') }}" class="text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400">Todos os assuntos <sl-icon name="arrow-right"></sl-icon></a>
+            </div>
+            <ul class="flex flex-wrap gap-2">
+                {% for t in topTopics %}
+                    <li>
+                        <a href="{{ path('app_pub_search', {tema: t.slug}) }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-800 hover:border-sky-500 hover:text-sky-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:text-sky-400">
+                            {{ t.term }} <span class="text-xs text-slate-500 dark:text-slate-400">{{ t.occurrences|number_format(0, ',', '.') }}</span>
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% else %}
+        <section class="space-y-4" aria-labelledby="resultados" aria-live="polite">
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+                <div>
+                    <h2 id="resultados" class="font-heading text-xl font-bold text-slate-900 dark:text-white">
+                        {% if mode == 'especialistas' %}
+                            {{ result.count|number_format(0, ',', '.') }} {{ result.count == 1 ? 'docente' : 'docentes' }}
+                        {% elseif mode == 'publicacoes' %}
+                            {{ result.count|number_format(0, ',', '.') }} {{ result.count == 1 ? 'publicação' : 'publicações' }}
+                        {% elseif mode == 'pesquisador' %}
+                            {{ result.count|number_format(0, ',', '.') }} {{ result.count == 1 ? 'docente' : 'docentes' }}
+                        {% else %}
+                            {{ result.count|number_format(0, ',', '.') }} {{ result.count == 1 ? 'tese ou orientação' : 'teses e orientações' }}
+                        {% endif %}
+                    </h2>
+                    {% if mode == 'especialistas' %}
+                        <p class="text-xs text-slate-500 dark:text-slate-400">{{ result.publications|number_format(0, ',', '.') }} publicações relacionadas{% if q %} a “{{ q }}”{% endif %}{% if filter.topicText %} no tema “{{ filter.topicText }}”{% endif %}.</p>
+                    {% elseif mode == 'publicacoes' %}
+                        <p class="text-xs text-slate-500 dark:text-slate-400">A mesma publicação declarada em vários currículos aparece uma vez.</p>
+                    {% endif %}
+                </div>
+                {% if mode in ['especialistas', 'publicacoes'] and result.count > 1 %}
+                    <div class="flex items-center gap-2">
+                        <label for="f-ordem" class="text-xs font-semibold text-slate-600 dark:text-slate-300">Ordenar por</label>
+                        <select id="f-ordem" name="ordem" form="searchForm" onchange="this.form.requestSubmit ? this.form.requestSubmit() : this.form.submit()" class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                            {% for key, label in sorts %}
+                                <option value="{{ key }}" {% if sort == key %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
-                {% endfor %}
+                {% endif %}
             </div>
-        </div>
-    {% endif %}
 
-    <!-- Orientations / Theses Results -->
-    {% if orientations|length > 0 %}
-        <div class="space-y-4">
-            <h2 class="font-heading text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <sl-icon name="mortarboard" class="text-teal-600 dark:text-teal-400"></sl-icon> Teses, Dissertações & Orientações ({{ totalOrientations }})
-            </h2>
+            {% if nameMatches and nameMatches.count > 0 %}
+                <div class="glass-card rounded-2xl p-4">
+                    <p class="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-2">Docentes com “{{ q }}” no nome</p>
+                    <ul class="flex flex-wrap gap-2">
+                        {% for p in nameMatches.results %}
+                            <li>
+                                <a href="{{ path('app_pub_professor_show', {slugOrId: p.slug}) }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm hover:border-sky-500 dark:border-slate-700 dark:bg-slate-900">
+                                    {{ rs.avatar(p, 'h-6 w-6 text-[10px]') }} <span class="font-semibold text-slate-800 dark:text-slate-100">{{ p.name }}</span>
+                                </a>
+                            </li>
+                        {% endfor %}
+                        {% if nameMatches.count > nameMatches.results|length %}
+                            <li><a href="{{ path('app_pub_search', searchParams|merge({modo: 'pesquisador'})) }}" class="inline-flex px-3 py-1.5 text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400">Ver todos ({{ nameMatches.count }})</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            {% endif %}
 
-            <div class="space-y-3">
-                {% for o in orientations %}
-                    <div class="glass-card rounded-2xl p-4 sm:p-5 hover:border-teal-500/50 hover:shadow-md transition-all">
-                        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                            <div class="space-y-1.5 flex-1 min-w-0">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase 
-                                        {% if o.orientationType == 'DOUTORADO' %}bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300
-                                        {% elseif o.orientationType == 'MESTRADO' %}bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300
-                                        {% else %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300{% endif %}">
-                                        {{ o.orientationType|replace({'_': ' '}) }}
-                                    </span>
-                                    {% if o.year %}
-                                        <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono">{{ o.year }}</span>
-                                    {% endif %}
-                                    {% if o.nature == 'CONCLUIDA' %}
-                                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5">
-                                            <sl-icon name="check-circle" class="text-xs"></sl-icon> Concluída
-                                        </span>
-                                    {% endif %}
-                                </div>
-
-                                <h3 class="font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                                    {{ o.title }}
-                                </h3>
-
-                                <div class="text-xs text-slate-600 dark:text-slate-300">
-                                    <span class="font-medium text-slate-500 dark:text-slate-400">Orientando(a):</span>
-                                    <strong class="text-slate-800 dark:text-slate-200">{{ o.studentName }}</strong>
-                                    {% if o.courseName %} • <span class="italic text-slate-500">{{ o.courseName }}</span>{% endif %}
-                                </div>
-
-                                {% if o.keywords %}
-                                    <div class="pt-1 flex flex-wrap gap-1">
-                                        {% for kw in o.keywords|split(';') %}
-                                            {% if kw|trim|length > 0 %}
-                                                <span class="inline-block text-[10px] px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/60 text-teal-800 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/80 font-medium">
-                                                    #{{ kw|trim }}
-                                                </span>
-                                            {% endif %}
-                                        {% endfor %}
+            {% if result.count == 0 %}
+                <div class="glass-card rounded-2xl p-10 text-center text-slate-600 dark:text-slate-300">
+                    <sl-icon name="search" class="text-4xl text-slate-400 mb-3"></sl-icon>
+                    <p class="text-base font-medium">Nenhum resultado para esta busca.</p>
+                    <p class="text-sm mt-1">Experimente variações em português ou inglês, desmarque “expressão exata” ou remova algum filtro.</p>
+                </div>
+            {% elseif mode == 'especialistas' %}
+                <ol class="space-y-4">
+                    {% for item in result.results %}
+                        {% set person = item.researcher %}
+                        <li class="glass-card rounded-2xl p-4 sm:p-5">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 dark:border-white/10 pb-3">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    {{ rs.avatar(person) }}
+                                    <div class="min-w-0">
+                                        <h3 class="font-heading text-base font-bold text-slate-900 dark:text-white truncate">
+                                            <a href="{{ path('app_pub_professor_show', {slugOrId: person.slug}|merge(searchParams)|merge({aba: 'busca'})) }}" class="hover:text-sky-700 dark:hover:text-sky-400">{{ person.name }}</a>
+                                        </h3>
+                                        {{ rs.person_meta(person) }}
                                     </div>
-                                {% endif %}
-                            </div>
-                        </div>
-
-                        <div class="mt-4 pt-3 border-t border-slate-200/60 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
-                            <div class="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-                                <sl-icon name="person-workspace" class="text-slate-400"></sl-icon>
-                                <span class="text-slate-400">Orientador(a):</span>
-                                <a href="{{ path('app_pub_professor_show', {'slugOrId': o.researcher.slug ?: o.researcher.idLattes}) }}" class="font-medium hover:text-sky-600 dark:hover:text-sky-400 underline">
-                                    {{ o.researcher.fullName }}
+                                </div>
+                                <a href="{{ path('app_pub_professor_show', {slugOrId: person.slug}|merge(searchParams)|merge({aba: 'busca'})) }}#busca" class="shrink-0 inline-flex items-center gap-1 text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400">
+                                    Ver {{ item.count }} {{ item.count == 1 ? 'publicação' : 'publicações' }} <sl-icon name="arrow-up-right"></sl-icon>
                                 </a>
-                                {% if o.researcher.departmentCode %}
-                                    <span class="text-[11px] text-slate-400">({{ o.researcher.departmentCode }})</span>
-                                {% endif %}
                             </div>
+                            <div class="divide-y divide-slate-200/70 dark:divide-white/10">
+                                {% for w in item.publications %}
+                                    {{ rs.work(w, false) }}
+                                {% endfor %}
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ol>
+            {% elseif mode == 'publicacoes' %}
+                <ol class="glass-card rounded-2xl px-4 sm:px-6 divide-y divide-slate-200/70 dark:divide-white/10">
+                    {% for w in result.results %}
+                        <li>{{ rs.work(w) }}</li>
+                    {% endfor %}
+                </ol>
+            {% elseif mode == 'pesquisador' %}
+                <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% for p in result.results %}
+                        <li>
+                            <a href="{{ path('app_pub_professor_show', {slugOrId: p.slug}) }}" class="glass-card rounded-2xl p-4 flex items-center gap-3 hover:border-sky-500/50 hover:shadow-md transition-all h-full">
+                                {{ rs.avatar(p) }}
+                                <span class="min-w-0">
+                                    <span class="block font-heading text-sm font-bold text-slate-900 dark:text-white truncate">{{ p.name }}</span>
+                                    {{ rs.person_meta(p) }}
+                                    <span class="block text-xs text-slate-500 dark:text-slate-400">{{ p.productions|number_format(0, ',', '.') }} produções{% if p.latestYear %} · mais recente {{ p.latestYear }}{% endif %}</span>
+                                </span>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="space-y-3">
+                    {% for o in orientations %}
+                        <article class="glass-card rounded-2xl p-4 sm:p-5">
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md font-bold uppercase tracking-wider bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">{{ o.orientationType|replace({'_': ' '}) }}</span>
+                                {% if o.year %}<span class="font-mono font-semibold text-slate-500 dark:text-slate-400">{{ o.year }}</span>{% endif %}
+                                {% if o.nature == 'CONCLUIDA' %}<span class="font-semibold text-emerald-700 dark:text-emerald-400">Concluída</span>{% else %}<span class="font-semibold text-amber-700 dark:text-amber-400">Em andamento</span>{% endif %}
+                            </div>
+                            <h3 class="mt-1.5 font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">{{ o.title }}</h3>
+                            <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                                Orientando(a): <strong>{{ o.studentName }}</strong>{% if o.courseName %} · <span class="italic">{{ o.courseName }}</span>{% endif %}
+                            </p>
+                            <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                                Orientador(a):
+                                <a href="{{ path('app_pub_professor_show', {'slugOrId': o.researcher.slug ?: o.researcher.idLattes}) }}" class="font-semibold underline hover:text-sky-700 dark:hover:text-sky-400">{{ o.researcher.fullName }}</a>
+                                {% if o.researcher.departmentCode %}({{ o.researcher.departmentCode }}){% endif %}
+                                {% if o.handleUrl %}
+                                    · <a href="{{ o.handleUrl }}" target="_blank" rel="noopener noreferrer" class="font-semibold text-teal-700 hover:underline dark:text-teal-400">Repositório Institucional (TeD-UFSCar)<span class="sr-only"> (abre em nova aba)</span></a>
+                                {% endif %}
+                            </p>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% endif %}
 
-                            {% if o.handleUrl %}
-                                <a href="{{ o.handleUrl }}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 font-bold text-teal-600 hover:text-teal-500 dark:text-teal-400 dark:hover:text-teal-300 hover:underline">
-                                    <sl-icon name="box-arrow-up-right" class="text-xs"></sl-icon> Ver no Repositório Institucional (TeD-UFSCar)
-                                </a>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    {% endif %}
-
-    {% if (q or department) and researchers|length == 0 and productions|length == 0 and orientations|length == 0 %}
-        <div class="glass-card rounded-2xl p-12 text-center text-slate-500 dark:text-slate-400">
-            <sl-icon name="search" class="text-4xl text-slate-400 mb-3"></sl-icon>
-            <p class="text-base font-medium">Nenhum resultado encontrado para sua busca.</p>
-            <p class="text-xs mt-1">Tente pesquisar por outros termos, grafias alternativas ou remova os filtros.</p>
-        </div>
+            {{ rs.pagination('app_pub_search', sortParams, result.page, result.pages) }}
+        </section>
     {% endif %}
 </div>
+
+<script>
+    // Troca o texto de ajuda e o exemplo do campo ao escolher outro tipo de busca
+    document.querySelectorAll('#searchForm input[name="modo"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            var input = document.getElementById('search-q');
+            var hint = document.getElementById('mode-hint');
+            var hints = {{ modeHints|json_encode|raw }};
+            if (input) input.placeholder = radio.dataset.placeholder;
+            if (hint) hint.textContent = hints[radio.value] || '';
+        });
+    });
+</script>
 {% endblock %}

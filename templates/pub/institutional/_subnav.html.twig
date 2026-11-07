@@ -1,0 +1,23 @@
+{#
+    Navegação entre as três páginas institucionais (Sobre nós, Sobre os dados, Dúvidas frequentes).
+    Parâmetro: current ("about", "data" ou "faq").
+#}
+{% set institutionalPages = [
+    {key: 'about', route: 'app_pub_about', label: 'Sobre nós', icon: 'info-circle'},
+    {key: 'data', route: 'app_pub_about_data', label: 'Sobre os dados', icon: 'database'},
+    {key: 'faq', route: 'app_pub_faq', label: 'Dúvidas frequentes', icon: 'question-circle'},
+] %}
+<nav aria-label="Páginas sobre o portal">
+    <ul class="flex flex-wrap gap-2">
+        {% for page in institutionalPages %}
+            {% set isCurrent = page.key == current %}
+            <li>
+                <a href="{{ path(page.route) }}" {% if isCurrent %}aria-current="page"{% endif %}
+                   class="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 {{ isCurrent ? 'border-cech-blue bg-cech-blue text-white dark:border-cech-teal dark:bg-cech-teal dark:text-slate-950' : 'border-slate-200 bg-white text-slate-700 hover:border-cech-blue hover:text-cech-blue dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-cech-teal dark:hover:text-cech-teal' }}">
+                    <sl-icon name="{{ page.icon }}" aria-hidden="true"></sl-icon>
+                    {{ page.label }}
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+</nav>

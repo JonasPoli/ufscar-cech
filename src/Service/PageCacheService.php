@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,7 +19,10 @@ class PageCacheService
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
         #[Autowire('%env(bool:PAGE_CACHE_ENABLED)%')]
-        private readonly bool $pageCacheEnabled = true
+        private readonly bool $pageCacheEnabled = true,
+        // Cálculos da pesquisa pública por filtro (panorama, rede): limpos junto com as páginas, pelo mesmo motivo
+        #[Autowire(service: 'cache.research')]
+        private readonly ?CacheItemPoolInterface $researchCache = null
     ) {
         $this->filesystem = new Filesystem();
     }
@@ -67,6 +71,11 @@ class PageCacheService
             if (str_starts_with($path, $prefix)) {
                 return false;
             }
+        }
+
+        // Texto livre em qualquer página (filtros do panorama, da rede, dos projetos…) geraria um arquivo por termo
+        if (trim((string)$request->query->get('q', '')) !== '') {
+            return false;
         }
 
         return true;
@@ -205,6 +214,7 @@ class PageCacheService
             if ($this->filesystem->exists($cacheDir)) {
                 $this->filesystem->remove($cacheDir);
             }
+            $this->researchCache?->clear();
             return true;
         } catch (\Throwable) {
             return false;

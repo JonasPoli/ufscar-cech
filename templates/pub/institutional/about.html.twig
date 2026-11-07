@@ -1,0 +1,171 @@
+{% extends 'pub/base.html.twig' %}
+
+{% block title %}Sobre nós | Portal CECH UFSCar{% endblock %}
+{% block meta_description %}Conheça o Portal de Produção do CECH/UFSCar: o que é, o que você encontra nele, de onde vêm os dados e quem mantém e desenvolve o portal.{% endblock %}
+{% block og_title %}Sobre o Portal de Produção do CECH/UFSCar{% endblock %}
+
+{% block body %}
+{% set tocItems = [
+    {id: 'o-que-e', label: 'O que é o portal'},
+    {id: 'o-que-voce-encontra', label: 'O que você encontra aqui'},
+    {id: 'de-onde-vem-os-dados', label: 'De onde vêm os dados'},
+    {id: 'quem-mantem', label: 'Quem mantém e quem desenvolve'},
+    {id: 'acessibilidade', label: 'Acessibilidade'},
+] %}
+{% set features = [
+    {route: 'app_pub_search', icon: 'search', title: 'Especialistas por assunto', text: 'Digite um assunto e veja quais docentes pesquisam o tema, com as publicações que levaram cada pessoa ao resultado.', cta: 'Buscar especialistas'},
+    {route: 'app_pub_search', icon: 'person-badge', title: 'Perfis dos docentes', text: 'Cada docente tem uma página com formação, publicações, orientações, projetos, coautorias e a data da última atualização do Lattes.', cta: 'Buscar um docente pelo nome'},
+    {route: 'app_pub_coauthorship', icon: 'diagram-3', title: 'Coautorias', text: 'Um grafo mostra quem publica junto no CECH. Clique numa pessoa para ver as parcerias dela ou numa ligação para ver as publicações em comum.', cta: 'Ver a rede de coautorias'},
+    {route: 'app_pub_explore', icon: 'stars', title: 'Explorar por assunto e área', text: 'Navegue pelos assuntos, pelas áreas de atuação e pelas grandes áreas. Cada um tem um panorama com docentes e produção.', cta: 'Explorar a pesquisa'},
+    {route: 'app_pub_projects', icon: 'kanban', title: 'Projetos', text: 'Catálogo dos projetos declarados no Lattes, com busca por nome e situação e uma página para cada projeto, com a equipe.', cta: 'Ver os projetos'},
+    {route: 'app_pub_indicators', icon: 'graph-up-arrow', title: 'Indicadores', text: 'Figuras sobre o corpo docente, a formação de pessoas, a produção e as redes de colaboração, com filtros no topo da página.', cta: 'Ver os indicadores'},
+    {route: 'app_pub_journals_index', icon: 'journal-text', title: 'Periódicos', text: 'Os periódicos em que os docentes publicam, com o estrato Qualis e a presença em bases internacionais como Scopus, Web of Science e SciELO.', cta: 'Ver os periódicos'},
+    {route: 'app_pub_department_list', icon: 'building', title: 'Departamentos', text: 'Os departamentos do Centro, com os docentes vinculados e a produção de cada um.', cta: 'Ver os departamentos'},
+] %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div class="border-b border-slate-200/60 pb-6 dark:border-white/10">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300 mb-2">
+            <sl-icon name="info-circle-fill" aria-hidden="true"></sl-icon> Sobre o portal
+        </span>
+        <h1 class="font-heading text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">
+            Sobre nós
+        </h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-3xl">
+            Um portal público e gratuito que reúne a produção científica e acadêmica dos docentes do Centro de Educação e Ciências Humanas da UFSCar.
+        </p>
+    </div>
+
+    {% include 'pub/institutional/_subnav.html.twig' with {current: 'about'} only %}
+
+    <div class="inst-layout lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-10">
+        {% include 'pub/institutional/_toc.html.twig' with {items: tocItems} only %}
+
+        <div class="space-y-8 min-w-0">
+            {# ── O que é ── #}
+            <section id="o-que-e" class="glass-card rounded-3xl p-6 sm:p-8 scroll-mt-24" aria-labelledby="o-que-e-titulo">
+                <h2 id="o-que-e-titulo" class="font-heading flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                    <sl-icon name="bullseye" class="text-sky-600 dark:text-sky-400" aria-hidden="true"></sl-icon> O que é o portal
+                </h2>
+                <div class="mt-4 space-y-4 text-base leading-relaxed text-slate-700 dark:text-slate-300">
+                    <p>O Portal de Produção do CECH reúne, em um só lugar, a produção científica e acadêmica dos docentes do <strong class="text-slate-900 dark:text-white">Centro de Educação e Ciências Humanas (CECH)</strong> da Universidade Federal de São Carlos (UFSCar): artigos, livros, capítulos, trabalhos em eventos, orientações e projetos.</p>
+                    <p>Essa produção já existe, mas está espalhada. Cada docente mantém o próprio Currículo Lattes, as teses e dissertações ficam no Repositório Institucional da UFSCar e a classificação dos periódicos está em outras bases. O portal junta essas fontes, organiza os nomes e torna o conjunto pesquisável.</p>
+                    <p>Ele ajuda a responder três perguntas:</p>
+                    <ul class="grid gap-3 grid-cols-[repeat(auto-fit,minmax(min(100%,12rem),1fr))]">
+                        <li class="rounded-2xl border border-slate-200/80 bg-white/70 p-4 dark:border-white/10 dark:bg-slate-900/60">
+                            <strong class="block font-heading text-slate-900 dark:text-white">Quem pesquisa o quê?</strong>
+                            <span class="text-sm">Encontre docentes por assunto, palavra-chave ou área.</span>
+                        </li>
+                        <li class="rounded-2xl border border-slate-200/80 bg-white/70 p-4 dark:border-white/10 dark:bg-slate-900/60">
+                            <strong class="block font-heading text-slate-900 dark:text-white">Quanto e onde publicamos?</strong>
+                            <span class="text-sm">Veja indicadores por departamento, ano, estrato Qualis e base internacional.</span>
+                        </li>
+                        <li class="rounded-2xl border border-slate-200/80 bg-white/70 p-4 dark:border-white/10 dark:bg-slate-900/60">
+                            <strong class="block font-heading text-slate-900 dark:text-white">Quem é quem?</strong>
+                            <span class="text-sm">Um mesmo autor aparece de formas diferentes nos currículos, como “Silva, J.” e “SILVA, João P.”. O portal reúne essas variações.</span>
+                        </li>
+                    </ul>
+                    <p>O acesso é livre e não exige cadastro. O portal é feito para a comunidade acadêmica, para quem pretende fazer pós-graduação, para a imprensa, para empresas e para toda a sociedade.</p>
+                </div>
+            </section>
+
+            {# ── O que você encontra ── #}
+            <section id="o-que-voce-encontra" class="scroll-mt-24" aria-labelledby="o-que-voce-encontra-titulo">
+                <h2 id="o-que-voce-encontra-titulo" class="font-heading flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                    <sl-icon name="compass" class="text-sky-600 dark:text-sky-400" aria-hidden="true"></sl-icon> O que você encontra aqui
+                </h2>
+                <ul class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(min(100%,13rem),1fr))] gap-4">
+                    {% for feature in features %}
+                        <li class="flex">
+                            <a href="{{ path(feature.route) }}" class="glass-card rounded-3xl p-5 hover:border-sky-500/50 hover:shadow-xl transition-all group flex flex-col w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500">
+                                <span class="h-10 w-10 rounded-2xl bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 flex items-center justify-center" aria-hidden="true">
+                                    <sl-icon name="{{ feature.icon }}" class="text-lg"></sl-icon>
+                                </span>
+                                <h3 class="mt-3 font-heading text-base font-bold text-slate-900 dark:text-white group-hover:text-sky-700 dark:group-hover:text-sky-300 transition-colors">{{ feature.title }}</h3>
+                                <p class="mt-1 flex-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{{ feature.text }}</p>
+                                <span class="mt-4 inline-flex flex-wrap items-center gap-x-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+                                    {{ feature.cta }} <sl-icon name="arrow-right" class="group-hover:translate-x-1 transition-transform" aria-hidden="true"></sl-icon>
+                                </span>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+            {# ── De onde vêm os dados ── #}
+            <section id="de-onde-vem-os-dados" class="glass-card rounded-3xl p-6 sm:p-8 scroll-mt-24" aria-labelledby="de-onde-vem-os-dados-titulo">
+                <h2 id="de-onde-vem-os-dados-titulo" class="font-heading flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                    <sl-icon name="database" class="text-sky-600 dark:text-sky-400" aria-hidden="true"></sl-icon> De onde vêm os dados
+                </h2>
+                <div class="mt-4 space-y-4 text-base leading-relaxed text-slate-700 dark:text-slate-300">
+                    <p>A fonte principal é o <strong class="text-slate-900 dark:text-white">Currículo Lattes</strong> de cada docente, mantido por ele na Plataforma Lattes do CNPq. A ele se somam a planilha de docentes do CECH (departamento e período de vínculo com o Centro), o Repositório Institucional da UFSCar (teses e dissertações), o Qualis CAPES e as listas de periódicos de bases internacionais.</p>
+                    <p>O portal não altera o que veio do Lattes. As padronizações e os cruzamentos ficam registrados à parte. Por isso, um currículo pode ser importado de novo a qualquer momento sem perder o trabalho de organização já feito.</p>
+                    <p>
+                        <a href="{{ path('app_pub_about_data') }}" class="inline-flex items-center gap-1.5 font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200">
+                            Veja as fontes, os números atualizados e como interpretar cada indicador <sl-icon name="arrow-right" aria-hidden="true"></sl-icon>
+                        </a>
+                    </p>
+                </div>
+            </section>
+
+            {# ── Quem mantém ── #}
+            <section id="quem-mantem" class="scroll-mt-24" aria-labelledby="quem-mantem-titulo">
+                <h2 id="quem-mantem-titulo" class="font-heading flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                    <sl-icon name="people" class="text-sky-600 dark:text-sky-400" aria-hidden="true"></sl-icon> Quem mantém e quem desenvolve
+                </h2>
+                <div class="mt-4 grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
+                    <div class="glass-card rounded-3xl p-6">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mantido por</span>
+                        <h3 class="mt-1 font-heading text-lg font-bold text-slate-900 dark:text-white">Centro de Educação e Ciências Humanas (CECH)</h3>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">Universidade Federal de São Carlos (UFSCar), São Carlos (SP)</p>
+                        <p class="mt-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">O CECH reúne departamentos que atuam em educação, psicologia, letras, artes e comunicação, ciências sociais, sociologia, filosofia, ciência da informação e ciências ambientais. É o Centro que mantém o portal e responde pelo seu conteúdo.</p>
+                        <p class="mt-3 text-sm">
+                            <a href="{{ path('app_pub_department_list') }}" class="font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200">Conheça os departamentos</a>
+                        </p>
+                    </div>
+                    <div class="glass-card rounded-3xl p-6">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Desenvolvido por</span>
+                        <h3 class="mt-1 font-heading text-lg font-bold text-slate-900 dark:text-white">NIT Materiais</h3>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">Núcleo de Informação Tecnológica em Materiais da UFSCar</p>
+                        <p class="mt-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">O NIT Materiais é responsável pelo desenvolvimento e pela manutenção técnica do portal: a importação dos currículos, a organização dos dados e as páginas que você consulta.</p>
+                        <p class="mt-3 text-sm">
+                            <a href="https://www.nit.ufscar.br/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200">
+                                Site do NIT Materiais <sl-icon name="box-arrow-up-right" aria-hidden="true"></sl-icon><span class="sr-only">(abre em nova aba)</span>
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {# ── Acessibilidade ── #}
+            <section id="acessibilidade" class="glass-card rounded-3xl p-6 sm:p-8 scroll-mt-24" aria-labelledby="acessibilidade-titulo">
+                <h2 id="acessibilidade-titulo" class="font-heading flex items-center gap-2 text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
+                    <sl-icon name="universal-access-circle" class="text-sky-600 dark:text-sky-400" aria-hidden="true"></sl-icon> Acessibilidade
+                </h2>
+                <div class="mt-4 space-y-4 text-base leading-relaxed text-slate-700 dark:text-slate-300">
+                    <p>Queremos que o portal seja fácil de usar para todas as pessoas. No botão <strong class="text-slate-900 dark:text-white">Acessibilidade</strong>, no topo da página (no celular, dentro do menu), você ajusta o tamanho do texto, o tema claro ou escuro, o alto contraste, o espaçamento do texto e as animações. As escolhas ficam salvas neste navegador.</p>
+                    <p>Também é possível navegar só pelo teclado. Ao pressionar Tab pela primeira vez, aparece o link <strong class="text-slate-900 dark:text-white">Pular para o conteúdo</strong>, que leva direto ao texto principal da página.</p>
+                    <p>
+                        <a href="{{ path('app_pub_faq') }}#acessibilidade" class="inline-flex items-center gap-1.5 font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-600 dark:text-sky-300 dark:hover:text-sky-200">
+                            Dúvidas sobre acessibilidade <sl-icon name="arrow-right" aria-hidden="true"></sl-icon>
+                        </a>
+                    </p>
+                </div>
+            </section>
+
+            {# ── Chamada final ── #}
+            <section class="rounded-3xl border border-sky-200/70 bg-sky-50/70 p-6 dark:border-sky-900/50 dark:bg-sky-950/30" aria-labelledby="mais-informacoes">
+                <h2 id="mais-informacoes" class="font-heading text-lg font-bold text-slate-900 dark:text-white">Ficou com alguma dúvida?</h2>
+                <p class="mt-1 text-sm text-slate-700 dark:text-slate-300">As respostas mais procuradas estão reunidas em uma página só.</p>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <a href="{{ path('app_pub_faq') }}" class="inline-flex items-center gap-2 rounded-xl bg-cech-blue px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-cech-blue-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 dark:bg-cech-teal dark:text-slate-950 dark:hover:bg-cech-teal-dark dark:focus-visible:ring-offset-slate-950">
+                        <sl-icon name="question-circle" aria-hidden="true"></sl-icon> Dúvidas frequentes
+                    </a>
+                    <a href="{{ path('app_pub_about_data') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                        <sl-icon name="database" aria-hidden="true"></sl-icon> Sobre os dados
+                    </a>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+{% endblock %}

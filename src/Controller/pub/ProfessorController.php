@@ -9,8 +9,15 @@ use App\Entity\Researcher;
 use App\Repository\ProductionItemRepository;
 use App\Repository\ResearcherRepository;
 use App\Service\Export\CurriculumExporterService;
+use App\Service\Research\CoauthorshipGraphService;
+use App\Service\Research\ExpertSearchService;
+use App\Service\Research\ResearchCatalogService;
+use App\Service\Research\ResearcherCard;
+use App\Service\Research\ResearchFilter;
+use App\Service\Research\ResearchFilterFactory;
 use App\Service\Thesaurus\StringNormalizer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -35,7 +42,12 @@ class ProfessorController extends AbstractController
         private readonly ResearcherRepository $researcherRepo,
         private readonly ProductionItemRepository $productionRepo,
         private readonly CurriculumExporterService $exporter,
-        private readonly \App\Service\Thesaurus\AuthorResolverService $authorResolver
+        private readonly \App\Service\Thesaurus\AuthorResolverService $authorResolver,
+        private readonly ResearchFilterFactory $filterFactory,
+        private readonly ExpertSearchService $expertSearch,
+        private readonly CoauthorshipGraphService $graph,
+        private readonly ResearchCatalogService $catalog,
+        private readonly \Doctrine\DBAL\Connection $connection,
     ) {}
 
     /**
@@ -45,7 +57,7 @@ class ProfessorController extends AbstractController
      * @return Response Página HTML renderizada
      */
     #[Route('/professor/{slugOrId}', name: 'app_pub_professor_show')]
-    public function show(string $slugOrId): Response
+    public function show(string $slugOrId, Request $request): Response
     {
         $researcher = $this->researcherRepo->findWithAllDetails($slugOrId);
 
@@ -59,11 +71,63 @@ class ProfessorController extends AbstractController
         $kpiStats = $this->calculateKpiStats($researcher, $prods, $orients, $allYears);
         $keywords = $this->extractKeywords($researcher);
 
+        $researcherId = (int)$researcher->getId();
+        $latestYear = $this->connection->fetchOne('SELECT MAX(year) FROM production_items WHERE researcher_id = ?', [$researcherId]);
+
         return $this->render('pub/professor/show.html.twig', array_merge([
             'researcher' => $researcher,
             'kpiStats' => $kpiStats,
             'usualJournalNames' => $this->usualJournalNames($researcher, $prods['articles']),
+            'searchContext' => $this->searchContext($researcher, $request),
+            'network' => $this->graph->researcherNetworkStats($researcherId) + ['latestYear' => $latestYear ? (int)$latestYear : null],
+            'topTopics' => $this->catalog->topicsForResearchers([$researcherId], 6),
+            'affiliation' => [
+                'active' => $researcher->isStatus(),
+                'label' => $researcher->isStatus() ? 'Vínculo vigente' : 'Vínculo encerrado',
+                'period' => ResearcherCard::period($researcher->isStatus(), $researcher->getAdmissionYear(), $researcher->getLeaveYear()),
+            ],
         ], $prods, $orients, $keywords));
+    }
+
+    /**
+     * Quando o perfil é aberto a partir da busca (`aba=busca` + filtros), as publicações do docente que correspondem
+     * a ela e o caminho de volta para os mesmos resultados.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function searchContext(Researcher $researcher, Request $request): ?array
+    {
+        if ($request->query->get('aba') !== 'busca') {
+            return null;
+        }
+
+        $filter = $this->filterFactory->fromRequest($request);
+        if ($filter->isEmpty()) {
+            return null;
+        }
+
+        $publicFilter = clone $filter;
+        $filter->researcherId = (int)$researcher->getId();
+        $page = max(1, $request->query->getInt('pagina', 1));
+        $results = $this->expertSearch->publications($filter, 'relevancia', $page, 20);
+
+        $mode = in_array($request->query->get('modo'), ['especialistas', 'publicacoes'], true) ? (string)$request->query->get('modo') : 'especialistas';
+        $params = $publicFilter->toQuery();
+
+        $parts = [];
+        if ($publicFilter->q !== '') {
+            $parts[] = '“' . $publicFilter->q . '”';
+        }
+        if ($publicFilter->topicText !== '') {
+            $parts[] = 'tema “' . $publicFilter->topicText . '”';
+        }
+
+        return [
+            'results' => $results,
+            'label' => $parts !== [] ? implode(' no ', $parts) : 'os filtros escolhidos',
+            'backUrl' => $this->generateUrl('app_pub_search', $params + ['modo' => $mode]),
+            'pageParams' => ['slugOrId' => $researcher->getSlug() ?: $researcher->getIdLattes()] + $params + ['modo' => $mode, 'aba' => 'busca'],
+        ];
     }
 
     /**
@@ -109,6 +173,9 @@ class ProfessorController extends AbstractController
             'analytics' => $this->render('pub/professor/_tab_analytics.html.twig', array_merge([
                 'researcher' => $researcher,
                 'kpiStats' => $kpiStats,
+                'egoPairs' => $this->graph->topPairs(new ResearchFilter(), 6, (int)$researcher->getId()),
+                'egoSrc' => $this->generateUrl('app_api_v1_graph', ['docente' => $researcher->getSlug() ?: $researcher->getIdLattes(), 'ligacoes' => 0]),
+                'egoPairSrc' => $this->generateUrl('app_api_v1_graph_pair'),
                 'completedOrientations' => $orients['completedOrientations'],
                 'academicDatabases' => $prods['academicDatabases'],
             ], $this->buildAnalyticsData($researcher, $prods['articles'], $orients['completedOrientations'], $allYears, $kpiStats, $prods['categoryDistribution']))),

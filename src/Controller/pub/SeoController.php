@@ -15,7 +15,8 @@ class SeoController extends AbstractController
 {
     public function __construct(
         private readonly ResearcherRepository $researcherRepo,
-        private readonly SiteSettingRepository $siteSettingRepo
+        private readonly SiteSettingRepository $siteSettingRepo,
+        private readonly \App\Service\Research\ResearchCatalogService $researchCatalog,
     ) {}
 
     #[Route('/sitemap.xml', name: 'app_pub_sitemap', defaults: ['_format' => 'xml'])]
@@ -81,6 +82,35 @@ class SeoController extends AbstractController
                 'priority' => '0.8',
                 'lastmod' => date('Y-m-d'),
             ];
+        }
+
+        // Pesquisa: busca, coautorias, projetos, catálogos do Explorar e páginas institucionais
+        foreach (['app_pub_search' => '0.9', 'app_pub_coauthorship' => '0.8', 'app_pub_projects' => '0.8',
+                  'app_pub_explore' => '0.8', 'app_pub_explore_areas' => '0.7', 'app_pub_explore_major_areas' => '0.7',
+                  'app_pub_about' => '0.5', 'app_pub_about_data' => '0.5', 'app_pub_faq' => '0.5'] as $route => $priority) {
+            $urls[] = [
+                'loc' => $baseUrl . $this->generateUrl($route),
+                'changefreq' => 'weekly',
+                'priority' => $priority,
+                'lastmod' => date('Y-m-d'),
+            ];
+        }
+
+        // Página de cada assunto, área de atuação e grande área
+        $scopes = [];
+        foreach ($this->researchCatalog->topics() as $topic) {
+            $scopes[] = $this->generateUrl('app_pub_explore_topic', ['slug' => $topic['slug']]);
+        }
+        foreach ($this->researchCatalog->areas() as $area) {
+            if ($area['slug'] !== '') {
+                $scopes[] = $this->generateUrl('app_pub_explore_area', ['slug' => $area['slug']]);
+            }
+        }
+        foreach ($this->researchCatalog->majorAreas() as $major) {
+            $scopes[] = $this->generateUrl('app_pub_explore_major_area', ['slug' => $major['slug']]);
+        }
+        foreach ($scopes as $path) {
+            $urls[] = ['loc' => $baseUrl . $path, 'changefreq' => 'monthly', 'priority' => '0.6', 'lastmod' => date('Y-m-d')];
         }
 
         // All 414 Researchers

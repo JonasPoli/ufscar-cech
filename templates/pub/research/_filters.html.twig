@@ -1,0 +1,67 @@
+{#
+    Barra de filtros da pesquisa (panorama, coautorias, explorar).
+
+    Variáveis:
+      action        URL do formulário (GET)
+      filter        ResearchFilter atual
+      departments   lista de departamentos (code, name)
+      topics        assuntos para o seletor de tema (term, slug); omita para esconder o tema
+      hidden        parâmetros fixos da página, opcional: {nome: valor}
+      heading       rótulo do bloco, opcional
+#}
+{% set inputClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-white' %}
+{% set labelClass = 'block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1' %}
+{% set uid = 'f' ~ random(99999) %}
+<form method="GET" action="{{ action }}" class="glass-card rounded-2xl overflow-hidden" aria-label="{{ heading|default('Filtrar') }}">
+    <p class="px-4 sm:px-5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100/70 dark:bg-white/5 border-b border-slate-200/70 dark:border-white/10">{{ heading|default('Filtrar') }}</p>
+    <div class="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+        {% for name, value in hidden|default({}) %}
+            <input type="hidden" name="{{ name }}" value="{{ value }}">
+        {% endfor %}
+        <div class="lg:col-span-3">
+            <label for="{{ uid }}-q" class="{{ labelClass }}">Assunto</label>
+            <input id="{{ uid }}-q" type="search" name="q" value="{{ filter.q }}" maxlength="200" placeholder="Título ou palavra-chave" class="{{ inputClass }}">
+        </div>
+        <div class="lg:col-span-3">
+            <label for="{{ uid }}-d" class="{{ labelClass }}">Departamento</label>
+            <select id="{{ uid }}-d" name="departamento" class="{{ inputClass }}">
+                <option value="">Todos os departamentos</option>
+                {% for d in departments %}
+                    <option value="{{ d.code }}" {% if filter.department == d.code %}selected{% endif %}>{{ d.name }} ({{ d.code }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if topics is defined and topics %}
+            <div class="lg:col-span-2">
+                <label for="{{ uid }}-t" class="{{ labelClass }}">Tema</label>
+                <select id="{{ uid }}-t" name="tema" class="{{ inputClass }}">
+                    <option value="">Todos os temas</option>
+                    {% for t in topics|sort((a, b) => a.term|lower <=> b.term|lower) %}
+                        <option value="{{ t.slug }}" {% if filter.topicSlug == t.slug %}selected{% endif %}>{{ t.term }}</option>
+                    {% endfor %}
+                    {% if filter.topicSlug and filter.topicText and topics|filter(t => t.slug == filter.topicSlug)|length == 0 %}
+                        <option value="{{ filter.topicSlug }}" selected>{{ filter.topicText }}</option>
+                    {% endif %}
+                </select>
+            </div>
+        {% endif %}
+        <fieldset class="lg:col-span-2">
+            <legend class="{{ labelClass }}">Período</legend>
+            <div class="flex items-center gap-1.5">
+                <label for="{{ uid }}-de" class="sr-only">Ano inicial</label>
+                <input id="{{ uid }}-de" type="number" name="de" value="{{ filter.from }}" min="1950" max="{{ 'now'|date('Y') }}" placeholder="De" inputmode="numeric" class="{{ inputClass }}">
+                <span aria-hidden="true" class="text-slate-400">–</span>
+                <label for="{{ uid }}-ate" class="sr-only">Ano final</label>
+                <input id="{{ uid }}-ate" type="number" name="ate" value="{{ filter.to }}" min="1950" max="{{ 'now'|date('Y') }}" placeholder="Até" inputmode="numeric" class="{{ inputClass }}">
+            </div>
+        </fieldset>
+        <div class="{{ topics is defined and topics ? 'lg:col-span-2' : 'lg:col-span-4' }} flex gap-2">
+            <button type="submit" class="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-600">
+                <sl-icon name="funnel"></sl-icon> Aplicar
+            </button>
+            {% if filter.q or filter.department or filter.from or filter.to or (topics is defined and topics and filter.topicSlug) %}
+                <a href="{{ action }}{% if hidden is defined and hidden %}?{{ hidden|url_encode }}{% endif %}" class="inline-flex items-center justify-center rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" aria-label="Limpar filtros"><sl-icon name="x-lg"></sl-icon></a>
+            {% endif %}
+        </div>
+    </div>
+</form>

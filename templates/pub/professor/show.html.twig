@@ -120,6 +120,12 @@
 {% block body %}
 <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
 
+    {% if searchContext %}
+        <a href="{{ searchContext.backUrl }}" class="no-print inline-flex items-center gap-1.5 text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400">
+            <sl-icon name="arrow-left"></sl-icon> Voltar à busca
+        </a>
+    {% endif %}
+
     <!-- Breadcrumbs -->
     <nav class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 no-print" aria-label="Breadcrumb">
         <a href="{{ path('app_pub_home') }}" class="hover:text-sky-600 dark:hover:text-sky-400">Início</a>
@@ -179,12 +185,30 @@
                                 <sl-icon name="building" class="text-sky-500"></sl-icon> {{ researcher.department }}
                             </span>
                         {% endif %}
+                        <span class="flex items-center gap-1 font-semibold {{ affiliation.active ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-300' }}">
+                            <sl-icon name="{{ affiliation.active ? 'patch-check' : 'clock' }}"></sl-icon>
+                            {{ affiliation.label }}{% if affiliation.period %} · {{ researcher.departmentCode ?: 'CECH' }} {{ affiliation.period }}{% endif %}
+                        </span>
                         {% if researcher.lastLattesUpdate %}
                             <span class="flex items-center gap-1 font-medium text-slate-600 dark:text-slate-300">
                                 <sl-icon name="clock-history"></sl-icon> Atualização Lattes: {{ researcher.lastLattesUpdate|date('d/m/Y') }}
                             </span>
                         {% endif %}
                     </div>
+
+                    {% if topTopics|length > 0 %}
+                        <ul class="flex flex-wrap items-center gap-1.5 pt-1" aria-label="Assuntos em destaque">
+                            {% for t in topTopics %}
+                                <li><a href="{{ path('app_pub_explore_topic', {slug: t.slug}) }}" class="inline-flex rounded-lg bg-teal-50 border border-teal-200/80 px-2 py-0.5 text-[11px] font-semibold text-teal-800 hover:bg-teal-100 dark:bg-teal-950/60 dark:border-teal-800/80 dark:text-teal-300">{{ t.term }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+
+                    <p class="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-xs text-slate-600 dark:text-slate-300">
+                        <span><strong class="text-slate-900 dark:text-white">{{ network.coauthors }}</strong> {{ network.coauthors == 1 ? 'coautor' : 'coautores' }} no CECH</span>
+                        <span><strong class="text-slate-900 dark:text-white">{{ network.sharedWorks }}</strong> {{ network.sharedWorks == 1 ? 'publicação compartilhada' : 'publicações compartilhadas' }}</span>
+                        {% if network.latestYear %}<span>Publicação mais recente: <strong class="text-slate-900 dark:text-white">{{ network.latestYear }}</strong></span>{% endif %}
+                    </p>
 
                     {% if researcher.languageProficiencies|length > 0 %}
                         <div class="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
@@ -325,6 +349,15 @@
     <!-- ── 4 Modern Tab Navigation Pills (Touch-Friendly) ── -->
     <div class="border-b border-slate-200/80 dark:border-slate-800 pb-1 no-print">
         <nav class="flex items-center gap-2 overflow-x-auto py-2 -mb-px no-scrollbar" aria-label="Abas do Perfil">
+            {% if searchContext %}
+                <!-- Aba 0: Publicações da busca (só quando o perfil vem da busca) -->
+                <button type="button" onclick="switchProfessorTab('busca')" class="prof-tab-btn inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-semibold transition-all text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800" data-tab="busca" id="btn-tab-busca">
+                    <sl-icon name="search" class="text-base"></sl-icon>
+                    <span>Publicações da busca</span>
+                    <span class="pill-count rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 text-[11px] font-bold">{{ searchContext.results.count }}</span>
+                </button>
+            {% endif %}
+
             <!-- Aba 1: Produção -->
             <button type="button" onclick="switchProfessorTab('productions')" class="prof-tab-btn inline-flex items-center gap-2 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-bold transition-all shadow-sm bg-sky-600 text-white" data-tab="productions" id="btn-tab-productions">
                 <sl-icon name="file-earmark-text" class="text-base"></sl-icon>
@@ -367,7 +400,7 @@
     <div id="globalFilterBar" class="glass-card rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 dark:border-slate-800 transition-all duration-300 no-print">
         <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             <div class="relative flex-1">
-                <input type="text" id="prodSearchInput" value="{{ app.request.query.get('tema') ?: app.request.query.get('keyword') ?: app.request.query.get('q') }}" oninput="applyGlobalFilter()" placeholder="Buscar por termo, título, orientando, projeto, autor, evento, instituição ou ano..." class="w-full rounded-2xl border border-slate-300 bg-white/90 px-4 py-2.5 pl-10 pr-10 text-sm text-slate-900 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900/90 dark:text-white focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/15 transition-all shadow-inner" />
+                <input type="text" id="prodSearchInput" value="{{ searchContext ? '' : (app.request.query.get('tema') ?: app.request.query.get('keyword') ?: app.request.query.get('q')) }}" oninput="applyGlobalFilter()" placeholder="Buscar por termo, título, orientando, projeto, autor, evento, instituição ou ano..." class="w-full rounded-2xl border border-slate-300 bg-white/90 px-4 py-2.5 pl-10 pr-10 text-sm text-slate-900 placeholder-slate-400 dark:border-slate-700 dark:bg-slate-900/90 dark:text-white focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-500/15 transition-all shadow-inner" />
                 <sl-icon name="search" class="absolute left-3.5 top-3.5 text-slate-400 text-sm"></sl-icon>
                 <button type="button" id="btnClearInputQuick" onclick="clearGlobalFilters()" class="hidden absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs p-1" title="Limpar busca">
                     <sl-icon name="x-circle-fill" class="text-base"></sl-icon>
@@ -401,6 +434,24 @@
 
     <!-- ── Tab Content Panes (Modular & Instant Filtering) ── -->
     <div id="tabContentContainer" class="min-h-[400px]">
+        {% if searchContext %}
+            {% import 'pub/research/_macros.html.twig' as rs %}
+            <!-- Aba 0: Publicações da busca -->
+            <div id="pane-busca" class="prof-tab-pane hidden" data-tab-loaded="true">
+                <section class="glass-card rounded-3xl p-5 sm:p-6 space-y-2" aria-labelledby="busca-titulo">
+                    <h2 id="busca-titulo" class="font-heading text-lg font-bold text-slate-900 dark:text-white">Publicações da busca</h2>
+                    <p class="text-sm text-slate-600 dark:text-slate-300">
+                        {{ searchContext.results.count }} {{ searchContext.results.count == 1 ? 'trabalho corresponde' : 'trabalhos correspondem' }} à busca por {{ searchContext.label }}.
+                        <a href="{{ searchContext.backUrl }}" class="font-semibold text-sky-700 hover:underline dark:text-sky-400">Voltar à busca</a>
+                    </p>
+                    <ol class="divide-y divide-slate-200/70 dark:divide-white/10">
+                        {% for w in searchContext.results.results %}<li>{{ rs.work(w) }}</li>{% endfor %}
+                    </ol>
+                    {{ rs.pagination('app_pub_professor_show', searchContext.pageParams, searchContext.results.page, searchContext.results.pages) }}
+                </section>
+            </div>
+        {% endif %}
+
         <!-- Aba 1: Produção (Pré-carregada) -->
         <div id="pane-productions" class="prof-tab-pane active" data-tab-loaded="true">
             {% include 'pub/professor/_tab_productions.html.twig' %}
@@ -901,7 +952,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const filterTopic = urlParams.get('tema') || urlParams.get('keyword') || urlParams.get('q');
     const hash = window.location.hash ? window.location.hash.replace('#', '') : '';
 
-    if (filterTopic && filterTopic.trim() !== '') {
+    // Vindo da busca: a aba "Publicações da busca" já traz os trabalhos que correspondem a ela
+    if (document.getElementById('pane-busca') && (urlParams.get('aba') === 'busca' || hash === 'busca')) {
+        switchProfessorTab(hash && hash !== 'busca' ? hash : 'busca');
+    } else if (filterTopic && filterTopic.trim() !== '') {
         const searchInput = document.getElementById('prodSearchInput');
         if (searchInput) {
             searchInput.value = filterTopic.trim();

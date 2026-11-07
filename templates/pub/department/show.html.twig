@@ -120,5 +120,20 @@
             {% endfor %}
         </div>
     </div>
+
+    {# Panorama e rede do departamento: os mesmos blocos do Explorar, com o filtro de departamento #}
+    <section class="space-y-4" aria-labelledby="panorama-departamento">
+        <h2 id="panorama-departamento" class="font-heading text-2xl font-bold text-slate-900 dark:text-white">Panorama da produção do departamento</h2>
+        {% include 'pub/research/_panorama.html.twig' with {metrics: deptMetrics, panoramaId: 'panorama-dept'} only %}
+    </section>
+
+    {% include 'pub/research/_graph.html.twig' with {
+        graphId: 'rede-departamento',
+        src: deptGraphSrc,
+        pairSrc: deptPairSrc,
+        pairs: deptPairs,
+        totalPairs: deptMetrics.pairs,
+        heading: 'Coautorias do departamento',
+    } only %}
 </div>
 {% endblock %}

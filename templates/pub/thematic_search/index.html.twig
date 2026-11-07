@@ -148,6 +148,11 @@
                     <h2 id="selected-term-name" class="font-heading text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
                         {% if selectedTerm %}{{ selectedTerm.term }}{% endif %}
                     </h2>
+                    {% if selectedTerm and selectedTerm.slug %}
+                        <a href="{{ path('app_pub_explore_topic', {slug: selectedTerm.slug}) }}" class="inline-flex items-center gap-1 text-sm font-semibold text-sky-700 hover:underline dark:text-sky-400">
+                            Panorama, rede de coautoria e publicações do tema <sl-icon name="arrow-right"></sl-icon>
+                        </a>
+                    {% endif %}
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">

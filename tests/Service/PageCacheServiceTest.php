@@ -66,6 +66,12 @@ class PageCacheServiceTest extends TestCase
         // Endpoints de API e busca livre -> não elegíveis
         $this->assertFalse($service->isCacheableRequest(Request::create('/api/temas/autocomplete?q=educacao', 'GET')));
         $this->assertFalse($service->isCacheableRequest(Request::create('/busca?q=educacao', 'GET')));
+
+        // Texto livre em qualquer página filtrável também não gera arquivo; os demais filtros, sim
+        $this->assertFalse($service->isCacheableRequest(Request::create('/coautorias?q=leitura', 'GET')));
+        $this->assertFalse($service->isCacheableRequest(Request::create('/indicadores?q=leitura&departamento=PS', 'GET')));
+        $this->assertTrue($service->isCacheableRequest(Request::create('/coautorias?departamento=PS', 'GET')));
+        $this->assertTrue($service->isCacheableRequest(Request::create('/coautorias?q=', 'GET')));
     }
 
     public function testRequestWithSessionCookieIsNotCacheable(): void

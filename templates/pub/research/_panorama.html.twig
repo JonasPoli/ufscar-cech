@@ -1,0 +1,156 @@
+{#
+    Panorama de um recorte (ResearchMetricsService::metrics).
+
+    Variáveis:
+      metrics      resultado do serviço
+      panoramaId   identificador único na página
+      topicLinks   true para os assuntos levarem às páginas de assunto (padrão true)
+#}
+{% import 'pub/research/_macros.html.twig' as rs %}
+{% set maxTopic = metrics.topics|length > 0 ? (metrics.topics|map(t => t.count)|reduce((a, b) => max(a, b), 1)) : 1 %}
+{% set maxKind = metrics.kinds|length > 0 ? (metrics.kinds|map(k => k.count)|reduce((a, b) => max(a, b), 1)) : 1 %}
+<div id="{{ panoramaId }}" class="space-y-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {{ rs.stat(metrics.publications, 'Publicações', 'Sem repetição entre currículos') }}
+        {{ rs.stat(metrics.researchers, 'Docentes com produção') }}
+        {{ rs.stat(metrics.sharedWorks, 'Publicações compartilhadas', 'Com dois ou mais docentes do CECH') }}
+        {{ rs.stat(metrics.pairs, 'Pares de coautoria') }}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        <section class="glass-card rounded-2xl p-4 sm:p-5 lg:col-span-3" aria-labelledby="{{ panoramaId }}-years">
+            <h2 id="{{ panoramaId }}-years" class="font-heading text-base font-bold text-slate-900 dark:text-white">Produção ao longo do tempo</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Publicações por ano</p>
+            {% if metrics.years|length > 0 %}
+                <div class="relative h-64 mt-3">
+                    <canvas id="{{ panoramaId }}-chart" role="img" aria-label="Gráfico de barras com as publicações por ano, de {{ metrics.years|first.year }} a {{ metrics.years|last.year }}. Os valores estão na tabela a seguir."></canvas>
+                </div>
+                <details class="mt-2 text-xs text-slate-600 dark:text-slate-300">
+                    <summary class="cursor-pointer font-semibold">Ver os dados em tabela</summary>
+                    <table class="mt-2 w-full max-w-xs text-left">
+                        <thead><tr><th scope="col" class="py-1">Ano</th><th scope="col" class="py-1 text-right">Publicações</th></tr></thead>
+                        <tbody>
+                            {% for y in metrics.years|reverse %}<tr class="border-t border-slate-200/70 dark:border-white/10"><td class="py-0.5">{{ y.year }}</td><td class="py-0.5 text-right">{{ y.count }}</td></tr>{% endfor %}
+                        </tbody>
+                    </table>
+                </details>
+                <script>
+                    (function () {
+                        var data = {{ metrics.years|json_encode|raw }};
+                        var drawnDark = null;
+                        function draw() {
+                            var el = document.getElementById('{{ panoramaId }}-chart');
+                            if (!el || !window.Chart) return;
+                            var dark = document.documentElement.classList.contains('dark');
+                            // Outras classes do <html> (acessibilidade) também mudam: só redesenha quando o tema muda
+                            if (el.__chart && drawnDark === dark) return;
+                            drawnDark = dark;
+                            if (el.__chart) el.__chart.destroy();
+                            el.__chart = new Chart(el, {
+                                type: 'bar',
+                                data: { labels: data.map(function (d) { return d.year; }), datasets: [{ label: 'Publicações', data: data.map(function (d) { return d.count; }), backgroundColor: '#0369a1', borderRadius: 3 }] },
+                                options: {
+                                    maintainAspectRatio: false, animation: !document.documentElement.classList.contains('a11y-reduce-motion'),
+                                    plugins: { legend: { display: false } },
+                                    scales: {
+                                        x: { ticks: { color: dark ? '#cbd5e1' : '#475569', autoSkip: true, maxRotation: 0 }, grid: { display: false } },
+                                        y: { beginAtZero: true, ticks: { color: dark ? '#cbd5e1' : '#475569', precision: 0 }, grid: { color: dark ? 'rgba(255,255,255,.08)' : 'rgba(15,23,42,.08)' } }
+                                    }
+                                }
+                            });
+                        }
+                        function ready() {
+                            if (window.Chart) return draw();
+                            var s = document.querySelector('script[data-chartjs]');
+                            if (!s) {
+                                s = document.createElement('script');
+                                s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js';
+                                s.setAttribute('data-chartjs', '1');
+                                document.head.appendChild(s);
+                            }
+                            s.addEventListener('load', draw);
+                        }
+                        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ready); else ready();
+                        new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+                    })();
+                </script>
+            {% else %}
+                <p class="mt-6 text-sm text-slate-500 dark:text-slate-400">Nenhuma publicação com ano neste recorte.</p>
+            {% endif %}
+        </section>
+
+        <section class="glass-card rounded-2xl p-4 sm:p-5 lg:col-span-2" aria-labelledby="{{ panoramaId }}-topics">
+            <h2 id="{{ panoramaId }}-topics" class="font-heading text-base font-bold text-slate-900 dark:text-white">Assuntos em destaque</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Mais presentes na produção dos docentes do recorte</p>
+            <ul class="mt-3 space-y-2">
+                {% for t in metrics.topics %}
+                    <li class="grid grid-cols-[minmax(0,1fr)_6rem_3rem] items-center gap-2 text-sm">
+                        {% if topicLinks|default(true) %}
+                            <a href="{{ path('app_pub_explore_topic', {slug: t.slug}) }}" class="truncate text-slate-800 hover:text-sky-700 hover:underline dark:text-slate-200 dark:hover:text-sky-400">{{ t.term }}</a>
+                        {% else %}
+                            <span class="truncate text-slate-800 dark:text-slate-200">{{ t.term }}</span>
+                        {% endif %}
+                        <span class="h-2 rounded-full bg-slate-200 dark:bg-slate-800" aria-hidden="true"><span class="block h-2 rounded-full bg-teal-600" style="width: {{ (t.count / maxTopic * 100)|round }}%"></span></span>
+                        <span class="text-right text-xs font-semibold text-slate-600 dark:text-slate-300">{{ t.count|number_format(0, ',', '.') }}</span>
+                    </li>
+                {% else %}
+                    <li class="text-sm text-slate-500 dark:text-slate-400">Sem assuntos indexados para este recorte.</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </div>
+
+    {% if metrics.kinds|length > 0 %}
+        <section class="glass-card rounded-2xl p-4 sm:p-5" aria-labelledby="{{ panoramaId }}-kinds">
+            <h2 id="{{ panoramaId }}-kinds" class="font-heading text-base font-bold text-slate-900 dark:text-white">Tipos de publicação</h2>
+            <ul class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+                {% for k in metrics.kinds %}
+                    <li class="grid grid-cols-[minmax(0,1fr)_5rem_3.5rem] items-center gap-2 text-sm">
+                        <span class="truncate text-slate-800 dark:text-slate-200">{{ k.label }}</span>
+                        <span class="h-2 rounded-full bg-slate-200 dark:bg-slate-800" aria-hidden="true"><span class="block h-2 rounded-full bg-sky-700" style="width: {{ (k.count / maxKind * 100)|round }}%"></span></span>
+                        <span class="text-right text-xs font-semibold text-slate-600 dark:text-slate-300">{{ k.count|number_format(0, ',', '.') }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    {% if metrics.bridges %}
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {% for key, title in {departments: 'Pontes entre departamentos', majorAreas: 'Pontes entre grandes áreas'} %}
+                {% set m = metrics.bridges[key] %}
+                {% if m.labels|length > 0 %}
+                    {% set maxCell = m.values|map(row => row|reduce((a, b) => max(a, b), 0))|reduce((a, b) => max(a, b), 1) %}
+                    <section class="glass-card rounded-2xl p-4 sm:p-5 overflow-x-auto" aria-labelledby="{{ panoramaId }}-{{ key }}">
+                        <h2 id="{{ panoramaId }}-{{ key }}" class="font-heading text-base font-bold text-slate-900 dark:text-white">{{ title }}</h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Pares de docentes que publicam juntos; a diagonal mostra pares dentro do mesmo grupo.</p>
+                        <table class="text-xs border-separate border-spacing-0.5">
+                            <thead>
+                                <tr>
+                                    <td></td>
+                                    {% for label in m.labels %}
+                                        <th scope="col" class="px-1 py-1 font-semibold text-slate-600 dark:text-slate-300 align-bottom" title="{{ m.names[loop.index0] }}">{{ m.short[loop.index0] ?? label }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in m.values %}
+                                    {% set rowIndex = loop.index0 %}
+                                    <tr>
+                                        <th scope="row" class="pr-2 text-left font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap" title="{{ m.names[rowIndex] }}">{{ key == 'majorAreas' ? m.names[rowIndex] : m.labels[rowIndex] }}</th>
+                                        {% for value in row %}
+                                            {% set ratio = value / maxCell %}
+                                            <td class="h-8 min-w-[2.25rem] rounded text-center font-semibold {{ ratio > 0.5 ? 'text-white' : 'text-slate-800 dark:text-slate-100' }}"
+                                                style="background-color: rgba(15, 118, 110, {{ value == 0 ? 0.06 : (0.15 + 0.85 * ratio)|round(2) }})"
+                                                title="{{ m.names[rowIndex] }} × {{ m.names[loop.index0] }}: {{ value }} {{ value == 1 ? 'par' : 'pares' }}">{{ value }}</td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </section>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>

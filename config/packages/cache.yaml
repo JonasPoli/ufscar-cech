@@ -17,3 +17,16 @@ framework:
         # Namespaced pools use the above "app" backend by default
         #pools:
             #my.dedicated.cache: null
+
+        # Resultados da pesquisa pública (panorama, rede de coautoria) por filtro; limpos junto com o cache de páginas
+        pools:
+            cache.research:
+                adapter: cache.adapter.filesystem
+                default_lifetime: 86400
+
+when@test:
+    framework:
+        cache:
+            pools:
+                cache.research:
+                    adapter: cache.adapter.array

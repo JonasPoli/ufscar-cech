@@ -1,0 +1,16 @@
+{#
+    Índice "Nesta página" das páginas institucionais: lista de âncoras, fixa ao lado do texto em telas largas.
+    Parâmetro: items (lista de {id, label}).
+#}
+<nav aria-labelledby="nesta-pagina" class="mb-8 lg:mb-0">
+    <div class="glass-card rounded-3xl p-5 lg:sticky lg:top-24">
+        <h2 id="nesta-pagina" class="font-heading text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Nesta página</h2>
+        <ol class="mt-3 space-y-1 text-sm">
+            {% for item in items %}
+                <li>
+                    <a href="#{{ item.id }}" class="block rounded-xl px-3 py-1.5 text-slate-700 hover:bg-sky-50 hover:text-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 dark:text-slate-300 dark:hover:bg-sky-950/60 dark:hover:text-sky-300">{{ item.label }}</a>
+                </li>
+            {% endfor %}
+        </ol>
+    </div>
+</nav>

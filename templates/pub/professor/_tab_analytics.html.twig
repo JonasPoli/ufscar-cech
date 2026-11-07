@@ -1,4 +1,20 @@
 <div class="space-y-8">
+    {% if egoPairs is defined and egoPairs|length > 0 %}
+        <div class="no-print" id="perfil-rede-wrapper">
+            {% include 'pub/research/_graph.html.twig' with {
+                graphId: 'perfil-rede',
+                src: egoSrc,
+                pairSrc: egoPairSrc,
+                pairs: egoPairs,
+                heading: 'Rede de coautoria no CECH',
+            } only %}
+        </div>
+        <script>
+            // A aba é carregada depois da página: o grafo precisa ser iniciado aqui
+            if (window.CechGraph) { window.CechGraph.initAll(document.getElementById('perfil-rede-wrapper')); }
+        </script>
+    {% endif %}
+
     <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 no-print">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200/60 dark:border-white/10">
             <div>

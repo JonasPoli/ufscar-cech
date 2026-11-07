@@ -1,0 +1,52 @@
+{% extends 'pub/base.html.twig' %}
+{% import 'pub/research/_macros.html.twig' as rs %}
+
+{% block title %}Coautorias entre docentes | Portal CECH UFSCar{% endblock %}
+{% block meta_description %}Rede interativa de coautoria entre os docentes do Centro de Educação e Ciências Humanas da UFSCar: quem publica junto e o que publica.{% endblock %}
+{% block meta_robots %}{% if filter.isEmpty %}index, follow{% else %}noindex, follow{% endif %}{% endblock %}
+{% block canonical_url %}{{ url('app_pub_coauthorship') }}{% endblock %}
+
+{% block body %}
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+    <header class="space-y-2">
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+            <sl-icon name="diagram-3"></sl-icon> Pesquisa compartilhada
+        </span>
+        <h1 class="font-heading text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white">Conexões que produzem conhecimento</h1>
+        <p class="text-sm text-slate-600 dark:text-slate-300 max-w-3xl">Docentes do CECH que publicam juntos. A mesma publicação declarada no currículo de cada coautor conta uma vez.</p>
+    </header>
+
+    {% include 'pub/research/_filters.html.twig' with {
+        action: path('app_pub_coauthorship'),
+        filter: filter,
+        departments: departments,
+        topics: topics,
+        heading: 'Filtrar coautorias',
+    } only %}
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        {{ rs.stat(totalPeople, 'Docentes na rede') }}
+        {{ rs.stat(totalPairs, 'Pares de coautoria') }}
+        {{ rs.stat(sharedWorks, 'Publicações compartilhadas') }}
+    </div>
+
+    <div id="rede">
+        {% include 'pub/research/_graph.html.twig' with {
+            graphId: 'rede-coautoria',
+            src: graphSrc,
+            pairSrc: pairSrc,
+            pairs: pairs,
+            totalPairs: totalPairs,
+            morePairs: morePairs,
+            limits: limits,
+            currentLimit: currentLimit,
+            heading: 'Rede de coautoria',
+        } only %}
+    </div>
+
+    <p class="text-sm text-slate-600 dark:text-slate-300">
+        A matriz completa de coautoria e a exportação para o VOSviewer ficam em
+        <a href="{{ path('app_pub_indicators', {tab: 'network'}) }}" class="font-semibold text-sky-700 hover:underline dark:text-sky-400">Indicadores › Redes de colaboração</a>.
+    </p>
+</div>
+{% endblock %}
