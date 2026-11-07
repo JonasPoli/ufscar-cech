@@ -1,0 +1,259 @@
+# Histórico de manutenções do portal público.
+#
+# Alimenta a página /novidades, a dica de novidade no topo de cada página e o selo "Novo" no menu
+# (App\Service\Novidades\NovidadesService). Escreva para quem usa o portal: frases curtas, sem termos técnicos.
+#
+# Para manter em dia: `php bin/console app:novidades:pendentes` lista os commits do git que ainda não estão aqui.
+# O commit que acrescenta uma entrada não consegue citar o próprio código; ele entra no histórico no commit seguinte.
+
+# Até quando o menu mostra o selo "Novo" nas páginas da última atualização
+destaque_ate: 2027-01-31
+
+# Páginas novas que recebem o selo "Novo" no menu
+novos_no_menu:
+    - app_pub_search
+    - app_pub_explore
+    - app_pub_coauthorship
+    - app_pub_projects
+
+# Dica de novidade no topo de cada página: o que mudou e como era antes.
+# `rotas` são os nomes de rota em que a dica aparece; `desde` é a data da atualização (a dica some quando a pessoa clica em "Entendi").
+dicas:
+    - rotas: [app_pub_search]
+      desde: 2026-11-07
+      titulo: A busca agora encontra especialistas
+      antes: A busca listava docentes, produções e teses em blocos separados e só filtrava por departamento.
+      agora: Ela mostra quem pesquisa o assunto, com as publicações que comprovam, filtra por área, vínculo, tipo e período, aceita a expressão exata e ordena por relevância.
+    - rotas: [app_pub_coauthorship]
+      desde: 2026-11-07
+      titulo: Página nova de coautorias
+      antes: A coautoria aparecia só como ranking e matriz, dentro dos Indicadores.
+      agora: Um mapa interativo mostra quem publica junto no CECH. Clique numa pessoa para ver a vizinhança dela ou numa ligação para ver as publicações do par.
+    - rotas: [app_pub_explore, app_pub_explore_areas, app_pub_explore_major_areas, app_pub_explore_topic, app_pub_explore_area, app_pub_explore_major_area]
+      desde: 2026-11-07
+      titulo: Página nova para explorar a pesquisa
+      antes: Os temas ficavam só na Pesquisa Temática, um de cada vez, sem as áreas do conhecimento.
+      agora: Cada assunto, área de atuação e grande área tem uma página com a produção ao longo do tempo, os docentes, a rede de coautoria e as publicações.
+    - rotas: [app_pub_projects, app_pub_project_show]
+      desde: 2026-11-07
+      titulo: Catálogo novo de projetos
+      antes: Os projetos apareciam só dentro do perfil de cada docente, sem a equipe.
+      agora: Todos os projetos estão numa página, com busca e filtros, e cada projeto mostra a equipe e os financiadores. O mesmo projeto aparece uma vez, mesmo quando vários docentes o declaram.
+    - rotas: [app_pub_indicators]
+      desde: 2026-11-07
+      titulo: Panorama com filtros nos Indicadores
+      antes: As figuras mostravam sempre o CECH inteiro.
+      agora: O panorama do topo pode ser filtrado por assunto, departamento, tema e período, e mostra as pontes entre departamentos e entre grandes áreas. As figuras das abas continuam como antes.
+    - rotas: [app_pub_professor_show]
+      desde: 2026-11-07
+      titulo: Perfil mais completo
+      antes: O perfil não mostrava o vínculo com o CECH nem com quem o docente publica dentro do Centro.
+      agora: Ele mostra o vínculo e o período no CECH, os assuntos em destaque e os coautores no Centro. Na aba de métricas há um mapa de colaboradores e, quando você chega pela busca, a aba "Publicações da busca".
+    - rotas: [app_pub_home]
+      desde: 2026-11-07
+      titulo: Novidades no portal
+      antes: A página inicial tinha uma busca simples e sugestões fixas.
+      agora: A busca tem os modos Especialistas, Publicações e Pesquisador, e há atalhos para os assuntos mais frequentes, a rede de coautoria, o panorama e os projetos.
+    - rotas: [app_pub_department_show]
+      desde: 2026-11-07
+      titulo: Panorama e rede do departamento
+      antes: A página do departamento listava só o corpo docente.
+      agora: Ela também mostra a produção do departamento ao longo do tempo, os assuntos em destaque e a rede de coautoria.
+    - rotas: [app_pub_about, app_pub_about_data, app_pub_faq]
+      desde: 2026-11-07
+      titulo: Páginas novas sobre o portal
+      antes: O portal não explicava de onde vinham os dados nem como usar os recursos.
+      agora: Sobre nós, Sobre os dados e Dúvidas frequentes respondem a essas perguntas. O botão Acessibilidade, no topo, ajusta o tamanho do texto, o tema, o contraste, o espaçamento e as animações.
+
+# Histórico, do mais recente para o mais antigo. Cada ajuste no git aparece com o código do commit.
+entradas:
+    - data: 2026-11-07
+      titulo: Especialistas, coautorias, explorar e projetos
+      resumo: A maior atualização desde o lançamento, a partir da comparação com a Plataforma Jabuticaba, da UFABC.
+      mudancas:
+          - A busca encontra quem pesquisa cada assunto e mostra as publicações que comprovam. Ganhou filtros de área, vínculo, tipo e período, a opção de expressão exata e a ordenação por relevância.
+          - Página nova de Coautorias, com o mapa de quem publica junto no CECH e as publicações de cada parceria.
+          - Página nova Explorar, com um panorama para cada assunto, área de atuação e grande área.
+          - Catálogo novo de Projetos, com equipe e financiadores, sem repetir o projeto declarado por vários docentes.
+          - Os Indicadores ganharam um panorama com filtros e as pontes entre departamentos e entre áreas.
+          - O perfil mostra o vínculo e o período no CECH, os assuntos em destaque, os coautores no Centro e o mapa de colaboradores.
+          - Cada departamento ganhou panorama e rede de coautoria.
+          - Páginas novas Sobre nós, Sobre os dados, Dúvidas frequentes e esta lista de novidades, com dicas nas páginas que mudaram.
+          - Painel de acessibilidade, com texto até 200%, tema, contraste, espaçamento e menos animações.
+          - Dados abertos em formato para sistemas (API pública), para quem quiser reaproveitar as informações.
+      commits:
+          - {hash: "c122e9a", texto: "Projetos: a equipe e os financiadores de cada projeto passam a ser guardados, e o catálogo de projetos foi criado."}
+          - {hash: "39b143e", texto: "Busca de especialistas, coautorias, explorar, panorama, perfil, acessibilidade e páginas sobre o portal."}
+          - {hash: "3c55d44", texto: "Documentação: comparação com a Plataforma Jabuticaba e plano das mudanças."}
+
+    - data: 2026-10-31
+      titulo: Periódicos, Qualis e bases internacionais
+      resumo: Ficou fácil ver onde os docentes publicam e como as revistas são avaliadas.
+      mudancas:
+          - Página nova de Periódicos, com a área CAPES, o Qualis e as bases em que cada revista está indexada, como Scopus, Web of Science e SciELO.
+          - As várias grafias do nome de uma mesma revista passaram a ser reconhecidas como uma revista só.
+          - Todos os currículos foram importados de novo do Lattes, com correções na leitura do currículo.
+          - O selo Qualis aparece em cada revista da lista, e a página mostra quais bases foram somadas.
+      commits:
+          - {hash: "564113d", texto: "Página de periódicos, áreas CAPES e tesauro de grafias das revistas."}
+          - {hash: "b108c09", texto: "Decisão sobre os nomes de revistas pendentes e comando de importação de currículos."}
+          - {hash: "378dff6", texto: "Tesauro de categorias e uso dos tesauros em tudo o que depende das revistas."}
+          - {hash: "e778c6b", texto: "Correção na leitura do currículo Lattes e nos caminhos de importação."}
+          - {hash: "ee79e88", texto: "Documentação dos tesauros, da importação, dos comandos e da investigação das revistas."}
+          - {hash: "4b8e8d8", texto: "Documentação: capacidade do servidor e números da reimportação."}
+          - {hash: "9e4ed00", texto: "Documentação: ajuste do efeito da reimportação na capacidade do servidor."}
+          - {hash: "27dc41f", texto: "Selo Qualis em cada linha da página de periódicos."}
+          - {hash: "0dc8d8d", texto: "Documentação da arquitetura para crescer."}
+          - {hash: "a193f8e", texto: "Lista das bases somadas e aviso de carregamento no filtro de periódicos."}
+
+    - data: 2026-10-26
+      titulo: Correções
+      resumo: Ajustes pequenos, sem mudança na forma de usar o portal.
+      mudancas:
+          - Os gráficos da aba de métricas do perfil voltaram a carregar.
+          - Um componente de envio de e-mails passou a ser baixado de outro endereço, na mesma versão.
+      commits:
+          - {hash: "7a8fc68", texto: "Correção nos gráficos da aba de métricas do perfil."}
+          - {hash: "fd88350", texto: "Componente de envio de e-mails baixado do GitHub em vez do Bitbucket."}
+
+    - data: 2026-09-23
+      titulo: Teses e dissertações por docente
+      resumo: A equipe do portal pode trazer as teses do Repositório da UFSCar para um docente de cada vez.
+      mudancas:
+          - No painel, as teses e dissertações do Repositório Institucional (TeD-UFSCar) podem ser importadas para um docente específico.
+          - O painel deixou de dar erro em servidores que bloqueiam o ajuste de tempo de execução.
+      commits:
+          - {hash: "3b5b878", texto: "Importação de teses e dissertações do Repositório UFSCar por docente."}
+          - {hash: "e2471ce", texto: "Correção de erro no painel quando o servidor bloqueia o ajuste de tempo."}
+
+    - data: 2026-09-11
+      titulo: Segurança e estabilidade
+      resumo: O portal ficou mais protegido e mais fácil de acompanhar.
+      mudancas:
+          - As rotas que gravam dados passaram a exigir uma chave, e as fotos enviadas são conferidas.
+          - Os erros em produção passaram a ser registrados num arquivo, com rotação.
+          - No painel, a lista de revistas de cada base acadêmica pode ser exportada.
+          - Foi feita uma revisão geral do código, com um relatório e a visão geral do sistema.
+      commits:
+          - {hash: "19ea49c", texto: "Exportação da lista de revistas de cada base acadêmica no painel."}
+          - {hash: "b95a0a5", texto: "Registro dos erros de produção em arquivo, com rotação."}
+          - {hash: "63932df", texto: "Chave obrigatória nas rotas que gravam dados e conferência das fotos enviadas."}
+          - {hash: "07b2a9c", texto: "Ajuste no banco que destravou os testes automáticos."}
+          - {hash: "a54b241", texto: "Documentação: visão geral do sistema e relatório da revisão de código."}
+
+    - data: 2026-09-05
+      titulo: Pesquisa temática, celular e velocidade
+      resumo: Ficou possível descobrir docentes por tema, e o portal ficou mais rápido e mais fácil de usar no celular.
+      mudancas:
+          - Página nova de Pesquisa Temática, com a evolução do tema por ano, conceitos relacionados, Qualis e revistas.
+          - Do tema, o perfil do docente abre já filtrado nas publicações daquele assunto.
+          - A busca geral passou a incluir teses, dissertações e orientações.
+          - Menu completo para celular, com busca.
+          - Páginas mais rápidas, fotos mais leves e melhor apresentação nos buscadores e nas redes sociais.
+      commits:
+          - {hash: "d71054c", texto: "Pesquisa temática por palavras-chave e conceitos."}
+          - {hash: "f8e8f76", texto: "Indicadores renumerados e nuvem de temas levada para a aba de produções."}
+          - {hash: "a86fc4b", texto: "Faixa da pesquisa temática ajustada aos temas claro e escuro."}
+          - {hash: "1cb7a17", texto: "Menu lateral para celular, com busca e navegação completa."}
+          - {hash: "54c1adb", texto: "Do tema para o perfil do docente já filtrado."}
+          - {hash: "4cdded8", texto: "Documentação da pesquisa temática, do menu do celular e dos indicadores."}
+          - {hash: "0d7bdaa", texto: "Escolha automática da aba certa no perfil e filtro único instantâneo."}
+          - {hash: "a8ad76e", texto: "Palavras-chave e título alternativo nas orientações, também no filtro."}
+          - {hash: "2a4c24f", texto: "Documentação da escolha de abas e das palavras-chave em orientações."}
+          - {hash: "cef3aad", texto: "Documentação do sistema de palavras-chave e da descoberta por tema."}
+          - {hash: "1d3fd09", texto: "Gráfico da evolução do tema por ano."}
+          - {hash: "e27f042", texto: "Conceitos relacionados, Qualis e revistas na pesquisa temática."}
+          - {hash: "7f241ca", texto: "Busca geral com teses, dissertações e orientações."}
+          - {hash: "50a65bf", texto: "Correção no ranking Qualis e contagem por estrato."}
+          - {hash: "5b4531d", texto: "Melhor apresentação nos buscadores e no compartilhamento em redes sociais."}
+          - {hash: "cba653e", texto: "Página inicial mais rápida e mais acessível."}
+          - {hash: "6e5d121", texto: "Fotos mais leves no perfil e gráficos carregados só quando necessários."}
+          - {hash: "3b132c4", texto: "Mais memória para gerar as versões leves das fotos."}
+
+    - data: 2026-09-02
+      titulo: Indicadores e perfil em abas
+      resumo: Indicadores e perfis foram reorganizados para carregar mais rápido e ficar mais claros.
+      mudancas:
+          - "Os indicadores foram divididos em abas: corpo docente, formação, produção e redes."
+          - O perfil do docente passou a ter abas, carregadas sob demanda.
+          - Teses e dissertações do Repositório UFSCar passaram a ser ligadas às orientações dos docentes.
+          - Backup e restauração do banco ficaram mais estáveis, com um comando para trazer a cópia de produção para o ambiente de desenvolvimento.
+          - Vários gráficos dos indicadores foram corrigidos.
+      commits:
+          - {hash: "8b5ced0", texto: "Importação do Repositório UFSCar e dados do repositório nas orientações."}
+          - {hash: "a965dd5", texto: "Limpeza do arquivo de exclusões do git."}
+          - {hash: "7d50066", texto: "Guia de publicação em produção."}
+          - {hash: "4ab14ea", texto: "Indicadores divididos em abas."}
+          - {hash: "47d9012", texto: "Biblioteca de gráficos D3 e novo visual das abas."}
+          - {hash: "5346884", texto: "Download do backup mais estável."}
+          - {hash: "bd79196", texto: "Comando de restauração do banco."}
+          - {hash: "2bd33f3", texto: "Data do backup mostrada na restauração."}
+          - {hash: "76bd440", texto: "Restauração de backups grandes sem estourar a memória."}
+          - {hash: "eaf43f3", texto: "Script que traz o banco de produção para o ambiente local."}
+          - {hash: "d9c7cb9", texto: "Documentação do script de sincronização do banco."}
+          - {hash: "6b34ac0", texto: "Restauração ignora os backups de teste."}
+          - {hash: "fa2cf07", texto: "Gráficos D3 carregados em todas as páginas e cache limpo após restaurar."}
+          - {hash: "e7be81d", texto: "Indicadores com menos memória e troca de abas mais estável."}
+          - {hash: "0252218", texto: "Mais memória e consulta mais rápida nos indicadores."}
+          - {hash: "75e8fde", texto: "Correção das figuras 2, 3 e 4 dos indicadores."}
+          - {hash: "51e7671", texto: "Correção da figura 3 (trajetórias)."}
+          - {hash: "a54519a", texto: "Correção dos dados do gráfico de trajetórias."}
+          - {hash: "ab7d978", texto: "Perfil do docente em quatro abas, carregadas sob demanda."}
+          - {hash: "7787356", texto: "Correção dos gráficos da aba de métricas do perfil."}
+          - {hash: "6da7896", texto: "Orientações do repositório normalizadas, com link para o repositório."}
+
+    - data: 2026-08-30
+      titulo: Backup, cache e painel
+      resumo: O portal ganhou ferramentas para a equipe e ficou mais rápido para o público.
+      mudancas:
+          - Backup e restauração do banco pelo painel.
+          - Cache das páginas públicas, que deixa o portal mais rápido, com controle no painel.
+          - Busca, filtros e paginação na lista de currículos do painel.
+          - Docentes em destaque escolhidos pelos artigos Qualis A1 e pelo total de publicações.
+          - Exportação da rede de coautoria para o VOSviewer ajustada.
+          - Ajustes para o portal funcionar em servidores com restrições de configuração.
+      commits:
+          - {hash: "25152dc", texto: "Ajustes do gerenciador de dependências e do script de build."}
+          - {hash: "ae56b02", texto: "Junção das alterações feitas em paralelo."}
+          - {hash: "d6969b8", texto: "Script de build encontra o PHP sozinho e para no primeiro erro."}
+          - {hash: "c297f97", texto: "Script de build prefere o PHP 8.4."}
+          - {hash: "23c7008", texto: "Restauração do banco pelo painel, por upload ou backup existente."}
+          - {hash: "789b592", texto: "Backup mais rápido e mais confiável."}
+          - {hash: "0ccbaa5", texto: "Leitura de arquivos de tesauro e relatório do coletor do Lattes melhorados."}
+          - {hash: "84c2bee", texto: "Ajuste técnico nos controladores do painel."}
+          - {hash: "2547f4a", texto: "Compatibilidade com servidores que bloqueiam o ajuste de tempo."}
+          - {hash: "7890efe", texto: "Compatibilidade no backup e na importação."}
+          - {hash: "fe50b6b", texto: "Verificação de funções antes de ajustar tempo e memória no painel."}
+          - {hash: "627af6a", texto: "Cache das páginas públicas, com tela de controle no painel."}
+          - {hash: "46befc0", texto: "Busca, filtros e paginação na lista de currículos do painel."}
+          - {hash: "c309794", texto: "Verificação de funções antes de ajustar o tempo em todo o sistema."}
+          - {hash: "0c81758", texto: "Cache de páginas ligado ou desligado por configuração."}
+          - {hash: "d2e4cd8", texto: "Testes do cache de páginas atualizados."}
+          - {hash: "4f0fc19", texto: "Docentes em destaque por artigos A1 e volume de produção."}
+          - {hash: "8187153", texto: "Mais memória na indexação de revistas."}
+          - {hash: "3ad4f2b", texto: "Ajuste técnico no repositório de docentes."}
+          - {hash: "3c84056", texto: "Exportação para o VOSviewer com o número correto de pessoas."}
+
+    - data: 2026-08-26
+      titulo: Lançamento do portal
+      resumo: O portal entrou no ar com os currículos Lattes dos docentes do CECH.
+      mudancas:
+          - Importação dos currículos Lattes, com produções, orientações, projetos e formação.
+          - Perfil de cada docente, com fotos, coautores, palavras-chave e exportação em BibTeX, JSON e CSV.
+          - Página inicial com os números do Centro.
+          - Busca geral e filtros instantâneos.
+          - Registro das bases internacionais em que os artigos estão indexados.
+      commits:
+          - {hash: "9312000", texto: "Primeira versão do portal."}
+          - {hash: "0e2e63a", texto: "Importador de currículos aceita envio pelo navegador e currículos grandes."}
+          - {hash: "8c1ccb8", texto: "Ligação de autores aos docentes com menos memória."}
+          - {hash: "ecc4fad", texto: "Organização e documentação do código dos tesauros."}
+          - {hash: "b29504b", texto: "Números de produção na página inicial."}
+          - {hash: "b5306b2", texto: "Palavras-chave com expressões de duas e três palavras."}
+          - {hash: "bf715d6", texto: "Busca e filtros instantâneos no perfil."}
+          - {hash: "b138ccf", texto: "Comando que lê as palavras-chave dos XML do Lattes."}
+          - {hash: "6810017", texto: "Palavras-chave declaradas pelos autores e detalhes dos colaboradores no perfil."}
+          - {hash: "edc1233", texto: "Fotos dos docentes e dos coautores no perfil."}
+          - {hash: "3b33786", texto: "Botão de filtro removido dos cartões de coautores."}
+          - {hash: "f400153", texto: "Registro das bases internacionais de indexação e estatísticas no perfil."}
+          - {hash: "c9043b0", texto: "Documentação do portal e do painel."}

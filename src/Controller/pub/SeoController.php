@@ -87,7 +87,7 @@ class SeoController extends AbstractController
         // Pesquisa: busca, coautorias, projetos, catálogos do Explorar e páginas institucionais
         foreach (['app_pub_search' => '0.9', 'app_pub_coauthorship' => '0.8', 'app_pub_projects' => '0.8',
                   'app_pub_explore' => '0.8', 'app_pub_explore_areas' => '0.7', 'app_pub_explore_major_areas' => '0.7',
-                  'app_pub_about' => '0.5', 'app_pub_about_data' => '0.5', 'app_pub_faq' => '0.5'] as $route => $priority) {
+                  'app_pub_about' => '0.5', 'app_pub_about_data' => '0.5', 'app_pub_faq' => '0.5', 'app_pub_news' => '0.5'] as $route => $priority) {
             $urls[] = [
                 'loc' => $baseUrl . $this->generateUrl($route),
                 'changefreq' => 'weekly',

@@ -27,6 +27,12 @@ Catálogo de tudo o que roda no terminal. Em produção, use `/RunCloud/Packages
 | `app:index:projects` | Recalcula a chave que une o mesmo projeto em vários currículos e liga os integrantes aos docentes pelo ID Lattes. O importador já faz isso; o comando serve para conferir ou refazer. | `--researcher` | [LATTES_IMPORT.md](LATTES_IMPORT.md) |
 | `app:projects:backfill-members` | Só para dados antigos: relê os XML e grava integrantes e financiadores dos projetos já importados, sem reimportar. Pula currículo com data de atualização diferente da do banco. | `--dir`, `--file`, `--dry-run`, `--ignore-date` | [LATTES_IMPORT.md](LATTES_IMPORT.md) |
 
+## Novidades do portal
+
+| Comando | O que faz | Opções | Guia |
+|---|---|---|---|
+| `app:novidades:pendentes` | Lista os commits do git que ainda não estão explicados em `config/novidades.yaml` (página `/novidades`, dicas nas páginas e selo "Novo" no menu). Só lê. Os commits que começam por `docs(novidades)` ficam de fora. |  |  |
+
 ## Fotos
 
 | Comando | O que faz | Opções | Guia |

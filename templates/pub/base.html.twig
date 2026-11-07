@@ -380,8 +380,10 @@
                 <nav class="hidden lg:flex items-center gap-4 xl:gap-5 text-sm font-medium" aria-label="Navegação principal">
                     {% for item in navItems %}
                         {% set isActive = currentRoute starts with item.match %}
-                        <a href="{{ path(item.route) }}" {% if isActive %}aria-current="page"{% endif %} class="{{ isActive ? 'text-cech-blue dark:text-cech-teal font-semibold' : 'text-slate-600 dark:text-slate-300' }} hover:text-cech-blue dark:hover:text-cech-teal transition-colors">
+                        {% set isNew = novidade_no_menu(item.route) %}
+                        <a href="{{ path(item.route) }}" {% if isActive %}aria-current="page"{% endif %} {% if isNew %}title="Novidade: veja o que mudou em Novidades"{% endif %} class="relative {{ isActive ? 'text-cech-blue dark:text-cech-teal font-semibold' : 'text-slate-600 dark:text-slate-300' }} hover:text-cech-blue dark:hover:text-cech-teal transition-colors">
                             {{ item.label }}
+                            {% if isNew %}<span class="absolute -right-2 -top-1 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white dark:ring-slate-950" aria-hidden="true"></span><span class="sr-only"> (novo)</span>{% endif %}
                         </a>
                     {% endfor %}
                 </nav>
@@ -526,7 +528,7 @@
                                 <sl-icon name="{{ item.icon }}" class="text-sm"></sl-icon>
                             </div>
                             <div class="flex-1">
-                                <div class="text-sm font-semibold">{{ item.label }}</div>
+                                <div class="text-sm font-semibold flex items-center gap-2">{{ item.label }}{% if novidade_no_menu(item.route) %}<span class="rounded-md bg-amber-100 px-1.5 text-[9px] font-bold uppercase text-amber-900 dark:bg-amber-950 dark:text-amber-200">Novo</span>{% endif %}</div>
                                 <div class="text-[11px] text-slate-400">{{ item.hint }}</div>
                             </div>
                         </a>
@@ -539,6 +541,7 @@
                     <a href="{{ path('app_pub_about') }}" class="block px-3 py-2 rounded-xl text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Sobre nós</a>
                     <a href="{{ path('app_pub_about_data') }}" class="block px-3 py-2 rounded-xl text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Sobre os dados</a>
                     <a href="{{ path('app_pub_faq') }}" class="block px-3 py-2 rounded-xl text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Dúvidas frequentes</a>
+                    <a href="{{ path('app_pub_news') }}" class="block px-3 py-2 rounded-xl text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">Novidades</a>
                 </div>
 
                 <!-- Atalhos Rápidos de Pesquisa -->
@@ -721,6 +724,8 @@
 
         {# ── Main Content ── #}
         <main id="conteudo" tabindex="-1" class="flex-1 focus:outline-none">
+            {# Dica de novidade da página (config/novidades.yaml), quando ela mudou na última atualização #}
+            {{ include('pub/novidades/_dica.html.twig') }}
             {% block body %}{% endblock %}
         </main>
 
@@ -746,6 +751,7 @@
                     <a href="{{ path('app_pub_about') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Sobre nós</a>
                     <a href="{{ path('app_pub_about_data') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Sobre os dados</a>
                     <a href="{{ path('app_pub_faq') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Dúvidas frequentes</a>
+                    <a href="{{ path('app_pub_news') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Novidades</a>
                     <a href="{{ path('app_pub_sitemap') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Sitemap XML</a>
                     <a href="{{ path('app_admin_dashboard') }}" class="hover:text-cech-blue dark:hover:text-cech-teal transition-colors">Acesso Restrito</a>
                 </div>
