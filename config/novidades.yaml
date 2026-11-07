@@ -81,6 +81,7 @@ entradas:
           - Páginas novas Sobre nós, Sobre os dados, Dúvidas frequentes e esta lista de novidades, com dicas nas páginas que mudaram.
           - Painel de acessibilidade, com texto até 200%, tema, contraste, espaçamento e menos animações.
           - Dados abertos em formato para sistemas (API pública), para quem quiser reaproveitar as informações.
+          - O cabeçalho ganhou duas linhas. Em cima fica o menu, com a página atual destacada; logo abaixo, a busca, com a escolha do tipo de busca e o atalho da tecla "/".
       commits:
           - {hash: "c122e9a", texto: "Projetos: a equipe e os financiadores de cada projeto passam a ser guardados, e o catálogo de projetos foi criado."}
           - {hash: "39b143e", texto: "Busca de especialistas, coautorias, explorar, panorama, perfil, acessibilidade e páginas sobre o portal."}

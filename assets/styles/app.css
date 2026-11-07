@@ -212,6 +212,12 @@
 html:has(#site-header-row) {
     scroll-padding-top: 5rem;
 }
+/* A partir de md o cabeçalho tem a faixa de busca como segunda linha */
+@media (min-width: 768px) {
+    html:has(#site-header-row) {
+        scroll-padding-top: 8rem;
+    }
+}
 
 /* ── Tamanho do texto ──
    O Tailwind usa rem, então o font-size do <html> amplia quase tudo. Os poucos tamanhos fixos em px dos
@@ -237,8 +243,8 @@ html.a11y-spacing #site-header-row {
 }
 html.a11y-measuring #site-header-row { flex-wrap: nowrap !important; }
 html.a11y-measuring #site-header-row * { white-space: nowrap !important; }
-html.a11y-compact-nav #site-header-row nav[aria-label="Navegação principal"],
-html.a11y-compact-nav #header-search { display: none !important; }
+/* A busca fica na faixa abaixo da linha do menu e continua visível no modo recolhido */
+html.a11y-compact-nav #site-header-row nav[aria-label="Navegação principal"] { display: none !important; }
 html.a11y-compact-nav #mobile-menu-btn,
 html.a11y-compact-nav #mobile-menu-drawer { display: flex !important; }
 html.a11y-compact-nav #mobile-menu-backdrop { display: block !important; }

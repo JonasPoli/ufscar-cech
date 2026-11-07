@@ -134,7 +134,7 @@
     {% endif %}
 
     {# ── Interactive Mobile-Responsive Navigation Pill Tabs ── #}
-    <div class="sticky top-16 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-y border-slate-200/80 dark:border-slate-800/80 shadow-xs">
+    <div class="sticky top-16 md:top-[7.5rem] z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md py-3 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 border-y border-slate-200/80 dark:border-slate-800/80 shadow-xs">
         <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none scroll-smooth" id="indicatorsTabList" role="tablist">
             <button type="button" class="indicator-tab-btn px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer shrink-0 {% if initialTab == 'faculty' %}bg-sky-600 hover:bg-sky-700 text-white shadow-md border border-sky-500{% else %}bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-transparent{% endif %}" data-tab="faculty" role="tab" aria-selected="{% if initialTab == 'faculty' %}true{% else %}false{% endif %}">
                 <sl-icon name="person-badge" class="text-base"></sl-icon>
