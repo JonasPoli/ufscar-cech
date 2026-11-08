@@ -4,6 +4,7 @@
 Acesso ao painel administrativo do portal: login e logout, proteção de todas as rotas sob `/admin`, usuários e papéis, o comando de usuário administrador, o painel inicial com contagens, os relatórios institucionais e as telas de teste geradas pelo gerador de CRUD.
 
 ## Requirements
+
 ### Requirement: Login por formulário
 O sistema SHALL autenticar usuários em `/login` por nome de usuário e senha, com token CSRF obrigatório, mostrando a mensagem do erro de autenticação e o último usuário digitado. Após o login, o usuário SHALL ser levado à página protegida que tentou abrir ou, sem ela, ao painel `/admin/`. As senhas MUST ser guardadas como hash.
 
@@ -49,7 +50,7 @@ O sistema SHALL reconhecer os papéis `ROLE_ADMIN` (acesso ao painel) e `ROLE_US
 - **THEN** os papéis dele são `ROLE_ADMIN` e `ROLE_USER`
 
 ### Requirement: Gestão de usuários do painel
-O sistema SHALL oferecer em `/admin/users/` a lista de usuários e as ações de criar (`/admin/users/new`), editar (`/admin/users/{id}/edit`) e excluir (`POST /admin/users/{id}/delete`), todas com validação de token CSRF. A criação SHALL exigir usuário e senha não vazios; na edição, senha em branco SHALL manter a atual. O papel SHALL ser `ROLE_ADMIN` ou `ROLE_USER` (outro valor MUST virar `ROLE_USER`; ausente, vale `ROLE_ADMIN`). A exclusão MUST NOT permitir excluir o usuário autenticado.
+O sistema SHALL oferecer em `/admin/users/` a lista de usuários e as ações de criar (`/admin/users/new`), editar (`/admin/users/{id}/edit`) e excluir (`POST /admin/users/{id}/delete`), todas com validação de token CSRF. A criação SHALL exigir usuário e senha não vazios e o nome MUST ser único; na edição, senha em branco SHALL manter a atual. O papel SHALL ser `ROLE_ADMIN` ou `ROLE_USER` (outro valor vira `ROLE_USER`). A exclusão MUST NOT permitir excluir o usuário autenticado.
 
 #### Scenario: Papel forjado
 - **WHEN** o formulário de criação é enviado com o papel `ROLE_SUPER_ADMIN`
@@ -62,6 +63,10 @@ O sistema SHALL oferecer em `/admin/users/` a lista de usuários e as ações de
 #### Scenario: Edição sem senha
 - **WHEN** o administrador edita um usuário trocando só o nome e deixando a senha em branco
 - **THEN** o nome muda e a senha continua a mesma
+
+#### Scenario: Nome já usado
+- **WHEN** o administrador cria ou renomeia um usuário com o nome de outro
+- **THEN** a tela mostra "Já existe um usuário …" e nada é gravado, sem erro 500
 
 ### Requirement: Comando de usuário administrador
 O sistema SHALL oferecer o comando `app:admin-user [usuário] [senha]`, que lista os usuários existentes com seus papéis e cria o usuário informado ou, se ele já existir, redefine a senha dele. Em ambos os casos o usuário SHALL ficar com o papel `ROLE_ADMIN`. Sem argumentos, o comando SHALL perguntar o usuário (padrão `admin`) e a senha.

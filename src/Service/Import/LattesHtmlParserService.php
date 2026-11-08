@@ -2,6 +2,7 @@
 
 namespace App\Service\Import;
 
+use App\Service\Project\ProjectGroupKey;
 use App\Entity\Award;
 use App\Entity\Education;
 use App\Entity\EventParticipation;
@@ -466,7 +467,7 @@ class LattesHtmlParserService
                 $proj = new ResearchProject();
                 $proj->setResearcher($researcher);
                 $proj->setNature($nature);
-                $proj->setName($this->truncate($titleText ?: 'Projeto sem título', 500));
+                $proj->setName($this->truncate($titleText ?: ProjectGroupKey::UNTITLED_NAME, 500));
 
                 if (preg_match('~\b(19\d{2}|20\d{2})\s*-\s*(19\d{2}|20\d{2}|Atual)\b~iu', $yearText, $ym)) {
                     $proj->setStartYear((int)$ym[1]);
@@ -493,17 +494,17 @@ class LattesHtmlParserService
                 // Equipe e financiadores, como o XML grava. O HTML não traz o ID Lattes nem o nome para citação dos
                 // integrantes, então eles não se ligam ao perfil de um docente; e a natureza do financiador vem como
                 // rótulo ("Bolsa"), não como código.
-                foreach ($this->parseProjectListSection($descText, 'Integrantes:') as $i => [$memberName, $role]) {
+                foreach ($this->parseProjectListSection($descText, 'Integrantes:') as $memberIndex => [$memberName, $role]) {
                     $proj->addMember((new ResearchProjectMember())
                         ->setFullName((string)$this->truncate($memberName, 255))
-                        ->setMemberOrder($i + 1)
+                        ->setMemberOrder($memberIndex + 1)
                         ->setIsResponsible(str_starts_with(mb_strtolower($role), 'coordenador')));
                 }
-                foreach ($this->parseProjectListSection($descText, 'Financiador(es):') as $i => [$funderName, $funderNature]) {
+                foreach ($this->parseProjectListSection($descText, 'Financiador(es):') as $funderIndex => [$funderName, $funderNature]) {
                     $proj->addFunder((new ResearchProjectFunder())
                         ->setName((string)$this->truncate($funderName, 255))
                         ->setNature($funderNature !== '' ? $this->truncate($funderNature, 50) : null)
-                        ->setFunderOrder($i + 1));
+                        ->setFunderOrder($funderIndex + 1));
                 }
 
                 $this->em->persist($proj);

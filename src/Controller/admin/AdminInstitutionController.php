@@ -6,6 +6,7 @@ use App\Entity\Institution;
 use App\Entity\InstitutionVariation;
 use App\Repository\InstitutionRepository;
 use App\Service\Thesaurus\EntityMergeService;
+use App\Service\Thesaurus\InstitutionResolverService;
 use App\Service\Thesaurus\StringNormalizer;
 use App\Service\Thesaurus\ThesaurusFileService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,8 +25,19 @@ class AdminInstitutionController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly InstitutionRepository $institutionRepo,
         private readonly ThesaurusFileService $fileService,
-        private readonly EntityMergeService $mergeService
+        private readonly EntityMergeService $mergeService,
+        private readonly InstitutionResolverService $institutionResolver
     ) {}
+
+    /**
+     * O índice de instituições usado na normalização fica 30 dias em cache. Depois de qualquer alteração ele precisa ser
+     * refeito: com o id de uma instituição fundida ou excluída, a próxima importação falharia na chave estrangeira de
+     * educations.institution_id, e variações novas só valeriam quando o cache expirasse.
+     */
+    private function institutionsChanged(): void
+    {
+        $this->institutionResolver->clearCache();
+    }
 
     #[Route('/', name: 'app_admin_institution_index', methods: ['GET'])]
     public function index(): Response
@@ -59,6 +71,7 @@ class AdminInstitutionController extends AbstractController
 
                 $this->em->persist($institution);
                 $this->em->flush();
+                $this->institutionsChanged();
 
                 $this->addFlash('success', "Instituição \"{$officialName}\" cadastrada com sucesso.");
                 return $this->redirectToRoute('app_admin_institution_index');
@@ -100,6 +113,7 @@ class AdminInstitutionController extends AbstractController
                 }
 
                 $this->em->flush();
+                $this->institutionsChanged();
 
                 $this->addFlash('success', "Instituição atualizada com sucesso.");
                 return $this->redirectToRoute('app_admin_institution_index');
@@ -121,6 +135,7 @@ class AdminInstitutionController extends AbstractController
         if ($masterId > 0 && !empty($sourceIds)) {
             try {
                 $master = $this->mergeService->mergeInstitutions($masterId, $sourceIds);
+                $this->institutionsChanged();
                 $this->addFlash('success', "Fusão de instituições realizada com sucesso em \"{$master->getOfficialName()}\".");
             } catch (\Throwable $e) {
                 $this->addFlash('error', "Erro na fusão: " . $e->getMessage());
@@ -198,6 +213,7 @@ class AdminInstitutionController extends AbstractController
                 }
             }
             $this->em->flush();
+            $this->institutionsChanged();
             $this->addFlash('success', "{$count} termos de instituições importados com sucesso.");
         }
 
@@ -211,6 +227,7 @@ class AdminInstitutionController extends AbstractController
             $name = $institution->getOfficialName();
             $this->em->remove($institution);
             $this->em->flush();
+            $this->institutionsChanged();
             $this->addFlash('success', "Instituição \"{$name}\" removida com sucesso.");
         }
 

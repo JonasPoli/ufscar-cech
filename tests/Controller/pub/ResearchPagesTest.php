@@ -73,6 +73,24 @@ class ResearchPagesTest extends WebTestCase
         $crawler = $this->client->request('GET', '/busca?modo=publicacoes&de=2018&ate=2020&q=' . rawurlencode("leitura $t"));
         $this->assertStringContainsString('1 publicação', $crawler->filter('#resultados')->text());
 
+        // Teses e orientações: vínculo e período valem também nesse modo (antes só q e departamento eram aplicados)
+        foreach ([[$this->ana, 2015], [$this->bruno, 2022]] as [$researcherId, $year]) {
+            $this->conn->insert('orientations', [
+                'researcher_id' => $researcherId, 'orientation_type' => 'MESTRADO', 'nature' => 'CONCLUIDA',
+                'student_name' => "Aluno $year $t", 'title' => "Leitura mediada $year $t", 'year' => $year,
+                'source' => 'lattes', 'is_coadvising' => 0,
+            ]);
+        }
+        $crawler = $this->client->request('GET', '/busca?modo=orientacoes&q=' . rawurlencode($t));
+        $this->assertStringContainsString("Aluno 2015 $t", $crawler->filter('main')->text());
+        $this->assertStringContainsString("Aluno 2022 $t", $crawler->filter('main')->text());
+        $crawler = $this->client->request('GET', '/busca?modo=orientacoes&de=2020&q=' . rawurlencode($t));
+        $this->assertStringNotContainsString("Aluno 2015 $t", $crawler->filter('main')->text());
+        $this->assertStringContainsString("Aluno 2022 $t", $crawler->filter('main')->text());
+        $crawler = $this->client->request('GET', '/busca?modo=orientacoes&vinculo=vigente&q=' . rawurlencode($t));
+        $this->assertStringContainsString("Aluno 2015 $t", $crawler->filter('main')->text());
+        $this->assertStringNotContainsString("Aluno 2022 $t", $crawler->filter('main')->text(), 'Bruno tem vínculo encerrado');
+
         // Busca vazia: página inicial da busca, sem erro
         $this->client->request('GET', '/busca');
         $this->assertResponseIsSuccessful();
@@ -117,6 +135,22 @@ class ResearchPagesTest extends WebTestCase
         $this->client->request('GET', '/coautorias');
         $this->assertResponseIsSuccessful();
 
+        // Valor inválido em `ligacoes` volta ao padrão (120), não ao "Todas" (0)
+        foreach (['abc', '', '77'] as $invalid) {
+            $crawler = $this->client->request('GET', '/coautorias?ligacoes=' . $invalid);
+            $this->assertResponseIsSuccessful();
+            $this->assertStringContainsString('ligacoes=120', (string)$crawler->filter('[data-cech-graph]')->outerHtml(), "ligacoes=$invalid");
+        }
+        // Área ou departamento que não existe é descartado e a página não entra no cache de páginas
+        $this->client->request('GET', '/coautorias?area=area-inventada-' . $this->t);
+        $this->assertResponseIsSuccessful();
+        $this->assertTrue($this->client->getRequest()->attributes->getBoolean(\App\Service\Research\ResearchFilterFactory::NO_PAGE_CACHE));
+        $this->client->request('GET', '/coautorias?departamento=' . $dept);
+        $this->assertFalse($this->client->getRequest()->attributes->getBoolean(\App\Service\Research\ResearchFilterFactory::NO_PAGE_CACHE));
+
+        $crawler = $this->client->request('GET', '/coautorias?ligacoes=0');
+        $this->assertStringContainsString('ligacoes=0', (string)$crawler->filter('[data-cech-graph]')->outerHtml(), 'O número 0 continua sendo "Todas"');
+
         foreach (['/explorar', '/explorar/areas', '/explorar/grandes-areas'] as $url) {
             $this->client->request('GET', $url);
             $this->assertResponseIsSuccessful($url);
@@ -131,6 +165,19 @@ class ResearchPagesTest extends WebTestCase
 
         $this->client->request('GET', '/explorar/area/area-que-nao-existe');
         $this->assertResponseStatusCodeSame(404);
+    }
+
+    public function testDepartmentPageJoinsEquivalentCodes(): void
+    {
+        // CS e DCSo são o mesmo departamento; o cartão de /departamentos leva a /departamento/CS
+        $cs = $this->insertResearcher("Carla Sociais {$this->t}", 'CS');
+        $dcso = $this->insertResearcher("Davi Sociais {$this->t}", 'DCSo');
+
+        $crawler = $this->client->request('GET', '/departamento/CS');
+        $this->assertResponseIsSuccessful();
+        $this->assertStringContainsString("Carla Sociais {$this->t}", $crawler->filter('main')->text());
+        $this->assertStringContainsString("Davi Sociais {$this->t}", $crawler->filter('main')->text());
+        $this->assertGreaterThan(0, $cs + $dcso);
     }
 
     public function testApiResearcherAndCatalog(): void

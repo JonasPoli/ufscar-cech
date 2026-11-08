@@ -412,7 +412,7 @@ class ProfessorController extends AbstractController
         ];
 
         foreach ($researcher->getOrientations() as $orientation) {
-            $isAndamento = $orientation->getNature() === Orientation::NATURE_EM_ANDAMENTO || stripos((string)$orientation->getNature(), 'Andamento') !== false;
+            $isAndamento = !$orientation->isConcluded();
             $type = $orientation->getOrientationType();
 
             if ($orientation->getYear()) {

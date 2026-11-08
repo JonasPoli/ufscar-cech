@@ -17,10 +17,14 @@ use App\Support\LattesText;
  */
 final class ProjectGroupKey
 {
+    /** Nome que a importação por HTML grava quando o projeto vem sem título. */
+    public const UNTITLED_NAME = 'Projeto sem título';
+
     public static function compute(?string $rawName, ?int $startYear): ?string
     {
         $normalized = StringNormalizer::normalizeString(LattesText::display($rawName), true);
-        if ($normalized === '') {
+        // Sem título não há como saber se é o mesmo projeto: cada registro fica num grupo sozinho
+        if ($normalized === '' || $normalized === StringNormalizer::normalizeString(self::UNTITLED_NAME, true)) {
             return null;
         }
 

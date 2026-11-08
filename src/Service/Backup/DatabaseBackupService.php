@@ -2,6 +2,7 @@
 
 namespace App\Service\Backup;
 
+use App\Service\PageCacheService;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
@@ -14,7 +15,8 @@ class DatabaseBackupService
     public function __construct(
         private readonly Connection $connection,
         #[Autowire('%kernel.project_dir%/var/backups')]
-        string $backupDir
+        string $backupDir,
+        private readonly ?PageCacheService $pageCache = null
     ) {
         $this->backupDir = rtrim($backupDir, '/\\');
         $this->filesystem = new Filesystem();
@@ -377,11 +379,15 @@ class DatabaseBackupService
      *
      * @param string $sourceFilePath Path to the .sql, .zip, or .gz file.
      * @param callable|null $progressCallback fn(string $status, string $message, int $percent)
-     * @return array Metadata about the restore.
+     * @param string|null $format sql, zip ou gz. Obrigatório quando o caminho não tem a extensão certa, como o arquivo
+     *                            temporário de um upload (/tmp/phpXXXX); sem ele, vale a extensão do caminho.
+     * @return array Metadata about the restore. `success` é false quando algum comando SQL falhou no modo PHP; os
+     *               comandos que passaram já foram aplicados, e `failedStatements`/`errors` dizem o que falhou.
      */
     public function importDatabase(
         string $sourceFilePath,
-        ?callable $progressCallback = null
+        ?callable $progressCallback = null,
+        ?string $format = null
     ): array {
         $startTime = microtime(true);
 
@@ -394,7 +400,7 @@ class DatabaseBackupService
             throw new \InvalidArgumentException("Arquivo de backup não encontrado ou ilegível: {$sourceFilePath}");
         }
 
-        $extension = strtolower(pathinfo($sourceFilePath, PATHINFO_EXTENSION));
+        $extension = strtolower($format ?? pathinfo($sourceFilePath, PATHINFO_EXTENSION));
         $tempExtractPath = null;
         $sqlPath = $sourceFilePath;
 
@@ -518,6 +524,8 @@ class DatabaseBackupService
             }
 
             $statementsCount = 0;
+            $failedStatements = 0;
+            $errors = [];
             if (!$nativeExecuted) {
                 // Fallback: Streaming PHP SQL statement execution
                 $handle = fopen($sqlPath, 'r');
@@ -552,7 +560,12 @@ class DatabaseBackupService
                             $this->connection->executeStatement($currentQuery);
                             $statementsCount++;
                         } catch (\Throwable $e) {
-                            // Continue on non-fatal statement errors
+                            // Segue com os próximos comandos, mas a falha é contada e devolvida: a restauração não
+                            // pode ser anunciada como bem-sucedida.
+                            $failedStatements++;
+                            if (count($errors) < 3) {
+                                $errors[] = mb_substr($e->getMessage(), 0, 300);
+                            }
                         }
                         $currentQuery = '';
 
@@ -567,33 +580,48 @@ class DatabaseBackupService
                     try {
                         $this->connection->executeStatement($currentQuery);
                         $statementsCount++;
-                    } catch (\Throwable $e) {}
+                    } catch (\Throwable $e) {
+                        $failedStatements++;
+                        if (count($errors) < 3) {
+                            $errors[] = mb_substr($e->getMessage(), 0, 300);
+                        }
+                    }
                 }
 
                 fclose($handle);
                 $this->connection->executeStatement("SET FOREIGN_KEY_CHECKS = 1;");
             }
 
-            // Invalida o cache de páginas públicas para garantir que novos dados apareçam imediatamente
-            $publicPagesCacheDir = dirname($this->backupDir) . '/cache/public_pages';
-            if ($this->filesystem->exists($publicPagesCacheDir)) {
-                try {
-                    $this->filesystem->remove($publicPagesCacheDir);
-                } catch (\Throwable) {}
+            // Invalida o cache de páginas públicas e o da pesquisa (panorama, rede) para os dados novos aparecerem já
+            if ($this->pageCache !== null) {
+                $this->pageCache->clearCache();
+            } else {
+                $publicPagesCacheDir = dirname($this->backupDir) . '/cache/public_pages';
+                if ($this->filesystem->exists($publicPagesCacheDir)) {
+                    try {
+                        $this->filesystem->remove($publicPagesCacheDir);
+                    } catch (\Throwable) {}
+                }
             }
 
             if ($progressCallback) {
-                $progressCallback('completed', 'Importação concluída com sucesso!', 100);
+                $progressCallback(
+                    'completed',
+                    $failedStatements === 0 ? 'Importação concluída com sucesso!' : "Importação concluída com {$failedStatements} comando(s) com erro.",
+                    100
+                );
             }
 
             $duration = round(microtime(true) - $startTime, 2);
 
             return [
-                'success' => true,
+                'success' => $failedStatements === 0,
                 'durationSec' => $duration,
                 'nativeExecuted' => $nativeExecuted,
                 'nativeError' => $nativeError,
                 'statementsCount' => $statementsCount,
+                'failedStatements' => $failedStatements,
+                'errors' => $errors,
             ];
         } finally {
             if ($tempExtractPath && file_exists($tempExtractPath)) {

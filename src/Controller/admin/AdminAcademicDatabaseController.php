@@ -2,6 +2,7 @@
 
 namespace App\Controller\admin;
 
+use App\Support\ImageUpload;
 use App\Entity\AcademicDatabase;
 use App\Repository\AcademicDatabaseRepository;
 use App\Service\Thesaurus\JournalDatabaseExporterService;
@@ -62,7 +63,14 @@ class AdminAcademicDatabaseController extends AbstractController
             $fileFormatsRaw = trim((string)$request->request->get('file_formats', ''));
             $signatureColsRaw = trim((string)$request->request->get('signature_columns', ''));
 
-            if ($name !== '' && $acronym !== '') {
+            $formError = $this->formError($request);
+            /** @var UploadedFile|null $logoFile */
+            $logoFile = $request->files->get('logo_file');
+            $logoExtension = $logoFile instanceof UploadedFile ? ImageUpload::extension($logoFile, true) : null;
+
+            if ($formError !== null) {
+                $this->addFlash('error', $formError);
+            } elseif ($name !== '' && $acronym !== '') {
                 $existing = $this->databaseRepo->findOneBy(['acronym' => $acronym]);
                 if ($existing) {
                     $this->addFlash('error', "Já existe uma base de indexação com a sigla \"{$acronym}\".");
@@ -82,13 +90,10 @@ class AdminAcademicDatabaseController extends AbstractController
                         $database->setSignatureColumns(array_values($cols));
                     }
 
-                    // Handle Logo upload
-                    /** @var UploadedFile|null $logoFile */
-                    $logoFile = $request->files->get('logo_file');
-                    if ($logoFile) {
+                    if ($logoFile instanceof UploadedFile && $logoExtension !== null) {
                         $uploadDir = $this->getParameter('kernel.project_dir') . '/public/images/databases';
-                        @mkdir($uploadDir, 0777, true);
-                        $filename = $acronym . '_' . uniqid() . '.' . $logoFile->guessExtension();
+                        @mkdir($uploadDir, 0755, true);
+                        $filename = $acronym . '_' . uniqid() . '.' . $logoExtension;
                         $logoFile->move($uploadDir, $filename);
                         $database->setLogo('/images/databases/' . $filename);
                     }
@@ -150,7 +155,14 @@ class AdminAcademicDatabaseController extends AbstractController
             $fileFormatsRaw = trim((string)$request->request->get('file_formats', ''));
             $signatureColsRaw = trim((string)$request->request->get('signature_columns', ''));
 
-            if ($name !== '' && $acronym !== '') {
+            $formError = $this->formError($request);
+            /** @var UploadedFile|null $logoFile */
+            $logoFile = $request->files->get('logo_file');
+            $logoExtension = $logoFile instanceof UploadedFile ? ImageUpload::extension($logoFile, true) : null;
+
+            if ($formError !== null) {
+                $this->addFlash('error', $formError);
+            } elseif ($name !== '' && $acronym !== '') {
                 $existing = $this->databaseRepo->findOneBy(['acronym' => $acronym]);
                 if ($existing && $existing->getId() !== $database->getId()) {
                     $this->addFlash('error', "Já existe outra base de indexação com a sigla \"{$acronym}\".");
@@ -175,13 +187,10 @@ class AdminAcademicDatabaseController extends AbstractController
                         $database->setSignatureColumns([]);
                     }
 
-                    // Handle Logo upload
-                    /** @var UploadedFile|null $logoFile */
-                    $logoFile = $request->files->get('logo_file');
-                    if ($logoFile) {
+                    if ($logoFile instanceof UploadedFile && $logoExtension !== null) {
                         $uploadDir = $this->getParameter('kernel.project_dir') . '/public/images/databases';
-                        @mkdir($uploadDir, 0777, true);
-                        $filename = $acronym . '_' . uniqid() . '.' . $logoFile->guessExtension();
+                        @mkdir($uploadDir, 0755, true);
+                        $filename = $acronym . '_' . uniqid() . '.' . $logoExtension;
                         $logoFile->move($uploadDir, $filename);
                         $database->setLogo('/images/databases/' . $filename);
                     }
@@ -211,5 +220,19 @@ class AdminAcademicDatabaseController extends AbstractController
         }
 
         return $this->redirectToRoute('app_admin_academic_database_index');
+    }
+
+    /** Token CSRF do formulário de base e tipo do logotipo; null quando está tudo certo. */
+    private function formError(Request $request): ?string
+    {
+        if (!$this->isCsrfTokenValid('academic_database_form', (string)$request->request->get('_token'))) {
+            return 'Token de segurança inválido. Recarregue a página e tente de novo.';
+        }
+        $logoFile = $request->files->get('logo_file');
+        if ($logoFile instanceof UploadedFile && ImageUpload::extension($logoFile, true) === null) {
+            return 'O logotipo precisa ser ' . ImageUpload::acceptedLabel(true) . '. Nada foi alterado.';
+        }
+
+        return null;
     }
 }

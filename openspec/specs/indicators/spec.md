@@ -4,6 +4,7 @@
 Página de Indicadores (`/indicadores`): números globais do CECH, um panorama filtrável da pesquisa e as 18 figuras cienciométricas, mais o ranking interativo de docentes por Qualis A, organizadas em quatro abas carregadas sob demanda, com uma versão completa para impressão. As figuras das abas mostram sempre o CECH inteiro.
 
 ## Requirements
+
 ### Requirement: Números globais do CECH
 A página SHALL mostrar no topo cinco números do portal inteiro, que não mudam com filtros: docentes com vínculo vigente ("Docentes Ativos"), produções únicas, artigos com Qualis únicos, orientações concluídas e livros e capítulos únicos. Cada número único MUST vir com o total de registros nos currículos. A produção única segue a regra do DOI ou, sem DOI, de tipo, ano e título.
 
@@ -90,7 +91,7 @@ A aba de corpo docente SHALL trazer a Figura 3, que liga, para cada docente de v
 - **THEN** a etapa de graduação aparece como "Graduação Não Inf."
 
 ### Requirement: Destino dos egressos
-A aba de corpo docente SHALL trazer a Figura 4 para os docentes com vínculo encerrado ou ano de saída anterior a 2026. O destino MUST ser a experiência profissional fora da UFSCar e de São Carlos, sem as editoriais ou de periódicos, preferindo a atual, a posterior à saída e a de vínculo funcional, com o endereço profissional do Lattes como alternativa. A figura SHALL mostrar o fluxo departamento → categoria → instituição, o ranking de destinos, a tabela e o resumo.
+A aba de corpo docente SHALL trazer a Figura 4 para os docentes com vínculo encerrado ou ano de saída anterior ao ano corrente. O destino MUST ser a experiência profissional fora da UFSCar e de São Carlos, sem as editoriais ou de periódicos, preferindo a atual, a posterior à saída e a de vínculo funcional, com o endereço profissional do Lattes como alternativa. A figura SHALL mostrar o fluxo departamento → categoria → instituição, o ranking de destinos, a tabela e o resumo.
 
 #### Scenario: Números de resumo
 - **WHEN** a figura é exibida
@@ -99,6 +100,10 @@ A aba de corpo docente SHALL trazer a Figura 4 para os docentes com vínculo enc
 #### Scenario: Egresso sem experiência fora da UFSCar
 - **WHEN** um docente com vínculo encerrado só tem experiências na UFSCar e não informa endereço profissional fora dela
 - **THEN** ele aparece na tabela como "Não mapeado / Aposentado" e não conta no total mapeado
+
+#### Scenario: Virada do ano
+- **WHEN** em 2027 um docente ainda marcado como vigente tem ano de saída 2026
+- **THEN** ele entra nos egressos, como no perfil, onde já aparece como inativo
 
 ### Requirement: Formação e orientações
 A aba de formação SHALL trazer a Figura 8, com as orientações concluídas por ano, de 2010 ao ano corrente, em séries de Mestrado, Doutorado, Pós-Doutorado e Iniciação Científica; a Figura 9, com o total de orientações declaradas, concluídas ou em andamento, por nível (Iniciação Científica, TCC / Graduação, Especialização, Mestrado, Doutorado e Pós-Doutorado); e a Figura 10, com os 10 cursos canônicos mais frequentes dos orientandos.

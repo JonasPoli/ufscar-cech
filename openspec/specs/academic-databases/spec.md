@@ -4,8 +4,9 @@
 Cadastro das bases de indexação (`academic_database`), do cadastro de revistas com o estrato Qualis (`qualis_journals`) e dos vínculos revista-base (`qualis_journal_academic_database`): telas do admin, importação das listas de cada base, carga inicial do Bibliomap, importações e exportações do catálogo e do tesauro, e os selos de Qualis e de bases exibidos nos itens.
 
 ## Requirements
+
 ### Requirement: Cadastro de bases de indexação
-A tela `/admin/academic-databases`, só para `ROLE_ADMIN`, SHALL listar as bases com a quantidade de revistas ligadas e busca por nome, sigla ou descrição, e permitir criar e editar nome, sigla, URL, URL da lista, descrição, formatos de arquivo, colunas de assinatura e logotipo, gravado em `/images/databases/`. A sigla SHALL ser gravada em minúsculas e MUST ser única. A exclusão, por POST com CSRF, remove a base e os seus vínculos.
+A tela `/admin/academic-databases`, só para `ROLE_ADMIN`, SHALL listar as bases com a quantidade de revistas ligadas e busca, e permitir criar e editar nome, sigla, URL, URL da lista, descrição, formatos, colunas de assinatura e logotipo, com token CSRF. O logotipo MUST ser PNG, JPG, WebP, GIF ou SVG pelo conteúdo e vai para `/images/databases/`. A sigla SHALL ser gravada em minúsculas e MUST ser única. A exclusão, por POST com CSRF, remove a base e os seus vínculos.
 
 #### Scenario: Sigla repetida
 - **WHEN** o administrador cadastra uma base com a sigla de outra
@@ -14,6 +15,10 @@ A tela `/admin/academic-databases`, só para `ROLE_ADMIN`, SHALL listar as bases
 #### Scenario: Revistas de uma base
 - **WHEN** o administrador clica em ver as revistas de uma base
 - **THEN** abre a lista de periódicos filtrada pela sigla da base (`/admin/journals/?database=<sigla>`)
+
+#### Scenario: Logotipo que não é imagem
+- **WHEN** o administrador envia como logotipo um arquivo PHP com nome `.png`
+- **THEN** nada é gravado e a tela informa os tipos aceitos
 
 ### Requirement: Presença numa base vale para a família
 O sistema SHALL tratar a presença numa base como da revista inteira: o vínculo de qualquer linha com uma base SHALL ser replicado em todas as linhas da família ao fim da importação de uma lista, da reconstrução das famílias, da mesclagem e da edição no admin. No formulário do periódico, desmarcar uma base SHALL tirá-la de todas as linhas da família.
@@ -162,3 +167,10 @@ O envio em `/admin/journals/import-thesaurus` (POST com CSRF; `.the`, `.csv`, `.
 #### Scenario: Variante de outro periódico
 - **WHEN** uma variante do arquivo já pertence a outra família
 - **THEN** ela é ignorada e aparece no aviso como "«nome» → #id «título»"
+
+### Requirement: Exclusão de periódico no admin
+Ao excluir um periódico em `/admin/journals` (POST com o token do periódico), o sistema SHALL tirar dos artigos ligados a ele o vínculo, o selo Qualis e as bases, que vinham da revista excluída, e limpar o cache de páginas e o do resolvedor de periódicos.
+
+#### Scenario: Artigo de revista excluída
+- **WHEN** o administrador exclui uma revista com artigos ligados e Qualis A1
+- **THEN** esses artigos ficam sem periódico, sem selo Qualis e sem bases até a próxima indexação, e a mensagem informa quantos foram afetados

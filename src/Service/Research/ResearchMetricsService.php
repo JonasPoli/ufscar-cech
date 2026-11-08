@@ -30,7 +30,7 @@ final class ResearchMetricsService
     {
         $key = $filter->cacheKey('metrics' . ($withBridges ? '_b' : ''));
 
-        return $this->cache->get($key, function () use ($filter, $withBridges): array {
+        $compute = function () use ($filter, $withBridges): array {
             $where = ResearchSql::where($filter);
             $workKey = ResearchSql::workKey();
             $base = "FROM production_items pi JOIN researchers r ON r.id = pi.researcher_id WHERE {$where['sql']}";
@@ -89,6 +89,8 @@ final class ResearchMetricsService
                 'topics' => $this->catalog->topicsForResearchers($researcherIds, 12, $filter->topicText ?: null),
                 'bridges' => $withBridges ? $this->graph->bridges($filter) : null,
             ];
-        });
+        };
+
+        return $filter->isCacheable() ? $this->cache->get($key, $compute) : $compute();
     }
 }

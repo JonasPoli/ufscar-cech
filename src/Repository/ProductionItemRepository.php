@@ -60,6 +60,21 @@ class ProductionItemRepository extends ServiceEntityRepository
     }
 
     /**
+     * Produções dos docentes de um departamento, com todas as grafias equivalentes do código e do nome
+     * ({@see ResearcherRepository::getDepartmentFilterValues()}).
+     *
+     * @param list<string> $values
+     */
+    public function countByDepartmentValues(array $values): int
+    {
+        return (int)$this->getEntityManager()->getConnection()->fetchOne(
+            'SELECT COUNT(pi.id) FROM production_items pi JOIN researchers r ON pi.researcher_id = r.id WHERE r.department_code IN (:v) OR r.department IN (:v)',
+            ['v' => $values],
+            ['v' => \Doctrine\DBAL\ArrayParameterType::STRING]
+        );
+    }
+
+    /**
      * Gets total counts of publications grouped by item type.
      *
      * @return array Map of itemType => count

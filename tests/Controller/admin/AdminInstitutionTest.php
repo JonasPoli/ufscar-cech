@@ -64,4 +64,31 @@ class AdminInstitutionTest extends WebTestCase
         $this->assertNotNull($inst, 'Institution "aarhus univ" should be created from thesaurus import.');
         $this->assertGreaterThanOrEqual(1, count($inst->getVariations()));
     }
+
+    public function testDeletingAnInstitutionRebuildsTheResolverIndex(): void
+    {
+        $client = $this->getAuthenticatedClient();
+        $em = static::getContainer()->get('doctrine.orm.entity_manager');
+        $name = 'AAA Instituição Índice ' . bin2hex(random_bytes(4));
+        $institution = (new Institution())->setOfficialName($name);
+        $em->persist($institution);
+        $em->flush();
+        $id = $institution->getId();
+
+        // O índice da normalização vai para o cache já com a instituição
+        $resolver = static::getContainer()->get(\App\Service\Thesaurus\InstitutionResolverService::class);
+        $resolver->clearCache();
+        $this->assertSame($id, $resolver->resolveInstitutionData($name)['id'] ?? null);
+
+        $client->request('GET', '/admin/institutions/');
+        $this->assertMatchesRegularExpression('#/admin/institutions/' . $id . '/delete\', \'([^\']+)\'#', (string)$client->getResponse()->getContent());
+        preg_match('#/admin/institutions/' . $id . '/delete\', \'([^\']+)\'#', (string)$client->getResponse()->getContent(), $m);
+
+        $client->request('POST', '/admin/institutions/' . $id . '/delete', ['_token' => $m[1]]);
+        $this->assertResponseRedirects('/admin/institutions/');
+
+        // Sem limpar o cache, o índice ainda apontaria para o id excluído e a próxima importação falharia na chave estrangeira
+        $resolver = static::getContainer()->get(\App\Service\Thesaurus\InstitutionResolverService::class);
+        $this->assertNull($resolver->resolveInstitutionData($name));
+    }
 }

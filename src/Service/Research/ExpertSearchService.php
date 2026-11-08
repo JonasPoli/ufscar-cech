@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Research;
 
+use App\Support\LattesText;
 use App\Repository\QualisJournalRepository;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
@@ -87,7 +88,7 @@ final class ExpertSearchService
             $workKeys[$row['wk']] = true;
 
             if (!isset($byResearcher[$rid])) {
-                $byResearcher[$rid] = ['id' => $rid, 'name' => (string)$row['full_name'], 'score' => 0.0, 'latestYear' => 0, 'works' => [], 'items' => []];
+                $byResearcher[$rid] = ['id' => $rid, 'name' => (string)LattesText::display((string)$row['full_name']), 'score' => 0.0, 'latestYear' => 0, 'works' => [], 'items' => []];
             }
             $entry = &$byResearcher[$rid];
             $entry['score'] = max($entry['score'], $score);
@@ -330,7 +331,7 @@ final class ExpertSearchService
             $matched = $a['matched_researcher_id'] !== null;
             $slug = trim((string)($a['slug'] ?? ''));
             $authors[$itemId][] = [
-                'name' => $matched ? (string)$a['full_name'] : trim((string)$a['author_name']),
+                'name' => (string)LattesText::display($matched ? (string)$a['full_name'] : trim((string)$a['author_name'])),
                 'slug' => $matched ? ($slug !== '' ? $slug : (string)$a['id_lattes']) : null,
             ];
         }
@@ -343,11 +344,12 @@ final class ExpertSearchService
             $list = $authors[$id] ?? [];
             $out[$id] = [
                 'id' => $id,
-                'title' => (string)$row['title'],
+                // O banco guarda o texto do Lattes como veio, com entidades HTML; a exibição decodifica (App\Support\LattesText)
+                'title' => (string)LattesText::display((string)$row['title']),
                 'year' => $row['year'] !== null ? (int)$row['year'] : null,
                 'type' => (string)$row['item_type'],
                 'typeLabel' => self::typeLabel((string)$row['item_type']),
-                'venue' => $row['venue'] !== null ? trim((string)$row['venue']) : null,
+                'venue' => $row['venue'] !== null ? LattesText::display(trim((string)$row['venue'])) : null,
                 'issn' => trim((string)($row['issn'] ?? '')) ?: null,
                 'isbn' => trim((string)($row['isbn'] ?? '')) ?: null,
                 'qualis' => trim((string)($row['qualis'] ?? '')) ?: null,

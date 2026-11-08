@@ -50,7 +50,9 @@ class AdminUserController extends AbstractController
             $password = (string)$request->request->get('password');
             $role = $this->resolveRole($request);
 
-            if ($username !== '' && $password !== '') {
+            if ($username !== '' && $this->usernameTaken($username, null)) {
+                $this->addFlash('error', "Já existe um usuário \"{$username}\". Escolha outro nome.");
+            } elseif ($username !== '' && $password !== '') {
                 $user->setUsername($username);
                 $user->setRoles([$role]);
                 $user->setPassword($this->passwordHasher->hashPassword($user, $password));
@@ -82,7 +84,9 @@ class AdminUserController extends AbstractController
             $password = (string)$request->request->get('password');
             $role = $this->resolveRole($request);
 
-            if ($username !== '') {
+            if ($username !== '' && $this->usernameTaken($username, $user->getId())) {
+                $this->addFlash('error', "Já existe outro usuário \"{$username}\". Escolha outro nome.");
+            } elseif ($username !== '') {
                 $user->setUsername($username);
                 $user->setRoles([$role]);
 
@@ -101,6 +105,14 @@ class AdminUserController extends AbstractController
             'user' => $user,
             'isNew' => false,
         ]);
+    }
+
+    /** O nome de usuário é único no banco: conferir antes evita o erro 500 da chave única. */
+    private function usernameTaken(string $username, ?int $exceptId): bool
+    {
+        $existing = $this->em->getRepository(User::class)->findOneBy(['username' => $username]);
+
+        return $existing !== null && $existing->getId() !== $exceptId;
     }
 
     /**

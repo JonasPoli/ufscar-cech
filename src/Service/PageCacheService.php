@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Service\Research\ResearchFilterFactory;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,6 +13,19 @@ class PageCacheService
 {
     public const TTL_SECONDS = 30 * 86400; // 30 dias (2.592.000s)
     public const CACHE_SUBDIR = 'var/cache/public_pages';
+
+    /**
+     * Parâmetros de URL que as páginas públicas leem. Com qualquer outro, a página é servida sem passar pelo cache.
+     * Ao criar um parâmetro novo numa página pública, acrescente-o aqui para que ela continue sendo cacheada.
+     */
+    public const KNOWN_QUERY_PARAMS = [
+        // Filtro da pesquisa (ResearchFilter)
+        'q', 'exata', 'departamento', 'dept', 'tema', 'grande_area', 'area', 'vinculo', 'tipo', 'de', 'ate',
+        // Navegação e opções das páginas
+        'pagina', 'page', 'ordem', 'modo', 'ligacoes', 'pares', 'tab', 'print', 'aba', 't', 'docente',
+        // Catálogo de projetos (ProjectFilter)
+        'situacao', 'natureza', 'ano_inicial', 'ano_final',
+    ];
 
     private Filesystem $filesystem;
 
@@ -76,6 +90,13 @@ class PageCacheService
         // Texto livre em qualquer página (filtros do panorama, da rede, dos projetos…) geraria um arquivo por termo
         if (trim((string)$request->query->get('q', '')) !== '') {
             return false;
+        }
+
+        // Parâmetro que nenhuma página pública lê (`?a=1`, `?a=2`, marcadores de campanha…) geraria um arquivo por variação
+        foreach (array_keys($request->query->all()) as $name) {
+            if (!in_array((string)$name, self::KNOWN_QUERY_PARAMS, true)) {
+                return false;
+            }
         }
 
         return true;
@@ -180,6 +201,11 @@ class PageCacheService
     public function saveCache(Request $request, Response $response): bool
     {
         if (!$this->isCacheableResponse($response)) {
+            return false;
+        }
+
+        // A página avisou que a URL não é a canônica (filtro com valor descartado ou reescrito): não grava
+        if ($request->attributes->getBoolean(ResearchFilterFactory::NO_PAGE_CACHE)) {
             return false;
         }
 

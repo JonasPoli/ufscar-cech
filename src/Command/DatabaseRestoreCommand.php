@@ -105,6 +105,16 @@ class DatabaseRestoreCommand extends Command
             $progressBar->finish();
             $io->newLine(2);
 
+            if (!$result['success']) {
+                $io->error(sprintf(
+                    'Restauração concluída com %d comando(s) com erro; a base pode ter ficado incompleta. Primeiros erros: %s',
+                    $result['failedStatements'],
+                    implode(' | ', $result['errors'])
+                ));
+
+                return Command::FAILURE;
+            }
+
             $io->success(sprintf(
                 'Banco de dados restaurado com sucesso em %s segundos! (Modo: %s)',
                 $result['durationSec'],

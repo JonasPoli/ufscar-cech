@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\Orientation;
 use App\Service\Thesaurus\CountryResolverService;
 use App\Service\Thesaurus\InstitutionResolverService;
 use App\Service\Thesaurus\JournalResolverService;
@@ -240,7 +241,7 @@ class StatisticsService
         $productionsCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items");
         $articlesCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'ARTIGO'");
         $articlesQualisCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'ARTIGO' AND qualis IS NOT NULL AND qualis != ''");
-        $orientationsCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM orientations WHERE nature = 'CONCLUIDA'");
+        $orientationsCount = (int)$conn->fetchOne('SELECT COUNT(*) FROM orientations WHERE ' . Orientation::SQL_CONCLUDED_NO_ALIAS);
         $booksCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'LIVRO'");
         $chaptersCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type = 'CAPITULO'");
         $booksAndChaptersCount = (int)$conn->fetchOne("SELECT COUNT(*) FROM production_items WHERE item_type IN ('LIVRO', 'CAPITULO')");
@@ -563,11 +564,10 @@ class StatisticsService
     {
         $conn = $this->em->getConnection();
         $sql = "
-            SELECT course_name as courseName, COUNT(*) as cnt
+            SELECT COALESCE(NULLIF(TRIM(course_name), ''), repository_program_name) as courseName, COUNT(*) as cnt
             FROM orientations
-            WHERE course_name IS NOT NULL 
-              AND TRIM(course_name) != ''
-            GROUP BY course_name
+            WHERE COALESCE(NULLIF(TRIM(course_name), ''), TRIM(repository_program_name)) != ''
+            GROUP BY courseName
         ";
 
         $rows = $conn->fetchAllAssociative($sql);
@@ -619,8 +619,9 @@ class StatisticsService
     /**
      * Fig. 7: Formação de mestres e doutores (Evolução Anual de Orientações Concluídas).
      */
-    public function getFig7OrientationsConcludedByYear(int $startYear = 2010, int $endYear = 2026): array
+    public function getFig7OrientationsConcludedByYear(int $startYear = 2010, ?int $endYear = null): array
     {
+        $endYear ??= (int)date('Y');
         $conn = $this->em->getConnection();
         $sql = "
             SELECT 
@@ -628,7 +629,7 @@ class StatisticsService
                 orientation_type as orientType,
                 COUNT(*) as total
             FROM orientations
-            WHERE nature = 'CONCLUIDA'
+            WHERE " . Orientation::SQL_CONCLUDED_NO_ALIAS . "
               AND orientation_type IN ('MESTRADO', 'DOUTORADO', 'POS_DOUTORADO', 'INICIACAO_CIENTIFICA')
               AND `year` >= :startYear AND `year` <= :endYear
             GROUP BY `year`, orientType
@@ -701,8 +702,9 @@ class StatisticsService
     /**
      * Fig. 10: Matriz Geral de Produção Científica, Técnica e Artística (Heatmap Matrix).
      */
-    public function getFig10ProductionHeatmapMatrix(int $startYear = 2010, int $endYear = 2026): array
+    public function getFig10ProductionHeatmapMatrix(int $startYear = 2010, ?int $endYear = null): array
     {
+        $endYear ??= (int)date('Y');
         $conn = $this->em->getConnection();
         $sql = "
             SELECT 
@@ -770,8 +772,9 @@ class StatisticsService
     /**
      * Fig. 11: Produção Científica: Qualis vs Sem Qualis (Com Tesauro Qualis Periódicos).
      */
-    public function getFig11QualisVsNonQualisTimeline(int $startYear = 2010, int $endYear = 2026): array
+    public function getFig11QualisVsNonQualisTimeline(int $startYear = 2010, ?int $endYear = null): array
     {
+        $endYear ??= (int)date('Y');
         $conn = $this->em->getConnection();
         $sql = "
             SELECT 
@@ -810,8 +813,9 @@ class StatisticsService
     /**
      * Fig. 12: Distribuição dos Artigos por Estrato Qualis A1 a C (Com Tesauro Qualis CAPES).
      */
-    public function getFig12QualisStratumTimeline(int $startYear = 2010, int $endYear = 2026): array
+    public function getFig12QualisStratumTimeline(int $startYear = 2010, ?int $endYear = null): array
     {
+        $endYear ??= (int)date('Y');
         $conn = $this->em->getConnection();
         $sql = "
             SELECT 
@@ -1020,8 +1024,9 @@ class StatisticsService
      *     nonIndexedByYear: list<int>
      * }
      */
-    public function getFigAcademicDatabases(int $startYear = 2010, int $endYear = 2026): array
+    public function getFigAcademicDatabases(int $startYear = 2010, ?int $endYear = null): array
     {
+        $endYear ??= (int)date('Y');
         $conn = $this->em->getConnection();
         $years = range($startYear, $endYear);
 
@@ -1709,12 +1714,13 @@ class StatisticsService
     {
         $conn = $this->em->getConnection();
 
+        // Egresso = mesma regra de Researcher::isActiveInCech(): vínculo encerrado ou ano de saída antes do ano corrente
         $researchers = $conn->fetchAllAssociative("
             SELECT id, full_name, slug, id_lattes, department, department_code, admission_year, leave_year, work_agency
             FROM researchers
-            WHERE status = 0 OR (leave_year IS NOT NULL AND leave_year < 2026)
+            WHERE status = 0 OR (leave_year IS NOT NULL AND leave_year < :currentYear)
             ORDER BY full_name ASC
-        ");
+        ", ['currentYear' => (int)date('Y')]);
 
         $expsByResearcher = [];
         if (!empty($researchers)) {

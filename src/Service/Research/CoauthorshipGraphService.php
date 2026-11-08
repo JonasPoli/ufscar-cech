@@ -36,7 +36,7 @@ final class CoauthorshipGraphService
      */
     public function pairs(ResearchFilter $filter): array
     {
-        return $this->cache->get($filter->cacheKey('coauthor_pairs'), function () use ($filter): array {
+        $compute = function () use ($filter): array {
             $where = ResearchSql::where($filter);
             $workKey = ResearchSql::workKey();
             $rows = $this->connection->fetchAllAssociative(
@@ -55,13 +55,15 @@ final class CoauthorshipGraphService
             );
 
             return array_map(static fn(array $r) => ['a' => (int)$r['a'], 'b' => (int)$r['b'], 'weight' => (int)$r['weight']], $rows);
-        });
+        };
+
+        return $filter->isCacheable() ? $this->cache->get($filter->cacheKey('coauthor_pairs'), $compute) : $compute();
     }
 
     /** Publicações únicas assinadas por pelo menos dois docentes do CECH, no recorte. */
     public function sharedWorks(ResearchFilter $filter): int
     {
-        return $this->cache->get($filter->cacheKey('coauthor_shared'), function () use ($filter): int {
+        $compute = function () use ($filter): int {
             $where = ResearchSql::where($filter);
             $workKey = ResearchSql::workKey();
 
@@ -77,7 +79,9 @@ final class CoauthorshipGraphService
                 $where['params'],
                 $where['types']
             );
-        });
+        };
+
+        return $filter->isCacheable() ? $this->cache->get($filter->cacheKey('coauthor_shared'), $compute) : $compute();
     }
 
     /**
@@ -214,13 +218,28 @@ final class CoauthorshipGraphService
             $where['types']
         );
 
+        // A lista vem limitada; o total é contado à parte para "N publicações em comum" não parar no limite
+        $count = count($rows);
+        if ($count >= $limit) {
+            $count = (int)$this->connection->fetchOne(
+                "SELECT COUNT(DISTINCT {$workKey})
+                   FROM production_items pi
+                   JOIN researchers r ON r.id = pi.researcher_id
+                  WHERE {$where['sql']}
+                    AND EXISTS (SELECT 1 FROM production_authors x WHERE x.production_item_id = pi.id AND x.matched_researcher_id = :pair_a)
+                    AND EXISTS (SELECT 1 FROM production_authors y WHERE y.production_item_id = pi.id AND y.matched_researcher_id = :pair_b)",
+                $params,
+                $where['types']
+            );
+        }
+
         $works = $this->search->loadWorks(array_map(static fn($r) => (int)$r['rep'], $rows));
         $cards = $this->search->loadResearchers([$a, $b]);
 
         return [
             'a' => $cards[$a] ?? null,
             'b' => $cards[$b] ?? null,
-            'count' => count($rows),
+            'count' => $count,
             'results' => array_values(array_filter(array_map(static fn($r) => $works[(int)$r['rep']] ?? null, $rows))),
         ];
     }

@@ -2,6 +2,7 @@
 
 namespace App\Controller\pub;
 
+use App\Entity\Orientation;
 use App\Service\StatisticsService;
 use Doctrine\DBAL\Connection;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -40,7 +41,7 @@ class InstitutionalController extends AbstractController
         ) ?: ['newest' => null, 'oldest' => null];
 
         $ongoingOrientations = (int) $this->connection->fetchOne(
-            "SELECT COUNT(*) FROM orientations WHERE nature = 'EM_ANDAMENTO'"
+            "SELECT COUNT(*) FROM orientations WHERE NOT " . Orientation::SQL_CONCLUDED_NO_ALIAS
         );
         $thematicTerms = (int) $this->connection->fetchOne('SELECT COUNT(*) FROM thematic_terms');
 

@@ -382,6 +382,34 @@ class LattesHtmlParserServiceTest extends KernelTestCase
         $this->assertSame($idLattes, $researcher->getIdLattes());
     }
 
+    public function testEveryProjectWithTeamAndFundersIsImportedOnce(): void
+    {
+        $idLattes = $this->newId();
+        $cells = '';
+        foreach ([1, 2, 3] as $n) {
+            $cells .= '<div class="layout-cell layout-cell-3"><b>201' . $n . ' - Atual</b></div>'
+                . '<div class="layout-cell layout-cell-9"><div class="layout-cell-pad-5">Projeto ' . $n . ' ' . $this->uniq . '</div></div>'
+                . '<div class="layout-cell layout-cell-3"></div>'
+                . '<div class="layout-cell layout-cell-9"><div class="layout-cell-pad-5">Descrição: Projeto número ' . $n . '. Situação: Em andamento; Natureza: Pesquisa. '
+                . 'Integrantes: Ana Souza - Coordenador / Bruno Lima - Integrante. Financiador(es): CNPq - Auxílio financeiro.</div></div>';
+        }
+        // Antes da correção, os laços de integrantes e financiadores reaproveitavam o contador dos projetos: aqui o import
+        // ficava preso no segundo projeto para sempre.
+        $html = $this->html($idLattes, "Docente Projetos {$this->uniq}", '
+            <div class="title-wrapper"><a name="ProjetosPesquisa"></a><h1>Projetos de pesquisa</h1></div>
+            <div class="layout-cell layout-cell-12 data-cell">' . $cells . '</div>');
+
+        $researcher = $this->parser->parseHtmlAndSave($html);
+
+        $names = array_map(static fn($p) => $p->getName(), $researcher->getResearchProjects()->toArray());
+        sort($names);
+        $this->assertSame(["Projeto 1 {$this->uniq}", "Projeto 2 {$this->uniq}", "Projeto 3 {$this->uniq}"], $names);
+        foreach ($researcher->getResearchProjects() as $project) {
+            $this->assertCount(2, $project->getMembers());
+            $this->assertCount(1, $project->getFunders());
+        }
+    }
+
     private function newId(): string
     {
         $id = '9944' . str_pad((string)random_int(0, 999999999999), 12, '0', STR_PAD_LEFT);

@@ -122,7 +122,7 @@ class CurriculumExporterService
             foreach ($r->getOrientations() as $o) {
                 $oNode = $orientsNode->addChild('orientacao');
                 $oNode->addChild('tipo', htmlspecialchars($o->getOrientationType()));
-                $oNode->addChild('natureza', htmlspecialchars($o->getNature()));
+                $oNode->addChild('natureza', htmlspecialchars($o->getEffectiveNature()));
                 $oNode->addChild('aluno', htmlspecialchars($o->getStudentName()));
                 $oNode->addChild('titulo', htmlspecialchars($o->getTitle() ?? ''));
                 $oNode->addChild('ano', (string)$o->getYear());
@@ -362,7 +362,7 @@ class CurriculumExporterService
         foreach ($r->getOrientations() as $o) {
             $orientations[] = [
                 'type' => $o->getOrientationType(),
-                'nature' => $o->getNature(),
+                'nature' => $o->getEffectiveNature(),
                 'student' => $o->getStudentName(),
                 'title' => $o->getTitle(),
                 'year' => $o->getYear(),

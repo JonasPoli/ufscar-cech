@@ -73,5 +73,39 @@ class DatabaseBackupServiceTest extends KernelTestCase
         // Cleanup
         $this->backupService->deleteBackup($exportResult['filename']);
     }
-}
 
+    public function testZipUploadWithoutExtensionIsRestoredWhenTheFormatIsGiven(): void
+    {
+        // O upload chega como /tmp/phpXXXX, sem extensão: o formato vem do nome original do arquivo
+        $zipPath = tempnam(sys_get_temp_dir(), 'restore');
+        $zip = new \ZipArchive();
+        $zip->open($zipPath, \ZipArchive::OVERWRITE);
+        $zip->addFromString('backup.sql', "CREATE TABLE IF NOT EXISTS tmp_restore_zip_test (id INT);\nDROP TABLE tmp_restore_zip_test;\n");
+        $zip->close();
+
+        try {
+            $result = $this->backupService->importDatabase($zipPath, null, 'zip');
+        } finally {
+            @unlink($zipPath);
+        }
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(0, $result['failedStatements']);
+    }
+
+    public function testFailedStatementsAreReportedInsteadOfSuccess(): void
+    {
+        $sqlPath = $this->backupService->getBackupDir() . '/test_restore_falha_' . uniqid() . '.sql';
+        file_put_contents($sqlPath, "SET @restore_test = 1;\nISTO NAO E SQL VALIDO;\n");
+
+        try {
+            $result = $this->backupService->importDatabase($sqlPath);
+        } finally {
+            @unlink($sqlPath);
+        }
+
+        $this->assertFalse($result['success']);
+        $this->assertSame(1, $result['failedStatements']);
+        $this->assertCount(1, $result['errors']);
+    }
+}

@@ -48,6 +48,13 @@ class ProjectIndexServiceTest extends KernelTestCase
         $this->assertSame(40, strlen((string)ProjectGroupKey::compute('X', null)));
     }
 
+    public function testUntitledProjectsAreNeverGroupedTogether(): void
+    {
+        // Projetos sem título de docentes diferentes, com o mesmo ano, não são o mesmo projeto
+        $this->assertNull(ProjectGroupKey::compute(ProjectGroupKey::UNTITLED_NAME, 2019));
+        $this->assertNull(ProjectGroupKey::compute('PROJETO SEM TITULO', null));
+    }
+
     public function testCommandGroupsTheSameProjectAndLinksMembersByLattesId(): void
     {
         $t = $this->t;

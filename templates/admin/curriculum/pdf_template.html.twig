@@ -121,7 +121,7 @@
         <div class="section-title">Orientações ({{ researcher.orientations|length }})</div>
         {% for o in researcher.orientations %}
             <div class="item">
-                <span class="badge">{{ o.orientationType }} ({{ o.nature }})</span>
+                <span class="badge">{{ o.orientationType }} ({{ o.effectiveNature }})</span>
                 <span class="item-title">{{ o.studentName }}</span>
                 {% if o.year %}({{ o.year }}){% endif %}
                 {% if o.title %}<div class="item-details"><em>"{{ o.title }}"</em></div>{% endif %}

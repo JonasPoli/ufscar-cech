@@ -31,8 +31,13 @@ class CoauthorshipController extends AbstractController
         $filter = $this->filterFactory->fromRequest($request);
         $params = $filter->toQuery();
 
+        // Aceita o rótulo ("Todas") ou o número de uma das opções; qualquer outro valor (inclusive texto, que (int)
+        // transformaria em 0, o "Todas") volta ao padrão de 120 ligações.
         $edgeLabel = (string)$request->query->get('ligacoes', '120');
-        $edgeLabel = array_key_exists($edgeLabel, self::EDGE_LIMITS) ? $edgeLabel : (in_array((int)$edgeLabel, self::EDGE_LIMITS, true) ? (string)array_search((int)$edgeLabel, self::EDGE_LIMITS, true) : '120');
+        if (!array_key_exists($edgeLabel, self::EDGE_LIMITS)) {
+            $found = ctype_digit($edgeLabel) ? array_search((int)$edgeLabel, self::EDGE_LIMITS, true) : false;
+            $edgeLabel = $found !== false ? (string)$found : '120';
+        }
         $edgeLimit = self::EDGE_LIMITS[$edgeLabel];
 
         $pairsShown = max(6, min(300, $request->query->getInt('pares', 6)));

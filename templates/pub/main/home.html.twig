@@ -214,7 +214,8 @@
                         <h2 class="font-heading text-2xl font-bold text-slate-900 dark:text-white">Publicações Recentes</h2>
                         <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">Trabalhos científicos mais recentes do corpo docente</p>
                     </div>
-                    <a href="{{ path('app_pub_search', {'type': 'productions'}) }}" class="text-xs sm:text-sm font-semibold text-sky-700 hover:text-sky-600 dark:text-sky-400 flex items-center gap-1">
+                    {# A busca sem nenhum filtro mostra a capa; com o período do ano passado em diante, lista as publicações mais recentes #}
+                    <a href="{{ path('app_pub_search', {modo: 'publicacoes', de: ('now'|date('Y')) - 1}) }}" class="text-xs sm:text-sm font-semibold text-sky-700 hover:text-sky-600 dark:text-sky-400 flex items-center gap-1">
                         Ver todas <sl-icon name="arrow-right"></sl-icon>
                     </a>
                 </div>

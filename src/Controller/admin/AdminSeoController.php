@@ -2,6 +2,8 @@
 
 namespace App\Controller\admin;
 
+use App\Support\ImageUpload;
+use App\Service\PageCacheService;
 use App\Repository\SiteSettingRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -17,7 +19,8 @@ class AdminSeoController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $em,
-        private readonly SiteSettingRepository $siteSettingRepo
+        private readonly SiteSettingRepository $siteSettingRepo,
+        private readonly PageCacheService $pageCache
     ) {}
 
     #[Route('/', name: 'app_admin_seo_index', methods: ['GET', 'POST'])]
@@ -26,6 +29,22 @@ class AdminSeoController extends AbstractController
         $settings = $this->siteSettingRepo->getSettings();
 
         if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('admin_seo', (string)$request->request->get('_token'))) {
+                $this->addFlash('error', 'Token de segurança inválido. Recarregue a página e tente de novo.');
+                return $this->redirectToRoute('app_admin_seo_index');
+            }
+
+            /** @var UploadedFile|null $ogImageFile */
+            $ogImageFile = $request->files->get('ogImageFile');
+            $ogImageExtension = null;
+            if ($ogImageFile instanceof UploadedFile) {
+                $ogImageExtension = ImageUpload::extension($ogImageFile);
+                if ($ogImageExtension === null) {
+                    $this->addFlash('error', 'A imagem de compartilhamento precisa ser ' . ImageUpload::acceptedLabel() . '. Nada foi alterado.');
+                    return $this->redirectToRoute('app_admin_seo_index');
+                }
+            }
+
             $googleAnalyticsId = trim((string)$request->request->get('googleAnalyticsId'));
             $googleSearchConsole = trim((string)$request->request->get('googleSearchConsoleVerification'));
             $seoTitle = trim((string)$request->request->get('seoTitle'));
@@ -42,19 +61,19 @@ class AdminSeoController extends AbstractController
             if ($baseUrl !== '') $settings->setBaseUrl($baseUrl);
             $settings->setRobotsTxtContent($robotsTxtContent ?: null);
 
-            /** @var UploadedFile|null $ogImageFile */
-            $ogImageFile = $request->files->get('ogImageFile');
-            if ($ogImageFile instanceof UploadedFile && $ogImageFile->isValid()) {
+            if ($ogImageFile instanceof UploadedFile && $ogImageExtension !== null) {
                 $uploadsDir = $this->getParameter('kernel.project_dir') . '/public/uploads/seo';
                 if (!is_dir($uploadsDir)) {
-                    @mkdir($uploadsDir, 0777, true);
+                    @mkdir($uploadsDir, 0755, true);
                 }
-                $newFilename = 'og-image-' . uniqid() . '.' . $ogImageFile->guessExtension();
+                $newFilename = 'og-image-' . uniqid() . '.' . $ogImageExtension;
                 $ogImageFile->move($uploadsDir, $newFilename);
                 $settings->setOgImage('/uploads/seo/' . $newFilename);
             }
 
             $this->em->flush();
+            // Título, descrição e Google Analytics vão no HTML de todas as páginas: o cache de páginas precisa ser refeito
+            $this->pageCache->clearCache();
 
             $this->addFlash('success', 'Configurações de SEO, Google Analytics e Meta Tags salvas com sucesso!');
             return $this->redirectToRoute('app_admin_seo_index');

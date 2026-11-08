@@ -130,6 +130,15 @@ final class ResearchFilter
         return $this->q !== '' || $this->topicText !== '';
     }
 
+    /**
+     * Pode ir para o cache.research? Texto livre (`q`) não vai: cada termo gravaria arquivos novos no disco, e o pool em
+     * arquivos não apaga os vencidos sozinho. Os demais parâmetros têm valores limitados (validados na fábrica).
+     */
+    public function isCacheable(): bool
+    {
+        return $this->q === '';
+    }
+
     /** Chave estável para cache de resultados calculados com este filtro. */
     public function cacheKey(string $prefix): string
     {

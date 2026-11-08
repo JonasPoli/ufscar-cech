@@ -303,7 +303,15 @@
         const matrixRows = document.querySelectorAll('.matrix-row');
         const matrixCols = document.querySelectorAll('.matrix-col-header');
 
-        if (matrixSearchInput) {
+        // initTabNetwork roda mais de uma vez (ao injetar a aba e a cada volta a ela). Os gráficos são recriados, mas os
+        // ouvintes só podem ser ligados uma vez: senão cada clique em exportar baixava o arquivo duas ou mais vezes.
+        const bindOnce = (el) => {
+            if (!el || el.dataset.bound === '1') return false;
+            el.dataset.bound = '1';
+            return true;
+        };
+
+        if (bindOnce(matrixSearchInput)) {
             matrixSearchInput.addEventListener('input', () => {
                 const query = matrixSearchInput.value.trim().toLowerCase();
                 
@@ -327,7 +335,7 @@
             });
         }
 
-        if (exportVosBtn && Array.isArray(coauthorsFullData)) {
+        if (Array.isArray(coauthorsFullData) && bindOnce(exportVosBtn)) {
             exportVosBtn.addEventListener('click', () => {
                 const nodeMap = new Map();
                 let nodeId = 1;
@@ -365,7 +373,7 @@
             });
         }
 
-        if (exportCsvBtn && Array.isArray(coauthorsFullData)) {
+        if (Array.isArray(coauthorsFullData) && bindOnce(exportCsvBtn)) {
             exportCsvBtn.addEventListener('click', () => {
                 let csv = "Docente 1;Departamento 1;Docente 2;Departamento 2;Obras em Parceria\n";
                 coauthorsFullData.forEach(pair => {

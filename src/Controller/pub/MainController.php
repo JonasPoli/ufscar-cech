@@ -221,8 +221,8 @@ class MainController extends AbstractController
                     $result = $this->expertSearch->researchers($filter, $page);
                     break;
                 case 'orientacoes':
-                    $orientations = $this->orientationRepo->searchOrientations($filter->q, $filter->department, $page, 15);
-                    $totalOrientations = $this->orientationRepo->countSearchOrientations($filter->q, $filter->department);
+                    $orientations = $this->orientationRepo->searchOrientations($filter, $page, 15);
+                    $totalOrientations = $this->orientationRepo->countSearchOrientations($filter);
                     $result = ['count' => $totalOrientations, 'page' => $page, 'pages' => max(1, (int)ceil($totalOrientations / 15)), 'results' => []];
                     break;
                 default:

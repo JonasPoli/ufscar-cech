@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Research;
 
+use App\Support\LattesText;
 use App\Repository\ResearcherRepository;
 
 /**
@@ -25,7 +26,7 @@ final class ResearcherCard
         }
         $department = ResearcherRepository::DEPARTMENT_MAP[$code] ?? trim((string)($row['department'] ?? ''));
         $slug = trim((string)($row['slug'] ?? ''));
-        $name = trim((string)($row['full_name'] ?? ''));
+        $name = trim((string)LattesText::display((string)($row['full_name'] ?? '')));
         $active = (int)($row['status'] ?? 1) === 1;
 
         return [

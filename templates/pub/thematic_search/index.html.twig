@@ -531,6 +531,20 @@ const loadMoreIcon = document.getElementById('load-more-icon');
 const loadMoreSpinner = document.getElementById('load-more-spinner');
 const loadMoreText = document.getElementById('load-more-text');
 
+// Nuvem e título iniciais (vêm prontos do servidor): voltam quando a busca é apagada
+const defaultCloudHtml = termsCloud.innerHTML;
+const defaultTermsTitleHtml = termsListTitle.innerHTML;
+
+function restoreDefaultFeaturedTerms() {
+    termsCloud.innerHTML = defaultCloudHtml;
+    termsListTitle.innerHTML = defaultTermsTitleHtml;
+    // O destaque do tema selecionado pode ter mudado desde o carregamento da página
+    termsCloud.querySelectorAll('.term-chip').forEach(chip => {
+        const selected = String(currentTermId) === chip.dataset.termId;
+        ['ring-4', 'ring-sky-400', 'shadow-lg', 'scale-105'].forEach(c => chip.classList.toggle(c, selected));
+    });
+}
+
 // Escuta a cada caractere digitado
 searchInput.addEventListener('input', function() {
     const val = this.value.trim();
@@ -564,8 +578,7 @@ async function performSearch(query) {
     if (query.length === 0) {
         searchHint.innerHTML = 'Exibindo temas frequentes do CECH.';
         searchCount.textContent = '';
-        // Recarregar os temas padrão em destaque
-        fetchDefaultFeaturedTerms();
+        restoreDefaultFeaturedTerms();
         return;
     }
 

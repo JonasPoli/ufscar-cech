@@ -63,7 +63,7 @@
                                             <p class="text-xs text-slate-500 dark:text-slate-400 italic">Título alternativo: "{{ o.alternativeTitle }}"</p>
                                         {% endif %}
                                         <div class="text-[11px] text-slate-400">
-                                            {% if o.courseName %}{{ o.courseName }} • {% endif %}
+                                            {% if o.displayCourseName %}{{ o.displayCourseName }} • {% endif %}
                                             {{ o.institutionName }}
                                             {% if o.campus %} ({{ o.campus }}){% endif %}
                                         </div>
@@ -177,7 +177,7 @@
                                             <p class="text-xs text-slate-500 dark:text-slate-400 italic">Título alternativo: "{{ o.alternativeTitle }}"</p>
                                         {% endif %}
                                         <div class="text-[11px] text-slate-400">
-                                            {% if o.courseName %}{{ o.courseName }} • {% endif %}
+                                            {% if o.displayCourseName %}{{ o.displayCourseName }} • {% endif %}
                                             {{ o.institutionName }}
                                         </div>
                                         {% if o.keywords %}

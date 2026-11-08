@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Service\Research;
 
+use App\Support\LattesText;
 use App\Repository\ResearcherRepository;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\Cache\CacheInterface;
@@ -45,24 +47,38 @@ final class ResearchCatalogService
     {
         return $this->cache->get('catalog_major_areas', function (ItemInterface $item): array {
             $workKey = ResearchSql::workKey();
-            $rows = $this->connection->fetchAllAssociative(
-                "SELECT ka.major_area, COUNT(DISTINCT ka.researcher_id) AS researchers,
-                        (SELECT COUNT(DISTINCT {$workKey}) FROM production_items pi
-                          WHERE pi.researcher_id IN (SELECT k2.researcher_id FROM knowledge_areas k2 WHERE k2.major_area = ka.major_area)) AS publications
-                   FROM knowledge_areas ka
-                  WHERE ka.major_area IS NOT NULL AND ka.major_area != ''
-                  GROUP BY ka.major_area"
-            );
+
+            // O Lattes grava a grande área ora pelo código (CIENCIAS_HUMANAS), ora pelo nome (Ciências Humanas). As
+            // contagens são feitas por grande área com todas as grafias juntas: somar grafia por grafia contaria duas
+            // vezes o docente que tem as duas.
+            $spellings = [];
+            foreach ($this->connection->fetchFirstColumn("SELECT DISTINCT major_area FROM knowledge_areas WHERE major_area IS NOT NULL AND major_area != ''") as $raw) {
+                $code = MajorAreaCatalog::normalizeCode((string)$raw);
+                if ($code !== '') {
+                    $spellings[$code][] = (string)$raw;
+                }
+            }
 
             $byCode = [];
-            foreach ($rows as $row) {
-                $code = MajorAreaCatalog::normalizeCode((string)$row['major_area']);
-                if ($code === '') {
-                    continue;
-                }
-                $byCode[$code] ??= ['code' => $code, 'label' => MajorAreaCatalog::LABELS[$code], 'slug' => MajorAreaCatalog::slug($code), 'researchers' => 0, 'publications' => 0];
-                $byCode[$code]['researchers'] += (int)$row['researchers'];
-                $byCode[$code]['publications'] += (int)$row['publications'];
+            foreach ($spellings as $code => $values) {
+                $params = ['vals' => $values];
+                $types = ['vals' => ArrayParameterType::STRING];
+                $byCode[$code] = [
+                    'code' => $code,
+                    'label' => MajorAreaCatalog::LABELS[$code],
+                    'slug' => MajorAreaCatalog::slug($code),
+                    'researchers' => (int)$this->connection->fetchOne(
+                        'SELECT COUNT(DISTINCT researcher_id) FROM knowledge_areas WHERE major_area IN (:vals)',
+                        $params,
+                        $types
+                    ),
+                    'publications' => (int)$this->connection->fetchOne(
+                        "SELECT COUNT(DISTINCT {$workKey}) FROM production_items pi
+                          WHERE pi.researcher_id IN (SELECT k2.researcher_id FROM knowledge_areas k2 WHERE k2.major_area IN (:vals))",
+                        $params,
+                        $types
+                    ),
+                ];
             }
 
             uasort($byCode, static fn($a, $b) => $b['publications'] <=> $a['publications']);
@@ -95,7 +111,7 @@ final class ResearchCatalogService
                 $area = trim((string)$row['area']);
                 $code = MajorAreaCatalog::normalizeCode((string)$row['major_area']);
                 $out[] = [
-                    'area' => $area,
+                    'area' => (string)LattesText::display($area),
                     'slug' => \App\Service\Thesaurus\StringNormalizer::slugify($area),
                     'majorCode' => $code,
                     'majorLabel' => $code !== '' ? MajorAreaCatalog::LABELS[$code] : 'Outras',
@@ -140,7 +156,7 @@ final class ResearchCatalogService
 
             return array_map(static fn(array $r) => [
                 'id' => (int)$r['id'],
-                'term' => (string)$r['term'],
+                'term' => (string)LattesText::display((string)$r['term']),
                 'slug' => (string)($r['slug'] ?: $r['id']),
                 'occurrences' => (int)$r['total_occurrences'],
                 'researchers' => (int)$r['researcher_count'],
@@ -196,7 +212,7 @@ final class ResearchCatalogService
         );
 
         return array_map(static fn(array $r) => [
-            'term' => (string)$r['term'],
+            'term' => (string)LattesText::display((string)$r['term']),
             'slug' => (string)($r['slug'] ?: $r['id']),
             'count' => (int)$r['total'],
         ], $rows);

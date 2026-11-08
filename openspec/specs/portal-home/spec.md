@@ -4,6 +4,7 @@
 Página inicial do portal público (`/`): a porta de entrada para a busca, os assuntos mais frequentes, os números do Centro, os atalhos para as páginas de pesquisa, os departamentos, as publicações recentes e os docentes em destaque.
 
 ## Requirements
+
 ### Requirement: Busca na capa
 A página inicial SHALL oferecer uma caixa de busca com os modos Especialistas (marcado no início), Publicações e Pesquisador, que envia o termo (`q`) e o modo (`modo`) para `/busca`. O comportamento da busca é descrito em `expert-search`.
 
@@ -40,11 +41,15 @@ A página inicial SHALL mostrar os 8 primeiros departamentos da lista de departa
 - **THEN** os departamentos aparecem na mesma ordem da lista de departamentos, do que tem mais docentes vigentes para o que tem menos
 
 ### Requirement: Publicações recentes
-A página inicial SHALL listar os 10 registros de produção mais recentes, do ano mais novo para o mais antigo e, no mesmo ano, do registro gravado por último, cada um com tipo, ano, selo do periódico ou Qualis quando houver, título, veículo, docente dono do currículo (com link para o perfil) e link para o DOI em nova aba quando houver. O link "Ver todas" SHALL levar a `/busca?type=productions`.
+A página inicial SHALL listar os 10 registros de produção mais recentes, do ano mais novo para o mais antigo e, no mesmo ano, do registro gravado por último, cada um com tipo, ano, selo do periódico ou Qualis quando houver, título, veículo, docente dono do currículo (com link para o perfil) e link para o DOI em nova aba quando houver. O link "Ver todas" SHALL levar à busca no modo Publicações com o período a partir do ano anterior, ordenada das mais recentes.
 
 #### Scenario: Publicação com DOI
 - **WHEN** um dos registros recentes tem DOI
 - **THEN** o item mostra um link para o DOI que abre em nova aba
+
+#### Scenario: Ver todas
+- **WHEN** em 2026 o visitante clica em "Ver todas"
+- **THEN** abre `/busca?modo=publicacoes&de=2025`, com a lista de publicações, e não a capa da busca
 
 ### Requirement: Docentes em destaque
 A página inicial SHALL listar 8 docentes, de qualquer vínculo, ordenados pelo número de artigos Qualis A1 declarados e, no empate, pelo total de produções, cada um com foto ou iniciais, nome, selo "N A1" quando há artigos A1, departamento (ou "CECH / UFSCar") e período do vínculo quando informado, com link para o perfil.

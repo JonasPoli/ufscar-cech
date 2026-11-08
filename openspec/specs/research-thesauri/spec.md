@@ -4,6 +4,7 @@
 Reunir sob um nome preferido as muitas grafias de autores, instituições e países que aparecem nos currículos, para reconhecer coautores que são docentes do portal, ligar formações e atuações a instituições e exibir países com nome e bandeira, com curadoria, fusão e intercâmbio de arquivos pelo painel.
 
 ## Requirements
+
 ### Requirement: Forma normalizada dos nomes
 O sistema SHALL comparar nomes de autores, instituições e países pela forma normalizada: sem acentos e outras marcas diacríticas, com pontuação e símbolos trocados por espaço, espaços repetidos reduzidos a um, sem espaços nas pontas e toda em maiúsculas ou toda em minúsculas; o slug é a forma minúscula com hífens no lugar do que não é letra ou número.
 
@@ -80,11 +81,15 @@ O sistema SHALL reconhecer o nome de uma instituição pela forma normalizada do
 - **THEN** ela aparece como `SIGLA - Nome oficial` (se o nome não contém a sigla), com a bandeira do país da instituição
 
 ### Requirement: Curadoria do tesauro de instituições
-O sistema SHALL oferecer a administradores, em `/admin/institutions`, a lista (as primeiras 500 em ordem de nome oficial), o cadastro e a edição de nome oficial, nome curto, sigla, tipo e natureza jurídica, o acréscimo de uma variante na edição e a exclusão com token CSRF.
+O sistema SHALL oferecer a administradores, em `/admin/institutions`, a lista (as primeiras 500 em ordem de nome oficial), o cadastro e a edição de nome oficial, nome curto, sigla, tipo e natureza jurídica, o acréscimo de uma variante na edição e a exclusão com token CSRF. Depois de cadastrar, editar, fundir, importar ou excluir, o índice de instituições usado na normalização MUST ser refeito.
 
 #### Scenario: Exclusão de instituição
 - **WHEN** uma instituição é excluída
 - **THEN** as formações e atuações ligadas a ela ficam sem instituição
+
+#### Scenario: Importação depois de uma exclusão
+- **WHEN** uma instituição é excluída pelo painel e em seguida um currículo que a cita é importado
+- **THEN** a normalização não tenta gravar o id excluído e a importação termina sem erro
 
 ### Requirement: Reconhecimento de países
 O sistema SHALL reconhecer um país pelo código ISO de duas ou três letras, pelo nome comum, pelo nome oficial, por uma variante ativa de país ativo ou por uma lista embutida de grafias usuais (como `Brasil`, `Brazil`, `EUA`, `USA`, `Inglaterra`) e, sem correspondência, pela primeira chave com mais de 3 caracteres contida no nome ou que o contém; o resultado serve à exibição (bandeira e nome em português) e não é gravado nos currículos.

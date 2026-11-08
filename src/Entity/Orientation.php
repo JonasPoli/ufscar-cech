@@ -26,6 +26,14 @@ class Orientation
     public const NATURE_CONCLUIDA = 'CONCLUIDA';
     public const NATURE_EM_ANDAMENTO = 'EM_ANDAMENTO';
 
+    /**
+     * Orientação concluída para exibição e indicadores: concluída no Lattes ou catalogada no Repositório UFSCar (Handle
+     * ou UUID), que atesta a defesa. A coluna `nature` guarda o que veio do Lattes e não é alterada (regra do AGENTS.md).
+     * Use com o alias da tabela no lugar de `o`, ou sem alias com {@see self::SQL_CONCLUDED_NO_ALIAS}.
+     */
+    public const SQL_CONCLUDED = "(o.nature = 'CONCLUIDA' OR o.handle IS NOT NULL OR o.repository_uuid IS NOT NULL)";
+    public const SQL_CONCLUDED_NO_ALIAS = "(nature = 'CONCLUIDA' OR handle IS NOT NULL OR repository_uuid IS NOT NULL)";
+
     public const SOURCE_LATTES = 'lattes';
     public const SOURCE_REPOSITORY_UFSCAR = 'repository_ufscar';
 
@@ -61,6 +69,10 @@ class Orientation
 
     #[ORM\Column(name: 'course_name', length: 255, nullable: true)]
     private ?string $courseName = null;
+
+    /** Programa de pós-graduação informado pelo Repositório UFSCar, quando a orientação veio do Lattes (o curso do Lattes fica intacto em `course_name`). */
+    #[ORM\Column(name: 'repository_program_name', length: 255, nullable: true)]
+    private ?string $repositoryProgramName = null;
 
     #[ORM\Column(name: 'handle_url', length: 255, nullable: true)]
     private ?string $handleUrl = null;
@@ -126,6 +138,29 @@ class Orientation
 
     public function getCourseName(): ?string { return LattesText::display($this->courseName); }
     public function setCourseName(?string $v): static { $this->courseName = $v; return $this; }
+
+    public function getRepositoryProgramName(): ?string { return $this->repositoryProgramName; }
+    public function setRepositoryProgramName(?string $v): static { $this->repositoryProgramName = $v; return $this; }
+
+    /** Curso para exibir: o do Lattes e, sem ele, o programa informado pelo Repositório. */
+    public function getDisplayCourseName(): ?string
+    {
+        $course = $this->getCourseName();
+
+        return $course !== null && trim($course) !== '' ? $course : $this->repositoryProgramName;
+    }
+
+    /** Concluída no Lattes ou catalogada no Repositório UFSCar ({@see self::SQL_CONCLUDED}). */
+    public function isConcluded(): bool
+    {
+        return $this->nature === self::NATURE_CONCLUIDA || $this->handle !== null || $this->repositoryUuid !== null;
+    }
+
+    /** Situação para exibir: CONCLUIDA quando {@see isConcluded()}; senão, o valor do Lattes. */
+    public function getEffectiveNature(): string
+    {
+        return $this->isConcluded() ? self::NATURE_CONCLUIDA : $this->nature;
+    }
 
     public function getHandleUrl(): ?string { return $this->handleUrl; }
     public function setHandleUrl(?string $v): static { $this->handleUrl = $v; return $this; }

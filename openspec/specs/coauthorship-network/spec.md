@@ -4,6 +4,7 @@
 Rede de coautoria entre docentes do CECH: a regra que liga dois docentes, o grafo interativo reaproveitado em várias páginas (coautorias, Explorar, departamento e perfil do docente), a página `/coautorias` e o conteúdo do grafo e das publicações de um par que a API pública entrega (as rotas estão em `public-api`).
 
 ## Requirements
+
 ### Requirement: Regra de coautoria
 O sistema SHALL ligar dois docentes do CECH quando ambos aparecem, como autores reconhecidos como docentes do CECH, na mesma publicação. O peso da ligação MUST ser o número de publicações únicas do par (mesmo DOI ou, sem DOI, mesmo tipo, ano e título), e autores de fora do CECH MUST ficar fora da rede. Os pares são ordenados do maior peso para o menor.
 
@@ -45,7 +46,7 @@ Quando o grafo é pedido com `docente` (slug, ID Lattes ou ID numérico), o sist
 - **THEN** Bruno aparece à esquerda em todos os cartões
 
 ### Requirement: Publicações de um par
-As publicações de um par (entregues por `GET /api/v1/grafo/par`, descrita em `public-api`) SHALL ser as publicações únicas do recorte em que os dois docentes aparecem como autores: o total e até 200 delas, da mais recente para a mais antiga, cada uma com título, ano, tipo, veículo, ISSN, DOI e até 10 autores (os do CECH com link para o perfil; acima de 10, "et al."), junto com os dados dos dois docentes.
+As publicações de um par (entregues por `GET /api/v1/grafo/par`, descrita em `public-api`) SHALL ser as publicações únicas do recorte em que os dois docentes aparecem como autores: o total real e até 200 delas, da mais recente para a mais antiga, cada uma com título, ano, tipo, veículo, ISSN, DOI e até 10 autores (os do CECH com link para o perfil; acima de 10, "et al."), junto com os dados dos dois docentes.
 
 #### Scenario: Par com duas publicações
 - **WHEN** alguém pede as publicações de Ana e Bruno, que têm um trabalho de 2016 e outro de 2019 em comum
@@ -54,6 +55,10 @@ As publicações de um par (entregues por `GET /api/v1/grafo/par`, descrita em `
 #### Scenario: Par num recorte
 - **WHEN** as publicações de Ana e Bruno são pedidas com `departamento=ED`
 - **THEN** entram só as publicações em comum declaradas em currículos de docentes de ED
+
+#### Scenario: Par com mais publicações do que a lista
+- **WHEN** um par tem 260 publicações em comum
+- **THEN** a lista traz 200 e `count` é 260
 
 ### Requirement: Leitura visual do grafo
 O grafo interativo SHALL dar a cada departamento uma cor e uma forma próprias, com legenda que mostra o código, o nome completo como dica e o nome da forma para leitores de tela. O tamanho do nó MUST crescer com a soma dos pesos do docente e a espessura da ligação com o número de publicações do par. O rodapé SHALL informar "N pessoas · X de Y pares · maior espessura = mais publicações". A biblioteca de gráficos só MUST ser baixada quando a página tem um grafo.

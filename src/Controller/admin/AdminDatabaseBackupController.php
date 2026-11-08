@@ -217,13 +217,10 @@ class AdminDatabaseBackupController extends AbstractController
         }
 
         try {
-            $this->backupService->importDatabase($uploadedFile->getRealPath());
+            // O arquivo temporário do upload não tem extensão: o formato vem do nome original
+            $result = $this->backupService->importDatabase($uploadedFile->getRealPath(), null, $extension);
 
-            // Invalidate session and logout because user table has been updated
-            $request->getSession()->invalidate();
-            $this->security->logout(false);
-
-            return $this->redirectToRoute('app_login', ['restored' => 1]);
+            return $this->afterRestore($request, $result);
         } catch (\Throwable $e) {
             $this->addFlash('error', 'Erro ao restaurar banco de dados: ' . $e->getMessage());
             return $this->redirectToRoute('app_admin_database_backup_index');
@@ -245,17 +242,30 @@ class AdminDatabaseBackupController extends AbstractController
         }
 
         try {
-            $this->backupService->importDatabase($file->getRealPath());
+            $result = $this->backupService->importDatabase($file->getRealPath());
 
-            // Invalidate session and logout because user table has been updated
-            $request->getSession()->invalidate();
-            $this->security->logout(false);
-
-            return $this->redirectToRoute('app_login', ['restored' => 1]);
+            return $this->afterRestore($request, $result);
         } catch (\Throwable $e) {
             $this->addFlash('error', 'Erro ao restaurar banco de dados: ' . $e->getMessage());
             return $this->redirectToRoute('app_admin_database_backup_index');
         }
     }
-}
 
+    /**
+     * Depois da restauração a tabela de usuários pode ter mudado: a sessão é encerrada nos dois casos. Se algum comando
+     * SQL falhou, o login mostra um aviso com a quantidade, em vez de "restaurada com sucesso".
+     *
+     * @param array{success: bool, failedStatements?: int} $result
+     */
+    private function afterRestore(Request $request, array $result): Response
+    {
+        $request->getSession()->invalidate();
+        $this->security->logout(false);
+
+        if (!$result['success']) {
+            return $this->redirectToRoute('app_login', ['restored' => 'parcial', 'falhas' => (int)($result['failedStatements'] ?? 0)]);
+        }
+
+        return $this->redirectToRoute('app_login', ['restored' => 1]);
+    }
+}

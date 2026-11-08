@@ -100,7 +100,8 @@
                 </div>
                 <div class="lg:col-span-2">
                     <label for="f-tipo" class="{{ labelClass }}">Tipo de publicação</label>
-                    <select id="f-tipo" name="tipo" class="{{ inputClass }}">
+                    {# Tipo de publicação não se aplica a teses e orientações: o campo fica desativado nesse modo #}
+                    <select id="f-tipo" name="tipo" class="{{ inputClass }} disabled:opacity-50" {% if mode == 'orientacoes' %}disabled title="Não se aplica a teses e orientações"{% endif %}>
                         <option value="">Todos os tipos</option>
                         {% for key, label in constant('App\\Service\\Research\\ResearchFilter::TYPE_LABELS') %}
                             <option value="{{ key }}" {% if filter.type == key %}selected{% endif %}>{{ label }}</option>
@@ -323,7 +324,7 @@
                             </div>
                             <h3 class="mt-1.5 font-heading text-sm sm:text-base font-bold text-slate-900 dark:text-white">{{ o.title }}</h3>
                             <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                                Orientando(a): <strong>{{ o.studentName }}</strong>{% if o.courseName %} · <span class="italic">{{ o.courseName }}</span>{% endif %}
+                                Orientando(a): <strong>{{ o.studentName }}</strong>{% if o.displayCourseName %} · <span class="italic">{{ o.displayCourseName }}</span>{% endif %}
                             </p>
                             <p class="text-xs text-slate-600 dark:text-slate-300 mt-1">
                                 Orientador(a):
@@ -352,6 +353,11 @@
             var hints = {{ modeHints|json_encode|raw }};
             if (input) input.placeholder = radio.dataset.placeholder;
             if (hint) hint.textContent = hints[radio.value] || '';
+            var type = document.getElementById('f-tipo');
+            if (type) {
+                type.disabled = radio.value === 'orientacoes';
+                type.title = type.disabled ? 'Não se aplica a teses e orientações' : '';
+            }
         });
     });
 </script>

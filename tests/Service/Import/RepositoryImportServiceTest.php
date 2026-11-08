@@ -87,8 +87,13 @@ class RepositoryImportServiceTest extends KernelTestCase
             $this->assertEquals('https://repositorio.ufscar.br/handle/20.500.14289/99901', $existingOrient->getHandleUrl());
             $this->assertEquals('20.500.14289/99901', $existingOrient->getHandle());
             $this->assertEquals('uuid-test-01', $existingOrient->getRepositoryUuid());
-            $this->assertEquals('Programa de Pós-Graduação em Educação - PPGE', $existingOrient->getCourseName());
-            $this->assertEquals(Orientation::NATURE_CONCLUIDA, $existingOrient->getNature());
+            // Dado do Lattes intacto (regra do AGENTS.md): o programa vai para coluna própria e a conclusão é deduzida do Handle
+            $this->assertNull($existingOrient->getCourseName());
+            $this->assertEquals('Programa de Pós-Graduação em Educação - PPGE', $existingOrient->getRepositoryProgramName());
+            $this->assertEquals('Programa de Pós-Graduação em Educação - PPGE', $existingOrient->getDisplayCourseName());
+            $this->assertEquals(Orientation::NATURE_EM_ANDAMENTO, $existingOrient->getNature());
+            $this->assertTrue($existingOrient->isConcluded());
+            $this->assertEquals(Orientation::NATURE_CONCLUIDA, $existingOrient->getEffectiveNature());
 
             // Second run (Idempotency test): 2 skipped, 0 new created
             $stats2 = $this->importService->import($tmpCsv, false);
@@ -161,6 +166,48 @@ class RepositoryImportServiceTest extends KernelTestCase
             if (file_exists($tmpCsv)) {
                 unlink($tmpCsv);
             }
+            $this->removeTestResearchers();
+        }
+    }
+
+    public function testAThesisOfAStudentWhoseNameContainsAnotherIsNotAbsorbed(): void
+    {
+        $researcher = new Researcher();
+        $researcher->setIdLattes('9999888877776666');
+        $researcher->setFullName('Prof Teste da Silva');
+        $researcher->setSlug('prof-teste-da-silva');
+        $this->em->persist($researcher);
+
+        // O Lattes tem a dissertação de "Maria Silva"; o Repositório traz a de "Maria Silva Santos" antes da dela
+        $lattes = (new Orientation())
+            ->setResearcher($researcher)
+            ->setOrientationType(Orientation::TYPE_MESTRADO)
+            ->setNature(Orientation::NATURE_CONCLUIDA)
+            ->setStudentName('Maria Silva')
+            ->setTitle('Leitura na escola pública')
+            ->setYear(2022)
+            ->setSource(Orientation::SOURCE_LATTES);
+        $this->em->persist($lattes);
+        $this->em->flush();
+
+        $row = static fn(string $title, string $student, string $handle, string $uuid): string =>
+            'Dissertação,' . $title . ',,' . $student . ',,,Prof Teste da Silva,http://lattes.cnpq.br/9999888877776666,,,,,,,,PPGE,CECH,Campus São Carlos,Campus São Carlos,Teses e Dissertações,Caminho,2022-05-15,Resumo,Assunto,por,CC-BY,,uri,https://repositorio.ufscar.br/handle/' . $handle . ',' . $handle . ',' . $uuid . ',2022-06-01';
+        $csv = sys_get_temp_dir() . '/test_ted_ufscar_' . uniqid() . '.csv';
+        file_put_contents($csv, implode("\n", [
+            'Tipo,Título,Títulos alternativos,Autores (Nome Sobrenome),Lattes dos autores,ORCID dos autores,Orientadores (Nome Sobrenome),Lattes dos orientadores,ORCID dos orientadores,Coorientadores (Nome Sobrenome),Lattes dos coorientadores,ORCID dos coorientadores,Membros da banca (Nome Sobrenome),Lattes dos membros da banca,ORCID dos membros da banca,Programas de pós-graduação,Centros,Campus,Comunidades,Coleções,Caminhos completos no repositório,Datas de publicação/defesa,Resumos,Assuntos,Idiomas,Direitos e licenças,DOI,URI(s) registrada(s),URL persistente,Handle,UUID do item,Última modificação',
+            $row('Escrita e oralidade no ensino médio', 'Maria Silva Santos', '20.500.14289/88801', 'uuid-test-b'),
+            $row('Leitura na escola pública', 'Maria Silva', '20.500.14289/88802', 'uuid-test-a'),
+        ]));
+
+        try {
+            $stats = $this->importService->import($csv, false);
+
+            $this->assertSame(1, $stats['enrichedOrientations'], 'Só a dissertação de Maria Silva enriquece o registro do Lattes.');
+            $this->assertSame(1, $stats['newOrientationsCreated'], 'A de Maria Silva Santos vira uma orientação nova.');
+            $this->em->refresh($lattes);
+            $this->assertSame('20.500.14289/88802', $lattes->getHandle());
+        } finally {
+            @unlink($csv);
             $this->removeTestResearchers();
         }
     }

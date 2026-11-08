@@ -4,6 +4,7 @@
 Pesquisa Temática em `/temas`: descoberta de temas do índice temático por nuvem e autocomplete e, para o tema escolhido, os docentes que mais produzem nele, os departamentos associados, a evolução anual da produção, os conceitos relacionados e a análise editorial (Qualis e periódicos). Inclui as rotas JSON que alimentam a página.
 
 ## Requirements
+
 ### Requirement: Página da Pesquisa Temática
 O sistema SHALL servir `GET /temas` com o campo de busca de temas, a nuvem de temas em destaque e o total de temas indexados. O parâmetro `t` SHALL selecionar um tema pelo slug ou pelo id numérico; com um tema válido, a página SHALL abrir com o painel do tema preenchido e com título e descrição nomeando o tema; com `t` vazio ou desconhecido, SHALL abrir sem tema selecionado e sem erro.
 
@@ -134,3 +135,10 @@ O sistema SHALL calcular a evolução anual, os conceitos relacionados e a anál
 #### Scenario: Segunda consulta do mesmo tema
 - **WHEN** dois visitantes abrem o mesmo tema no mesmo dia
 - **THEN** o segundo recebe a evolução, os conceitos e a análise editorial guardados, sem novo cálculo
+
+### Requirement: Limpar a busca de temas
+Ao apagar o texto da busca de `/temas` ou clicar no X, o sistema SHALL voltar à nuvem de temas em destaque e ao título "Temas Frequentes em Destaque", mantendo destacado o tema selecionado.
+
+#### Scenario: Busca apagada
+- **WHEN** o visitante pesquisa "leitura" e depois clica no X
+- **THEN** a nuvem volta a mostrar os temas em destaque, sem erro na página

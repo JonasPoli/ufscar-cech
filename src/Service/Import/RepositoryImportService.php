@@ -37,6 +37,16 @@ class RepositoryImportService
     /** @var array<string, Orientation> Cache de orientações por UUID */
     private array $orientationsByUuid = [];
 
+    /**
+     * Linhas cuja única correspondência é um nome contido no outro ("Maria Silva" × "Maria Silva Santos"). Elas são
+     * processadas depois de todo o CSV, quando as correspondências exatas já levaram o Handle delas: assim a tese de
+     * outra pessoa com nome parecido não toma o registro do Lattes que é de outra obra.
+     *
+     * @var list<array<string, mixed>>
+     */
+    private array $deferredWeakMatches = [];
+    private bool $replayingDeferred = false;
+
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly ResearcherRepository $researcherRepository,
@@ -181,6 +191,8 @@ class RepositoryImportService
 
         $pendingFlushes = 0;
         $centerFilterNorm = $centerFilter ? mb_strtoupper(trim($centerFilter), 'UTF-8') : null;
+        $this->deferredWeakMatches = [];
+        $this->replayingDeferred = false;
 
         while (($row = fgetcsv($fp, 0, ',', '"', '\\')) !== false) {
             if (empty($row) || count($row) < 5) {
@@ -346,6 +358,13 @@ class RepositoryImportService
 
         fclose($fp);
 
+        $this->replayingDeferred = true;
+        foreach ($this->deferredWeakMatches as $args) {
+            $this->processOrientationItem(...$args, stats: $stats, pendingFlushes: $pendingFlushes);
+        }
+        $this->deferredWeakMatches = [];
+        $this->replayingDeferred = false;
+
         if (!$dryRun && $pendingFlushes > 0) {
             $this->em->flush();
         }
@@ -411,35 +430,50 @@ class RepositoryImportService
         $normStudent = StringNormalizer::normalizeString($studentName, true);
         $normTitle = StringNormalizer::normalizeString($title, true);
 
+        // Correspondência mais forte primeiro: aluno ou título idênticos valem mais do que um nome contido no outro, e
+        // uma orientação que já tem outro Handle/UUID do Repositório é de outra obra e não pode ser absorvida.
         $matchedOrientation = null;
+        $bestScore = 0;
         foreach ($existingOrientations as $o) {
             if ($o->getOrientationType() !== $orientationType) {
+                continue;
+            }
+            if ($handle !== '' && $o->getHandle() !== null && $o->getHandle() !== $handle) {
+                continue;
+            }
+            if ($uuid !== '' && $o->getRepositoryUuid() !== null && $o->getRepositoryUuid() !== $uuid) {
                 continue;
             }
 
             $oStudentNorm = StringNormalizer::normalizeString($o->getStudentName(), true);
             $oTitleNorm = StringNormalizer::normalizeString((string)$o->getTitle(), true);
+            $titleComparable = $normTitle !== '' && $oTitleNorm !== '' && mb_strlen($normTitle) > 15;
 
-            $studentMatches = false;
-            if ($normStudent !== '' && $oStudentNorm !== '') {
-                if ($normStudent === $oStudentNorm) {
-                    $studentMatches = true;
-                } elseif (str_contains($normStudent, $oStudentNorm) || str_contains($oStudentNorm, $normStudent)) {
-                    $studentMatches = true;
-                }
+            $score = 0;
+            if ($normStudent !== '' && $normStudent === $oStudentNorm) {
+                $score = 4;
+            } elseif ($titleComparable && $normTitle === $oTitleNorm) {
+                $score = 4;
+            } elseif ($titleComparable && (str_contains($normTitle, $oTitleNorm) || str_contains($oTitleNorm, $normTitle))) {
+                $score = 2;
+            } elseif (self::nameContainsWholeWords($normStudent, $oStudentNorm)) {
+                $score = 1;
             }
 
-            $titleMatches = false;
-            if ($normTitle !== '' && $oTitleNorm !== '' && mb_strlen($normTitle) > 15) {
-                if ($normTitle === $oTitleNorm || str_contains($normTitle, $oTitleNorm) || str_contains($oTitleNorm, $normTitle)) {
-                    $titleMatches = true;
-                }
-            }
-
-            if ($studentMatches || $titleMatches) {
+            if ($score > $bestScore) {
+                $bestScore = $score;
                 $matchedOrientation = $o;
-                break;
             }
+        }
+
+        if ($matchedOrientation !== null && $bestScore === 1 && !$this->replayingDeferred) {
+            $this->deferredWeakMatches[] = compact(
+                'researcher', 'isCoadvising', 'orientationType', 'studentName', 'title', 'alternativeTitle', 'year',
+                'defenseDate', 'programName', 'centerName', 'campus', 'handle', 'handleUrl', 'uuid', 'abstractText',
+                'keywords', 'doi', 'studentOrcid', 'dryRun'
+            );
+
+            return;
         }
 
         if ($matchedOrientation !== null) {
@@ -523,10 +557,10 @@ class RepositoryImportService
         string $alternativeTitle,
         string $handle = ''
     ): void {
-        // Obra catalogada no repositório oficial de teses e dissertações atesta conclusão formal da defesa
-        if ($orientation->getNature() !== Orientation::NATURE_CONCLUIDA) {
-            $orientation->setNature(Orientation::NATURE_CONCLUIDA);
-        }
+        // Obra catalogada no repositório oficial atesta a defesa. A situação e o curso que vieram do Lattes ficam intactos
+        // (regra do AGENTS.md): o Handle/UUID gravado abaixo faz a orientação contar como concluída
+        // (Orientation::isConcluded) e o programa vai para repository_program_name.
+        $fromLattes = $orientation->getSource() !== Orientation::SOURCE_REPOSITORY_UFSCAR;
 
         if ($handleUrl && !$orientation->getHandleUrl()) {
             $orientation->setHandleUrl(mb_substr($handleUrl, 0, 255));
@@ -540,8 +574,14 @@ class RepositoryImportService
         if ($defenseDate !== null && !$orientation->getDefenseDate()) {
             $orientation->setDefenseDate($defenseDate);
         }
-        if ($programName !== '' && !$orientation->getCourseName()) {
-            $orientation->setCourseName(mb_substr($programName, 0, 255));
+        if ($programName !== '') {
+            if ($fromLattes) {
+                if (!$orientation->getRepositoryProgramName()) {
+                    $orientation->setRepositoryProgramName(mb_substr($programName, 0, 255));
+                }
+            } elseif (!$orientation->getCourseName()) {
+                $orientation->setCourseName(mb_substr($programName, 0, 255));
+            }
         }
         if ($centerName !== '' && !$orientation->getCenterName()) {
             $orientation->setCenterName(mb_substr($centerName, 0, 255));
@@ -564,6 +604,23 @@ class RepositoryImportService
         if ($alternativeTitle !== '' && !$orientation->getAlternativeTitle()) {
             $orientation->setAlternativeTitle($alternativeTitle);
         }
+    }
+
+    /**
+     * Um nome contido no outro só conta com palavras inteiras e pelo menos dois nomes no menor: "maria silva" casa com
+     * "maria silva santos", mas "ana" não casa com "juliana" nem com "ana paula".
+     */
+    private static function nameContainsWholeWords(string $a, string $b): bool
+    {
+        if ($a === '' || $b === '' || $a === $b) {
+            return false;
+        }
+        [$short, $long] = mb_strlen($a) <= mb_strlen($b) ? [$a, $b] : [$b, $a];
+        if (count(preg_split('/\s+/', trim($short)) ?: []) < 2) {
+            return false;
+        }
+
+        return (bool)preg_match('/(^|\s)' . preg_quote($short, '/') . '(\s|$)/u', $long);
     }
 
     /**

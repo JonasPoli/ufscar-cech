@@ -160,4 +160,24 @@ class PageCacheServiceTest extends TestCase
         // A pasta var/cache/public_pages foi removida por completo
         $this->assertFalse($this->filesystem->exists($cacheDir));
     }
+
+    public function testUnknownQueryParameterIsNotCacheable(): void
+    {
+        $service = new PageCacheService($this->tempDir, true);
+
+        $this->assertTrue($service->isCacheableRequest(Request::create('/coautorias?departamento=ED&ligacoes=250', 'GET')));
+        // Parâmetro que nenhuma página lê geraria um arquivo por valor
+        $this->assertFalse($service->isCacheableRequest(Request::create('/professor/fulano?a=1', 'GET')));
+        $this->assertFalse($service->isCacheableRequest(Request::create('/?utm_source=boletim', 'GET')));
+    }
+
+    public function testPageMarkedAsNonCanonicalIsNotSaved(): void
+    {
+        $service = new PageCacheService($this->tempDir, true);
+        $request = Request::create('/coautorias?area=inventada', 'GET');
+        $request->attributes->set(\App\Service\Research\ResearchFilterFactory::NO_PAGE_CACHE, true);
+
+        $this->assertFalse($service->saveCache($request, new Response('<html></html>', 200, ['Content-Type' => 'text/html'])));
+        $this->assertFalse($service->hasValidCache($request));
+    }
 }

@@ -4,6 +4,7 @@
 "Explorar pesquisa": catálogos de assuntos do índice temático, de áreas de atuação e de grandes áreas declaradas no Lattes, e a página de cada campo, com o panorama da produção, os docentes que mais publicam, a rede de coautoria e as publicações relacionadas, sem que a pessoa precise digitar uma busca. Os mesmos catálogos são entregues pela API pública (`public-api`).
 
 ## Requirements
+
 ### Requirement: Catálogo de assuntos
 O sistema SHALL listar em `/explorar` até 300 assuntos do índice temático de origem palavra-chave ou híbrida, presentes na produção de pelo menos 5 docentes e com pelo menos 40 ocorrências, do mais frequente ao menos frequente (empate em ordem alfabética), cada um com o número de ocorrências e de docentes e o link para `/explorar/assunto/{slug}`. Termos minerados só dos títulos MUST ficar fora do catálogo.
 
@@ -23,11 +24,15 @@ O sistema SHALL listar em `/explorar/areas` as áreas de atuação declaradas no
 - **THEN** "Educação" aparece no grupo Ciências Humanas com 2 docentes e as publicações únicas dos dois somadas sem repetição
 
 ### Requirement: Catálogo de grandes áreas
-O sistema SHALL listar em `/explorar/grandes-areas` as grandes áreas do CNPq presentes nas áreas de atuação dos docentes, juntando as grafias por código e por extenso, cada uma com o nome, o número de docentes, o número de publicações únicas desses docentes, a parcela em relação à soma das publicações das grandes áreas listadas ("% da produção") e o link para `/explorar/grande-area/{slug}`, da que tem mais publicações para a que tem menos.
+O sistema SHALL listar em `/explorar/grandes-areas` as grandes áreas do CNPq presentes nas áreas de atuação dos docentes, juntando as grafias por código e por extenso antes de contar, cada uma com o nome, o número de docentes, o número de publicações únicas desses docentes, a parcela em relação à soma das publicações das grandes áreas listadas ("% da produção") e o link para `/explorar/grande-area/{slug}`, da que tem mais publicações para a que tem menos.
 
 #### Scenario: Grafia por extenso
 - **WHEN** um registro traz a grande área "Ciências Agrárias" por extenso e outro traz `CIENCIAS_AGRARIAS`
 - **THEN** o catálogo mostra uma só grande área "Ciências Agrárias"
+
+#### Scenario: Docente com as duas grafias
+- **WHEN** um docente tem uma área gravada como `CIENCIAS_HUMANAS` e outra como "Ciências Humanas"
+- **THEN** ele conta uma vez em Ciências Humanas, e as publicações dele também
 
 ### Requirement: Navegação e filtro nos catálogos
 As três páginas de catálogo SHALL ter abas para alternar entre Assuntos, Áreas e Grandes áreas, uma capa com o total de assuntos do catálogo, de áreas e de grandes áreas, e um campo que filtra os itens pelo nome no próprio navegador, sem diferença de maiúsculas e acentos. Durante o filtro, a contagem MUST mostrar "N itens encontrados", os grupos sem itens visíveis MUST sumir e, sem nenhum item, a página SHALL mostrar "Nenhum item com esse nome." com link para a busca.

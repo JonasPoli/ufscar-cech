@@ -4,6 +4,7 @@
 Catálogo institucional dos projetos de pesquisa, extensão, ensino e desenvolvimento declarados no Currículo Lattes pelos docentes do CECH, com um item por projeto mesmo quando vários docentes o declaram. Cobre a listagem `/projetos` com busca e filtros, a página `/projeto/{id}` com equipe e financiadores, a API JSON somente leitura de projetos e os comandos que recalculam o agrupamento e completam integrantes e financiadores.
 
 ## Requirements
+
 ### Requirement: Unificação do mesmo projeto declarado por vários docentes
 O sistema SHALL tratar como um único projeto (grupo) os registros de projeto com o mesmo nome normalizado e o mesmo ano de início. A normalização MUST ignorar acentos, caixa, pontuação e espaços repetidos e decodificar as entidades HTML do Lattes antes de comparar. Registro sem nome utilizável SHALL formar um grupo sozinho. A chave de agrupamento é uma coluna calculada: o nome bruto vindo do Lattes MUST permanecer como veio.
 
@@ -178,3 +179,10 @@ O sistema SHALL oferecer o comando `app:projects:backfill-members` (`--dir`, `--
 #### Scenario: Sem pasta nem arquivo
 - **WHEN** o comando é executado sem `--dir` nem `--file` existentes
 - **THEN** ele termina com falha pedindo a pasta ou o arquivo
+
+### Requirement: Projetos sem título
+Um projeto sem título (gravado como "Projeto sem título" pela importação por HTML) MUST NOT ser agrupado com outros: cada registro sem título é um item próprio do catálogo.
+
+#### Scenario: Dois docentes com projeto sem título no mesmo ano
+- **WHEN** dois docentes têm, cada um, um projeto sem título iniciado em 2019
+- **THEN** o catálogo mostra dois itens, cada um com a equipe e os financiadores do seu registro

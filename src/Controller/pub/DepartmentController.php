@@ -33,19 +33,24 @@ class DepartmentController extends AbstractController
     #[Route('/departamento/{codeOrSlug}', name: 'app_pub_department_show')]
     public function show(string $codeOrSlug): Response
     {
-        $researchers = $this->researcherRepo->findBy(['departmentCode' => $codeOrSlug], ['fullName' => 'ASC']);
-        if (empty($researchers)) {
-            $researchers = $this->researcherRepo->findBy(['department' => $codeOrSlug], ['fullName' => 'ASC']);
-        }
+        // O mesmo departamento aparece com códigos e nomes diferentes (CS e DCSo, por exemplo). A lista junta as grafias
+        // equivalentes, como o cartão de /departamentos e o panorama da própria página já fazem.
+        $equivalents = ResearcherRepository::getDepartmentFilterValues($codeOrSlug);
+        $researchers = $this->researcherRepo->createQueryBuilder('r')
+            ->where('r.departmentCode IN (:values) OR r.department IN (:values)')
+            ->setParameter('values', $equivalents)
+            ->orderBy('r.fullName', 'ASC')
+            ->getQuery()
+            ->getResult();
 
         if (empty($researchers)) {
             throw $this->createNotFoundException('Departamento não encontrado.');
         }
 
         $deptName = $researchers[0]->getDepartment() ?: $codeOrSlug;
-        $deptCode = $researchers[0]->getDepartmentCode() ?: $codeOrSlug;
+        $deptCode = isset(ResearcherRepository::DEPARTMENT_MAP[$codeOrSlug]) ? $codeOrSlug : ($researchers[0]->getDepartmentCode() ?: $codeOrSlug);
 
-        $totalProductions = $this->productionRepo->countByDepartment($deptCode, $deptName);
+        $totalProductions = $this->productionRepo->countByDepartmentValues($equivalents);
 
         $filter = new ResearchFilter();
         $filter->department = $deptCode;

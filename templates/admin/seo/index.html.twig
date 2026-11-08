@@ -27,6 +27,7 @@
 
     <!-- Main Settings Form -->
     <form method="POST" enctype="multipart/form-data" action="{{ path('app_admin_seo_index') }}" class="space-y-8">
+        <input type="hidden" name="_token" value="{{ csrf_token('admin_seo') }}">
         <!-- 1. Google Analytics Section -->
         <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm space-y-4">
             <div class="flex items-center justify-between border-b border-slate-200/60 pb-3 dark:border-white/10">

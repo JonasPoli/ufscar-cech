@@ -60,7 +60,8 @@ class AdminJournalController extends AbstractController
         private readonly JournalAreaThesaurus $areaThesaurus,
         private readonly JournalCsvImporterService $csvImporter,
         private readonly JournalFamilyBuilder $familyBuilder,
-        private readonly PageCacheService $pageCache
+        private readonly PageCacheService $pageCache,
+        private readonly ?\App\Service\Thesaurus\JournalResolverService $journalResolver = null
     ) {}
 
     #[Route('/', name: 'app_admin_journal_index', methods: ['GET'])]
@@ -360,9 +361,27 @@ class AdminJournalController extends AbstractController
     {
         if ($this->isCsrfTokenValid('delete_journal_' . $journal->getId(), $request->request->get('_token'))) {
             $title = $journal->getTitle();
-            $this->em->remove($journal);
-            $this->em->flush();
-            $this->addFlash('success', "Periódico \"{$title}\" removido com sucesso.");
+            $conn = $this->em->getConnection();
+            $conn->beginTransaction();
+            try {
+                // qualis_journal_id, qualis e indexed_databases são colunas calculadas. A chave estrangeira só zeraria a
+                // primeira: o selo Qualis e as bases da revista excluída continuariam nos artigos até a próxima indexação.
+                $articles = (int)$conn->executeStatement(
+                    'UPDATE production_items SET qualis_journal_id = NULL, qualis = NULL, indexed_databases = NULL WHERE qualis_journal_id = ?',
+                    [$journal->getId()]
+                );
+                $this->em->remove($journal);
+                $this->em->flush();
+                $conn->commit();
+            } catch (\Throwable $e) {
+                $conn->rollBack();
+                throw $e;
+            }
+            $this->journalResolver?->clearCache();
+            $this->pageCache->clearCache();
+            $this->addFlash('success', $articles > 0
+                ? "Periódico \"{$title}\" removido com sucesso. {$articles} artigo(s) ligados a ele ficaram sem periódico e sem selo Qualis até a próxima indexação."
+                : "Periódico \"{$title}\" removido com sucesso.");
         } else {
             $this->addFlash('danger', 'Token de segurança inválido.');
         }

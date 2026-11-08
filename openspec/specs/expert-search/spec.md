@@ -4,6 +4,7 @@
 Busca pública do portal em `/busca`: encontra quem pesquisa um assunto (com as publicações que comprovam), publicações únicas, docentes pelo nome e teses e orientações. Define também o filtro de pesquisa compartilhado (parâmetros de URL em português), a relevância textual, a ordenação e os pontos de entrada da busca (página inicial e cabeçalho). A versão JSON da busca (`/api/v1/busca` e `/api/v1/publicacoes`) está em `public-api`.
 
 ## Requirements
+
 ### Requirement: Modos da busca
 O sistema SHALL oferecer em `GET /busca` os modos `especialistas`, `publicacoes`, `pesquisador` e `orientacoes` ("Teses e orientações"), escolhidos pelo parâmetro `modo`. Sem `modo` válido, o sistema SHALL aceitar o parâmetro antigo `type`; sem nenhum dos dois, um texto que comece por um DOI SHALL abrir o modo Publicações, e qualquer outro caso o modo Especialistas.
 
@@ -136,11 +137,15 @@ No modo Pesquisador, o sistema SHALL listar docentes cujo nome completo, nomes d
 - **THEN** o docente com esse ID aparece no resultado
 
 ### Requirement: Modo Teses e orientações
-No modo `orientacoes`, o sistema SHALL listar orientações cujo título, título alternativo, nome do orientando ou palavras-chave contenham o texto, 15 por página, das mais recentes para as mais antigas. Apenas o filtro `departamento` (do orientador) SHALL se aplicar. Cada orientação SHALL mostrar o tipo, o ano, a situação (concluída ou em andamento), o título, o orientando, o curso, o orientador com link para o perfil e, quando houver, o link para o Repositório Institucional (TeD-UFSCar).
+No modo `orientacoes`, o sistema SHALL listar orientações cujo título, título alternativo, nome do orientando ou palavras-chave contenham o texto, 15 por página, das mais recentes para as mais antigas, aplicando também tema, `departamento`, `grande_area`, `area` e `vinculo` do orientador e o período pelo ano. O tipo de publicação MUST NOT se aplicar e fica desativado no formulário. Cada orientação SHALL mostrar tipo, ano, situação, título, orientando, curso, orientador e link do Repositório.
 
 #### Scenario: Tese encontrada pela palavra-chave
 - **WHEN** o visitante busca uma palavra-chave de uma dissertação no modo Teses e orientações
 - **THEN** a dissertação aparece com o orientando, o orientador e, se houver, o link do repositório
+
+#### Scenario: Período e vínculo
+- **WHEN** o visitante busca no modo Teses e orientações com `de=2020` e `vinculo=vigente`
+- **THEN** só aparecem orientações de 2020 em diante, de orientadores com vínculo vigente
 
 ### Requirement: Apresentação de docentes e trabalhos nos resultados
 O sistema SHALL apresentar cada docente com foto ou iniciais, nome, departamento, situação do vínculo e período no CECH, e cada trabalho com ano, tipo, título, veículo como veio do Lattes (periódico, evento ou editora), ISSN, estrato Qualis, link do DOI e até 10 autores, em que os docentes do CECH identificados aparecem com link para o perfil.

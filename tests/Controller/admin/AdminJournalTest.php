@@ -962,6 +962,8 @@ class AdminJournalTest extends WebTestCase
         $journal = $this->createJournal("Revista Para Excluir {$this->uniq}");
         $stays = $this->createJournal("Revista Que Fica {$this->uniq}");
         $id = $journal->getId();
+        $articleId = $this->createArticle($journal);
+        $this->conn->executeStatement("UPDATE production_items SET qualis = 'A1', indexed_databases = '[\"scopus\"]' WHERE id = ?", [$articleId]);
 
         $crawler = $client->request('GET', '/admin/journals/?search=' . $this->uniq);
         $this->assertResponseIsSuccessful();
@@ -993,6 +995,11 @@ class AdminJournalTest extends WebTestCase
         $client->followRedirect();
         $this->assertSelectorTextContains('body', "Periódico \"Revista Para Excluir {$this->uniq}\" removido com sucesso.");
         $this->assertSame(0, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE id = ?', [$id]));
+        // O artigo perde o vínculo e também o selo Qualis e as bases, que vinham da revista excluída
+        $this->assertSame(
+            ['qualis_journal_id' => null, 'qualis' => null, 'indexed_databases' => null],
+            $this->conn->fetchAssociative('SELECT qualis_journal_id, qualis, indexed_databases FROM production_items WHERE id = ?', [$articleId])
+        );
         $this->assertSame(1, $this->scalar('SELECT COUNT(*) FROM qualis_journals WHERE id = ?', [$stays->getId()]));
     }
 

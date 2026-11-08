@@ -4,6 +4,7 @@
 Metadados das páginas públicas para buscadores e redes sociais (título, descrição, palavras-chave, robots, URL canônica, Open Graph, Google Analytics e verificação do Search Console), o `sitemap.xml`, o `robots.txt` e a tela de SEO do painel que guarda as configurações globais.
 
 ## Requirements
+
 ### Requirement: Configurações globais de SEO
 O sistema SHALL manter um único registro de configurações do site: ID do Google Analytics, código de verificação do Google Search Console, título, descrição e palavras-chave padrão, imagem de compartilhamento, URL base e conteúdo do `robots.txt`. O registro SHALL ser criado com valores padrão na primeira leitura e ficar disponível para todos os templates. Falha ao lê-lo MUST NOT impedir a página de abrir; valem então os textos padrão dos templates.
 
@@ -90,7 +91,7 @@ O sistema SHALL servir em `GET /robots.txt`, como texto puro, o conteúdo person
 - **THEN** `/robots.txt` passa a servir exatamente esse conteúdo
 
 ### Requirement: Tela de SEO no painel
-O sistema SHALL oferecer em `/admin/seo/`, só a administradores, o formulário das configurações globais. Ao gravar, ID do Google Analytics, código do Search Console e robots.txt vazios SHALL apagar o valor; título, descrição, palavras-chave e URL base vazios SHALL manter o anterior. A imagem enviada SHALL ser guardada em `public/uploads/seo/` com nome único e virar a imagem padrão de compartilhamento. A URL base é guardada, mas sitemap, robots.txt e canônicas usam o domínio da requisição.
+O sistema SHALL oferecer em `/admin/seo/`, só a administradores, o formulário das configurações globais, com token CSRF obrigatório. Campos vazios de Google Analytics, Search Console e robots.txt SHALL apagar o valor; título, descrição, palavras-chave e URL base vazios SHALL manter o anterior. A imagem enviada MUST ser PNG, JPG, WebP ou GIF pelo conteúdo e SHALL ir para `public/uploads/seo/` com nome único. Gravar SHALL limpar o cache de páginas.
 
 #### Scenario: Apagar o Google Analytics
 - **WHEN** o administrador grava o formulário com o campo do Google Analytics vazio
@@ -103,3 +104,11 @@ O sistema SHALL oferecer em `/admin/seo/`, só a administradores, o formulário 
 #### Scenario: Nova imagem de compartilhamento
 - **WHEN** o administrador envia uma imagem no campo de imagem de compartilhamento
 - **THEN** a imagem é guardada em `/uploads/seo/` e passa a ser usada em `og:image` das páginas sem imagem própria
+
+#### Scenario: Arquivo que não é imagem
+- **WHEN** o administrador envia um `.php` ou `.html` renomeado como imagem
+- **THEN** nada é alterado e a tela informa os tipos aceitos
+
+#### Scenario: Envio sem token
+- **WHEN** o formulário chega sem token CSRF válido
+- **THEN** nada é alterado

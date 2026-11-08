@@ -3,25 +3,26 @@
 namespace App\Command;
 
 use App\Service\PageCacheService;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\HttpKernel\KernelInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 #[AsCommand(
     name: 'app:cache:clear',
-    description: 'Limpa o cache de páginas públicas em HTML (public_pages) e opcionalmente o cache do Symfony',
+    description: 'Limpa o cache de páginas públicas (public_pages) e o da pesquisa; com --all, também o cache de dados da aplicação (cache.app)',
     aliases: ['app:clear:cache', 'app:page-cache:clear']
 )]
 class AppCacheClearCommand extends Command
 {
     public function __construct(
         private readonly PageCacheService $pageCacheService,
-        private readonly KernelInterface $kernel
+        #[Autowire(service: 'cache.app')]
+        private readonly CacheItemPoolInterface $appCache
     ) {
         parent::__construct();
     }
@@ -29,8 +30,14 @@ class AppCacheClearCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('all', 'a', InputOption::VALUE_NONE, 'Limpa também o cache padrão do Symfony')
-            ->setHelp('Este comando invalida e remove todas as páginas HTML estáticas salvas em var/cache/public_pages.');
+            ->addOption('all', 'a', InputOption::VALUE_NONE, 'Limpa também o cache de dados da aplicação (cache.app): índices dos tesauros, temas e catálogos')
+            ->setHelp(<<<'HELP'
+Remove as páginas HTML salvas em var/cache/public_pages e o cache da pesquisa (panorama, rede de coautoria).
+
+Com --all, esvazia também o pool cache.app, onde ficam os índices dos tesauros (autores, instituições, periódicos), os
+dados da Pesquisa Temática e os catálogos. O cache compilado do Symfony (container, rotas) não é tocado: para ele, use
+`php bin/console cache:clear`.
+HELP);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -51,11 +58,12 @@ class AppCacheClearCommand extends Command
         }
 
         if ($clearAll) {
-            $fs = new Filesystem();
-            $symfonyCacheDir = $this->kernel->getCacheDir();
-            if ($fs->exists($symfonyCacheDir)) {
-                $io->info(sprintf('Limpando cache do Symfony em: %s', $symfonyCacheDir));
+            if ($this->appCache->clear()) {
+                $io->success('Cache de dados da aplicação (cache.app) limpo: índices dos tesauros, temas e catálogos serão refeitos.');
+            } else {
+                $io->warning('Não foi possível limpar o cache de dados da aplicação (cache.app).');
             }
+            $io->note('O cache compilado do Symfony (container e rotas) é limpo com `php bin/console cache:clear`.');
         }
 
         return Command::SUCCESS;

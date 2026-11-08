@@ -398,8 +398,8 @@
                         <div class="rounded-2xl border border-slate-200/80 dark:border-white/10 p-4 space-y-2 bg-white/50 dark:bg-slate-900/50 flex flex-col justify-between">
                             <div class="space-y-1">
                                 <div class="flex items-center justify-between">
-                                    <span class="rounded-md {% if o.nature == 'CONCLUIDA' %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300{% else %}bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300{% endif %} px-2 py-0.5 text-[11px] font-semibold">
-                                        {{ o.orientationType }} ({{ o.nature }})
+                                    <span class="rounded-md {% if o.concluded %}bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300{% else %}bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300{% endif %} px-2 py-0.5 text-[11px] font-semibold">
+                                        {{ o.orientationType }} ({{ o.effectiveNature }})
                                     </span>
                                     {% if o.year %}<span class="text-xs text-slate-400 font-medium font-mono">{{ o.year }}</span>{% endif %}
                                 </div>
@@ -408,7 +408,7 @@
                                     <p class="text-xs text-slate-600 dark:text-slate-300 italic">"{{ o.title }}"</p>
                                 {% endif %}
                                 <div class="text-[11px] text-slate-400">
-                                    {% if o.courseName %}{{ o.courseName }} • {% endif %}
+                                    {% if o.displayCourseName %}{{ o.displayCourseName }} • {% endif %}
                                     {{ o.institutionName }}
                                 </div>
                             </div>
