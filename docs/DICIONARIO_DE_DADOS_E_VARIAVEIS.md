@@ -89,7 +89,6 @@ Representa cada coautor listado em uma produção científica.
 | `$authorName` (`author_name`) | `string(255)` | Lattes (Raw) | Nome completo do coautor como veio no Lattes |
 | `$citationName` (`citation_name`) | `string(255)|null` | Lattes (Raw) | Nome em citação do coautor no Lattes |
 | `$authorOrder` (`author_order`) | `int` | Lattes (Raw) | Posição de autoria (1º autor, 2º autor...) |
-| `$isSelf` (`is_self`) | `bool` | Índice | `true` se este coautor for o próprio pesquisador dono do currículo |
 | `$isCechResearcher` (`is_cech_researcher`) | `bool` | Índice | `true` se este coautor for um docente cadastrado no CECH |
 | `$matchedResearcherId` (`matched_researcher_id`)| `int|null` | Índice | ID da entidade `Researcher` se for docente CECH |
 | `$authorIdentity` (`author_identity_id`) | `AuthorIdentity|null` (FK) | Índice | Chave estrangeira para a identidade canônica do Tesauro |

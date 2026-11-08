@@ -60,13 +60,23 @@ Formato padrão amplamente utilizado no software de inteligência bibliométrica
 ---
 
 ### 2. Formato CSV (`.csv`)
-Tabela simples delimitada por ponto e vírgula com suporte a variantes agrupadas por barra vertical `|`:
+Tabela delimitada por vírgula. A exportação escreve uma linha por variante:
+
+```csv
+preferred_name,variant_name
+Brasil,Brazil
+Brasil,Republica Federativa do Brasil
+Brasil,BRA
+Estados Unidos,United States
+Estados Unidos,USA
+```
+
+A importação aceita também o formato com ponto e vírgula como delimitador e uma linha por termo, com as variantes separadas por barra vertical `|`:
 
 ```csv
 preferred_name;variant_name
 Brasil;Brazil|Republica Federativa do Brasil|BRA
 Estados Unidos;United States|USA|EUA
-Universidade Federal de São Carlos;UFSCar|Univ Fed Sao Carlos
 ```
 
 ---
@@ -193,7 +203,7 @@ Todo criador de grafia passa por ela. Ela recusa um nome que já é título ou v
 
 - **Nome com vínculo errado ou sem vínculo:** `/admin/journal-names`, ou uma linha em `docs/banco/derived/overrides/names.jsonl`.
 - **Grafia errada:** no formulário da revista, em `/admin/journals`.
-- **Revistas iguais em linhas separadas:** agrupamento manual no formulário, que vale como ponte (`canonical_method = 'manual'`).
+- **Revistas iguais em linhas separadas:** o formulário da revista não tem campo de agrupamento. A família manual (`canonical_method = 'manual'`) sai da mesclagem de revistas em `/admin/journals` ou do override `family` (`overrides/`).
 
 ---
 

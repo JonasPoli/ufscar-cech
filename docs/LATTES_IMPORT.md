@@ -105,7 +105,7 @@ Para testar no banco local: `LOCAL=1 bin/import-curriculos.sh pasta/`. Cada curr
 | `/admin/curriculum/import` | vários XML pela tela, com departamento opcional | igual ao anterior |
 | Marcador em `/admin/curriculum/new` (`scripts/browser_lattes_crawler.js`, chama `/api/curriculum/import-html` com token) | atualizar um docente a partir da página aberta no navegador | igual ao anterior, e o HTML traz menos dados que o XML |
 | `php bin/console app:import:lattes --dir=... [--dept=...] [--force]` | só o passo de importação e normalização | você roda as etapas seguintes à mão |
-| `app:import:excel` | complementa departamentos; não cria currículo | não mexe no Qualis |
+| `app:import:excel` | complementa departamentos; cria o docente se o ID Lattes não existe (só com nome, departamento e ORCID, sem produção) | não mexe no Qualis |
 | `app:import:repository` | teses e dissertações do Repositório UFSCar; ver [REPOSITORY_IMPORT.md](REPOSITORY_IMPORT.md) | |
 
 As telas recusam um XML mais antigo que o currículo no banco, salvo se você marcar "Importar mesmo com data antiga". Um arquivo com erro não impede os seguintes.
@@ -170,7 +170,7 @@ Base: os 414 XML reais e `src/Service/Import/LattesXmlParserService.php`. "Arqui
 | `language_proficiencies` | `DADOS-GERAIS/IDIOMAS/IDIOMA` | 400 | `DESCRICAO-DO-IDIOMA` ("Inglês"), senão `IDIOMA` (o código, "EN") → `language`; `PROFICIENCIA-DE-LEITURA`, `-ESCRITA`, `-FALA`, `-COMPREENSAO` → `reading`, `writing`, `speaking`, `comprehension` |
 | `research_projects` | qualquer `PROJETO-DE-PESQUISA` dentro de `DADOS-GERAIS` | 392 | `NOME-DO-PROJETO` → `name`; `NATUREZA` → `nature`; `SITUACAO` → `status`; `ANO-INICIO`, `ANO-FIM` → `start_year`, `end_year`; `DESCRICAO-DO-PROJETO` → `description`; `FINANCIADORES-DO-PROJETO/FINANCIADOR-DO-PROJETO` `NOME-INSTITUICAO` → `agency_financier`; `EQUIPE-DO-PROJETO/INTEGRANTES-DO-PROJETO` com `NRO-ID-CNPQ` do docente e `FLAG-RESPONSAVEL=SIM` → `is_coordinator` |
 | `research_project_members` | `EQUIPE-DO-PROJETO/INTEGRANTES-DO-PROJETO` de cada projeto (391 arquivos, 32.815 integrantes) | 391 | `NOME-COMPLETO` → `full_name`; `NOME-PARA-CITACAO` → `citation_name`; `ORDEM-DE-INTEGRACAO` → `member_order`; `FLAG-RESPONSAVEL=SIM` → `is_responsible`; `NRO-ID-CNPQ` → `id_lattes`. Calculado: `matched_researcher_id` (docente com o mesmo ID Lattes) |
-| `research_project_funders` | `FINANCIADORES-DO-PROJETO/FINANCIADOR-DO-PROJETO` de cada projeto; o nó vazio (`NAO_INFORMADO`, sem nome nem código) não é gravado | — | `NOME-INSTITUICAO` → `name`; `CODIGO-INSTITUICAO` → `institution_code`; `NATUREZA` → `nature`; ordem no XML → `funder_order` |
+| `research_project_funders` | `FINANCIADORES-DO-PROJETO/FINANCIADOR-DO-PROJETO` de cada projeto; o nó vazio (`NAO_INFORMADO`, sem nome nem código) não é gravado | — | `NOME-INSTITUICAO` → `name`; `CODIGO-INSTITUICAO` → `institution_code`; `NATUREZA` → `nature`; `SEQUENCIA-FINANCIADOR` → `funder_order` |
 
 ### Produção (`production_items`, `item_type`)
 
@@ -203,8 +203,8 @@ Todos os itens gravam ainda `AUTORES` e `PALAVRAS-CHAVE`, descritos depois desta
 |---|---|---:|---|
 | `orientations`, `nature` = concluída | `OUTRA-PRODUCAO/ORIENTACOES-CONCLUIDAS/*` | 396 | tag ou `NATUREZA` → `orientation_type`; `TITULO` → `title`; `ANO` → `year`; `NOME-DO-ORIENTADO` → `student_name`; `NOME-DA-INSTITUICAO` → `institution_name`; `NOME-DO-CURSO` → `course_name` |
 | `orientations`, `nature` = em andamento | `DADOS-COMPLEMENTARES/ORIENTACOES-EM-ANDAMENTO/*` | 326 | iguais, com `TITULO-DO-TRABALHO` |
-| `examination_boards` | `DADOS-COMPLEMENTARES/PARTICIPACAO-EM-BANCA-TRABALHOS-CONCLUSAO/*` e `PARTICIPACAO-EM-BANCA-JULGADORA/*` (concursos, livre-docência, avaliação de cursos e outras) | 401 e 382 | tag → `board_type`; `TITULO` → `title`; `ANO` → `year`; `NOME-DO-CANDIDATO` → `candidate_name`; `NOME-INSTITUICAO` → `institution_name` |
-| `event_participations` | `DADOS-COMPLEMENTARES/PARTICIPACAO-EM-EVENTOS-CONGRESSOS/*` | 405 | tag → `event_type`; `TITULO` → `presentation_title`; `TIPO-PARTICIPACAO`, senão `FORMA-PARTICIPACAO` → `participation_type`; `ANO` → `year`; `NOME-DO-EVENTO` → `event_name` |
+| `examination_boards` | `DADOS-COMPLEMENTARES/PARTICIPACAO-EM-BANCA-TRABALHOS-CONCLUSAO/*`, `PARTICIPACAO-EM-BANCA-DE-EXAME-QUALIFICACAO` e `PARTICIPACAO-EM-BANCA-JULGADORA/*` (concursos, livre-docência, avaliação de cursos e outras) | 401 e 382 | tag → rótulo em `board_type` (Doutorado, Mestrado, Exame de Qualificação, Graduação, Concurso Público, Avaliação de Curso ou Banca Julgadora); `TITULO` → `title`; `ANO` → `year`; `NOME-DO-CANDIDATO` → `candidate_name`; `NOME-INSTITUICAO` → `institution_name` |
+| `event_participations` | `DADOS-COMPLEMENTARES/PARTICIPACAO-EM-EVENTOS-CONGRESSOS/*` | 405 | tag → rótulo em `event_type` (Congresso, Simpósio, Seminário, Oficina, Encontro ou Evento Científico); `TITULO` → `presentation_title`; `TIPO-PARTICIPACAO`, senão `FORMA-PARTICIPACAO` → `participation_type`; `ANO` → `year`; `NOME-DO-EVENTO` → `event_name` |
 
 ### O que o XML traz e o portal não guarda
 
@@ -229,7 +229,7 @@ de cada currículo e só grava integrantes e financiadores).
 
 ## Regras da importação
 
-- **Substituição completa.** O docente é localizado por `id_lattes`. Formação, atuação, áreas, prêmios, idiomas, projetos, bancas, eventos, orientações e produção são apagados e regravados a partir do XML, numa transação: se algo falhar, nada muda para aquele docente.
+- **Substituição completa.** O docente é localizado por `id_lattes`. Formação, atuação, áreas, prêmios, idiomas, projetos, bancas, eventos, orientações e produção são apagados e regravados a partir do XML, numa transação. Só os itens ficam nela: se a regravação falhar, o docente não fica sem produção. Os dados gerais do docente e as variantes de nome no tesauro de autores são gravados antes, fora da transação, e a normalização roda depois do commit.
 - **XML mais antigo é pulado.** Se `DATA-ATUALIZACAO` for anterior à data no banco, o arquivo não é importado, salvo com `--force`.
 - **Teses do Repositório ficam.** Só as orientações com `source = 'lattes'` são substituídas. As do Repositório UFSCar não vêm no XML e não são tocadas. Ver [REPOSITORY_IMPORT.md](REPOSITORY_IMPORT.md).
 - **Falha em um arquivo não para o lote.** O comando segue e lista os erros no fim. O `bin/import-curriculos.sh` conclui as etapas seguintes, para o que entrou ficar consistente, e termina com um aviso e código de falha.

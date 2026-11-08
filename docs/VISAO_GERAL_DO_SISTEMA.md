@@ -58,7 +58,7 @@ Sobre essa camada, entrega dois produtos:
 - **Pesquisa temática** (`/temas`) — análise editorial de um conceito (Qualis e periódicos), com
   autocomplete e distribuição por departamento.
 - **Indicadores** (`/indicadores`) — panorama filtrável (assunto, departamento, tema, período) com
-  pontes entre departamentos e grandes áreas, e as 18 figuras cienciométricas por aba.
+  pontes entre departamentos e grandes áreas, e os 19 indicadores (18 figuras numeradas mais o ranking Qualis) por aba.
 - **Departamentos** (`/departamentos`) e **páginas institucionais** (`/sobre`, `/sobre-os-dados`,
   `/duvidas`).
 - **Acessibilidade** — painel de preferências de leitura (texto até 200%, tema, contraste,

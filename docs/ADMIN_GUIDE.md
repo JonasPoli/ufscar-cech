@@ -7,9 +7,7 @@ Manual de operações, rotinas de gerenciamento, indexação cienciométrica e a
 ## 🔐 1. Acesso e Autenticação
 
 - **URL de Acesso**: `/admin` (redireciona para `/login` se não autenticado).
-- **Credenciais Iniciais Padrão**:
-  - Usuário: `admin`
-  - Senha: `wab12345678`
+- **Primeiro acesso**: nada no código cria um usuário padrão. O primeiro administrador é criado pelo terminal, com `php bin/console app:admin-user <usuario> <senha>` (veja abaixo).
 
 ### Criação e Gerenciamento de Administradores via Console
 Para criar ou redefinir a senha de um administrador diretamente pelo terminal:
@@ -139,7 +137,8 @@ Ferramenta para exportação completa, migração e segurança do banco de dados
 - **Google Analytics 4 (GA4)**: Configuração do Measurement ID.
 - **Google Search Console**: Verificação de propriedade do domínio.
 - **Meta Tags & Open Graph**: Personalização de títulos, descrições e imagem de compartilhamento social.
-- **Sitemap XML & Robots.txt**: Controle de indexação pelos motores de busca.
+- **Robots.txt**: o conteúdo é editável. O `sitemap.xml` é gerado automaticamente e não tem edição.
+- **URL Base Canônica**: o campo é gravado, mas hoje não é usado. Sitemap, robots.txt e links canônicos usam o domínio da requisição.
 
 ---
 
@@ -181,7 +180,7 @@ Ferramenta para exportação completa, migração e segurança do banco de dados
 
 ## 🧹 12. Cache de páginas (`/admin/cache`)
 
-As páginas públicas ficam guardadas em disco por até 30 dias, para abrirem rápido. A tela mostra o que está em cache e limpa tudo. Use depois de mudanças que não passaram por um comando. O equivalente no terminal é `app:cache:clear`. Importar ou excluir um currículo, mesclar revistas e mudar Qualis ou bases de uma revista já limpam o cache sozinhos.
+As páginas públicas ficam guardadas em disco por até 30 dias, para abrirem rápido. A tela mostra o que está em cache e limpa tudo. Use depois de mudanças que não passaram por um comando. O equivalente no terminal é `app:cache:clear`. Importar um currículo pelo admin ou pelo navegador, excluir um currículo, mesclar ou excluir revistas, mudar Qualis ou bases de uma revista, salvar as configurações de SEO e restaurar um backup já limpam o cache sozinhos. O `app:import:lattes` pelo terminal não limpa: quem limpa é o `bin/import-curriculos.sh`, no fim.
 
 ## 👤 13. Usuários (`/admin/users`)
 

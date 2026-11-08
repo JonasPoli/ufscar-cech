@@ -1,6 +1,6 @@
 # Catálogo de Indicadores & Figuras Cienciométricas — CECH / UFSCar
 
-Este documento cataloga a metodologia, agrupamentos, equações e interpretação de todos os **18 Indicadores Globais** disponíveis em [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templates/pub/main/indicadores.html.twig) e dos **Gráficos de Perfil Docente** em [`/professor/{slug}`](file:///Users/jonaspoli/work/html/ufscar-cech/templates/pub/professor/show.html.twig).
+Este documento cataloga a metodologia, agrupamentos, equações e interpretação de todos os **19 Indicadores Globais** (18 figuras numeradas mais o ranking Qualis de docentes) disponíveis em [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templates/pub/main/indicadores.html.twig) e dos **Gráficos de Perfil Docente** em [`/professor/{slug}`](file:///Users/jonaspoli/work/html/ufscar-cech/templates/pub/professor/show.html.twig).
 
 ---
 
@@ -24,7 +24,7 @@ A página [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templat
 2. **Carregamento Assíncrono sob Demanda**: Ao tocar nas abas subsequentes (*Formação*, *Produção* ou *Redes*), uma requisição assíncrona ao endpoint `/indicadores/fragment/{tab}` busca o HTML parcial já compilado com cabeçalho de cache `Cache-Control: public, max-age=3600`.
 3. **Cache em Memória Local**: Cada aba carregada fica armazenada no DOM do navegador. Ao alternar entre abas já visitadas, a exibição é imediata (**0ms de delay**).
 4. **Sincronização de URL Hash**: A navegação pelas abas atualiza os fragmentos na URL (`#faculty`, `#training`, `#production`, `#network`) sem causar recarregamento de página.
-5. **Modo Completo / Impressão**: O botão *Imprimir Relatório* e o parâmetro `?tab=all` ou `?print=1` carregam todos os 18 indicadores simultaneamente para geração de PDFs ou relatórios em papel.
+5. **Modo Completo / Impressão**: O botão *Imprimir Relatório* e o parâmetro `?tab=all` ou `?print=1` carregam todos os 19 indicadores simultaneamente para geração de PDFs ou relatórios em papel.
 
 ---
 
@@ -32,96 +32,75 @@ A página [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templat
 
 ### **Figura 1 — Vínculos Institucionais e Docentes por Departamento**
 * **Tipo**: Gráfico de Barras Horizontais com Badges.
-* **Objetivo**: Apresentar a força de trabalho docente alocada nos 8 departamentos acadêmicos do CECH.
-* **Departamentos**:
-  - `DEn` — Departamento de Educação
-  - `DFis` — Departamento de Educação Física
-  - `DFil` — Departamento de Filosofia
-  - `DGeo` — Departamento de Geografia
-  - `DCSo` — Departamento de Ciências Sociais
-  - `DPsi` — Departamento de Psicologia
-  - `DL` — Departamento de Letras
-  - `DCI` — Departamento de Ciência da Informação
+* **Objetivo**: Apresentar a força de trabalho docente alocada em cada departamento do CECH.
+* **Departamentos**: não há lista fixa. O código lê os docentes ativos (`status = 1`), agrupa pelo código de departamento gravado (`PS`, `LE`, `CS`, `ED`, `CI`, `FI`, etc.) e traduz cada código por um mapa de nomes do `StatisticsService` (ex.: `PS` vira Departamento de Psicologia). Código fora do mapa mostra o nome gravado; sem código, entra em *Outros Departamentos*.
 * **Métrica**: Contagem de docentes com vínculo ativo por departamento.
 
 ---
 
-### **Figura 2 — Formação Inicial: Cursos de Graduação Mais Frequentes**
-* **Tipo**: Gráfico de Barras Horizontais.
+### **Figura 2 — Formação de Graduação do Corpo Docente**
+* **Tipo**: Lista de cursos agrupada por grande área do conhecimento.
 * **Objetivo**: Identificar as principais áreas de formação na graduação dos docentes do centro.
 * **Metodologia**: Extraído da seção de Formação Acadêmica (`GRADUACAO`) dos currículos Lattes com normatização de cursos via `StatisticsService`.
 
 ---
 
-### **Figura 3 — Áreas do Conhecimento no Doutorado**
+### **Figura 3 — Trajetória Acadêmica e Origem dos Docentes (Sankey)**
+* **Tipo**: Diagrama de fluxo (Sankey).
+* **Objetivo**: Mostrar o caminho Graduação → Mestrado → Doutorado → Ingresso no CECH/UFSCar.
+* **Metodologia**: Instituições normalizadas e agrupadas por categoria (`StatisticsService::getFig16AcademicTrajectoriesSankey`).
+
+---
+
+### **Figura 4 — Destino Institucional dos Docentes Egressos**
+* **Tipo**: Diagrama de fluxo com resumo em badges.
+* **Objetivo**: Mapear para onde foram os docentes depois de saírem do CECH/UFSCar (`getFig17FacultyExitsAndDestinations`).
+
+---
+
+### **Figura 5 — Formação de Doutorado do Corpo Docente**
 * **Tipo**: Gráfico de Barras Horizontais.
-* **Objetivo**: Detalhar as especialidades e campos específicos em que os docentes obtiveram o título de Doutor.
-* **Metodologia**: Extraído dos cursos de `DOUTORADO` cadastrados no Lattes.
+* **Objetivo**: Mostrar os cursos e áreas de pós-graduação *stricto sensu* em que os docentes obtiveram o título de Doutor.
+* **Metodologia**: Extraído dos registros de formação com nível `DOUTORADO`, com nomes de curso normalizados (`normalizeCourseName`). Mostra os 12 mais frequentes. Não há ranking de instituições de doutorado nem gráfico por país.
 
 ---
 
-### **Figura 4 — Grandes Áreas do Conhecimento (CNPq)**
-* **Tipo**: Gráfico Donut (Rosca).
-* **Objetivo**: Mapear a distribuição macro do corpo docente segundo a taxonomia oficial do CNPq:
-  - Ciências Humanas
-  - Linguística, Letras e Artes
-  - Ciências Sociais Aplicadas
-  - Ciências da Saúde / Biológicas / Exatas
-* **Metodologia**: Associação das áreas primárias de atuação declaradas pelos pesquisadores.
+### **Figura 6 — Áreas de Atuação dos Docentes (CNPq)**
+* **Tipo**: Tabela/gráfico por grande área do conhecimento.
+* **Objetivo**: Distribuição das grandes áreas do conhecimento registradas nos currículos Lattes.
 
 ---
 
-### **Figura 5 — Origem dos Doutorados: Top 10 Instituições Nacionais**
-* **Tipo**: Gráfico de Barras Horizontais.
-* **Objetivo**: Mapear as universidades brasileiras que mais titularam o corpo docente do CECH (ex: USP, UNICAMP, UFSCar, UNESP, UFRJ).
-* **Metodologia**: Resolução institucional via `InstitutionResolverService` sobre os registros de doutorado.
-
----
-
-### **Figura 6 — Doutorados no Exterior: Formação Internacional por País**
-* **Tipo**: Gráfico de Barras Horizontais com bandeiras oficiais.
-* **Objetivo**: Identificar o grau de internacionalização da formação doutoral dos docentes (França, EUA, Reino Unido, Espanha, Alemanha, Portugal, etc.).
-* **Metodologia**: Resolução de países de titulação via `CountryResolverService`.
-
----
-
-### **Figura 7 — Distribuição Geográfica dos Doutorados Nacionais**
+### **Figura 7 — Origem Geográfica dos Docentes (UF de Nascimento)**
 * **Tipo**: Gráfico de Barras Horizontais com siglas estaduais.
-* **Objetivo**: Mapear as unidades federativas (SP, RJ, MG, RS, etc.) onde foram obtidos os títulos de doutorado no Brasil.
+* **Objetivo**: Mostrar o estado de nascimento dos docentes. Conta todos os docentes com UF de nascimento preenchida (sem filtro de status) e exibe as 15 UFs mais frequentes.
 
 ---
 
 ## 🎓 Bloco 2: Formação de Recursos Humanos & Orientações
 
-### **Figura 8 — Formação de Recursos Humanos: Concluídas vs. Em Andamento**
-* **Tipo**: Gráfico de Barras Empilhadas.
-* **Objetivo**: Comparar o volume total de recursos humanos já formados pelo CECH versus o estoque atual de alunos sob orientação ativa.
+### **Figura 8 — Evolução Anual de Orientações Concluídas**
+* **Tipo**: Gráfico de série histórica por ano (a partir de 2010).
+* **Objetivo**: Orientações concluídas por ano e por nível: Mestrado, Doutorado, Pós-Doutorado e Iniciação Científica.
 
 ---
 
-### **Figura 9 — Histórico Anual de Orientações Concluídas**
-* **Tipo**: Gráfico de Linha Temporal Multi-Série.
-* **Objetivo**: Demonstrar a evolução ano a ano do número de defesas e conclusões de trabalhos orientados pelos docentes.
+### **Figura 9 — Pirâmide de Níveis Acadêmicos**
+* **Tipo**: Pirâmide de níveis.
+* **Objetivo**: Volume acumulado de orientações por nível (Iniciação Científica, TCC / Graduação, Especialização, Mestrado, Doutorado e Pós-Doutorado), somando concluídas e em andamento.
 
 ---
 
-### **Figura 10 — Orientações Concluídas por Nível Acadêmico**
-* **Tipo**: Gráfico Donut (Rosca) detalhado com legenda personalizada.
-* **Níveis Analisados**:
-  1. **Doutorado** (Teses defendidas)
-  2. **Mestrado** (Dissertações defendidas)
-  3. **Pós-Doutorado** (Supervisões concluídas)
-  4. **TCC / Graduação** (Trabalhos de conclusão)
-  5. **Iniciação Científica (PIBIC/PIBITI)**
-  6. **Especialização** (Monografias de pós-graduação *lato sensu*)
-  7. **Outras Orientações**
+### **Figura 10 — Principais Cursos dos Orientandos**
+* **Tipo**: Lista/ranking de cursos e programas.
+* **Objetivo**: Cursos de graduação e pós-graduação dos estudantes orientados, com nomes normalizados (`getFig5StudentsUndergradCourses`). Não existe donut por nível acadêmico.
 
 ---
 
 ## 📚 Bloco 3: Produção Intelectual, Qualis & Bases Internacionais
 
 ### **Figura 11 — Produção Intelectual Acumulada por Tipo**
-* **Tipo**: Gráfico Donut (Rosca) com contadores em destaque / Tabela Heatmap Anual.
+* **Tipo**: Matriz Heatmap Anual (categoria por ano, a partir de 2010).
 * **Tipologias Mapeadas**:
   - **Artigos em Periódicos Científicos**
   - **Livros Publicados/Organizados**
@@ -141,12 +120,12 @@ A página [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templat
 ---
 
 ### **Figura 13 — Distribuição de Artigos por Estrato Qualis (CAPES)**
-* **Tipo**: Gráfico de Barras Verticais coloridas por estrato.
+* **Tipo**: Distribuição anual por estrato, colorida por estrato.
 * **Estratos Oficiais**:
   - `A1`, `A2`, `A3`, `A4` (Excelência Internacional / Nacional)
   - `B1`, `B2`, `B3`, `B4` (Qualidade Intermediária)
   - `C` (Outros periódicos avaliados)
-  - *Não Classificados / Em Avaliação*
+  - Artigos sem Qualis não entram nesta figura (não há categoria *Não classificados*; eles aparecem na Figura 12).
 * **Metodologia**: Cruzamento canônico de periódicos e ISSNs com a tabela oficial de Qualis Periódicos da CAPES.
 
 ---
@@ -174,20 +153,29 @@ A página [`/indicadores`](file:///Users/jonaspoli/work/html/ufscar-cech/templat
 ## 🌐 Bloco 4: Redes de Colaboração & Parcerias Institucionais
 
 ### **Figura 16 — Rede de Coautoria Docente (Produção Compartilhada CECH)**
-* **Tipo**: Ranking Top 10 e Matriz de Parcerias Internas com Deduplicação e Exportação para VOSviewer.
+* **Tipo**: Ranking de 8 pares e Matriz de Parcerias Internas com Deduplicação e Exportação para VOSviewer.
 * **Regra Cienciométrica de Ouro**: Obras produzidas em coautoria entre 2 ou mais docentes do CECH são contabilizadas **uma única vez** no cômputo institucional para evitar contagem duplicada.
 * **Objetivo**: Evidenciar os pares de pesquisadores com maior cooperação intra-departamental e inter-departamental.
 
 ---
 
-### **Figura 17 — Top Parcerias Institucionais Nacionais**
+### **Figura 17 — Top Instituições Nacionais (Experiências Profissionais)**
 * **Tipo**: Gráfico de Barras Horizontais.
-* **Objetivo**: Mapear as universidades, institutos federais e centros de pesquisa nacionais que mais colaboram em coautoria com os docentes do CECH.
+* **Objetivo**: Ranking das instituições brasileiras que mais aparecem nas experiências profissionais (`professional_experiences`) dos docentes, sem a UFSCar. Não vem de coautorias.
+* **Metodologia**: Nomes resolvidos pelo tesauro de instituições; instituições estrangeiras ficam de fora. Mostra as 10 primeiras (`getFig14NationalPartners`).
 
 ---
 
-### **Figura 18 — Parcerias Internacionais: Coautorias por País**
-* **Tipo**: Gráfico de Barras Horizontais com bandeiras e identificação dos países parceiros (América Latina, Europa, América do Norte, etc.).
+### **Figura 18 — Instituições Internacionais (Formação)**
+* **Tipo**: Gráfico de Barras Horizontais.
+* **Objetivo**: Ranking das instituições estrangeiras que aparecem na formação acadêmica (`educations`) dos docentes. Não vem de coautorias.
+* **Metodologia**: Nomes resolvidos pelo tesauro de instituições e países; mostra as 10 primeiras (`getFig15InternationalPartners`).
+
+---
+
+### **Ranking Qualis — Top Publicadores (19º indicador)**
+* **Tipo**: Ranking dinâmico de docentes, com filtros de estrato Qualis (A1 a A4) e de bases de indexação.
+* **Onde**: aba de produção, depois da Figura 13 (`getFigQualisResearchersRanking`).
 
 ---
 

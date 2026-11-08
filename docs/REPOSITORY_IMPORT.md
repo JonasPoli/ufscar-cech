@@ -13,7 +13,7 @@ O arquivo [`TeD-UFSCar.csv`](file:///Users/jonaspoli/work/html/ufscar-cech/docs/
 2. **Enriquecer orientações existentes do Lattes**: Adicionar o link persistente do Repositório (`Handle`), resumo acadêmico, data exata de defesa, programa de pós-graduação (PPG), campus e identificadores.
 3. **Cadastrar novas orientações inéditas**: Obras encontradas no repositório oficial que não estavam no Lattes do docente são inseridas como orientações concluídas válidas (`source = 'repository_ufscar'`).
 4. **Idempotência e Segurança**: O processo pode ser reexecutado múltiplas vezes sem risco de duplicar orientações.
-5. **Acesso Direto na Interface Web**: Disponibilizar botões de acesso direto ao repositório institucional na página de perfil do docente (`/docente/{slug}`).
+5. **Acesso Direto na Interface Web**: Disponibilizar botões de acesso direto ao repositório institucional na página de perfil do docente (`/professor/{slug}`).
 
 ---
 
@@ -23,11 +23,11 @@ O arquivo CSV possui 32 colunas. A tabela abaixo resume como cada informação �
 
 | Coluna no CSV | Destino na Entidade `Orientation` | Regra de Negócio |
 | :--- | :--- | :--- |
-| `Tipo` | `orientationType` / `nature` | `Dissertação` &rarr; `TYPE_MESTRADO`<br>`Tese` &rarr; `TYPE_DOUTORADO`<br>`nature` = `CONCLUIDA` |
+| `Tipo` | `orientationType` / `nature` | `Dissertação` &rarr; `TYPE_MESTRADO`<br>`Tese` &rarr; `TYPE_DOUTORADO`<br>Orientação nova: `nature` = `CONCLUIDA`. Orientação do Lattes: `nature` fica como veio (ver abaixo) |
 | `Título` | `title` | Título original em português da tese/dissertação |
 | `Títulos alternativos` | `alternativeTitle` | Título em inglês ou segundo idioma |
 | `Autores (Nome Sobrenome)` | `studentName` | Nome completo do discente/autor |
-| `Lattes dos autores` | Chave de cruzamento | Identificação de discentes que são ou se tornaram pesquisadores da casa |
+| `Lattes dos autores` | Lida, não usada | A coluna é lida e descartada: não entra no cruzamento nem é gravada |
 | `ORCID dos autores` | `studentOrcid` | ORCID do discente |
 | `Orientadores (Nome Sobrenome)` | `researcher` | Nome do orientador (fallback de busca) |
 | `Lattes dos orientadores` | `researcher` | **Chave Primária de Vínculo**: extrai os 16 dígitos e faz match com `researchers.id_lattes` |
@@ -35,7 +35,7 @@ O arquivo CSV possui 32 colunas. A tabela abaixo resume como cada informação �
 | `Coorientadores (Nome Sobrenome)` | `researcher` / `isCoadvising` | Se o coorientador for docente do sistema, vincula a orientação com `isCoadvising = true` |
 | `Lattes dos coorientadores` | `researcher` (Coorientador) | Extração do ID Lattes para vincular ao docente coorientador |
 | `ORCID dos coorientadores` | `researcher` (Coorientador) | Chave secundária do coorientador |
-| `Programas de pós-graduação` | `courseName` | Programa de Pós-Graduação (ex: *PPGE*, *PPGPol*, *PPGAdS*, etc.) |
+| `Programas de pós-graduação` | `courseName` / `repositoryProgramName` | Programa de Pós-Graduação (ex: *PPGE*, *PPGPol*, *PPGAdS*). Na orientação nova vai para `courseName`; na que veio do Lattes, para `repositoryProgramName`, e o `courseName` do Lattes fica intacto |
 | `Centros` | `centerName` | Centro acadêmico (ex: *CECH - Centro de Educação e Ciências Humanas*) |
 | `Campus` | `campus` | Campus da UFSCar (ex: *Campus São Carlos*, *Campus Sorocaba*) |
 | `Datas de publicação/defesa` | `year` / `defenseDate` | `$year` (4 dígitos) e `$defenseDate` (`DateTimeImmutable`) |
@@ -63,14 +63,22 @@ flowchart TD
 
     D --> H{Checar Desduplicação}
     H -- Já possui Handle ou UUID --> I[Pular / Atualizar Metadados]
-    H -- Match com Orientação do Lattes Aluno + Tipo + Ano/Título --> J[Enriquecer Orientação com Link Handle e Resumo]
+    H -- Match com Orientação do Lattes Tipo + Aluno ou Título --> J[Enriquecer Orientação com Link Handle e Resumo]
     H -- Não encontrada no Lattes --> K[Criar Nova Orientação: source = repository_ufscar]
 ```
 
 ### Regras de Idempotência:
 1. **Verificação por Handle / UUID**: Se o registro já possui o mesmo código Handle ou UUID, não duplica e marca como `skipped` (pulado).
-2. **Cruzamento com Lattes**: Se o docente já tem uma orientação com o mesmo tipo (Mestrado/Doutorado) e mesmo nome de aluno normalizado (ou título idêntico), o sistema atualiza a orientação existente adicionando `handleUrl`, `handle`, `repositoryUuid`, `abstractText`, `courseName`, `defenseDate`, etc., sem criar um novo registro.
-3. **Novas Orientações**: Quando não há correspondência com o Lattes, cria-se uma nova `Orientation` com `nature = 'CONCLUIDA'`, garantindo que a produção oficial do repositório seja computada nas métricas do docente e do centro.
+2. **Cruzamento com Lattes**: entre as orientações do docente com o mesmo tipo (Mestrado/Doutorado), vale a correspondência mais forte:
+   - aluno com o mesmo nome normalizado ou título idêntico;
+   - um título contido no outro (títulos com mais de 15 caracteres);
+   - um nome contido no outro, só com palavras inteiras e pelo menos dois nomes no menor ("Maria Silva" casa com "Maria Silva Santos"; "Ana" não casa com "Juliana").
+
+   Uma orientação que já tem outro Handle ou UUID do Repositório é de outra obra e nunca é usada. As linhas que só casam por nome contido no outro são processadas no fim do arquivo, depois das correspondências exatas: assim a tese de "Maria Silva Santos" não toma o registro do Lattes que é da dissertação de "Maria Silva".
+
+   A orientação encontrada recebe `handleUrl`, `handle`, `repositoryUuid`, `abstractText`, `defenseDate`, `centerName`, `campus` e o programa em `repositoryProgramName`, sem criar um novo registro.
+3. **Dados do Lattes intactos**: a situação (`nature`) e o curso (`courseName`) que vieram do Lattes não são alterados (regra do `AGENTS.md`). A orientação com Handle ou UUID do Repositório conta como concluída na exibição e nos indicadores (`Orientation::isConcluded()`), e o curso exibido é o do Lattes ou, sem ele, o programa do Repositório (`getDisplayCourseName()`).
+4. **Novas Orientações**: Quando não há correspondência com o Lattes, cria-se uma nova `Orientation` com `nature = 'CONCLUIDA'`, garantindo que a produção oficial do repositório seja computada nas métricas do docente e do centro.
 
 ---
 
@@ -124,9 +132,9 @@ APP_ENV=test ./vendor/bin/phpunit --testdox
    # ou: php -S localhost:8000 -t public
    ```
 2. Acesse a página de qualquer docente com pós-graduação, por exemplo:
-   - `/docente/geraldo-luciano-andrello`
-   - `/docente/ana-claudia-niedhardt-capella`
-   - `/docente/jacqueline-sinhoretto`
+   - `/professor/geraldo-luciano-andrello`
+   - `/professor/ana-claudia-niedhardt-capella`
+   - `/professor/jacqueline-sinhoretto`
 3. Navegue até a aba **Orientações**:
    - Cada tese/dissertação enriquecida exibirá o botão verde **"Repositório UFSCar"**.
    - Clicar no botão abrirá diretamente a página oficial do trabalho com o arquivo PDF para download no Repositório da UFSCar.

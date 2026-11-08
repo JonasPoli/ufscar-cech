@@ -49,7 +49,7 @@ Catálogo de tudo o que roda no terminal. Em produção, use `/RunCloud/Packages
 | `app:journals:report` | Relatório só de leitura: famílias, áreas, bases, variantes e fila. |  |  |
 | `app:index:journals` | Liga os artigos às revistas e grava Qualis e bases. Limpa o vínculo de item que não é artigo. |  |  |
 | `app:import-journal-database-list` | Importa a lista de uma base (CSV ou XLSX) e liga as revistas a ela. | `--base` |  |
-| `app:export-journals-thesaurus` | Exporta revistas, Qualis, bases e tesauro em CSV ou JSON, por família. | `--format`, `--output`, `--qualis`, `--base`, `--thesaurus`, `--key` |  |
+| `app:export-journals-thesaurus` | Exporta revistas, Qualis, bases e tesauro em CSV ou JSON. O modo catálogo (padrão) sai uma linha por periódico; só o modo tesauro (`--thesaurus`) sai por família. | `--format`, `--output`, `--qualis`, `--base`, `--thesaurus`, `--key` |  |
 
 ## Revistas: passos do pipeline
 
@@ -86,7 +86,7 @@ Catálogo de tudo o que roda no terminal. Em produção, use `/RunCloud/Packages
 |---|---|---|---|
 | `app:database:dump` | Gera um backup do banco em `var/backups`. | `--no-zip`, `--filename` |  |
 | `app:database:restore` | Restaura um backup. **Substitui o banco.** | `--latest`, `--force` |  |
-| `app:cache:clear` | Limpa o cache das páginas públicas. | `--all` |  |
-| `app:admin-user` | Cria um usuário administrador. | `--option1` |  |
+| `app:cache:clear` | Limpa o cache das páginas públicas e o da pesquisa (panorama, rede). Com `--all`, esvazia também o `cache.app`: índices dos tesauros, Pesquisa Temática e catálogos. O cache compilado do Symfony é limpo com `cache:clear`. | `--all` |  |
+| `app:admin-user` | Cria um usuário administrador. Se o usuário já existe, redefine a senha e garante `ROLE_ADMIN`. Argumentos: `<usuario> <senha>`. |  |  |
 | `app:geography:seed-historical-countries` | Carrega países históricos, com anos de fundação e extinção. |  |  |
 | `app:generate-index` | Ferramenta de desenvolvimento: gera ou altera o `index.html.twig` de uma entidade. |  |  |

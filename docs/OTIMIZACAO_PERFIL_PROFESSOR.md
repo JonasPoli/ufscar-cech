@@ -27,7 +27,7 @@ Reorganização de todas as 10 seções em **4 Abas Temáticas Principais**, com
 │                                   PERFIL DO DOCENTE / PESQUISADOR                               │
 ├─────────────────────────────────────────────────────────────────────────────────────────────────┤
 │ [Foto] Nome do Docente, Departamento, Nomes em Citação, Resumo Lattes, Links & Botões de Ação   │
-│ KPIs Rápidos: [Artigos Periódicos] [Livros/Capítulos] [Orientações] [Projetos] [Total Acervo]   │
+│ KPIs Rápidos: [Artigos] [Livros/Cap.] [Congressos] [Técnica] [Orient. Concl.] [Acervo]  │
 ├───────────────────────┬───────────────────────┬─────────────────────────┬───────────────────────┤
 │     1. PRODUÇÃO       │    2. ORIENTAÇÕES &   │   3. PROJETOS, BANCAS   │     4. MÉTRICAS,      │
 │  CIENTÍFICA & TÉCNICA │       FORMAÇÃO        │        & ATUAÇÃO        │     REDES & BASES     │
@@ -43,9 +43,9 @@ Reorganização de todas as 10 seções em **4 Abas Temáticas Principais**, com
 ## 3. 🧩 Detalhamento dos Componentes e Abas
 
 ### 🏷️ Cabeçalho & KPIs (Fixo no Topo)
-* **Identificação**: Foto/Avatar, Nome Completo, Departamento, Resumo Biográfico Lattes, Nomes em Citação e Links (Lattes, ORCID, Google Scholar, E-mail).
-* **Ações**: Botões de exportação (BibTeX, JSON, CSV) e link para Repositório UFSCar.
-* **Barra de KPIs**: 5 cards compactos e responsivos.
+* **Identificação**: Foto/Avatar, Nome Completo, Departamento, Resumo Biográfico Lattes, Nomes em Citação e Links (Lattes, ORCID, E-mail).
+* **Ações**: Botões de exportação (BibTeX, JSON, CSV).
+* **Barra de KPIs**: 6 cards compactos e responsivos: Artigos Periódicos, Livros / Capítulos, Em Congressos, Produção Técnica, Orientações Concluídas e Total Acervo. Não há card de projetos.
 * **Navegação de Abas Touch-Friendly**: Pills horizontais com contador de itens e suporte a URL Hash (`#productions`, `#orientations`, `#activities`, `#analytics`).
 
 ---
@@ -100,8 +100,8 @@ Reorganização de todas as 10 seções em **4 Abas Temáticas Principais**, com
    - Rota: `#[Route('/professor/{slugOrId}/fragment/{tab}', name: 'app_pub_professor_fragment')]`
    - Resposta com cabeçalhos `Cache-Control: public, max-age=3600`.
 2. **Carga Inicial Leve**:
-   - O request inicial renderiza o cabeçalho e a Aba 1 (`productions`).
-   - As demais abas são carregadas em segundo plano quando o usuário clica nelas.
+   - O request inicial renderiza o cabeçalho e as abas de produção, orientações e atividades (`productions`, `orientations`, `activities`), para a busca unificada.
+   - Só a aba de métricas (`analytics`) carrega sob demanda, quando o usuário clica nela.
 3. **Cache no DOM do Cliente**:
    - Abas baixadas são mantidas em memória (`Set` de abas carregadas), garantindo alternância em **0ms**.
 4. **Sincronização de Estado via URL**:

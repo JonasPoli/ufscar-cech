@@ -79,6 +79,7 @@ O serviço [`ThematicTermIndexService`](file:///Users/jonaspoli/work/html/ufscar
 ### 3.1 Etapas de Processamento
 1. **Extração de Termos Explícitos**:
    - Varrimento de todas as palavras-chave de `ProductionItem` e `Orientation`.
+   - Os nomes dos projetos de pesquisa (`research_projects.name`) também são minerados, com peso 2.
    - Limpeza de pontuação periférica, aspas e quebras de linha.
 2. **Mineração de Sintagmas e Bigramas a partir de Títulos**:
    - Identificação de termos compostos de relevância científica (ex: *"Gestão Pública"*, *"Inteligência Artificial"*, *"Evasão Escolar"*).
@@ -89,21 +90,20 @@ O serviço [`ThematicTermIndexService`](file:///Users/jonaspoli/work/html/ufscar
    - Criação de `slug` único para URLs amigáveis (ex.: `public-research-institutes`, `evasao-escolar`).
 4. **Ponderação e Associação com Pesquisadores**:
    - Para cada termo e cada docente, contabiliza o número de ocorrências (`occurrences`).
-   - Seleciona até 3 títulos de produções/orientações mais representativas (`sample_titles`) para visualização rápida no card do docente.
+   - Grava 1 título de exemplo por docente e termo (`sample_titles`): o primeiro encontrado, para visualização rápida no card do docente.
    - Atualiza `total_occurrences` e `researcher_count` em `thematic_terms`.
 
 ### 3.2 Execução Via Console
 Para reindexar a base temáticas após importações do Lattes ou do Repositório:
 ```bash
 # Execução padrão em desenvolvimento
-php bin/console app:index:thematic-terms
-
-# Com limite mínimo de ocorrências (ex: termos que aparecem pelo menos 2 vezes)
-php bin/console app:index:thematic-terms --min-occurrences=2
+php bin/console app:index:topics
 
 # Execução no servidor de produção (RunCloud)
-/RunCloud/Packages/php84rc/bin/php bin/console app:index:thematic-terms --env=prod
+/RunCloud/Packages/php84rc/bin/php bin/console app:index:topics --env=prod
 ```
+
+O comando não tem opções. O corte é fixo: termos com menos de 2 ocorrências no total são descartados. Os aliases `app:topics:index` e `app:index:thematic-terms` continuam valendo.
 
 A reconstrução não esvazia as tabelas que a busca está usando. Ela grava `thematic_terms_new` e `thematic_term_researchers_new` (criadas com `CREATE TABLE ... LIKE`, sem migration) e só no fim as coloca no lugar das atuais com um `RENAME TABLE` único, que é atômico, recriando as chaves estrangeiras. Se a indexação falhar no meio, a busca temática continua com o índice anterior, e as sobras de uma execução interrompida são apagadas na execução seguinte.
 
@@ -114,14 +114,14 @@ A reconstrução não esvazia as tabelas que a busca está usando. Ela grava `th
 A rota [`/temas`](https://cech.wab.com.br/temas) (controlada por `ThematicSearchController`) provê uma experiência de exploração moderna:
 
 1. **Nuvem de Tags Semântica**:
-   - Os 50 termos mais frequentes do centro são renderizados com pesos cromáticos calculados dinamicamente:
+   - Os 24 termos mais frequentes do centro (só os que têm 2 ou mais ocorrências) são renderizados com pesos cromáticos calculados dinamicamente:
      - `weight >= 75`: Destaque máximo em roxo/índigo (`bg-indigo-600 text-white font-bold`).
      - `weight >= 45`: Destaque forte em azul celeste (`bg-sky-500 text-white font-semibold`).
      - `weight >= 20`: Destaque intermediário (`bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200`).
      - `weight < 20`: Termos complementares em cinza neutro.
 2. **Busca Instantânea com Autocomplete**:
-   - O campo de pesquisa conta com *debounce* de 250ms conectado ao endpoint `/api/temas/autocomplete?q=termo`.
-   - Busca simultaneamente no termo original e na versão normalizada.
+   - O campo de pesquisa conta com *debounce* de 150ms conectado ao endpoint `/api/temas/autocomplete?q=termo`.
+   - Busca só em `normalized_term` (minúsculas, sem acentos), por prefixo e por trecho contido.
 3. **Lista de Docentes e Exemplos de Trabalhos**:
    - Ao selecionar um tema, o grid carrega os 10 primeiros docentes mais produtivos naquele tópico.
    - Cada card exibe:
@@ -130,7 +130,7 @@ A rota [`/temas`](https://cech.wab.com.br/temas) (controlada por `ThematicSearch
      - Amostra com citação de uma produção ou orientação representativa.
      - Botão assíncrono *"Carregar mais docentes"* para paginação de 10 em 10 via `/api/temas/docentes`.
 4. **Distribuição Departamental**:
-   - Painel lateral que ilustra o ranking dos departamentos do CECH que mais produzem no tema selecionado.
+   - Uma linha com até 4 departamentos do CECH que mais produzem no tema selecionado.
 5. **Gráfico de Linhas da Evolução Temporal (Linha do Tempo Anual)**:
    - Apresenta a evolução cronológica contínua de trabalhos que possuem este tema, **desde o primeiro ano registrado até o ano atual** (preenchendo lacunas com 0).
    - Indicadores-chave rápidos (badges):

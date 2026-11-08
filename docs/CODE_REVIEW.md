@@ -103,10 +103,11 @@ para instalações que já a tenham), aplicada em `cech` e `cech_test`.
 `app:curriculum:normalize` e `app:index:topics` (alias `app:index:thematic-terms`). Corrigido em
 [`VISAO_GERAL_DO_SISTEMA.md`](VISAO_GERAL_DO_SISTEMA.md); o `README.md` ainda precisa de ajuste.
 
-### 2.4 ⏳ Baixo — Cache público não é invalidado após reindexação
+### 2.4 ⏳ Baixo — Cache público não é invalidado após reindexação (resolvido em parte)
 
-A restauração de backup limpa `var/cache/public_pages`, mas importar currículos ou reindexar não limpa.
-Com TTL de 30 dias, dados novos podem demorar a aparecer no portal. Sugestão: chamar
+A restauração de backup limpa `var/cache/public_pages`. A importação de currículo pelo admin e pelo navegador também limpa
+(`CurriculumPostImportService`). Continua sem limpar o `app:import:lattes` pelo terminal; quem limpa é o
+`bin/import-curriculos.sh`, no fim. Com TTL de 30 dias, dados novos podem demorar a aparecer no portal. Sugestão: chamar
 `PageCacheService::clearCache()` ao final dos comandos de importação/indexação.
 
 ---

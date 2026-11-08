@@ -12,7 +12,7 @@ A **Pesquisa Temática** introduz uma camada ontológica e semântica de descobe
 1. Consolidar uma superbase unificada de termos, conceitos e sintagmas mais recorrentes nos títulos e palavras-chave informadas pelos pesquisadores.
 2. Cruzar as fontes de dados oficiais:
    - **Currículo Lattes**: Títulos de produções bibliográficas, técnicas, artísticas e palavras-chave declaradas.
-   - **Repositório Institucional da UFSCar (TeD-UFSCar)**: Títulos, resumos e assuntos/palavras-chave de teses e dissertações orientadas.
+   - **Repositório Institucional da UFSCar (TeD-UFSCar)**: Títulos, títulos alternativos e palavras-chave de teses e dissertações orientadas. O índice não lê os resumos.
 3. Quantificar o volume de ocorrências de cada termo no centro e o número de docentes que pesquisam na temática.
 4. Fornecer uma interface visual de exploração com busca instantânea (autocomplete debounce), nuvem de tags ponderada por cores e detalhamento de departamento.
 5. Permitir a transição direta para o perfil do docente, carregando o termo pesquisado e aplicando o filtro de produções automaticamente.
@@ -46,7 +46,7 @@ Tabela de junção ponderada entre o termo e cada docente.
 | `term_id` | INT (FK) | Chave estrangeira para `thematic_terms` |
 | `researcher_id` | INT (FK) | Chave estrangeira para `researchers` |
 | `occurrences` | INT | Quantidade de trabalhos/orientações do pesquisador vinculadas a este termo |
-| `sample_titles` | JSON | Amostra (até 3 títulos) de produções representativas do docente no tema |
+| `sample_titles` | JSON | Amostra de 1 título (o primeiro encontrado) de produção do docente no tema |
 
 ---
 
@@ -60,16 +60,17 @@ O serviço [`ThematicTermIndexService`](file:///Users/jonaspoli/work/html/ufscar
    - Cruzamento com as palavras-chave e assuntos do Repositório Institucional TeD-UFSCar.
    - Filtragem rigorosa através de stop-words acadêmicas e do português (termos genéricos como "estudo", "análise", "brasil", preposições e artigos são ignorados).
 2. **Normalização e Deduplicação**:
-   - Tratamento de singular/plural e padronização semântica.
+   - Normalização de caixa e acento (`normalized_term`). Não há tratamento de singular/plural.
    - Associação de docentes e cálculo da matriz de frequência (`occurrences`).
 3. **Execução via Console CLI**:
    ```bash
    # Rodar indexação temátia localmente:
-   php bin/console app:index-thematic-terms
+   php bin/console app:index:topics
 
    # Execução no servidor de produção:
-   /RunCloud/Packages/php84rc/bin/php bin/console app:index-thematic-terms --env=prod
+   /RunCloud/Packages/php84rc/bin/php bin/console app:index:topics --env=prod
    ```
+   Aliases: `app:topics:index` e `app:index:thematic-terms`.
 
 ---
 
@@ -80,11 +81,11 @@ Gerenciado pelo [`ThematicSearchController`](file:///Users/jonaspoli/work/html/u
 ### 4.1 Rota Pública: `/temas` (`app_pub_thematic_search`)
 - **Template**: [`templates/pub/thematic_search/index.html.twig`](file:///Users/jonaspoli/work/html/ufscar-cech/templates/pub/thematic_search/index.html.twig).
 - **Parâmetro de Consulta**: `?t={slug}` para carregar um tema diretamente com permalink permanente.
-- **Estatísticas no Header**: Contadores em tempo real de temas indexados, docentes analisados e produções/teses cobertas.
+- **Estatísticas no Header**: Só o total de temas indexados vem do banco. "415 docentes analisados" e "100.000+ produções e teses" são texto fixo no template.
 - **Design Adaptativo**: Cartão em `glass-card` com adaptação visual completa ao **Modo Claro** e **Modo Escuro**, sem caixas escuras fixas.
 - **Eyebrow sem Blurb**: Identificador *"Descoberta Acadêmica • CECH UFSCar"* estilizado de forma elegante com `<sl-icon name="stars">` sem balão/pílula de fundo.
 
-### 4.2 API Autocomplete: `/api/temas/autocomplete` (`app_api_thematic_autocomplete`)
+### 4.2 API Autocomplete: `/api/temas/autocomplete` (`app_pub_thematic_search_autocomplete`)
 - **Entrada**: `GET /api/temas/autocomplete?q={termo}` (mínimo de 3 caracteres).
 - **Resposta JSON**:
   ```json
@@ -108,7 +109,7 @@ Gerenciado pelo [`ThematicSearchController`](file:///Users/jonaspoli/work/html/u
   - `weight >= 20`: Destaque intermediário (`bg-sky-100 dark:bg-sky-950/70 text-sky-900 dark:text-sky-200`).
   - `weight < 20`: Termos suaves (`bg-slate-100 dark:bg-slate-900/60`).
 
-### 4.3 API de Docentes: `/api/temas/docentes` (`app_api_thematic_researchers`)
+### 4.3 API de Docentes: `/api/temas/docentes` (`app_pub_thematic_search_researchers`)
 - **Entrada**: `GET /api/temas/docentes?term_id={id}&offset={offset}&limit=10`
 - **Paginação Dinâmica**: Carrega 10 docentes por vez.
 - **Botão "Mais"**: Permite carregar blocos subsequentes de 10 em 10 de forma assíncrona.

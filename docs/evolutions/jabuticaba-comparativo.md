@@ -493,6 +493,10 @@ O caminho mais curto foi um núcleo único, reaproveitado por todas as telas, em
 | `/temas` redirecionando para o Explorar | `/temas` continua e as duas páginas se ligam | A página antiga tem a análise de Qualis e periódicos do tema, que o Explorar não repete |
 | Limite de requisições na API (N12) | Só cache HTTP (`max-age=3600`) e cache interno | Não há `symfony/rate-limiter` no projeto; fica como próximo passo |
 | Filtros valendo para as 18 figuras (N5) | Os filtros valem para o panorama do topo | As figuras continuam mostrando o CECH inteiro, como antes |
+| Rotas `/api/coautorias/grafo` e `/api/coautorias/par/{a}/{b}` (N3) | `/api/v1/grafo` e `/api/v1/grafo/par?a&b` (`ApiV1Controller`) | O grafo ficou na API pública versionada, junto das outras rotas |
+| Matriz e exportação CSV/VOSviewer na página de coautorias (N3) | Ficaram nos Indicadores (Figura 16), com link a partir de `/coautorias` | Reaproveita a aba de rede que já existia |
+| Listas de departamento só com vigentes, com opção de ver os anteriores (N9) | `/departamento/{código}` lista vigentes e encerrados, sem opção de alternar; a lista `/departamentos` conta só os vigentes | Não houve filtro de vínculo nessas telas |
+| Capa com três números (N10) | A capa mostra seis números (`MainController::home`); os três números do plano ficam na capa de `/busca` | A capa já tinha os indicadores de produção; a busca ficou com o resumo enxuto |
 
 Acréscimos que não estavam no plano: panorama e rede na página de cada departamento; o modo "Teses e orientações"
 continua na busca; e, na busca de especialistas, os docentes cujo nome contém o termo aparecem acima dos resultados.

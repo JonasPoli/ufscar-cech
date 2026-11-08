@@ -141,7 +141,7 @@ Ao montar o mapa do XML, cruzamos os atributos que o parser lê com os 414 arqui
 
 **Peso por fonte** (`JournalAreaScorer`): WoS, Scopus e categorias WoS do SciELO valem 1,0; descritores do SciELO 0,9; DOAJ, Latindex e área antiga 0,8; área do SciELO e regras de título 0,5. OpenAlex depende de quantos artigos a revista tem, porque revistas muito pequenas geravam ruído (a *INCID*, de documentação e ciência da informação, aparecia como "Information Systems"). A IA vale 0,9 vezes a confiança dela.
 
-**Decisão.** A área com pelo menos 34% da soma vira a principal. Quando nenhuma chega lá e várias têm pelo menos 15%, a revista fica como Interdisciplinar. Confiança alta exige 50% e soma de pesos a partir de 1,0.
+**Decisão.** A área com pelo menos 34% da soma vira a principal. Quando nenhuma chega lá e várias têm pelo menos 15%, a revista fica como Interdisciplinar. Confiança alta exige 50% de participação, soma de pesos a partir de 1,0 e duas ou mais fontes, ou uma fonte forte (WoS, Scopus, categorias WoS do SciELO ou área antiga).
 
 **IA.** Entrou depois das regras, em duas passadas, rodando fora do servidor, em lotes (`app:journals:ai:export`, `app:journals:ai:import`):
 

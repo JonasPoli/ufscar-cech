@@ -101,8 +101,8 @@ graph TD
 - **Técnica**: Utiliza `DOMDocument` e `DOMXPath` para varrer tabelas e classes CSS clássicas da plataforma Lattes.
 
 #### 1.3 Ingestão Planilha Docentes CECH (`ExcelCechImporterService` & `ImportExcelCechCommand`)
-- **Comando CLI**: `php bin/console app:import:excel-cech [caminho_planilha.xlsx]`
-- **Finalidade**: Cruzar a relação oficial de docentes com departamento, código departamental, e-mail institucional e status de admissão/afastamento.
+- **Comando CLI**: `php bin/console app:import:excel [--info-file=caminho_planilha.xlsx]`
+- **Finalidade**: Complementar os docentes com código e nome do departamento, ORCID e anos de admissão e saída. Lê as colunas A (ID Lattes), B (departamento), C (nome), G (ORCID), Y (admissão) e Z (saída). Não lê e-mail. Se o ID Lattes não existe, cria o docente.
 
 #### 1.4 Ingestão de Teses e Dissertações do Repositório Institucional (`RepositoryImportService` & `ImportRepositoryCommand`)
 - **Comando CLI**: `php bin/console app:import:repository` (alias `app:import:ted`)
@@ -129,10 +129,9 @@ graph TD
   - `author_external_identifiers`: Identificadores externos (ORCID, Lattes ID, Scopus Author ID, ResearcherID).
 - **Processamento de Resolução**:
   1. Ao importar ou normalizar um currículo, o nome do docente e todas as suas citações bibliográficas são registrados em `author_identities` e `author_name_variants`.
-  2. O `AuthorResolverService` constrói um índice otimizado em memória e em cache Symfony (`thesaurus_author_index_v2`).
+  2. O `AuthorResolverService` constrói um índice otimizado em memória e em cache Symfony (`thesaurus_author_cech_index_v3`).
   3. Durante a análise das produções, cada coautor (`ProductionAuthor`) tem seu nome normalizado (`StringNormalizer::normalizeString`) e comparado contra o índice.
   4. Caso o coautor corresponda a um docente cadastrado no CECH, a coluna `matched_researcher_id` e o `author_identity_id` são preenchidos, permitindo calcular coautorias e colaborações institucionais.
-  5. Se o coautor pertencer ao próprio currículo do pesquisador em questão, a flag `is_self` é definida como `true`.
 
 #### 2.2 Tesauro de Periódicos e Qualis CAPES (`JournalResolverService` & `QualisJournal`)
 - **Tabelas do Banco de Dados**:
@@ -156,7 +155,7 @@ Mais detalhes em [THESAURUS.md](THESAURUS.md) e em [evolutions/periodicos-como-d
   - `institutions`: Instituição canônica (ex: `Universidade Federal de São Carlos`, sigla `UFSCar`, país, estado).
   - `institution_variations`: Variações textuais e siglas registradas no Lattes (ex: `U. F. São Carlos`, `Univ Federal de Sao Carlos`, `UFSCAR`).
 - **Processamento de Resolução**:
-  - Mapeia as instituições de formação (`Education`), atuação profissional (`ProfessionalExperience`) e orientação (`Orientation`) para a entidade canônica.
+  - Mapeia as instituições de formação (`Education`), atuação profissional (`ProfessionalExperience`) para a entidade canônica. A normalização não resolve instituições de orientações.
 
 #### 2.4 Tesauro Geográfico (`CountryResolverService`, `Country`, `State`, `City`)
 - **Tabelas do Banco de Dados**:
@@ -168,12 +167,12 @@ Mais detalhes em [THESAURUS.md](THESAURUS.md) e em [evolutions/periodicos-como-d
 
 ### Processo 3: Indexação e Normalização (`CurriculumNormalizationService`)
 
-- **Comando CLI**: `php bin/console app:curriculums:normalize [--id=ID_LATTES] [--all]`
+- **Comando CLI**: `php bin/console app:curriculum:normalize [--dept=DEPARTAMENTO] [--only-pending] [--clear-cache]`
 - **Regra Central**:
   - O sistema itera sobre todos os pesquisadores e suas respectivas produções científicas.
   - Para cada produção:
     1. Resolve o periódico e atribui o melhor estrato Qualis (`qualis_journal_id`, `qualis`).
-    2. Resolve a lista de coautores (`ProductionAuthor`), associando `author_identity_id`, `matched_researcher_id` e `is_self`.
+    2. Resolve a lista de coautores (`ProductionAuthor`), associando `author_identity_id` e `matched_researcher_id`.
     3. Resolve instituições de formações e atuações profissionais.
     4. Define `is_indexed = 1` e atualiza carimbo de data da indexação.
 
