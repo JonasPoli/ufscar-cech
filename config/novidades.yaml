@@ -91,6 +91,8 @@ entradas:
           - {hash: "b197a5e", texto: "Página de novidades com o histórico de manutenções, dicas nas páginas que mudaram e selo \"Novo\" no menu."}
           - {hash: "e370de1", texto: "Cabeçalho em duas linhas: menu em cima e busca logo abaixo."}
           - {hash: "2a67378", texto: "Visual novo das páginas novas: capa nas cores do CECH, cartões coloridos, fotos dos docentes e lista de pares que acompanha o docente destacado."}
+          - {hash: "8ca858b", texto: "Organização interna: ferramenta para planejar cada mudança do portal por escrito antes de programá-la."}
+          - {hash: "f9d8267", texto: "Documentação: descrição de como cada parte do portal funciona hoje, conferida no código."}
 
     - data: 2026-10-31
       titulo: Periódicos, Qualis e bases internacionais
