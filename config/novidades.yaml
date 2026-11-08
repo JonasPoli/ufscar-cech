@@ -93,6 +93,8 @@ entradas:
           - {hash: "2a67378", texto: "Visual novo das páginas novas: capa nas cores do CECH, cartões coloridos, fotos dos docentes e lista de pares que acompanha o docente destacado."}
           - {hash: "8ca858b", texto: "Organização interna: ferramenta para planejar cada mudança do portal por escrito antes de programá-la."}
           - {hash: "f9d8267", texto: "Documentação: descrição de como cada parte do portal funciona hoje, conferida no código."}
+          - {hash: "fdaddf1", texto: "Correções: títulos com acentos aparecem certos na busca e no Explorar, a busca de teses aceita todos os filtros, \"Ver todas\" da página inicial lista as publicações recentes, a página do departamento mostra todos os docentes e o total de publicações de cada parceria passa a ser o real."}
+          - {hash: "561adad", texto: "Documentação: guias atualizados para descrever o que o portal faz hoje."}
 
     - data: 2026-10-31
       titulo: Periódicos, Qualis e bases internacionais
