@@ -1,0 +1,42 @@
+schema: spec-driven
+
+context: |
+  Language: pt-BR
+  All artifacts must be written in pt-BR.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+
+  Projeto: portal do CECH/UFSCar (pesquisadores, produção acadêmica importada do Lattes,
+  palavras-chave, coautoria, repositório institucional).
+  Stack: PHP 8.3 local / 8.4 em produção, Symfony 7.2, Doctrine ORM 3, Twig,
+  Tailwind (symfonycasts/tailwind-bundle), Stimulus, AssetMapper, PHPUnit 9.
+  Estrutura: src/ (namespace App), templates/ (Twig em kebab-case), assets/, migrations/, tests/
+  espelhando src/. Documentação existente em docs/ (ler antes de propor mudanças na área).
+  Regras fixas (detalhes em AGENTS.md):
+  - Dados brutos vindos do Lattes nunca são alterados; normalização e enriquecimento vão
+    em colunas novas.
+  - Mudança de esquema só por migration (make:migration / doctrine:migrations:diff);
+    nunca doctrine:schema:update.
+  - Testes: APP_ENV=test ./vendor/bin/phpunit --testdox antes de concluir.
+  - Produção no RunCloud; deploy segue docs/DEPLOY_E_PRODUCAO.md.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
