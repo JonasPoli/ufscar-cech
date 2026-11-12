@@ -56,15 +56,30 @@ class AdminDatabaseBackupControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $this->assertStringContainsString('attachment;', $this->client->getResponse()->headers->get('Content-Disposition'));
 
-        // Test fallback from /admin/database/undefined
-        $this->client->request('GET', '/admin/database/undefined');
+        // Download pelo nome do arquivo
+        $backupService = static::getContainer()->get(\App\Service\Backup\DatabaseBackupService::class);
+        $latest = $backupService->listBackups()[0]['filename'];
+        $this->client->request('GET', '/admin/database/backup/download/' . $latest);
         $this->assertResponseIsSuccessful();
-        $this->assertStringContainsString('attachment;', $this->client->getResponse()->headers->get('Content-Disposition'));
+        $this->assertStringContainsString($latest, (string)$this->client->getResponse()->headers->get('Content-Disposition'));
+
+        // Arquivo inexistente responde 404, sem trocar pelo backup mais recente
+        $this->client->request('GET', '/admin/database/backup/download/inexistente_' . uniqid() . '.zip');
+        $this->assertResponseStatusCodeSame(404);
+        $this->client->request('GET', '/admin/database/backup/download/undefined');
+        $this->assertResponseStatusCodeSame(404);
+
+        // A rota genérica /admin/database/{filename} não existe mais
+        $this->client->request('GET', '/admin/database/undefined');
+        $this->assertResponseStatusCodeSame(404);
 
         // Test /admin/database root
         $this->client->request('GET', '/admin/database');
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Backup & Superdump do Sistema');
+
+        // Cleanup: o dump gerado por este teste
+        $backupService->deleteBackup($latest);
     }
 
     public function testAdminDatabaseBackupRestoreExisting(): void

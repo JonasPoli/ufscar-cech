@@ -135,32 +135,21 @@ class AdminDatabaseBackupController extends AbstractController
         return $this->download($backups[0]['filename']);
     }
 
+    /**
+     * Baixa o arquivo pedido pelo nome. Arquivo inexistente (ou fora da pasta de backups) responde 404: nunca troca o
+     * pedido pelo backup mais recente.
+     */
     #[Route('/admin/database/backup/download/{filename}', name: 'app_admin_database_backup_download', requirements: ['filename' => '.+'], methods: ['GET'])]
     #[Route('/admin/database/backup/{filename}', name: 'app_admin_database_backup_file', requirements: ['filename' => '.+\.(zip|sql|gz)'], methods: ['GET'])]
-    #[Route('/admin/database/{filename}', name: 'app_admin_database_catchall', requirements: ['filename' => '.+'], methods: ['GET'])]
     public function download(string $filename): Response
     {
-        if ($filename === 'undefined' || $filename === 'backup' || trim($filename) === '') {
-            return $this->downloadLatest();
-        }
-
         $file = $this->backupService->getBackupFile($filename);
 
         if (!$file) {
-            $backups = $this->backupService->listBackups();
-            if (!empty($backups)) {
-                $this->addFlash('warning', "Arquivo '{$filename}' não encontrado. Baixando o backup mais recente.");
-                return $this->download($backups[0]['filename']);
-            }
-
-            $this->addFlash('error', 'Arquivo de backup não encontrado ou inválido.');
-            return $this->redirectToRoute('app_admin_database_backup_index');
+            throw $this->createNotFoundException("Arquivo de backup '{$filename}' não encontrado.");
         }
 
-        if (ob_get_level() > 0) {
-            ob_end_clean();
-        }
-
+        // Sem ob_end_clean() aqui: o controller não abriu buffer nenhum, e o Response::send() já esvazia os buffers
         $response = new BinaryFileResponse($file->getRealPath());
         $response->setContentDisposition(
             ResponseHeaderBag::DISPOSITION_ATTACHMENT,

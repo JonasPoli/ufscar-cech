@@ -12,6 +12,9 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_USERNAME', fields: ['username'])]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    /** Tamanho mínimo de uma senha nova (painel de usuários e app:admin-user) */
+    public const MIN_PASSWORD_LENGTH = 12;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]

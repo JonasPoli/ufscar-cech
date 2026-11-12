@@ -68,7 +68,20 @@ class AdminUserCommand extends Command
         }
 
         if (!$pass) {
-            $pass = $io->ask('Por favor, informe a senha (password)');
+            $pass = $io->ask('Por favor, informe a senha (password)', null, function (?string $value): string {
+                if ($this->passwordTooShort($value)) {
+                    throw new \RuntimeException($this->passwordTooShortMessage());
+                }
+
+                return (string) $value;
+            });
+        }
+
+        // Senha informada como argumento (ou modo não interativo): a mesma regra do painel
+        if ($this->passwordTooShort($pass)) {
+            $io->error($this->passwordTooShortMessage());
+
+            return Command::FAILURE;
         }
 
         // Criar ou atualizar o usuário
@@ -94,5 +107,15 @@ class AdminUserCommand extends Command
         $io->success('Seu Admin foi criado com sucesso');
 
         return Command::SUCCESS;
+    }
+
+    private function passwordTooShort(?string $password): bool
+    {
+        return mb_strlen((string) $password) < User::MIN_PASSWORD_LENGTH;
+    }
+
+    private function passwordTooShortMessage(): string
+    {
+        return sprintf('A senha precisa ter pelo menos %d caracteres.', User::MIN_PASSWORD_LENGTH);
     }
 }

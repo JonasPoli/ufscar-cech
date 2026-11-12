@@ -29,7 +29,7 @@ class CorsListener
             $origin = $request->headers->get('Origin', '*');
             $response = new Response('', Response::HTTP_NO_CONTENT, [
                 'Access-Control-Allow-Origin' => $origin,
-                'Access-Control-Allow-Methods' => 'POST, GET, OPTIONS, PUT, DELETE',
+                'Access-Control-Allow-Methods' => 'GET, POST, OPTIONS',
                 'Access-Control-Allow-Headers' => $request->headers->get('Access-Control-Request-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept'),
                 'Access-Control-Max-Age' => '3600',
                 'Vary' => 'Origin',
@@ -52,8 +52,14 @@ class CorsListener
         $origin = $request->headers->get('Origin', '*');
 
         $response->headers->set('Access-Control-Allow-Origin', $origin);
-        $response->headers->set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, PUT, DELETE');
+        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
         $response->headers->set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Origin, Accept');
         $response->headers->set('Vary', 'Origin');
+
+        // Consultas de temas (autocompletar, evolução, docentes): o navegador reaproveita a resposta por uma hora
+        if (str_starts_with($path, '/api/temas/') && $request->isMethod('GET') && $response->getStatusCode() === 200) {
+            $response->setPublic();
+            $response->setMaxAge(3600);
+        }
     }
 }

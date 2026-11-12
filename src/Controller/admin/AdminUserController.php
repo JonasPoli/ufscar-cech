@@ -52,6 +52,8 @@ class AdminUserController extends AbstractController
 
             if ($username !== '' && $this->usernameTaken($username, null)) {
                 $this->addFlash('error', "Já existe um usuário \"{$username}\". Escolha outro nome.");
+            } elseif ($username !== '' && $this->passwordTooShort($password)) {
+                $this->addFlash('error', $this->passwordTooShortMessage());
             } elseif ($username !== '' && $password !== '') {
                 $user->setUsername($username);
                 $user->setRoles([$role]);
@@ -86,6 +88,9 @@ class AdminUserController extends AbstractController
 
             if ($username !== '' && $this->usernameTaken($username, $user->getId())) {
                 $this->addFlash('error', "Já existe outro usuário \"{$username}\". Escolha outro nome.");
+            } elseif ($username !== '' && $password !== '' && $this->passwordTooShort($password)) {
+                // Senha em branco na edição mantém a atual; só a senha nova passa pela regra do tamanho
+                $this->addFlash('error', $this->passwordTooShortMessage());
             } elseif ($username !== '') {
                 $user->setUsername($username);
                 $user->setRoles([$role]);
@@ -113,6 +118,16 @@ class AdminUserController extends AbstractController
         $existing = $this->em->getRepository(User::class)->findOneBy(['username' => $username]);
 
         return $existing !== null && $existing->getId() !== $exceptId;
+    }
+
+    private function passwordTooShort(string $password): bool
+    {
+        return mb_strlen($password) < User::MIN_PASSWORD_LENGTH;
+    }
+
+    private function passwordTooShortMessage(): string
+    {
+        return sprintf('A senha precisa ter pelo menos %d caracteres.', User::MIN_PASSWORD_LENGTH);
     }
 
     /**
