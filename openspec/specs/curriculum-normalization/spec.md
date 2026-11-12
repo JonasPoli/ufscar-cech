@@ -17,7 +17,12 @@ O sistema SHALL normalizar o docente logo depois de gravar o seu currículo, em 
 - **THEN** a normalização roda ao final, como na importação de XML
 
 ### Requirement: Comando de normalização em lote
-O sistema SHALL oferecer o comando `app:curriculum:normalize`, que normaliza os docentes em ordem de nome, com filtro por departamento (`--dept`, por código ou nome), opção de processar só os nunca normalizados (`--only-pending`) e de limpar antes os índices em cache de autores, periódicos e instituições (`--clear-cache`), e que termina com um resumo de docentes, produções, autores, coautores do CECH, Qualis e instituições. A fila de nomes de periódicos sem vínculo SHALL ser reconstruída uma só vez, ao fim do lote, e não a cada docente.
+O sistema SHALL oferecer o comando `app:curriculum:normalize`, que normaliza os docentes em ordem de nome, com `--dept`, `--only-pending` e `--clear-cache`, e termina com um resumo do lote. A fila de nomes de periódicos sem vínculo SHALL ser reconstruída uma só vez, ao fim do lote, e não a cada docente.
+
+#### Scenario: Opções e resumo
+- **WHEN** o comando roda com `--dept` (código ou nome), `--only-pending` ou `--clear-cache`
+- **THEN** filtra o departamento, processa só os nunca normalizados ou limpa antes os índices em cache de autores, periódicos e instituições
+- **AND** termina com o resumo de docentes, produções, autores, coautores do CECH, Qualis e instituições
 
 #### Scenario: Somente pendentes de um departamento
 - **WHEN** o comando roda com `--dept=ED --only-pending`
@@ -58,7 +63,7 @@ Para cada autor de cada produção, o sistema SHALL procurar a identidade pelo n
 - **THEN** as ligações que ele já tinha não mudam e ele é marcado como normalizado
 
 ### Requirement: Ligação dos artigos aos periódicos
-Na normalização por docente, o sistema SHALL recalcular `journal_name_normalized` de toda produção e SHALL ligar a periódico apenas as produções do tipo `ARTIGO` que têm nome de periódico ou ISSN, gravando `qualis_journal_id`, `qualis` e `indexed_databases`; as demais produções MUST ficar sem esses três valores. A fila de nomes de periódicos sem vínculo é atualizada ao final da normalização de um docente isolado ou, no comando em lote, uma vez ao fim do lote; uma falha nessa fila não interrompe a normalização.
+Na normalização por docente, o sistema SHALL recalcular `journal_name_normalized` de toda produção e ligar a periódico só os `ARTIGO` com nome de periódico ou ISSN, gravando `qualis_journal_id`, `qualis` e `indexed_databases`; as demais produções MUST ficar sem esses valores. A fila de nomes de periódicos sem vínculo SHALL ser atualizada ao fim da normalização de um docente isolado ou, no lote, uma vez ao fim dele; uma falha nela MUST NOT interromper a normalização.
 
 #### Scenario: Artigo sem vínculo seguro
 - **WHEN** o periódico de um artigo não é reconhecido ou é ambíguo

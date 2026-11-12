@@ -17,7 +17,7 @@ O sistema SHALL autorizar as rotas de escrita da API de sincronização por um t
 - **THEN** os marcadores e scripts com o token antigo passam a receber 401
 
 ### Requirement: CORS no prefixo /api/
-O sistema SHALL aplicar CORS em `/api/` com os métodos `GET, POST, OPTIONS` (`PUT` e `DELETE` MUST NOT ser anunciados). `GET` em `/api/v1/*` e `/api/temas/*` SHALL receber `Access-Control-Allow-Origin: *`. As demais rotas só SHALL receber a origem da requisição se ela for `buscatextual.cnpq.br`, `lattes.cnpq.br`, `cech.wab.com.br`, o próprio host ou, só em dev e teste, `localhost`; as outras origens MUST NOT receber o cabeçalho. O preflight `OPTIONS` recebe 204 antes do roteamento, válido por uma hora.
+O sistema SHALL aplicar CORS em `/api/` com os métodos `GET, POST, OPTIONS` (`PUT` e `DELETE` MUST NOT ser anunciados). `GET` em `/api/v1/*` e `/api/temas/*` SHALL receber `Access-Control-Allow-Origin: *`; as demais rotas só SHALL receber a origem da requisição se ela estiver na lista permitida, e as outras origens MUST NOT receber o cabeçalho. O preflight `OPTIONS` recebe 204 antes do roteamento, válido por uma hora.
 
 #### Scenario: Preflight da página do Lattes
 - **WHEN** a página do Lattes envia `OPTIONS /api/curriculum/import-html` pedindo o cabeçalho `X-Cech-Sync-Token`
@@ -34,6 +34,10 @@ O sistema SHALL aplicar CORS em `/api/` com os métodos `GET, POST, OPTIONS` (`P
 #### Scenario: Leitura pública
 - **WHEN** qualquer origem consulta `GET /api/v1/metricas` ou `GET /api/temas/...`
 - **THEN** a resposta traz `Access-Control-Allow-Origin: *`
+
+#### Scenario: Origens permitidas
+- **WHEN** a requisição vem de `buscatextual.cnpq.br`, `lattes.cnpq.br`, `cech.wab.com.br` ou do próprio host do portal
+- **THEN** a resposta traz `Access-Control-Allow-Origin` com essa origem
 
 #### Scenario: Localhost só fora de produção
 - **WHEN** uma página em `http://localhost:3000` faz `POST` a `/api/photo/save`
