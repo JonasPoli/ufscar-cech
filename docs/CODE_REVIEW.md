@@ -190,7 +190,7 @@ pessoais) foram **removidos do índice** nesta rodada (permanecem em disco) e `.
 O que resta, em ordem de prioridade (o motivo de cada um está na seção 5):
 
 1. Publicar a segunda fase de 12/11/2026 (`docs/DEPLOY_E_PRODUCAO.md`, "Segunda fase") e conferir em produção.
-2. Rotacionar a chave do TinyMCE e trocar a senha de root do MySQL que esteve no `.env.test` (continua no histórico do Git).
+2. Rotacionar a chave do TinyMCE (a senha do `.env.test` é genérica e só vale no MySQL local: não há o que rotacionar).
 3. Trocar `serverVersion=8.0` por `8.0.40` na `DATABASE_URL` dos `.env.local` (desenvolvimento e servidor).
 4. Mover `public/uploads` para fora do repositório, junto com a mudança do deploy.
 5. Pedir ao RunCloud o limite de taxa no nginx, o `opcache.max_accelerated_files` e o preload, e confirmar os proxies para `trusted_proxies`.
@@ -254,7 +254,7 @@ Verificação: suíte completa com 919 testes passando, `lint:twig`, `lint:yaml`
 ### Segunda fase: pendências conhecidas
 
 - Uploads de fotos continuam no Git: o deploy é `git pull` e apagaria as fotos do servidor. Exige mover as fotos para fora do repositório.
-- Rotacionar a chave do TinyMCE (já não há referência no código) e a senha de root do MySQL que esteve no `.env.test` (continua no histórico).
+- Rotacionar a chave do TinyMCE (já não há referência no código). A senha do `.env.test` é genérica, só funciona no MySQL local e nenhum servidor a usa: não é pendência.
 - `trusted_proxies`: falta confirmar os proxies do RunCloud.
 - `serverVersion=8.0` na `DATABASE_URL` dos `.env.local` (desenvolvimento e servidor): o parâmetro da URL vence o `server_version` do `doctrine.yaml`; trocar por `8.0.40`.
 - Limite de taxa no nginx, `opcache.max_accelerated_files` (7963) e preload: configuração do RunCloud, fora do repositório.

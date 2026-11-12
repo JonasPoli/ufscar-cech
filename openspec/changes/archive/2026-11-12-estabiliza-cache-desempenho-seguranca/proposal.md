@@ -113,7 +113,7 @@ Uma segunda rodada de correções, do mesmo code review, entra neste change.
 Ficam fora deste change (o motivo de cada um está em `design.md`):
 
 - Tirar `public/uploads` do Git: o deploy é `git pull` e apagaria as fotos do servidor.
-- Rotacionar a chave do TinyMCE e a senha de root do MySQL que esteve no `.env.test` (continua no histórico do Git).
+- Rotacionar a chave do TinyMCE. A senha do `.env.test` é genérica e só vale no MySQL local, sem uso em servidor: não é pendência.
 - `trusted_proxies`.
 - Limite de taxa no nginx.
 - `opcache.max_accelerated_files` (7963, baixo) e preload no `php.ini` do RunCloud.

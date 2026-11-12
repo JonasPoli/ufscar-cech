@@ -23,7 +23,7 @@ O motivo está em `proposal.md` (Why). Restrições que moldam a solução:
 **Non-Goals (pendências, com o motivo):**
 
 - **Uploads de fotos no Git**: o deploy é por `git pull`; tirar `public/uploads` do repositório apagaria as fotos do servidor no pull seguinte. Exige antes mover as fotos para fora do repositório e mudar o deploy.
-- **Rotacionar a chave do TinyMCE e a senha de root do MySQL do `.env.test`**: a chave já não é citada no código, mas depende de gerar outra na conta do TinyMCE; a senha do MySQL continua no histórico do Git, e reescrever o histórico não resolve sozinho. Trocar as duas é ação manual do Jonas.
+- **Rotacionar a chave do TinyMCE**: a chave já não é citada no código, mas depende de gerar outra na conta do TinyMCE; é ação manual do Jonas. A senha do `.env.test` é genérica, só vale no MySQL local e nenhum servidor a usa: não é pendência.
 - **`trusted_proxies`**: depende de confirmar com o RunCloud os proxies reais; errar faria o portal enxergar o endereço e o esquema errados.
 - **Limite de taxa no nginx**: a configuração do nginx fica no painel do RunCloud, fora do repositório.
 - **`opcache.max_accelerated_files` (7963) e preload**: ajuste no `php.ini` do RunCloud, compartilhado com outros aplicativos.
