@@ -51,6 +51,14 @@ when@prod:
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
                 level: debug
                 max_files: 10
+            # O fingers_crossed acima só grava a partir de error: os avisos (warning) do pipeline e das importações
+            # ficariam fora do arquivo. Este handler grava só warning ou mais grave, sem despejar o buffer de debug.
+            avisos:
+                type: rotating_file
+                path: "%kernel.logs_dir%/%kernel.environment%-avisos.log"
+                level: warning
+                max_files: 14
+                channels: ["!event", "!doctrine", "!deprecation"]
             console:
                 type: console
                 process_psr_3_messages: false

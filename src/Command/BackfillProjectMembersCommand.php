@@ -90,7 +90,7 @@ class BackfillProjectMembersCommand extends Command
             $io->progressAdvance();
             $totals['files']++;
 
-            $xml = @simplexml_load_file($path);
+            $xml = @simplexml_load_file($path, options: LIBXML_NONET);
             if (!$xml || $xml->getName() !== 'CURRICULO-VITAE') {
                 $totals['invalid']++;
                 $warnings[] = basename($path) . ': não é um XML do Lattes';

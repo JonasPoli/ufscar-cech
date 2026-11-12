@@ -39,11 +39,15 @@ class AuthorThesaurusService
     public function truncateAuthorThesaurus(): void
     {
         $this->conn->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
-        $this->conn->executeStatement('UPDATE production_authors SET author_identity_id = NULL');
-        $this->conn->executeStatement('TRUNCATE TABLE author_external_identifiers');
-        $this->conn->executeStatement('TRUNCATE TABLE author_name_variants');
-        $this->conn->executeStatement('TRUNCATE TABLE author_identities');
-        $this->conn->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+        try {
+            $this->conn->executeStatement('UPDATE production_authors SET author_identity_id = NULL');
+            $this->conn->executeStatement('TRUNCATE TABLE author_external_identifiers');
+            $this->conn->executeStatement('TRUNCATE TABLE author_name_variants');
+            $this->conn->executeStatement('TRUNCATE TABLE author_identities');
+        } finally {
+            // A conexão segue em uso pelo resto do processo: as chaves estrangeiras voltam mesmo se um comando falhar
+            $this->conn->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+        }
 
         if ($this->authorResolver !== null) {
             $this->authorResolver->clearCache();

@@ -57,9 +57,13 @@ class ImportBibliomapDatabasesCommand extends AbstractBibliomapImportCommand
         $io->text(sprintf('Encontradas %d bases no BiblioMap.', count($rawBases)));
 
         $conn->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
-        $conn->executeStatement('TRUNCATE TABLE academic_database');
-        $conn->executeStatement('TRUNCATE TABLE qualis_journal_academic_database');
-        $conn->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+        try {
+            $conn->executeStatement('TRUNCATE TABLE academic_database');
+            $conn->executeStatement('TRUNCATE TABLE qualis_journal_academic_database');
+        } finally {
+            // As chaves estrangeiras voltam mesmo se um TRUNCATE falhar
+            $conn->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+        }
 
         $insertSql = 'INSERT INTO academic_database (id, name, acronym, url, logo, file_formats, signature_columns, description, import_instructions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
 

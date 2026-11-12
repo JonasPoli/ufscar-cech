@@ -6,6 +6,8 @@
 parameters:
     emailFrom: '%env(resolve:EMAIL_FROM)%'
     emailContactTo: '%env(resolve:EMAIL_CONTACT_TO)%'
+    # Teto do cache de páginas em MB quando PAGE_CACHE_MAX_MB não está definido
+    page_cache_default_max_mb: 2048
 
 services:
     # default configuration for services in *this* file

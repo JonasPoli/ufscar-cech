@@ -62,7 +62,7 @@
                     {{ stats.totalSizeBytes }} <span class="text-xs font-normal text-slate-500 dark:text-slate-400">Bytes</span>
                 {% endif %}
             </div>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Espaço consumido pelos HTMLs cacheados.</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Espaço das páginas compactadas. Teto: {{ (stats.maxTotalBytes / 1048576)|number_format(0, ',', '.') }} MB; acima dele, as páginas mais antigas são descartadas.</p>
         </div>
 
         <!-- Stat: TTL -->

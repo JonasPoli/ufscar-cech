@@ -66,9 +66,13 @@ class ImportBibliomapJournalsCommand extends AbstractBibliomapImportCommand
 
         // Clear existing qualis_journals and variants for fresh sync
         $conn->executeStatement('SET FOREIGN_KEY_CHECKS = 0');
-        $conn->executeStatement('TRUNCATE TABLE journal_name_variants');
-        $conn->executeStatement('TRUNCATE TABLE qualis_journals');
-        $conn->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+        try {
+            $conn->executeStatement('TRUNCATE TABLE journal_name_variants');
+            $conn->executeStatement('TRUNCATE TABLE qualis_journals');
+        } finally {
+            // As chaves estrangeiras voltam mesmo se um TRUNCATE falhar
+            $conn->executeStatement('SET FOREIGN_KEY_CHECKS = 1');
+        }
         $this->em->clear();
 
         $idMap = [];

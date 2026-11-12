@@ -31,6 +31,7 @@ class AppCacheClearCommand extends Command
     {
         $this
             ->addOption('all', 'a', InputOption::VALUE_NONE, 'Limpa também o cache de dados da aplicação (cache.app): índices dos tesauros, temas e catálogos')
+            ->addOption('prune', null, InputOption::VALUE_NONE, 'Não limpa tudo: só descarta as páginas vencidas e, acima do teto de espaço (PAGE_CACHE_MAX_MB), as mais antigas')
             ->setHelp(<<<'HELP'
 Remove as páginas HTML salvas em var/cache/public_pages e o cache da pesquisa (panorama, rede de coautoria).
 
@@ -44,6 +45,18 @@ HELP);
     {
         $io = new SymfonyStyle($input, $output);
         $clearAll = $input->getOption('all');
+
+        if ($input->getOption('prune')) {
+            $result = $this->pageCacheService->prune();
+            $io->success(sprintf(
+                'Descarte concluído: %d páginas removidas (vencidas ou acima do teto); restam %d páginas, %.1f MB.',
+                $result['removed'],
+                $result['remainingFiles'],
+                $result['remainingBytes'] / 1048576
+            ));
+
+            return Command::SUCCESS;
+        }
 
         $statsBefore = $this->pageCacheService->getStats();
 

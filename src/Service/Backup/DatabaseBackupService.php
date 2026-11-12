@@ -278,11 +278,16 @@ class DatabaseBackupService
 
             // Get column names
             $columnsStmt = $this->connection->fetchAllAssociative("SHOW COLUMNS FROM `{$tableName}`");
+            // Colunas geradas (GENERATED ALWAYS) ficam fora: o MySQL as recalcula e recusa um INSERT que traga valor para elas
+            $columnsStmt = array_values(array_filter(
+                $columnsStmt,
+                static fn(array $col) => !str_contains(strtoupper((string)($col['Extra'] ?? '')), 'GENERATED')
+            ));
             $columnNames = array_map(fn($col) => '`' . $col['Field'] . '`', $columnsStmt);
             $columnsSql = implode(', ', $columnNames);
 
             // Stream rows using cursor and batch inserts
-            $stmt = $this->connection->executeQuery("SELECT * FROM `{$tableName}`");
+            $stmt = $this->connection->executeQuery("SELECT {$columnsSql} FROM `{$tableName}`");
             $insertLines = [];
             $batchSize = 500;
             $batchCount = 0;
@@ -534,62 +539,65 @@ class DatabaseBackupService
                 }
 
                 $this->connection->executeStatement("SET FOREIGN_KEY_CHECKS = 0;");
-                $this->connection->executeStatement("SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';");
-                $this->connection->executeStatement("SET NAMES utf8mb4;");
+                try {
+                    $this->connection->executeStatement("SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';");
+                    $this->connection->executeStatement("SET NAMES utf8mb4;");
 
-                $currentQuery = '';
-                $totalBytes = filesize($sqlPath) ?: 1;
-                $bytesRead = 0;
+                    $currentQuery = '';
+                    $totalBytes = filesize($sqlPath) ?: 1;
+                    $bytesRead = 0;
 
-                while (($line = fgets($handle)) !== false) {
-                    $bytesRead += strlen($line);
-                    $trimmed = trim($line);
+                    while (($line = fgets($handle)) !== false) {
+                        $bytesRead += strlen($line);
+                        $trimmed = trim($line);
 
-                    if ($trimmed === '' || str_starts_with($trimmed, '--') || str_starts_with($trimmed, '#')) {
-                        continue;
+                        if ($trimmed === '' || str_starts_with($trimmed, '--') || str_starts_with($trimmed, '#')) {
+                            continue;
+                        }
+
+                        if (str_starts_with($trimmed, '/*') && str_ends_with($trimmed, '*/;')) {
+                            continue;
+                        }
+
+                        $currentQuery .= $line;
+
+                        if (str_ends_with($trimmed, ';')) {
+                            try {
+                                $this->connection->executeStatement($currentQuery);
+                                $statementsCount++;
+                            } catch (\Throwable $e) {
+                                // Segue com os próximos comandos, mas a falha é contada e devolvida: a restauração não
+                                // pode ser anunciada como bem-sucedida.
+                                $failedStatements++;
+                                if (count($errors) < 3) {
+                                    $errors[] = mb_substr($e->getMessage(), 0, 300);
+                                }
+                            }
+                            $currentQuery = '';
+
+                            if ($progressCallback && $statementsCount % 50 === 0) {
+                                $pct = min(90, (int)round(20 + (($bytesRead / $totalBytes) * 70)));
+                                $progressCallback('importing', "Executados {$statementsCount} blocos SQL...", $pct);
+                            }
+                        }
                     }
 
-                    if (str_starts_with($trimmed, '/*') && str_ends_with($trimmed, '*/;')) {
-                        continue;
-                    }
-
-                    $currentQuery .= $line;
-
-                    if (str_ends_with($trimmed, ';')) {
+                    if (trim($currentQuery) !== '') {
                         try {
                             $this->connection->executeStatement($currentQuery);
                             $statementsCount++;
                         } catch (\Throwable $e) {
-                            // Segue com os próximos comandos, mas a falha é contada e devolvida: a restauração não
-                            // pode ser anunciada como bem-sucedida.
                             $failedStatements++;
                             if (count($errors) < 3) {
                                 $errors[] = mb_substr($e->getMessage(), 0, 300);
                             }
                         }
-                        $currentQuery = '';
-
-                        if ($progressCallback && $statementsCount % 50 === 0) {
-                            $pct = min(90, (int)round(20 + (($bytesRead / $totalBytes) * 70)));
-                            $progressCallback('importing', "Executados {$statementsCount} blocos SQL...", $pct);
-                        }
                     }
+                } finally {
+                    fclose($handle);
+                    // A conexão segue em uso depois da restauração: as chaves estrangeiras voltam mesmo se a leitura falhar
+                    $this->connection->executeStatement("SET FOREIGN_KEY_CHECKS = 1;");
                 }
-
-                if (trim($currentQuery) !== '') {
-                    try {
-                        $this->connection->executeStatement($currentQuery);
-                        $statementsCount++;
-                    } catch (\Throwable $e) {
-                        $failedStatements++;
-                        if (count($errors) < 3) {
-                            $errors[] = mb_substr($e->getMessage(), 0, 300);
-                        }
-                    }
-                }
-
-                fclose($handle);
-                $this->connection->executeStatement("SET FOREIGN_KEY_CHECKS = 1;");
             }
 
             // Invalida o cache de páginas públicas e o da pesquisa (panorama, rede) para os dados novos aparecerem já

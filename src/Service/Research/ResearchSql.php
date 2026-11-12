@@ -22,16 +22,16 @@ final class ResearchSql
      */
     public static function workKey(string $pi = 'pi'): string
     {
-        return "MD5(CASE WHEN ({$pi}.doi IS NOT NULL AND TRIM({$pi}.doi) != '') "
-            . "THEN CONCAT('DOI:', LOWER(TRIM({$pi}.doi))) "
-            . "ELSE CONCAT('T:', {$pi}.item_type, ':', COALESCE({$pi}.year, ''), ':', LOWER(TRIM({$pi}.title))) END)";
+        // Coluna gerada pelo MySQL (migration Version20261112150000) com esta fórmula:
+        // MD5(DOI em minúsculas) ou MD5('T:' tipo ':' ano ':' título em minúsculas)
+        return "{$pi}.work_key";
     }
 
     /** Palavras-chave do trabalho (lista JSON em `extra_data`), como texto comparável sem caixa e acento. */
     public static function keywords(string $pi = 'pi'): string
     {
-        // Sem palavras-chave o valor é NULL, e NULL numa soma zera a pontuação inteira: daí o COALESCE
-        return "COALESCE(CAST(JSON_EXTRACT({$pi}.extra_data, '$.keywords') AS CHAR CHARACTER SET utf8mb4), '') COLLATE utf8mb4_unicode_ci";
+        // Coluna gerada pelo MySQL a partir de `extra_data.keywords`; vazia ('') quando não há palavras-chave
+        return "{$pi}.keywords_text";
     }
 
     /** Veículo para exibição: periódico, evento ou editora, como veio do Lattes. */

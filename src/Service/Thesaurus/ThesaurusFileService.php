@@ -207,7 +207,7 @@ class ThesaurusFileService
 
     public function parseXmlContent(string $content): array
     {
-        $xml = @simplexml_load_string($content);
+        $xml = @simplexml_load_string($content, options: LIBXML_NONET);
         if (!$xml) return [];
 
         $entries = [];

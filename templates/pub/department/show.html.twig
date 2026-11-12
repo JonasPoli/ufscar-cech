@@ -105,7 +105,7 @@
                             {{ r.fullName }}
                         </h3>
                         <div class="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
-                            <span>{{ r.productions|length }} produções</span>
+                            <span>{{ productionCounts[r.id]|default(0) }} produções</span>
                             {% if r.admissionYear or r.leaveYear %}
                                 {% if r.isActiveInCech %}
                                     <span>• Desde {{ r.admissionYear }}</span>

@@ -8,6 +8,8 @@ use App\Service\Thesaurus\InstitutionResolverService;
 use App\Service\Thesaurus\JournalResolverService;
 use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\Cache\CacheInterface;
 
 /**
  * Serviço analítico para consolidação e cálculo de indicadores cienciométricos e estatísticas do CECH.
@@ -33,7 +35,10 @@ class StatisticsService
         private readonly EntityManagerInterface $em,
         private readonly InstitutionResolverService $institutionResolver,
         private readonly CountryResolverService $countryResolver,
-        private readonly JournalResolverService $journalResolver
+        private readonly JournalResolverService $journalResolver,
+        // Mesmo pool dos cálculos da pesquisa pública: é limpo junto com o cache de páginas
+        #[Autowire(service: 'cache.research')]
+        private readonly ?CacheInterface $researchCache = null
     ) {}
 
     /**
@@ -233,6 +238,16 @@ class StatisticsService
      * Resumo quantitativo global do centro (com contagem bruta declarada e contagem única deduplicada institucional).
      */
     public function getGlobalSummary(): array
+    {
+        // Home, /indicadores e /sobre-os-dados pedem o mesmo resumo: 14 consultas que varrem `production_items`
+        if ($this->researchCache === null) {
+            return $this->computeGlobalSummary();
+        }
+
+        return $this->researchCache->get('statistics_global_summary', fn() => $this->computeGlobalSummary());
+    }
+
+    private function computeGlobalSummary(): array
     {
         $conn = $this->em->getConnection();
 
@@ -1156,6 +1171,17 @@ class StatisticsService
      */
     public function getFig13CoauthorshipNetwork(int $limit = 0): array
     {
+        // A aba Rede pede os 8 primeiros e a lista inteira: a consulta roda uma vez e o recorte sai da memória
+        $this->fig13Full ??= $this->computeFig13CoauthorshipNetwork();
+
+        return $limit > 0 ? array_slice($this->fig13Full, 0, $limit) : $this->fig13Full;
+    }
+
+    /** @var array<int, array<string, mixed>>|null */
+    private ?array $fig13Full = null;
+
+    private function computeFig13CoauthorshipNetwork(): array
+    {
         $conn = $this->em->getConnection();
         $sql = "
             SELECT 
@@ -1177,19 +1203,16 @@ class StatisticsService
             FROM production_authors pa1
             JOIN production_authors pa2 
                 ON pa1.production_item_id = pa2.production_item_id 
-               AND pa1.matched_researcher_id < pa2.matched_researcher_id
+               AND pa1.matched_researcher_id IS NOT NULL
+                    AND pa2.matched_researcher_id IS NOT NULL
+                    AND pa1.matched_researcher_id < pa2.matched_researcher_id
             JOIN production_items pi ON pi.id = pa1.production_item_id
             JOIN researchers r1 ON r1.id = pa1.matched_researcher_id
             JOIN researchers r2 ON r2.id = pa2.matched_researcher_id
             GROUP BY r1.id, r1.full_name, r1.slug, r1.department_code, r1.photo_url,
                      r2.id, r2.full_name, r2.slug, r2.department_code, r2.photo_url
-            ORDER BY collaborations DESC
+            ORDER BY collaborations DESC, r1.id ASC, r2.id ASC
         ";
-
-        if ($limit > 0) {
-            $sql .= " LIMIT :lim";
-            return $conn->fetchAllAssociative($sql, ['lim' => $limit], ['lim' => \PDO::PARAM_INT]);
-        }
 
         return $conn->fetchAllAssociative($sql);
     }
@@ -1234,7 +1257,9 @@ class StatisticsService
             FROM production_authors pa1
             JOIN production_authors pa2 
                 ON pa1.production_item_id = pa2.production_item_id 
-               AND pa1.matched_researcher_id < pa2.matched_researcher_id
+               AND pa1.matched_researcher_id IS NOT NULL
+                    AND pa2.matched_researcher_id IS NOT NULL
+                    AND pa1.matched_researcher_id < pa2.matched_researcher_id
             JOIN production_items pi ON pi.id = pa1.production_item_id
             GROUP BY pa1.matched_researcher_id, pa2.matched_researcher_id
         ";

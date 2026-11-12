@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Service\Research\ResearchFilterFactory;
+use App\Support\PageCacheFastPath;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpFoundation\Request;
@@ -11,8 +12,14 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 class PageCacheService
 {
-    public const TTL_SECONDS = 30 * 86400; // 30 dias (2.592.000s)
-    public const CACHE_SUBDIR = 'var/cache/public_pages';
+    public const TTL_SECONDS = PageCacheFastPath::TTL_SECONDS; // 30 dias (2.592.000s)
+    public const CACHE_SUBDIR = PageCacheFastPath::CACHE_SUBDIR;
+
+    /** Página maior que isto (HTML sem compactar) não é gravada: uma só não pode ocupar o espaço de milhares. */
+    public const MAX_PAGE_BYTES = 16 * 1024 * 1024;
+
+    /** A cada quantas gravações, em média, o descarte automático roda. */
+    public const PRUNE_EVERY = 200;
 
     /**
      * Parâmetros de URL que as páginas públicas leem. Com qualquer outro, a página é servida sem passar pelo cache.
@@ -36,7 +43,10 @@ class PageCacheService
         private readonly bool $pageCacheEnabled = true,
         // Cálculos da pesquisa pública por filtro (panorama, rede): limpos junto com as páginas, pelo mesmo motivo
         #[Autowire(service: 'cache.research')]
-        private readonly ?CacheItemPoolInterface $researchCache = null
+        private readonly ?CacheItemPoolInterface $researchCache = null,
+        // Teto do espaço em disco do cache de páginas, em MB. Passando dele, as páginas mais antigas são descartadas
+        #[Autowire('%env(int:default:page_cache_default_max_mb:PAGE_CACHE_MAX_MB)%')]
+        private readonly int $maxTotalMegabytes = 2048
     ) {
         $this->filesystem = new Filesystem();
     }
@@ -133,13 +143,7 @@ class PageCacheService
             return true;
         }
 
-        foreach (array_keys($request->cookies->all()) as $name) {
-            if (str_contains(strtoupper((string)$name), 'SESS')) {
-                return true;
-            }
-        }
-
-        return false;
+        return PageCacheFastPath::hasSessionCookie($request->cookies->all());
     }
 
     /**
@@ -147,9 +151,10 @@ class PageCacheService
      */
     public function getCacheFilePath(Request $request): string
     {
-        $uri = $request->getRequestUri();
-        $hash = md5($uri);
-        return sprintf('%s/%s/%s.html', rtrim($this->projectDir, '/'), self::CACHE_SUBDIR, $hash);
+        return PageCacheFastPath::filePath(
+            $this->projectDir,
+            PageCacheFastPath::canonicalUri($request->getPathInfo(), $request->query->all())
+        );
     }
 
     /**
@@ -157,46 +162,45 @@ class PageCacheService
      */
     public function hasValidCache(Request $request): bool
     {
-        $filePath = $this->getCacheFilePath($request);
+        $mtime = @filemtime($this->getCacheFilePath($request));
 
-        if (!$this->filesystem->exists($filePath)) {
-            return false;
-        }
-
-        $mtime = @filemtime($filePath);
-        if ($mtime === false) {
-            return false;
-        }
-
-        $age = time() - $mtime;
-
-        return $age <= self::TTL_SECONDS;
+        return $mtime !== false && time() - $mtime <= self::TTL_SECONDS;
     }
 
     /**
      * Obtém a resposta HTTP a partir do arquivo físico de cache.
+     *
+     * Em produção quem responde é o `public/index.php`, antes do Symfony ({@see PageCacheFastPath::serve()}); este
+     * caminho vale quando a requisição chega ao kernel assim mesmo, com os mesmos cabeçalhos.
      */
     public function getCachedResponse(Request $request): ?Response
     {
-        if (!$this->hasValidCache($request)) {
+        $filePath = $this->getCacheFilePath($request);
+        $mtime = @filemtime($filePath);
+        if ($mtime === false || time() - $mtime > self::TTL_SECONDS) {
             return null;
         }
 
-        $filePath = $this->getCacheFilePath($request);
-        $content = @file_get_contents($filePath);
-
+        $raw = @file_get_contents($filePath);
+        $content = $raw === false ? false : @gzdecode($raw);
         if ($content === false) {
             return null;
         }
 
-        return new Response($content, Response::HTTP_OK, [
+        $response = new Response($content, Response::HTTP_OK, [
             'Content-Type' => 'text/html; charset=UTF-8',
             'X-Page-Cache' => 'HIT',
         ]);
+        $response->headers->set('ETag', PageCacheFastPath::etag($filePath, $mtime));
+        $response->setLastModified((new \DateTimeImmutable())->setTimestamp($mtime));
+        $response->headers->set('Cache-Control', 'no-cache');
+        $response->isNotModified($request);
+
+        return $response;
     }
 
     /**
-     * Salva a resposta HTML gerada no arquivo físico de cache.
+     * Salva a resposta HTML gerada no arquivo físico de cache, compactada (gzip).
      */
     public function saveCache(Request $request, Response $response): bool
     {
@@ -210,7 +214,12 @@ class PageCacheService
         }
 
         $content = $response->getContent();
-        if (empty($content)) {
+        if (empty($content) || strlen($content) > self::MAX_PAGE_BYTES) {
+            return false;
+        }
+
+        $compressed = gzencode($content, 6);
+        if ($compressed === false) {
             return false;
         }
 
@@ -222,11 +231,82 @@ class PageCacheService
                 $this->filesystem->mkdir($cacheDir, 0755);
             }
 
-            $this->filesystem->dumpFile($filePath, $content);
-            return true;
+            $this->filesystem->dumpFile($filePath, $compressed);
+            $this->syncEnabledMarker();
         } catch (\Throwable) {
             return false;
         }
+
+        if (random_int(1, self::PRUNE_EVERY) === 1) {
+            $this->prune();
+        }
+
+        return true;
+    }
+
+    /**
+     * Mantém o arquivo que autoriza o `public/index.php` a servir o cache: existe só com o cache ligado.
+     */
+    public function syncEnabledMarker(): void
+    {
+        $marker = PageCacheFastPath::cacheDir($this->projectDir) . '/' . PageCacheFastPath::ENABLED_MARKER;
+
+        try {
+            if ($this->pageCacheEnabled) {
+                if (!is_file($marker) && is_dir(dirname($marker))) {
+                    $this->filesystem->dumpFile($marker, '1');
+                }
+            } elseif (is_file($marker)) {
+                $this->filesystem->remove($marker);
+            }
+        } catch (\Throwable) {
+            // Sem o marcador o cache só deixa de ser servido antes do kernel
+        }
+    }
+
+    /**
+     * Descarte automático: apaga as páginas vencidas e, se o total passar do teto, as mais antigas até sobrar 80% dele.
+     *
+     * @return array{removed: int, remainingFiles: int, remainingBytes: int}
+     */
+    public function prune(): array
+    {
+        $files = [];
+        $total = 0;
+        $removed = 0;
+        $now = time();
+
+        foreach (glob(PageCacheFastPath::cacheDir($this->projectDir) . '/*' . PageCacheFastPath::FILE_SUFFIX) ?: [] as $file) {
+            $mtime = @filemtime($file);
+            $size = @filesize($file);
+            if ($mtime === false || $size === false) {
+                continue;
+            }
+            if ($now - $mtime > self::TTL_SECONDS) {
+                $removed += @unlink($file) ? 1 : 0;
+                continue;
+            }
+            $files[$file] = [$mtime, $size];
+            $total += $size;
+        }
+
+        $limit = max(1, $this->maxTotalMegabytes) * 1024 * 1024;
+        if ($total > $limit) {
+            uasort($files, static fn(array $a, array $b) => $a[0] <=> $b[0]);
+            $target = (int)($limit * 0.8);
+            foreach ($files as $file => [, $size]) {
+                if ($total <= $target) {
+                    break;
+                }
+                if (@unlink($file)) {
+                    $total -= $size;
+                    $removed++;
+                    unset($files[$file]);
+                }
+            }
+        }
+
+        return ['removed' => $removed, 'remainingFiles' => count($files), 'remainingBytes' => $total];
     }
 
     /**
@@ -250,7 +330,7 @@ class PageCacheService
     /**
      * Retorna estatísticas sobre o estado atual do cache.
      *
-     * @return array{fileCount: int, totalSizeBytes: int, cacheDir: string, exists: bool}
+     * @return array{fileCount: int, totalSizeBytes: int, cacheDir: string, exists: bool, maxTotalBytes: int}
      */
     public function getStats(): array
     {
@@ -263,13 +343,14 @@ class PageCacheService
                 'totalSizeBytes' => 0,
                 'cacheDir' => $cacheDir,
                 'exists' => false,
+                'maxTotalBytes' => $this->maxTotalMegabytes * 1024 * 1024,
             ];
         }
 
         $fileCount = 0;
         $totalSizeBytes = 0;
 
-        $files = glob($cacheDir . '/*.html');
+        $files = glob($cacheDir . '/*' . PageCacheFastPath::FILE_SUFFIX);
         if (is_array($files)) {
             $fileCount = count($files);
             foreach ($files as $file) {
@@ -282,6 +363,7 @@ class PageCacheService
             'totalSizeBytes' => $totalSizeBytes,
             'cacheDir' => $cacheDir,
             'exists' => true,
+            'maxTotalBytes' => $this->maxTotalMegabytes * 1024 * 1024,
         ];
     }
 }

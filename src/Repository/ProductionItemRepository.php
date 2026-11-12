@@ -75,6 +75,25 @@ class ProductionItemRepository extends ServiceEntityRepository
     }
 
     /**
+     * Número de produções de cada docente, numa consulta só.
+     *
+     * @param list<int> $researcherIds
+     * @return array<int, int> id do docente => produções
+     */
+    public function countPerResearcher(array $researcherIds): array
+    {
+        if ($researcherIds === []) {
+            return [];
+        }
+
+        return array_map('intval', $this->getEntityManager()->getConnection()->fetchAllKeyValue(
+            'SELECT researcher_id, COUNT(*) FROM production_items WHERE researcher_id IN (:ids) GROUP BY researcher_id',
+            ['ids' => $researcherIds],
+            ['ids' => \Doctrine\DBAL\ArrayParameterType::INTEGER]
+        ));
+    }
+
+    /**
      * Gets total counts of publications grouped by item type.
      *
      * @return array Map of itemType => count

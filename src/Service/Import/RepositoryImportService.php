@@ -345,7 +345,9 @@ class RepositoryImportService
                 );
             }
 
-            // Flush em lote
+            // Flush em lote. Cada flush já é uma transação; uma só para o CSV inteiro travaria as orientações durante toda a
+            // importação e faria a importação de currículos pelo painel esperar até estourar o tempo. Como a importação só
+            // enriquece ou cria (não apaga) e casa pelo Handle/UUID, uma execução interrompida se completa rodando de novo.
             if (!$dryRun && $pendingFlushes >= self::BATCH_SIZE) {
                 $this->em->flush();
                 $pendingFlushes = 0;

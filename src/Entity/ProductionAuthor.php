@@ -17,6 +17,8 @@ use Doctrine\ORM\Mapping as ORM;
  */
 #[ORM\Entity(repositoryClass: ProductionAuthorRepository::class)]
 #[ORM\Table(name: 'production_authors')]
+#[ORM\Index(columns: ['production_item_id', 'matched_researcher_id'], name: 'idx_pa_item_matched')]
+#[ORM\Index(columns: ['matched_researcher_id', 'production_item_id'], name: 'idx_pa_matched_item')]
 class ProductionAuthor
 {
     #[ORM\Id]

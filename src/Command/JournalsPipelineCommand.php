@@ -6,6 +6,7 @@ namespace App\Command;
 
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Command\LockableTrait;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -34,6 +35,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 )]
 class JournalsPipelineCommand extends Command
 {
+    use LockableTrait;
+
     /** @var list<string> passos na ordem de execução (A8, passos 2 a 17, com o families dividido em antes e depois do index) */
     public const STEPS = [
         'normalize-titles',
@@ -102,6 +105,26 @@ class JournalsPipelineCommand extends Command
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        // Uma execução por vez: o comando grava em lote, e duas execuções simultâneas se atropelariam. A trava é
+        // por nome de comando, então quem chama outros comandos em sequência não trava a si mesmo.
+        if (!$this->lock()) {
+            (new SymfonyStyle($input, $output))->warning(sprintf(
+                'O comando %s já está em execução em outro processo. Esta execução foi cancelada: aguarde a outra terminar e rode de novo.',
+                $this->getName()
+            ));
+
+            return Command::FAILURE;
+        }
+
+        try {
+            return $this->runPipeline($input, $output);
+        } finally {
+            $this->release();
+        }
+    }
+
+    private function runPipeline(InputInterface $input, OutputInterface $output): int
     {
         @ini_set('memory_limit', '1024M');
 

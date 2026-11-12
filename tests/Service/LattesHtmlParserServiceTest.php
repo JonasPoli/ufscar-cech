@@ -9,6 +9,9 @@ use App\Entity\Researcher;
 use App\Service\Import\LattesHtmlParserService;
 use App\Service\Thesaurus\StringNormalizer;
 use Doctrine\DBAL\Connection;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Event\PrePersistEventArgs;
+use Doctrine\ORM\Events;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 class LattesHtmlParserServiceTest extends KernelTestCase
@@ -408,6 +411,71 @@ class LattesHtmlParserServiceTest extends KernelTestCase
             $this->assertCount(2, $project->getMembers());
             $this->assertCount(1, $project->getFunders());
         }
+    }
+
+    public function testAFailureInTheMiddleOfTheImportKeepsThePreviousProductions(): void
+    {
+        $idLattes = $this->newId();
+        $name = "Docente Transação {$this->uniq}";
+        $this->parser->parseHtmlAndSave($this->html($idLattes, $name, $this->articles([
+            'Primeiro artigo sobre formação docente. REVISTA A, v. 1, p. 1-10, 2020.',
+            'Segundo artigo sobre avaliação escolar. REVISTA B, v. 2, p. 11-20, 2021.',
+        ])));
+        $before = $this->productionTitles($idLattes);
+        $this->assertCount(2, $before);
+
+        // Outra requisição: o EntityManager começa vazio, como no painel e na API
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        $em->clear();
+
+        // Falha no meio da gravação das produções, depois de os itens antigos já terem sido apagados
+        $listener = new class {
+            public function prePersist(PrePersistEventArgs $args): void
+            {
+                $entity = $args->getObject();
+                if ($entity instanceof ProductionItem && str_contains((string)$entity->getTitle(), 'FALHA SIMULADA')) {
+                    throw new \RuntimeException('Falha simulada no meio da importação.');
+                }
+            }
+        };
+        $em->getEventManager()->addEventListener([Events::prePersist], $listener);
+
+        try {
+            $this->parser->parseHtmlAndSave($this->html($idLattes, $name, $this->articles([
+                'Artigo novo que entra antes da falha. REVISTA C, v. 3, p. 1-5, 2022.',
+                'Artigo novo com FALHA SIMULADA. REVISTA D, v. 4, p. 6-9, 2022.',
+            ])));
+            $this->fail('A falha da importação deveria chegar a quem chamou.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('Falha simulada no meio da importação.', $e->getMessage());
+        } finally {
+            $em->getEventManager()->removeEventListener([Events::prePersist], $listener);
+        }
+
+        $this->assertSame($before, $this->productionTitles($idLattes), 'O rollback devolve as produções que já estavam gravadas.');
+        $this->assertSame(0, $this->conn->getTransactionNestingLevel(), 'Nenhuma transação fica aberta depois da falha.');
+    }
+
+    /** Seção de artigos completos com uma citação por item. */
+    private function articles(array $citations): string
+    {
+        $items = '';
+        foreach ($citations as $i => $citation) {
+            $items .= '<div class="artigo-completo"><div class="layout-cell layout-cell-1"><b>' . ($i + 1) . '. </b></div>'
+                . '<div class="layout-cell layout-cell-11"><span class="transform">SILVA, A. B. . ' . $citation . '</span></div></div>';
+        }
+
+        return '<div id="artigos-completos"><div class="cita-artigos"><b><a name="ArtigosCompletos"></a>Artigos completos publicados em periódicos</b></div>'
+            . $items . '</div>';
+    }
+
+    /** @return string[] Títulos das produções gravadas no banco, em ordem alfabética */
+    private function productionTitles(string $idLattes): array
+    {
+        return $this->conn->fetchFirstColumn(
+            'SELECT p.title FROM production_items p JOIN researchers r ON r.id = p.researcher_id WHERE r.id_lattes = ? ORDER BY p.title',
+            [$idLattes]
+        );
     }
 
     private function newId(): string

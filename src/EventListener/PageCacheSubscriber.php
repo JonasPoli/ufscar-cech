@@ -30,6 +30,9 @@ class PageCacheSubscriber implements EventSubscriberInterface
 
         // Em modo dev ou não habilitado, não verifica se tem cache pra mostrar, gera novo
         if (!$this->pageCacheService->isEnabled()) {
+            // Cache desligado: tira a autorização do `public/index.php` para servir páginas antigas
+            $this->pageCacheService->syncEnabledMarker();
+
             return;
         }
 
@@ -39,11 +42,9 @@ class PageCacheSubscriber implements EventSubscriberInterface
             return;
         }
 
-        if ($this->pageCacheService->hasValidCache($request)) {
-            $cachedResponse = $this->pageCacheService->getCachedResponse($request);
-            if ($cachedResponse !== null) {
-                $event->setResponse($cachedResponse);
-            }
+        $cachedResponse = $this->pageCacheService->getCachedResponse($request);
+        if ($cachedResponse !== null) {
+            $event->setResponse($cachedResponse);
         }
     }
 

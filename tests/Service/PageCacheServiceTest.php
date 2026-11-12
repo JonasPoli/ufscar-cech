@@ -180,4 +180,107 @@ class PageCacheServiceTest extends TestCase
         $this->assertFalse($service->saveCache($request, new Response('<html></html>', 200, ['Content-Type' => 'text/html'])));
         $this->assertFalse($service->hasValidCache($request));
     }
+
+    public function testPagesAreStoredCompressed(): void
+    {
+        $service = new PageCacheService($this->tempDir, true);
+        $request = Request::create('/indicadores', 'GET');
+        $html = '<html>' . str_repeat('<p>Indicadores do CECH</p>', 500) . '</html>';
+
+        $this->assertTrue($service->saveCache($request, new Response($html, 200, ['Content-Type' => 'text/html'])));
+
+        $file = $service->getCacheFilePath($request);
+        $this->assertStringEndsWith('.html.gz', $file);
+        $this->assertLessThan(strlen($html) / 5, filesize($file));
+        $this->assertSame($html, gzdecode((string)file_get_contents($file)));
+    }
+
+    public function testProfileSharesOneFileForAnyTopic(): void
+    {
+        $service = new PageCacheService($this->tempDir, true);
+
+        $plain = $service->getCacheFilePath(Request::create('/professor/fulano', 'GET'));
+        $this->assertSame($plain, $service->getCacheFilePath(Request::create('/professor/fulano?tema=astronomia', 'GET')));
+        $this->assertSame($plain, $service->getCacheFilePath(Request::create('/professor/fulano?tema=ensino', 'GET')));
+
+        // Vindo da busca, a página traz os resultados daquele filtro: arquivo próprio
+        $this->assertNotSame($plain, $service->getCacheFilePath(Request::create('/professor/fulano?aba=busca&tema=ensino', 'GET')));
+        // Fora do perfil, o parâmetro muda a página
+        $this->assertNotSame(
+            $service->getCacheFilePath(Request::create('/coautorias?tema=ensino', 'GET')),
+            $service->getCacheFilePath(Request::create('/coautorias?tema=astronomia', 'GET'))
+        );
+    }
+
+    public function testParameterOrderDoesNotCreateAnotherFile(): void
+    {
+        $service = new PageCacheService($this->tempDir, true);
+
+        $this->assertSame(
+            $service->getCacheFilePath(Request::create('/projetos?situacao=CONCLUIDO&pagina=2', 'GET')),
+            $service->getCacheFilePath(Request::create('/projetos?pagina=2&situacao=CONCLUIDO', 'GET'))
+        );
+    }
+
+    public function testHugePageIsNotSaved(): void
+    {
+        $service = new PageCacheService($this->tempDir, true);
+        $request = Request::create('/indicadores', 'GET');
+        $response = new Response(str_repeat('a', PageCacheService::MAX_PAGE_BYTES + 1), 200, ['Content-Type' => 'text/html']);
+
+        $this->assertFalse($service->saveCache($request, $response));
+        $this->assertFalse($service->hasValidCache($request));
+    }
+
+    public function testPruneRemovesExpiredAndOldestAboveLimit(): void
+    {
+        // Teto de 1 MB; cada página aleatória de ~300 KB quase não compacta
+        $service = new PageCacheService($this->tempDir, true, null, 1);
+        $paths = [];
+        foreach (range(1, 5) as $i) {
+            $request = Request::create('/explorar/assunto/tema-' . $i, 'GET');
+            $service->saveCache($request, new Response(base64_encode(random_bytes(300 * 1024)), 200, ['Content-Type' => 'text/html']));
+            $paths[$i] = $service->getCacheFilePath($request);
+            touch($paths[$i], time() - (10 - $i) * 3600); // a página 1 é a mais antiga
+        }
+        touch($paths[5], time() - 31 * 86400); // vencida
+
+        $result = $service->prune();
+
+        $this->assertFileDoesNotExist($paths[5]);
+        $this->assertFileDoesNotExist($paths[1]);
+        $this->assertFileExists($paths[4]);
+        $this->assertLessThanOrEqual(1024 * 1024, $result['remainingBytes']);
+        $this->assertGreaterThanOrEqual(2, $result['removed']);
+    }
+
+    public function testCachedResponseCarriesValidators(): void
+    {
+        $service = new PageCacheService($this->tempDir, true);
+        $request = Request::create('/sobre', 'GET');
+        $service->saveCache($request, new Response('<html>Sobre</html>', 200, ['Content-Type' => 'text/html']));
+
+        $first = $service->getCachedResponse($request);
+        $this->assertNotNull($first);
+        $etag = $first->headers->get('ETag');
+        $this->assertNotEmpty($etag);
+        $this->assertNotNull($first->getLastModified());
+
+        $revalidation = Request::create('/sobre', 'GET', [], [], [], ['HTTP_IF_NONE_MATCH' => $etag]);
+        $second = $service->getCachedResponse($revalidation);
+        $this->assertNotNull($second);
+        $this->assertSame(304, $second->getStatusCode());
+    }
+
+    public function testEnabledMarkerFollowsTheSwitch(): void
+    {
+        $marker = $this->tempDir . '/' . PageCacheService::CACHE_SUBDIR . '/' . \App\Support\PageCacheFastPath::ENABLED_MARKER;
+
+        $enabled = new PageCacheService($this->tempDir, true);
+        $enabled->saveCache(Request::create('/', 'GET'), new Response('<html>Home</html>', 200, ['Content-Type' => 'text/html']));
+        $this->assertFileExists($marker);
+
+        (new PageCacheService($this->tempDir, false))->syncEnabledMarker();
+        $this->assertFileDoesNotExist($marker);
+    }
 }

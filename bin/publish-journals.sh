@@ -87,6 +87,9 @@ if [ "${MODE}" != "--data-only" ]; then
     remote "${PROD_PHP_BIN} bin/console doctrine:migrations:migrate --no-interaction --env=prod"
     remote "./build.sh"
     remote "${PROD_PHP_BIN} bin/console cache:clear --env=prod"
+    # O cache:clear refaz o contêiner, mas as páginas públicas (var/cache/public_pages) ficam fora de var/cache/prod: sem
+    # isto, a página montada com o código anterior continua no ar se o pipeline parar antes do passo cache-clear.
+    remote "${PROD_PHP_BIN} bin/console app:cache:clear --env=prod" | tail -1
 fi
 
 echo "== 5. Pipeline de dados =="

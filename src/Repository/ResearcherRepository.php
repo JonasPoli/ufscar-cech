@@ -246,24 +246,39 @@ class ResearcherRepository extends ServiceEntityRepository
      */
     public function findFeaturedResearchers(int $limit = 8): array
     {
-        $rows = $this->createQueryBuilder('r')
-            ->select('r AS researcher', 'COUNT(DISTINCT p.id) AS a1Count')
-            ->leftJoin('r.productions', 'p', 'WITH', 'p.itemType = :artigoType AND p.qualis = :qualisA1')
-            ->leftJoin('r.productions', 'pAll')
-            ->setParameter('artigoType', ProductionItem::TYPE_ARTIGO)
-            ->setParameter('qualisA1', 'A1')
-            ->groupBy('r.id')
-            ->orderBy('a1Count', 'DESC')
-            ->addOrderBy('COUNT(DISTINCT pAll.id)', 'DESC')
-            ->setMaxResults($limit)
-            ->getQuery()
-            ->getResult();
+        // Duas contagens por docente numa passada só. A versão anterior juntava `productions` duas vezes
+        // (A1 × todas as produções de cada docente: ~800 mil linhas intermediárias) e hidratava todos os docentes.
+        $counts = $this->getEntityManager()->getConnection()->fetchAllAssociative(
+            'SELECT researcher_id, SUM(item_type = :artigoType AND qualis = :qualisA1) AS a1_count, COUNT(*) AS total
+               FROM production_items
+              GROUP BY researcher_id
+              ORDER BY a1_count DESC, total DESC, researcher_id ASC
+              LIMIT ' . max(1, $limit),
+            ['artigoType' => ProductionItem::TYPE_ARTIGO, 'qualisA1' => 'A1']
+        );
+        if ($counts === []) {
+            return $this->findBy([], ['id' => 'ASC'], $limit);
+        }
 
-        return array_map(function ($row) {
-            $researcher = $row['researcher'];
-            $researcher->a1Count = (int)$row['a1Count'];
-            return $researcher;
-        }, $rows);
+        $a1ById = [];
+        foreach ($counts as $row) {
+            $a1ById[(int)$row['researcher_id']] = (int)$row['a1_count'];
+        }
+
+        $byId = [];
+        foreach ($this->findBy(['id' => array_keys($a1ById)]) as $researcher) {
+            $byId[(int)$researcher->getId()] = $researcher;
+        }
+
+        $featured = [];
+        foreach ($a1ById as $id => $a1Count) {
+            if (isset($byId[$id])) {
+                $byId[$id]->a1Count = $a1Count;
+                $featured[] = $byId[$id];
+            }
+        }
+
+        return $featured;
     }
 
     /**

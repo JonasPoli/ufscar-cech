@@ -174,7 +174,10 @@ class ThematicSearchControllerTest extends WebTestCase
             $client->request('GET', '/professor/' . $identifier . '?tema=inteligencia');
             $this->assertResponseIsSuccessful();
             $profContent = (string)$client->getResponse()->getContent();
-            $this->assertStringContainsString('value="inteligencia"', $profContent);
+            // O filtro é preenchido pelo JavaScript a partir da URL: o HTML é o mesmo para qualquer tema, e o cache
+            // de páginas guarda uma só cópia do perfil
+            $this->assertStringNotContainsString('value="inteligencia"', $profContent);
+            $this->assertStringContainsString("urlParams.get('tema')", $profContent);
             $this->assertStringContainsString('filterTopic', $profContent);
         }
     }

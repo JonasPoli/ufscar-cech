@@ -195,6 +195,29 @@ class LattesHtmlParserService
         // 8.5. Capturar snapshot para cálculo do relatório de alterações (diff report)
         $snapshot = $this->diffService->takeSnapshot($researcher);
 
+        // 9-19. Apaga e regrava os filhos numa transação só, como no parser XML: um HTML que falhe no meio não deixa o docente
+        // sem produção. A exceção continua subindo; quem chama limpa ou reabre o EntityManager (a falha no flush o fecha).
+        $this->em->getConnection()->transactional(function () use ($xpath, $researcher): void {
+            $this->replaceChildren($xpath, $researcher);
+        });
+
+        // Sync researcher citation names to Author Thesaurus
+        $this->authorThesaurusService->syncResearcherCitationNames($researcher);
+
+        // Automatically normalize and index co-authors, journals and institutions into new index columns
+        $this->normalizationService->normalizeResearcher($researcher);
+
+        // Calcular e salvar relatório de alterações
+        $this->lastReport = $this->diffService->computeReport($researcher, $snapshot);
+
+        return $researcher;
+    }
+
+    /**
+     * Substitui os itens do pesquisador pelos do HTML. Nada fica pela metade: o chamador roda isto numa transação.
+     */
+    private function replaceChildren(\DOMXPath $xpath, Researcher $researcher): void
+    {
         // 9. Limpar coleções existentes para sincronização limpa e idempotente
         foreach ($researcher->getProductions() as $oldProd) $this->em->remove($oldProd);
         foreach ($researcher->getEducations() as $oldEdu) $this->em->remove($oldEdu);
@@ -244,17 +267,6 @@ class LattesHtmlParserService
         $this->parseEventParticipations($xpath, $researcher);
 
         $this->em->flush();
-
-        // Sync researcher citation names to Author Thesaurus
-        $this->authorThesaurusService->syncResearcherCitationNames($researcher);
-
-        // Automatically normalize and index co-authors, journals and institutions into new index columns
-        $this->normalizationService->normalizeResearcher($researcher);
-
-        // Calcular e salvar relatório de alterações
-        $this->lastReport = $this->diffService->computeReport($researcher, $snapshot);
-
-        return $researcher;
     }
 
     /**

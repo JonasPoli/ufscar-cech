@@ -86,7 +86,7 @@ class SyncKeywordsCommand extends Command
 
         foreach ($files as $index => $file) {
             try {
-                $xml = @simplexml_load_file($file->getRealPath());
+                $xml = @simplexml_load_file($file->getRealPath(), options: LIBXML_NONET);
                 if (!$xml || $xml->getName() !== 'CURRICULO-VITAE') {
                     throw new \RuntimeException('XML inválido: não é um currículo Lattes (sem CURRICULO-VITAE).');
                 }

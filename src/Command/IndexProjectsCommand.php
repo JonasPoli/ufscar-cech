@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Service\Project\ProjectIndexService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Command\LockableTrait;
 use Symfony\Component\Console\Helper\TableSeparator;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -24,6 +25,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 )]
 class IndexProjectsCommand extends Command
 {
+    use LockableTrait;
+
     public function __construct(private readonly ProjectIndexService $indexService)
     {
         parent::__construct();
@@ -35,6 +38,26 @@ class IndexProjectsCommand extends Command
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        // Uma execução por vez: o comando grava em lote, e duas execuções simultâneas se atropelariam. A trava é
+        // por nome de comando, então quem chama outros comandos em sequência não trava a si mesmo.
+        if (!$this->lock()) {
+            (new SymfonyStyle($input, $output))->warning(sprintf(
+                'O comando %s já está em execução em outro processo. Esta execução foi cancelada: aguarde a outra terminar e rode de novo.',
+                $this->getName()
+            ));
+
+            return Command::FAILURE;
+        }
+
+        try {
+            return $this->indexProjects($input, $output);
+        } finally {
+            $this->release();
+        }
+    }
+
+    private function indexProjects(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         $io->title('Indexação dos projetos');

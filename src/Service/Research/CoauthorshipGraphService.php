@@ -44,6 +44,8 @@ final class CoauthorshipGraphService
                    FROM production_authors pa1
                    JOIN production_authors pa2
                      ON pa2.production_item_id = pa1.production_item_id
+                    AND pa1.matched_researcher_id IS NOT NULL
+                    AND pa2.matched_researcher_id IS NOT NULL
                     AND pa1.matched_researcher_id < pa2.matched_researcher_id
                    JOIN production_items pi ON pi.id = pa1.production_item_id
                    JOIN researchers r ON r.id = pi.researcher_id
@@ -72,6 +74,8 @@ final class CoauthorshipGraphService
                    FROM production_authors pa1
                    JOIN production_authors pa2
                      ON pa2.production_item_id = pa1.production_item_id
+                    AND pa1.matched_researcher_id IS NOT NULL
+                    AND pa2.matched_researcher_id IS NOT NULL
                     AND pa1.matched_researcher_id < pa2.matched_researcher_id
                    JOIN production_items pi ON pi.id = pa1.production_item_id
                    JOIN researchers r ON r.id = pi.researcher_id

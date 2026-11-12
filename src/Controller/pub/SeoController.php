@@ -145,6 +145,7 @@ class SeoController extends AbstractController
 
         return new Response($xml, 200, [
             'Content-Type' => 'application/xml; charset=utf-8',
+            'Cache-Control' => 'public, max-age=3600',
         ]);
     }
 
@@ -157,15 +158,28 @@ class SeoController extends AbstractController
         if ($settings->getRobotsTxtContent()) {
             $content = $settings->getRobotsTxtContent();
         } else {
+            // Busca, APIs e variações por parâmetro são o mesmo conteúdo das páginas do sitemap, recombinado: ficam
+            // fora da varredura para que robôs não gerem milhares de páginas a cada visita.
             $content = "User-agent: *\n";
             $content .= "Disallow: /admin/\n";
             $content .= "Disallow: /login\n";
+            $content .= "Disallow: /busca\n";
+            $content .= "Disallow: /api/\n";
+            $content .= "Disallow: /professor/*/fragment/\n";
+            $content .= "Disallow: /professor/*/export/\n";
+            $content .= "Disallow: /indicadores/fragment/\n";
+            foreach (['tema', 'aba', 'modo', 'ordem', 'ligacoes', 'pares', 'docente', 't', 'q'] as $param) {
+                $content .= "Disallow: /*?{$param}=\n";
+                $content .= "Disallow: /*&{$param}=\n";
+            }
+            $content .= "Crawl-delay: 5\n";
             $content .= "Allow: /\n\n";
             $content .= "Sitemap: " . $baseUrl . "/sitemap.xml\n";
         }
 
         return new Response($content, 200, [
             'Content-Type' => 'text/plain; charset=utf-8',
+            'Cache-Control' => 'public, max-age=3600',
         ]);
     }
 }

@@ -29,7 +29,7 @@ class PageCacheSubscriberTest extends TestCase
             ->willReturn(false);
 
         $pageCacheService->expects($this->never())
-            ->method('hasValidCache');
+            ->method('getCachedResponse');
 
         $subscriber = new PageCacheSubscriber($pageCacheService);
 
@@ -51,10 +51,6 @@ class PageCacheSubscriberTest extends TestCase
 
         $pageCacheService->expects($this->once())
             ->method('isCacheableRequest')
-            ->willReturn(true);
-
-        $pageCacheService->expects($this->once())
-            ->method('hasValidCache')
             ->willReturn(true);
 
         $cachedResponse = new Response('<html>Cached</html>', 200);

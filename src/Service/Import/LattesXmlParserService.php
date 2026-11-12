@@ -139,7 +139,7 @@ class LattesXmlParserService
             throw new \InvalidArgumentException("XML file not found: {$filePath}");
         }
 
-        $xml = @simplexml_load_file($filePath);
+        $xml = @simplexml_load_file($filePath, options: LIBXML_NONET);
         if (!$xml || $xml->getName() !== 'CURRICULO-VITAE') {
             throw new \RuntimeException("Invalid XML structure for Lattes CV: {$filePath}");
         }

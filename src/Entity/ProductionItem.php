@@ -22,6 +22,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Index(columns: ['year'], name: 'idx_prod_year')]
 #[ORM\Index(columns: ['doi'], name: 'idx_prod_doi')]
 #[ORM\Index(columns: ['journal_name_normalized'], name: 'idx_prod_journal_name_norm')]
+#[ORM\Index(columns: ['work_key'], name: 'idx_prod_work_key')]
+#[ORM\Index(columns: ['researcher_id', 'work_key'], name: 'idx_prod_researcher_work')]
 #[ORM\HasLifecycleCallbacks]
 class ProductionItem
 {
@@ -121,6 +123,32 @@ class ProductionItem
 
     #[ORM\Column(name: 'extra_data', type: 'json', nullable: true)]
     private ?array $extraData = [];
+
+    /**
+     * Chave da obra única (MD5), calculada pelo MySQL a partir de DOI ou tipo + ano + título. Somente leitura:
+     * serve às consultas da pesquisa pública ({@see \App\Service\Research\ResearchSql::workKey()}).
+     */
+    #[ORM\Column(
+        name: 'work_key',
+        type: 'string',
+        length: 32,
+        nullable: true,
+        insertable: false,
+        updatable: false,
+        columnDefinition: "CHAR(32) CHARACTER SET ascii COLLATE ascii_general_ci GENERATED ALWAYS AS (MD5(CASE WHEN (doi IS NOT NULL AND TRIM(doi) != '') THEN CONCAT('DOI:', LOWER(TRIM(doi))) ELSE CONCAT('T:', item_type, ':', COALESCE(`year`, ''), ':', LOWER(TRIM(title))) END)) STORED"
+    )]
+    private ?string $workKey = null;
+
+    /** Palavras-chave de `extra_data.keywords` como texto, calculadas pelo MySQL. Somente leitura. */
+    #[ORM\Column(
+        name: 'keywords_text',
+        type: 'text',
+        nullable: true,
+        insertable: false,
+        updatable: false,
+        columnDefinition: "TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (COALESCE(CAST(JSON_EXTRACT(extra_data, '$.keywords') AS CHAR CHARACTER SET utf8mb4), '')) STORED"
+    )]
+    private ?string $keywordsText = null;
 
     #[ORM\Column(name: 'created_at')]
     private \DateTimeImmutable $createdAt;
@@ -240,6 +268,7 @@ class ProductionItem
     public function getOrderSequence(): ?int { return $this->orderSequence; }
     public function setOrderSequence(?int $v): static { $this->orderSequence = $v; return $this; }
 
+    public function getWorkKey(): ?string { return $this->workKey; }
     public function getExtraData(): ?array { return $this->extraData ?? []; }
     public function setExtraData(?array $v): static { $this->extraData = $v; return $this; }
 

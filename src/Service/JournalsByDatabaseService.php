@@ -8,6 +8,8 @@ use App\Service\Journal\DisplayTitle;
 use App\Service\Journal\Issn;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\Cache\CacheInterface;
 
 /**
  * Dados da página pública `/periodicos` (docs/evolutions/periodicos-por-base.md, A1).
@@ -77,8 +79,12 @@ class JournalsByDatabaseService
     private const AREA_FAMILIES = 'SELECT ja.journal_id FROM journal_areas ja '
         . 'JOIN capes_areas ca ON ca.id = ja.area_id WHERE ca.id = :areaId OR ca.parent_id = :areaParentId';
 
-    public function __construct(private readonly Connection $connection)
-    {
+    public function __construct(
+        private readonly Connection $connection,
+        // Mesmo pool dos cálculos da pesquisa pública: é limpo junto com o cache de páginas (mescla, Qualis, bases…)
+        #[Autowire(service: 'cache.research')]
+        private readonly ?CacheInterface $researchCache = null,
+    ) {
     }
 
     /**
@@ -241,6 +247,23 @@ class JournalsByDatabaseService
      * @return list<array<string, mixed>>
      */
     private function fetchBaseRows(array $acronyms, ?int $areaId): array
+    {
+        if ($this->researchCache === null) {
+            return $this->computeBaseRows($acronyms, $areaId);
+        }
+
+        // /periodicos, /periodicos/geral e a página de cada base pedem as mesmas listas: uma conta por base e área
+        $key = 'journals_base_rows_' . md5(implode(',', $acronyms) . '|' . ($areaId ?? 'todas'));
+
+        return $this->researchCache->get($key, fn() => $this->computeBaseRows($acronyms, $areaId));
+    }
+
+    /**
+     * @param list<string> $acronyms
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function computeBaseRows(array $acronyms, ?int $areaId): array
     {
         $params = ['acronyms' => $acronyms];
         $areaFilter = '';

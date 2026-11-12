@@ -52,6 +52,9 @@ class DepartmentController extends AbstractController
 
         $totalProductions = $this->productionRepo->countByDepartmentValues($equivalents);
 
+        // Uma consulta para todos os cartões: `r.productions|length` no Twig carregava todas as produções de cada docente
+        $productionCounts = $this->productionRepo->countPerResearcher(array_map(static fn($r) => (int)$r->getId(), $researchers));
+
         $filter = new ResearchFilter();
         $filter->department = $deptCode;
 
@@ -60,6 +63,7 @@ class DepartmentController extends AbstractController
             'deptCode' => $deptCode,
             'researchers' => $researchers,
             'totalProductions' => $totalProductions,
+            'productionCounts' => $productionCounts,
             'deptMetrics' => $this->metrics->metrics($filter),
             'deptPairs' => $this->graph->topPairs($filter, 6),
             'deptGraphSrc' => $this->generateUrl('app_api_v1_graph', ['departamento' => $deptCode, 'ligacoes' => 150]),
