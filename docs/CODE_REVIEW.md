@@ -269,7 +269,7 @@ Verificação: suíte completa com 919 testes passando, `lint:twig`, `lint:yaml`
 ### Verificações em aberto depois do arquivamento do change (12/11/2026)
 
 - [ ] Um dia depois do deploy: `du -sh var/cache/public_pages` abaixo do teto e `var/log/prod-avisos-*.log` sem erro novo.
-- [ ] No `.env.local` do servidor, trocar `serverVersion=8.0` por `8.0.40` na `DATABASE_URL`, se existir.
+- [x] No `.env.local` do servidor, `serverVersion` trocado por `8.0.40` (feito em 12/11/2026; o aviso do DBAL sumiu).
 - [ ] No navegador: console sem erro de integridade (SRI) nas páginas com gráfico e rede.
 - [ ] Em uma semana: conferir no log do nginx se Googlebot ou Bingbot recebem 429 com frequência.
 
