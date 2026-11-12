@@ -17,6 +17,7 @@ class SeoController extends AbstractController
         private readonly ResearcherRepository $researcherRepo,
         private readonly SiteSettingRepository $siteSettingRepo,
         private readonly \App\Service\Research\ResearchCatalogService $researchCatalog,
+        private readonly \Doctrine\DBAL\Connection $connection,
     ) {}
 
     #[Route('/sitemap.xml', name: 'app_pub_sitemap', defaults: ['_format' => 'xml'])]
@@ -113,13 +114,15 @@ class SeoController extends AbstractController
             $urls[] = ['loc' => $baseUrl . $path, 'changefreq' => 'monthly', 'priority' => '0.6', 'lastmod' => date('Y-m-d')];
         }
 
-        // All 414 Researchers
-        $researchers = $this->researcherRepo->findAll();
-        foreach ($researchers as $r) {
-            $identifier = $r->getSlug() ?: $r->getIdLattes();
-            $lastmod = $r->getLastLattesUpdate()
-                ? $r->getLastLattesUpdate()->format('Y-m-d')
-                : ($r->getUpdatedAt() ? $r->getUpdatedAt()->format('Y-m-d') : date('Y-m-d'));
+        // Todos os docentes: só slug e datas, direto do banco, sem hidratar a entidade
+        $rows = $this->connection->fetchAllAssociative(
+            'SELECT slug, id_lattes, last_lattes_update, updated_at FROM researchers ORDER BY id'
+        );
+        foreach ($rows as $row) {
+            $identifier = $row['slug'] ?: $row['id_lattes'];
+            $lastmod = $row['last_lattes_update']
+                ? substr((string)$row['last_lattes_update'], 0, 10)
+                : ($row['updated_at'] ? substr((string)$row['updated_at'], 0, 10) : date('Y-m-d'));
 
             $urls[] = [
                 'loc' => $baseUrl . $this->generateUrl('app_pub_professor_show', ['slugOrId' => $identifier]),

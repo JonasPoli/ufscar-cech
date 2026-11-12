@@ -123,6 +123,8 @@ class QualisJournal
      */
     #[ORM\ManyToMany(targetEntity: AcademicDatabase::class, inversedBy: 'journals')]
     #[ORM\JoinTable(name: 'qualis_journal_academic_database')]
+    #[ORM\JoinColumn(name: 'qualis_journal_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    #[ORM\InverseJoinColumn(name: 'academic_database_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
     private Collection $academicDatabases;
 
     public function __construct()

@@ -1,4 +1,6 @@
 {% extends 'pub/base.html.twig' %}
+
+{% block graph_script %}<script src="{{ asset('js/graph.js') }}" defer></script>{% endblock %}
 {% import 'pub/research/_macros.html.twig' as rs %}
 
 {% block title %}{{ scope.name }} | Explorar pesquisa | Portal CECH UFSCar{% endblock %}

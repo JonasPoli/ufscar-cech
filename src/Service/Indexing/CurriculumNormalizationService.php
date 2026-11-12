@@ -59,9 +59,24 @@ class CurriculumNormalizationService
     ) {}
 
     /**
+     * Atualiza a fila de revisão de nomes de periódicos sem vínculo. Só os nomes novos são resolvidos (modo on-demand);
+     * uma falha aqui nunca deve impedir a importação do currículo.
+     */
+    public function rebuildNameQueue(): void
+    {
+        try {
+            $this->queue->rebuild(false);
+        } catch (\Throwable $e) {
+            $this->logger?->warning('Não foi possível atualizar a fila de nomes de periódicos: ' . $e->getMessage(), ['exception' => $e]);
+        }
+    }
+
+    /**
      * Normaliza e indexa todas as produções, coautores, periódicos e instituições de um único pesquisador.
      *
      * @param Researcher $researcher Entidade do pesquisador a ser indexado
+     * @param bool $rebuildQueue false adia a atualização da fila de nomes de periódicos: quem processa em lote chama
+     *                           rebuildNameQueue() uma vez no fim, em vez de uma por currículo
      * @return array{
      *     productionsProcessed: int,
      *     authorsIndexed: int,
@@ -75,7 +90,7 @@ class CurriculumNormalizationService
      *     cechPeriodLabel?: string
      * } Estatísticas do processamento de normalização
      */
-    public function normalizeResearcher(Researcher $researcher): array
+    public function normalizeResearcher(Researcher $researcher, bool $rebuildQueue = true): array
     {
         // Passo 02/03: Sincroniza/atualiza o tesauro com todas as variações de nomes deste pesquisador
         $thesaurusStats = $this->authorThesaurusService->syncResearcher($researcher);
@@ -251,12 +266,9 @@ class CurriculumNormalizationService
 
         $this->em->flush();
 
-        // Fila de revisão de nomes de periódicos sem vínculo. Só os nomes novos são resolvidos (modo on-demand);
-        // uma falha aqui nunca deve impedir a importação do currículo.
-        try {
-            $this->queue->rebuild(false);
-        } catch (\Throwable $e) {
-            $this->logger?->warning('Não foi possível atualizar a fila de nomes de periódicos: ' . $e->getMessage(), ['exception' => $e]);
+        // Fila de revisão de nomes de periódicos sem vínculo; no lote ela é atualizada uma vez só, no fim.
+        if ($rebuildQueue) {
+            $this->rebuildNameQueue();
         }
 
         $stats['admissionYear'] = $researcher->getAdmissionYear();

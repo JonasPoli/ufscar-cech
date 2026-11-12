@@ -456,6 +456,28 @@ class LattesHtmlParserServiceTest extends KernelTestCase
         $this->assertSame(0, $this->conn->getTransactionNestingLevel(), 'Nenhuma transação fica aberta depois da falha.');
     }
 
+    public function testReimportingTheSameResearcherDoesNotKeepOldProductionsInTheReturnedObject(): void
+    {
+        $idLattes = $this->newId();
+        $name = "Docente Reimport {$this->uniq}";
+        $html = $this->html($idLattes, $name, $this->articles([
+            'Primeiro artigo sobre formação docente. REVISTA A, v. 1, p. 1-10, 2020.',
+            'Segundo artigo sobre avaliação escolar. REVISTA B, v. 2, p. 11-20, 2021.',
+        ]));
+
+        $first = $this->parser->parseHtmlAndSave($html);
+        $this->assertCount(2, $first->getProductions());
+
+        // Reimporta passando o objeto já carregado, como faz o painel
+        $second = $this->parser->parseHtmlAndSave($html, $first, $idLattes);
+
+        $this->assertCount(2, $second->getProductions(), 'O objeto devolvido só tem as produções novas, sem duplicar.');
+        $this->assertCount(2, $this->productionTitles($idLattes));
+        foreach ($second->getProductions() as $production) {
+            $this->assertTrue(static::getContainer()->get(EntityManagerInterface::class)->contains($production));
+        }
+    }
+
     /** Seção de artigos completos com uma citação por item. */
     private function articles(array $citations): string
     {

@@ -1,7 +1,5 @@
 twig:
     file_name_pattern: '*.twig'
-    globals:
-        templateService: '@App\Service\TemplateService'
 
 when@test:
     twig:

@@ -1,5 +1,7 @@
 {% extends 'pub/base.html.twig' %}
 
+{% block graph_script %}<script src="{{ asset('js/graph.js') }}" defer></script>{% endblock %}
+
 {% block title %}{{ deptName }} ({{ deptCode }}) | Departamentos CECH UFSCar{% endblock %}
 {% block meta_description %}Corpo docente, pesquisadores e produção científica vinculada ao {{ deptName }} ({{ deptCode }}) do Centro de Educação e Ciências Humanas da UFSCar.{% endblock %}
 {% block meta_keywords %}{{ deptName }}, {{ deptCode }}, CECH, UFSCar, departamento, corpo docente, pesquisadores, produção acadêmica{% endblock %}

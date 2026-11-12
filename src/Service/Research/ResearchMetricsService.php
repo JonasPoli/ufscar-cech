@@ -25,12 +25,34 @@ final class ResearchMetricsService
     ) {
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * O núcleo (totais, anos, tipos e assuntos) e as pontes ficam em chaves separadas por filtro: pedir com e sem
+     * pontes reaproveita o mesmo núcleo, em vez de guardar duas cópias dele.
+     *
+     * @return array<string, mixed>
+     */
     public function metrics(ResearchFilter $filter, bool $withBridges = true): array
     {
-        $key = $filter->cacheKey('metrics' . ($withBridges ? '_b' : ''));
+        $core = $this->core($filter);
+        $core['bridges'] = $withBridges ? $this->bridges($filter) : null;
 
-        $compute = function () use ($filter, $withBridges): array {
+        return $core;
+    }
+
+    /** @return array<string, mixed> */
+    private function bridges(ResearchFilter $filter): array
+    {
+        $compute = fn(): array => $this->graph->bridges($filter);
+
+        return $filter->isCacheable() ? $this->cache->get($filter->cacheKey('metrics_bridges'), $compute) : $compute();
+    }
+
+    /** @return array<string, mixed> */
+    private function core(ResearchFilter $filter): array
+    {
+        $key = $filter->cacheKey('metrics_core');
+
+        $compute = function () use ($filter): array {
             $where = ResearchSql::where($filter);
             $workKey = ResearchSql::workKey();
             $base = "FROM production_items pi JOIN researchers r ON r.id = pi.researcher_id WHERE {$where['sql']}";
@@ -87,7 +109,6 @@ final class ResearchMetricsService
                 'years' => $years,
                 'kinds' => $kinds,
                 'topics' => $this->catalog->topicsForResearchers($researcherIds, 12, $filter->topicText ?: null),
-                'bridges' => $withBridges ? $this->graph->bridges($filter) : null,
             ];
         };
 

@@ -92,19 +92,15 @@ class AdminUserCommand extends Command
             $this->em->persist($user);
         }
         $user->setRoles(['ROLE_ADMIN']);
-        $passHash = $this->userPasswordHasher->hashPassword($user, $pass);
-        $user->setPassword($passHash);
+        $user->setPassword($this->userPasswordHasher->hashPassword($user, $pass));
 
         $this->em->flush();
 
         // Mensagens de confirmação
-        $io->writeln('Usuário criado com sucesso');
-        $io->writeln('UserName: ' . $userName);
-        $io->writeln('Senha: ' . $pass);
-        $io->writeln('Senha Hash: ' . $passHash);
+        $io->writeln('Usuário: ' . $userName);
         $io->writeln('Role: [\'ROLE_ADMIN\']');
 
-        $io->success('Seu Admin foi criado com sucesso');
+        $io->success('Usuário criado/atualizado com sucesso');
 
         return Command::SUCCESS;
     }

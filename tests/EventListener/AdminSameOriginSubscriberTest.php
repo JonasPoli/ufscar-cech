@@ -26,8 +26,8 @@ class AdminSameOriginSubscriberTest extends TestCase
 
     public function testPostWithSameOriginPasses(): void
     {
-        $event = $this->dispatch('POST', 'https://cech.ufscar.br/admin/countries/new', [
-            'HTTP_ORIGIN' => 'https://cech.ufscar.br',
+        $event = $this->dispatch('POST', 'https://cech.wab.com.br/admin/countries/new', [
+            'HTTP_ORIGIN' => 'https://cech.wab.com.br',
             'HTTP_SEC_FETCH_SITE' => 'same-origin',
         ]);
 

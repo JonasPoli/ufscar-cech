@@ -6,6 +6,7 @@ use App\Service\PageCacheService;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -31,6 +32,8 @@ class AppCacheClearCommand extends Command
     {
         $this
             ->addOption('all', 'a', InputOption::VALUE_NONE, 'Limpa também o cache de dados da aplicação (cache.app): índices dos tesauros, temas e catálogos')
+            ->addOption('aquecer', null, InputOption::VALUE_NONE, 'Depois de limpar, aquece as páginas principais (app:cache:warm); use --url para a URL do site')
+            ->addOption('url', null, InputOption::VALUE_REQUIRED, 'Com --aquecer: URL base do site (padrão: DEFAULT_URI)')
             ->addOption('prune', null, InputOption::VALUE_NONE, 'Não limpa tudo: só descarta as páginas vencidas e, acima do teto de espaço (PAGE_CACHE_MAX_MB), as mais antigas')
             ->setHelp(<<<'HELP'
 Remove as páginas HTML salvas em var/cache/public_pages e o cache da pesquisa (panorama, rede de coautoria).
@@ -77,6 +80,16 @@ HELP);
                 $io->warning('Não foi possível limpar o cache de dados da aplicação (cache.app).');
             }
             $io->note('O cache compilado do Symfony (container e rotas) é limpo com `php bin/console cache:clear`.');
+        }
+
+        if ($input->getOption('aquecer')) {
+            $arguments = ['--pausa' => '1'];
+            if ($input->getOption('url')) {
+                $arguments['--url'] = $input->getOption('url');
+            }
+            $warm = $this->getApplication()?->find('app:cache:warm');
+            // O aquecimento não decide o resultado da limpeza: uma falha nele só aparece no relatório dele
+            $warm?->run(new ArrayInput($arguments), $output);
         }
 
         return Command::SUCCESS;

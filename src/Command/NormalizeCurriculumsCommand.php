@@ -124,7 +124,7 @@ class NormalizeCurriculumsCommand extends Command
 
             $researcher = $this->researcherRepo->findWithAllDetails($id);
             if ($researcher) {
-                $stats = $this->normalizationService->normalizeResearcher($researcher);
+                $stats = $this->normalizationService->normalizeResearcher($researcher, false);
 
                 $totalProds += $stats['productionsProcessed'];
                 $totalAuthors += $stats['authorsIndexed'];
@@ -141,6 +141,9 @@ class NormalizeCurriculumsCommand extends Command
 
         $progressBar->finish();
         $io->newLine(2);
+
+        // A fila de nomes de periódicos foi adiada durante o lote: uma atualização só, no fim
+        $this->normalizationService->rebuildNameQueue();
 
         $io->success(sprintf(
             "Indexação concluída com sucesso!\n- Docentes processados: %d\n- Produções percorridas: %d\n- Autores indexados: %d (Coautores CECH vinculados: %d)\n- Qualis resolvidos: %d\n- Instituições vinculadas: %d",

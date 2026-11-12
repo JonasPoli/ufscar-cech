@@ -347,13 +347,17 @@ class ResearcherRepository extends ServiceEntityRepository
     /**
      * Efficiently loads a Researcher with productions, production authors, matched researchers and author identities to eliminate N+1 queries and lazy proxy overhead.
      */
-    public function findWithAllDetails(string|int $slugOrId): ?Researcher
+    public function findWithAllDetails(string|int $slugOrId, bool $withAuthors = true): ?Researcher
     {
         $qb = $this->createQueryBuilder('r')
-            ->leftJoin('r.productions', 'p')->addSelect('p')
-            ->leftJoin('p.authors', 'pa')->addSelect('pa')
-            ->leftJoin('pa.matchedResearcher', 'pmr')->addSelect('pmr')
-            ->leftJoin('pa.authorIdentity', 'pai')->addSelect('pai');
+            ->leftJoin('r.productions', 'p')->addSelect('p');
+
+        // Os autores (e o docente e a identidade de cada um) só pesam à toa nas abas que não os usam
+        if ($withAuthors) {
+            $qb->leftJoin('p.authors', 'pa')->addSelect('pa')
+                ->leftJoin('pa.matchedResearcher', 'pmr')->addSelect('pmr')
+                ->leftJoin('pa.authorIdentity', 'pai')->addSelect('pai');
+        }
 
         if (is_numeric($slugOrId)) {
             $qb->where('r.id = :id OR r.idLattes = :lattes')

@@ -1,5 +1,7 @@
 {% extends 'pub/base.html.twig' %}
 
+{% block graph_script %}<script src="{{ asset('js/graph.js') }}" defer></script>{% endblock %}
+
 {% block title %}Coautorias entre docentes | Portal CECH UFSCar{% endblock %}
 {% block meta_description %}Rede interativa de coautoria entre os docentes do Centro de Educação e Ciências Humanas da UFSCar: quem publica junto e o que publica.{% endblock %}
 {% block meta_robots %}{% if filter.isEmpty %}index, follow{% else %}noindex, follow{% endif %}{% endblock %}

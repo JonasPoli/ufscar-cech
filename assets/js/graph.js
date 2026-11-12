@@ -26,6 +26,8 @@
         loading = new Promise(function (resolve, reject) {
             var s = document.createElement('script');
             s.src = ECHARTS_URL;
+            s.integrity = 'sha384-Mx5lkUEQPM1pOJCwFtUICyX45KNojXbkWdYhkKUKsbv391mavbfoAmONbzkgYPzR';
+            s.crossOrigin = 'anonymous';
             s.async = true;
             s.onload = function () { resolve(window.echarts); };
             s.onerror = function () { loading = null; reject(new Error('Não foi possível carregar a biblioteca de gráficos.')); };

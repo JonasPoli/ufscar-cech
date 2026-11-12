@@ -72,7 +72,14 @@ class ProfessorController extends AbstractController
         $keywords = $this->extractKeywords($researcher);
 
         $researcherId = (int)$researcher->getId();
-        $latestYear = $this->connection->fetchOne('SELECT MAX(year) FROM production_items WHERE researcher_id = ?', [$researcherId]);
+        // $allYears também traz anos de orientações; o ano mais recente da rede vem só das produções, que já estão carregadas
+        $latestYear = null;
+        foreach ($researcher->getProductions() as $production) {
+            $year = $production->getYear();
+            if ($year && ($latestYear === null || $year > $latestYear)) {
+                $latestYear = $year;
+            }
+        }
 
         return $this->render('pub/professor/show.html.twig', array_merge([
             'researcher' => $researcher,
@@ -145,7 +152,8 @@ class ProfessorController extends AbstractController
     #[Route('/professor/{slugOrId}/fragment/{tab}', name: 'app_pub_professor_fragment')]
     public function fragment(string $slugOrId, string $tab): Response
     {
-        $researcher = $this->researcherRepo->findWithAllDetails($slugOrId);
+        // Só as abas de produções e de análises leem os autores de cada produção
+        $researcher = $this->researcherRepo->findWithAllDetails($slugOrId, \in_array($tab, ['productions', 'analytics'], true));
 
         if (!$researcher) {
             throw $this->createNotFoundException('Pesquisador não encontrado.');

@@ -65,26 +65,28 @@
         {% block academic_meta %}{% endblock %}
 
         {# ── PageSpeed Optimization: Preconnect to CDNs ── #}
-        <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
         {# ── Asynchronous Google Fonts (Non-Render-Blocking) ── #}
-        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap">
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" media="print" onload="this.media='all'">
+        <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" media="print" onload="this.media='all'">
         <noscript>
-            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap">
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap">
         </noscript>
 
         {# ── Shoelace Web Components ── #}
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/light.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/dark.css" media="(prefers-color-scheme: dark)" id="shoelace-dark-theme" />
-        <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/shoelace-autoloader.js"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/light.css" integrity="sha384-VNjXcWTFgkXi1VXtuRlXBLNB44AvISAfti9WbOPCBCiNPnUpJ6dHx1Y3XmTii9pB" crossorigin="anonymous" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/themes/dark.css" integrity="sha384-GWYIqFA394qpD/MvZTDi2pLPBjEux2y3wDvsvEa/s+DXOt1YxPYCRsisFUKlaJf/" crossorigin="anonymous" media="(prefers-color-scheme: dark)" id="shoelace-dark-theme" />
+        <script type="module" src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.19.1/cdn/shoelace-autoloader.js" integrity="sha384-of8LXlkyMCAT14b4mQEBHRclQhowQAA+z328bANMFZBR6em9yjBEmyaeq59nXe/x" crossorigin="anonymous"></script>
 
         {# ── Optional Vendor Scripts (Chart.js / D3.js) - loaded only on pages that require them ── #}
         {% block vendor_scripts %}{% endblock %}
 
         {% block javascripts %}{% endblock %}
+
+        {# Componente de grafo de coautoria (carrega o ECharts sob demanda): só as páginas com grafo ativam o bloco #}
+        {% block graph_script %}{% endblock %}
 
         {# ── Google Analytics 4 (GA4) ── #}
         {% if site_settings and site_settings.googleAnalyticsId %}
@@ -126,9 +128,6 @@
                 .badge-qualis-c  { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
             </style>
         {% endblock %}
-
-        {# Componente de grafo de coautoria (carrega o ECharts sob demanda) #}
-        <script src="{{ asset('js/graph.js') }}" defer></script>
 
         {# Painel "Preferências de leitura" e fórmulas em títulos (KaTeX só é baixado se houver \(…\) ou $$…$$ no <main>) #}
         <script src="{{ asset('js/a11y.js') }}" defer></script>

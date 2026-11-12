@@ -65,10 +65,10 @@ class LattesPhotoCrawlerService
         $endpoints = [];
         if ($kId !== null) {
             $endpoints[] = 'https://servicosweb.cnpq.br/wspessoa/servletrecuperafoto?tipo=1&id=' . $kId;
-            $endpoints[] = 'http://buscatextual.cnpq.br/buscatextual/servletrecuperafoto?id=' . $kId;
+            $endpoints[] = 'https://buscatextual.cnpq.br/buscatextual/servletrecuperafoto?id=' . $kId;
         }
         $endpoints[] = 'https://servicosweb.cnpq.br/wspessoa/servletrecuperafoto?tipo=1&id=' . $idLattes;
-        $endpoints[] = 'http://buscatextual.cnpq.br/buscatextual/servletrecuperafoto?id=' . $idLattes;
+        $endpoints[] = 'https://buscatextual.cnpq.br/buscatextual/servletrecuperafoto?id=' . $idLattes;
 
         foreach ($endpoints as $url) {
             $photoBinary = $this->fetchBinary($url);
@@ -184,12 +184,13 @@ class LattesPhotoCrawlerService
      */
     public function resolveKId(string $idLattes): ?string
     {
-        $url = 'http://lattes.cnpq.br/' . $idLattes;
+        $url = 'https://lattes.cnpq.br/' . $idLattes;
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
+        curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+        curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
         
@@ -353,11 +354,13 @@ class LattesPhotoCrawlerService
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 8);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 3);
+        curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTPS);
+        curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTPS);
         curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-            'Referer: http://lattes.cnpq.br/',
+            'Referer: https://lattes.cnpq.br/',
         ]);
 
         $output = curl_exec($ch);

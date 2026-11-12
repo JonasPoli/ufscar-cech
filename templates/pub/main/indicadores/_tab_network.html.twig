@@ -70,7 +70,7 @@
                             <div class="flex items-center gap-2.5">
                                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                                     {% if pair.photo1 %}
-                                        <img src="{{ pair.photo1 }}" alt="{{ pair.author1 }}" class="h-full w-full object-cover">
+                                        <img src="{{ pair.photo1 }}" alt="{{ pair.author1 }}" width="32" height="32" loading="lazy" decoding="async" class="h-full w-full object-cover">
                                     {% else %}
                                         <span class="font-bold text-[10px] text-indigo-600 dark:text-indigo-400">{{ pair.author1|slice(0, 2)|upper }}</span>
                                     {% endif %}
@@ -90,7 +90,7 @@
                             <div class="flex items-center gap-2.5">
                                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-xs border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                                     {% if pair.photo2 %}
-                                        <img src="{{ pair.photo2 }}" alt="{{ pair.author2 }}" class="h-full w-full object-cover">
+                                        <img src="{{ pair.photo2 }}" alt="{{ pair.author2 }}" width="32" height="32" loading="lazy" decoding="async" class="h-full w-full object-cover">
                                     {% else %}
                                         <span class="font-bold text-[10px] text-indigo-600 dark:text-indigo-400">{{ pair.author2|slice(0, 2)|upper }}</span>
                                     {% endif %}

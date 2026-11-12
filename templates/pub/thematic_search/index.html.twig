@@ -20,7 +20,7 @@
 {% block og_description %}{{ block('meta_description') }}{% endblock %}
 
 {% block vendor_scripts %}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC" crossorigin="anonymous" defer></script>
 {% endblock %}
 
 {% block body %}
@@ -793,7 +793,7 @@ function renderResearchers(researchers, append) {
     researchers.forEach(r => {
         const initials = r.fullName.slice(0, 2).toUpperCase();
         const avatarHtml = r.photoUrl 
-            ? `<img src="${escapeHtml(r.photoUrl)}" alt="${escapeHtml(r.fullName)}" class="h-full w-full object-cover">`
+            ? `<img src="${escapeHtml(r.photoUrl)}" alt="${escapeHtml(r.fullName)}" width="56" height="56" loading="lazy" decoding="async" class="h-full w-full object-cover">`
             : initials;
         const avatarBg = r.photoUrl ? '' : 'bg-gradient-to-tr from-sky-500 to-indigo-600 text-white font-bold text-base';
         const profileUrl = '/professor/' + encodeURIComponent(r.slug || r.idLattes) + topicParam;

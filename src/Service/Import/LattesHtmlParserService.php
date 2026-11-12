@@ -201,6 +201,12 @@ class LattesHtmlParserService
             $this->replaceChildren($xpath, $researcher);
         });
 
+        // As coleções carregadas ainda têm os filhos antigos (já removidos) junto com os novos: sem reler do banco, a
+        // normalização percorre itens desanexados e a contagem de produções soma os antigos. Mesmo padrão do parser XML.
+        $researcherId = $researcher->getId();
+        $this->em->clear();
+        $researcher = $this->em->find(Researcher::class, $researcherId);
+
         // Sync researcher citation names to Author Thesaurus
         $this->authorThesaurusService->syncResearcherCitationNames($researcher);
 
