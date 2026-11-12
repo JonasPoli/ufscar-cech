@@ -53,6 +53,38 @@ git pull origin main
 /RunCloud/Packages/php84rc/bin/php bin/console cache:clear --env=prod
 ```
 
+### Deploy da versão de 12/11/2026 (cache com teto, freio para robôs, Symfony 7.4)
+
+```bash
+git pull --ff-only
+/RunCloud/Packages/php84rc/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader
+/RunCloud/Packages/php84rc/bin/php bin/console doctrine:migrations:migrate --no-interaction --env=prod
+./build.sh
+/RunCloud/Packages/php84rc/bin/php bin/console cache:clear --env=prod
+/RunCloud/Packages/php84rc/bin/php bin/console app:cache:clear --all --env=prod
+```
+
+As migrations criam colunas geradas e índices em `production_items` e `production_authors`: podem levar alguns minutos. O `app:cache:clear --all` apaga as páginas antigas, que não estão em gzip.
+
+Variáveis do `.env.local` (opcionais):
+
+| Variável | Padrão | O que faz |
+|---|---|---|
+| `PAGE_CACHE_ENABLED` | `true` | Liga o cache de páginas e o atalho que serve a página antes do Symfony. |
+| `PAGE_CACHE_MAX_MB` | `2048` | Teto de espaço do cache de páginas. Acima dele, o descarte remove as páginas vencidas e as mais antigas. |
+| `LOCK_DSN` | `flock` | Armazenamento das travas dos comandos de escrita em lote. |
+
+### Disco cheio: o que olhar
+
+```bash
+df -h /                                         # quanto falta
+du -sh var/cache/public_pages var/cache/bot_throttle var/backups var/log
+/RunCloud/Packages/php84rc/bin/php bin/console app:cache:clear --env=prod          # esvazia o cache de páginas
+/RunCloud/Packages/php84rc/bin/php bin/console app:cache:clear --prune --env=prod  # só descarta o que passou do teto
+```
+
+Com o disco cheio, o MySQL não grava tabelas temporárias e várias páginas dão erro 500. Foi o que aconteceu em 12/11/2026, quando o cache de páginas chegou a 26 GB. Depois de liberar espaço, confira `/sitemap.xml` e `/api/v1/metricas`. Os avisos da aplicação ficam em `var/log/prod-avisos.log`.
+
 ---
 
 ## 📦 3. Envio de Arquivos Pesados do Banco (`docs/banco/`)
@@ -104,6 +136,8 @@ cd /home/runcloud/webapps/ufscar-cech
 # Limpar cache de páginas públicas estáticas e pré-renderizadas:
 /RunCloud/Packages/php84rc/bin/php bin/console app:cache:clear --env=prod
 ```
+
+Os comandos de escrita em lote usam trava: se um já estiver rodando, o segundo sai avisando em vez de rodar em duplicidade.
 
 ### 4.5. Sincronização Automática do Banco Online para o Local (Script Único)
 Para exportar a base de dados online, baixar via SCP e restaurar automaticamente no seu ambiente de desenvolvimento com um único comando no seu Mac:

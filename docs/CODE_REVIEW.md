@@ -56,7 +56,9 @@ processo; o `stderr` do cliente nativo passou a ser reportado em `nativeError` e
 e não validava token CSRF. **Correção:** whitelist `ROLE_ADMIN`/`ROLE_USER` e token `user_form`
 validado nas duas ações (campo adicionado em `templates/admin/user/form.html.twig`).
 
-### 1.6 ⏳ Médio — CSRF ausente na maioria dos formulários administrativos
+### 1.6 ✅ Médio — CSRF ausente na maioria dos formulários administrativos (resolvido em 12/11/2026)
+
+**Resolvido na revisão de 12/11/2026:** as ações que alteram dados em `/admin` passaram a recusar com 403 o pedido que vem de outro site (veja a seção "Revisão de 12/11/2026"). A verificação é por origem, não por token em cada formulário. O texto original do achado segue abaixo.
 
 Cerca de 30 ações POST em `/admin` gravam dados sem `isCsrfTokenValid` (tesauros de autores, países,
 instituições, periódicos, bases acadêmicas, importações, SEO, indexação). O cookie de sessão do Symfony
@@ -137,7 +139,9 @@ O *risky* remanescente é `AdminDatabaseBackupControllerTest::testAdminDatabaseB
 - Removidos `$settings` sem uso em `SeoController::sitemap`, `$result` sem uso em duas ações de
   restauração e um `use` órfão de `JsonResponse`.
 
-### 3.4 ⏳ Código de scaffolding em produção
+### 3.4 ✅ Código de scaffolding em produção (resolvido em 12/11/2026)
+
+Resolvido: as telas de teste saíram do admin e a migration `Version20261112160000` removeu as tabelas `test_database` e `super_test_fields`. Texto original:
 
 `TestDatabaseController`, `SuperTestFieldsController`, entidades `TestDatabase`/`SuperTestFields` e
 seus templates são resíduos do gerador de CRUD, expostos em `/admin/test/database` e
@@ -161,6 +165,8 @@ decidir se é intencional.
 
 ### 3.7 ⏳ Observações menores
 
+**12/11/2026:** a rota coringa de download de backup foi removida (arquivo inexistente responde 404) e o CORS de `/api/` ficou só com GET, POST e OPTIONS. Seguem pendentes a allowlist de origens, o `server_version` e o `phpunit.xml.dist`.
+
 - `AdminDatabaseBackupController::download()` tem três rotas com `requirements: ['filename' => '.+']`,
   incluindo `/admin/database/{filename}` como *catch-all* — qualquer GET não previsto sob
   `/admin/database` vira download do backup mais recente. O path traversal está barrado em
@@ -183,3 +189,39 @@ decidir se é intencional.
 3. Conferir se produção sobrescreve `APP_SECRET` em `.env.local` (`1.7`).
 4. Adicionar CSRF aos formulários administrativos restantes (`1.6`).
 5. Limpar o scaffolding de teste (`3.4`) e revisar o cache pós-importação (`2.4`).
+
+---
+
+## 5. Revisão de 12/11/2026
+
+### O incidente
+
+Em 12/11/2026 o disco da produção (49 GB) encheu. O cache de páginas (`var/cache/public_pages`) tinha 26 GB em 23.209 arquivos. Robôs de IA (PerplexityBot, Amazonbot) varreram `/explorar/assunto/*` e `/professor/{slug}?tema=...`, e cada `?tema=` gravava outra cópia do perfil inteiro (de 1,5 a 6 MB). Com o disco cheio, o MySQL não gravava tabelas temporárias, e `/sitemap.xml`, `/api/v1/metricas` e `/projetos?q=` davam erro 500. O cache foi limpo com `app:cache:clear` e 26 GB voltaram a ficar livres.
+
+### O que foi corrigido
+
+1. **Cache de páginas.** Os arquivos são gravados em gzip (`<md5>.html.gz`). A chave usa o endereço canônico, com os parâmetros ordenados. No perfil do docente, fora da aba `aba=busca`, os parâmetros não entram na chave: há uma só cópia por docente. Há um teto de espaço, `PAGE_CACHE_MAX_MB` (padrão 2048 MB), com descarte automático das páginas vencidas e das mais antigas (até 80% do teto), em média a cada 200 gravações. Página acima de 16 MB não é gravada. `php bin/console app:cache:clear --prune` roda só o descarte. A página em cache é servida por `public/index.php` antes do Symfony (`App\Support\PageCacheFastPath`), com `ETag`, `Last-Modified`, `Cache-Control: no-cache` e resposta 304. O arquivo marcador `.enabled`, na pasta do cache, autoriza esse atalho e só existe com `PAGE_CACHE_ENABLED` ligado.
+2. **Freio para robôs.** Fora do cache, cada robô (nome no User-Agent) pode pedir até 30 páginas por minuto. Acima disso recebe 429 com `Retry-After: 60`. Os contadores ficam em `var/cache/bot_throttle`. `robots.txt` e `sitemap.xml` ficam de fora.
+3. **`robots.txt`.** O padrão proíbe `/busca`, `/api/`, fragmentos e exportações, e as URLs com os parâmetros `tema`, `aba`, `modo`, `ordem`, `ligacoes`, `pares`, `docente`, `t` e `q`. Tem `Crawl-delay: 5`. `robots.txt` e `sitemap.xml` saem com `Cache-Control` de 1 hora.
+4. **Banco.** A migration `Version20261112150000` cria em `production_items` as colunas geradas (STORED) `work_key` (MD5 da obra única: DOI ou tipo + ano + título) e `keywords_text` (palavras-chave de `extra_data.keywords`), e os índices `idx_prod_work_key` e `idx_prod_researcher_work`. Em `production_authors` cria `idx_pa_item_matched` e `idx_pa_matched_item`. O dado do Lattes não muda. A pesquisa pública (`ResearchSql`) usa essas colunas. O backup em SQL deixa as colunas geradas fora dos INSERTs. A migration `Version20261112160000` remove as tabelas das telas de teste do gerador de CRUD.
+5. **Desempenho.** `/departamento/{codigo}` conta as produções numa consulta. O resumo global dos indicadores fica no cache da pesquisa (`cache.research`). A aba Redes calcula os pares uma vez. Os docentes em destaque da home não usam mais produto cartesiano. `/api/temas/*` sai com `Cache-Control` de 1 hora. Medidas locais a frio: `/api/v1/metricas` de 2,6 s para 1,2 s; `/busca?q=educacao` de 4,0 s para 1,5 s; `/explorar/assunto/{slug}` de 1,85 s para 0,82 s.
+6. **Segurança.** Ações que alteram dados em `/admin` (e `GET /admin/database/backup/stream`) são recusadas com 403 quando vêm de outro site (`Origin` de outro host ou `Sec-Fetch-Site: cross-site`). O login tem limite de 5 tentativas em 15 minutos. A senha nova exige no mínimo 12 caracteres. Foram acrescentados os cabeçalhos `Referrer-Policy`, `X-Content-Type-Options`, `X-Frame-Options` e HSTS. O CORS de `/api/` aceita só GET, POST e OPTIONS. A rota coringa de download de backup saiu.
+7. **Importação e comandos.** A importação por HTML roda em transação. O tesauro de autores sempre religa as chaves estrangeiras. Os comandos de escrita em lote têm trava: a segunda execução simultânea sai avisando. `bin/publish-journals.sh` limpa o cache de páginas com `app:cache:clear`. O XML é lido sem acesso à rede. Os avisos de produção vão para `var/log/prod-avisos.log`.
+8. **Dependências.** Symfony 7.2 para 7.4 LTS, Twig e PhpSpreadsheet atualizados, `symfony/rate-limiter` e `symfony/lock` incluídos (`LOCK_DSN=flock` no `.env`).
+
+### O que ficou pendente
+
+- Shoelace carregado de CDN e falta de SRI nos scripts.
+- Uploads, `node_modules` e `composer.phar` no Git (o deploy é por `git pull`).
+- Rotacionar a chave do TinyMCE, que ficou no histórico do Git.
+- `server_version` do Doctrine e credenciais no `.env.test`.
+- Chaves estrangeiras de `qualis_journal_academic_database` fora do padrão: `doctrine:schema:validate` nunca fica verde.
+- TLS desligado no crawler de fotos do CNPq.
+- `trusted_hosts` e `trusted_proxies`.
+- Allowlist de origens no CORS.
+- Limite de taxa no nginx, além do freio da aplicação.
+- `opcache.max_accelerated_files` baixo (7963) e sem preload.
+- `StatisticsService` com 2 mil linhas.
+- `/busca` sem cache de resultado.
+- Aquecimento do cache depois de limpar: a primeira visita a cada página volta a ser lenta.
+- Servidor de 1 vCPU, 2 GB de RAM e 50 GB de disco, dividido com outros aplicativos.

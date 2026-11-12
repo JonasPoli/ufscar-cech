@@ -67,6 +67,23 @@ dicas:
 
 # Histórico, do mais recente para o mais antigo. Cada ajuste no git aparece com o código do commit.
 entradas:
+    - data: 2026-11-12
+      titulo: Portal mais rápido, estável e seguro
+      resumo: Ajustes para o portal aguentar o acesso de robôs de busca, responder mais rápido e proteger melhor o painel.
+      mudancas:
+          - As páginas guardadas para abrir mais rápido agora ocupam muito menos espaço, e há um limite para que nunca encham o disco do servidor. Ele tinha enchido em 12/11 por causa de robôs de busca de IA.
+          - Robôs que pedem páginas demais em pouco tempo passam a receber um aviso para tentar de novo depois. Quem visita o portal não é afetado.
+          - O arquivo que orienta os robôs de busca foi refeito.
+          - Buscas, Indicadores, páginas de departamento e a página inicial respondem mais rápido.
+          - A importação de currículos ficou mais segura. Se algo falhar no meio, os dados anteriores do docente continuam como estavam.
+          - Painel mais protegido. Ações enviadas a partir de outro site são recusadas, o login tem limite de tentativas e as senhas novas precisam de pelo menos 12 caracteres.
+          - Telas de teste antigas foram removidas.
+          - O portal foi atualizado para o Symfony 7.4, versão com suporte longo, e bibliotecas ganharam correções de segurança.
+      commits:
+          - {hash: "4e92d11", texto: "Atualização do Symfony para a versão 7.4 (com suporte longo) e de bibliotecas com correções de segurança."}
+          - {hash: "78610cf", texto: "Segurança do painel: ações vindas de outro site são recusadas, limite de tentativas no login, senha com no mínimo 12 caracteres e telas de teste removidas."}
+          - {hash: "7eb2bc2", texto: "Portal mais rápido e estável: páginas guardadas ocupam muito menos espaço, limite para robôs, buscas e indicadores mais rápidos e importação de currículo mais segura."}
+
     - data: 2026-11-07
       titulo: Especialistas, coautorias, explorar e projetos
       resumo: A maior atualização desde o lançamento, a partir da comparação com a Plataforma Jabuticaba, da UFABC.

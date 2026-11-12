@@ -76,6 +76,10 @@ Representa cada item bibliográfico, técnico ou artístico produzido pelo pesqu
 | `$eventCity` (`event_city`) | `string(100)|null` | Lattes (Raw) | Cidade onde ocorreu o evento |
 | `$isIndexed` (`is_indexed`) | `bool` | Índice | Flag indicando se o item passou pelo pipeline de normalização |
 | `$indexedAt` (`indexed_at`) | `DateTimeImmutable|null` | Índice | Data em que ocorreu a última indexação |
+| `work_key` | `CHAR(32)` gerada (STORED) | Índice | MD5 da obra única: DOI ou tipo + ano + título. Usada para contar a mesma obra uma só vez. Não é propriedade da entidade |
+| `keywords_text` | `TEXT` gerada (STORED) | Índice | Palavras-chave tiradas de `extra_data.keywords`. Usada pela pesquisa pública. Não é propriedade da entidade |
+
+Índices novos (migration `Version20261112150000`): `idx_prod_work_key` (`work_key`) e `idx_prod_researcher_work` (`researcher_id`, `work_key`). As colunas geradas ficam fora dos INSERTs do backup em SQL.
 
 ---
 
@@ -92,6 +96,8 @@ Representa cada coautor listado em uma produção científica.
 | `$isCechResearcher` (`is_cech_researcher`) | `bool` | Índice | `true` se este coautor for um docente cadastrado no CECH |
 | `$matchedResearcherId` (`matched_researcher_id`)| `int|null` | Índice | ID da entidade `Researcher` se for docente CECH |
 | `$authorIdentity` (`author_identity_id`) | `AuthorIdentity|null` (FK) | Índice | Chave estrangeira para a identidade canônica do Tesauro |
+
+Índices novos (migration `Version20261112150000`): `idx_pa_item_matched` e `idx_pa_matched_item`, para a coautoria entre docentes.
 
 ---
 
@@ -378,18 +384,6 @@ Tesauro de estados.
 
 `id` integer, `name` varchar(150), `code` varchar(10), `status` boolean, `created_at` datetime_immutable, `updated_at` datetime_immutable, `country_id` → `countries`.
 
-### `SuperTestFields` (Tabela: `super_test_fields`)
-
-Idem.
-
-`id` integer, `simple_input_text` varchar(255), `edit_text_with_editor` text, `date_field` date, `date_and_time_field` datetime, `choice_type_from_list` varchar(255), `sin_nao_int` integer, `boolean_true_false` boolean, `image` varchar(255), `img_updated_at` datetime_immutable, `select_enum` varchar(255), `email_field` varchar(255), `numero_simples` integer, `choice_type_from_entity_id` → `test_database`.
-
-### `TestDatabase` (Tabela: `test_database`)
-
-Tela de teste do gerador de CRUD. Sem uso em produção.
-
-`id` integer, `name` varchar(255).
-
 ### `ThesaurusConcept` (Tabela: `thesaurus_concepts`)
 
 Idem: vazia e sem uso.
@@ -408,3 +402,12 @@ Usuários do painel administrativo.
 
 `id` integer, `username` varchar(180), `roles` json, `password` varchar(255).
 
+## 5. Variáveis de ambiente do cache e das travas
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `PAGE_CACHE_ENABLED` | `true` no `.env` | Liga o cache de páginas públicas. Ligado, cria o marcador `.enabled` na pasta do cache, que autoriza o atalho em `public/index.php`. |
+| `PAGE_CACHE_MAX_MB` | `2048` | Teto de espaço de `var/cache/public_pages`, em MB. O descarte automático leva o cache a 80% do teto. |
+| `LOCK_DSN` | `flock` | Armazenamento das travas (`symfony/lock`) dos comandos de escrita em lote. |
+
+As tabelas `test_database` e `super_test_fields` foram removidas pela migration `Version20261112160000`.

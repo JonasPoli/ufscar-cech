@@ -82,11 +82,13 @@ Catálogo de tudo o que roda no terminal. Em produção, use `/RunCloud/Packages
 
 ## Banco, cache e manutenção
 
+**Trava:** os comandos de escrita em lote (importação, normalização, indexação) não rodam em duplicidade. Se já houver uma execução em andamento, a segunda sai avisando.
+
 | Comando | O que faz | Opções | Guia |
 |---|---|---|---|
 | `app:database:dump` | Gera um backup do banco em `var/backups`. | `--no-zip`, `--filename` |  |
 | `app:database:restore` | Restaura um backup. **Substitui o banco.** | `--latest`, `--force` |  |
-| `app:cache:clear` | Limpa o cache das páginas públicas e o da pesquisa (panorama, rede). Com `--all`, esvazia também o `cache.app`: índices dos tesauros, Pesquisa Temática e catálogos. O cache compilado do Symfony é limpo com `cache:clear`. | `--all` |  |
+| `app:cache:clear` | Limpa o cache das páginas públicas e o da pesquisa (panorama, rede). Com `--all`, esvazia também o `cache.app`: índices dos tesauros, Pesquisa Temática e catálogos. O cache compilado do Symfony é limpo com `cache:clear`. Com `--prune`, não limpa nada: só descarta as páginas vencidas e as mais antigas até 80% do teto `PAGE_CACHE_MAX_MB`. | `--all`, `--prune` |  |
 | `app:admin-user` | Cria um usuário administrador. Se o usuário já existe, redefine a senha e garante `ROLE_ADMIN`. Argumentos: `<usuario> <senha>`. |  |  |
 | `app:geography:seed-historical-countries` | Carrega países históricos, com anos de fundação e extinção. |  |  |
 | `app:generate-index` | Ferramenta de desenvolvimento: gera ou altera o `index.html.twig` de uma entidade. |  |  |

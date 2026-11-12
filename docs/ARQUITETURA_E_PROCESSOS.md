@@ -6,7 +6,7 @@ Este documento descreve detalhadamente a arquitetura, o fluxo de dados, os subsi
 
 ## 1. Visão Geral da Arquitetura
 
-A plataforma foi desenvolvida sobre o framework **Symfony 7 (PHP 8.2+)**, utilizando **Doctrine ORM**, **Twig**, **Tailwind CSS**, **Shoelace Web Components** e **Stimulus**.
+A plataforma foi desenvolvida sobre o framework **Symfony 7.4 LTS (PHP 8.2+)**, utilizando **Doctrine ORM**, **Twig**, **Tailwind CSS**, **Shoelace Web Components** e **Stimulus**.
 
 A principal finalidade do sistema é:
 1. **Ingerir e extrair** currículos Lattes de docentes e pesquisadores (em XML, HTML e planilhas institucionais).
@@ -222,6 +222,12 @@ O `StatisticsService` é responsável por consolidar dados analíticos em tempo 
   - Produções organizadas por categoria (Artigos com selo Qualis, Livros, Capítulos, Eventos, Softwares, Patentes, Artes).
   - Orientações concluídas e em andamento divididas por nível (Doutorado, Mestrado, Pós-Doc, TCC, IC).
   - Botão de exportação de currículo formatado em PDF (`CurriculumExporterService`).
+
+#### 5.1.1 Cache de páginas e freio para robôs
+- **Gravação (`PageCacheService`)**: respostas HTML públicas vão para `var/cache/public_pages/<md5>.html.gz`, em gzip. A chave usa o endereço canônico (parâmetros ordenados). No perfil do docente, fora de `aba=busca`, os parâmetros não entram na chave. Página acima de 16 MB não é gravada.
+- **Teto**: `PAGE_CACHE_MAX_MB` (padrão 2048 MB). Em média a cada 200 gravações, o descarte remove as páginas vencidas e as mais antigas, até 80% do teto. `app:cache:clear --prune` roda só o descarte.
+- **Atalho antes do kernel (`App\Support\PageCacheFastPath`)**: `public/index.php` serve a página em cache sem iniciar o Symfony, com `ETag`, `Last-Modified`, `Cache-Control: no-cache` e resposta 304. O marcador `.enabled` na pasta do cache autoriza o atalho e só existe com `PAGE_CACHE_ENABLED` ligado.
+- **Freio para robôs**: fora do cache, cada robô (nome no User-Agent) pode pedir até 30 páginas por minuto. Acima disso recebe 429 com `Retry-After: 60`. Os contadores ficam em `var/cache/bot_throttle`. `robots.txt` e `sitemap.xml` ficam de fora.
 
 #### 5.2 Painel Administrativo (`templates/admin/`)
 - **Dashboard (`templates/admin/dash/index.html.twig`)**: Métricas de sincronização e status geral do sistema.

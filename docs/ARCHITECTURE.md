@@ -6,7 +6,7 @@ Este documento detalha a arquitetura técnica, modelo conceitual, relacionamento
 
 ## 🏛️ Visão Geral da Arquitetura
 
-O sistema é construído sobre o framework **Symfony 7.2** utilizando a arquitetura clássica MVC com serviços de domínio dedicados, repositórios de consulta otimizados e Doctrine ORM 3.
+O sistema é construído sobre o framework **Symfony 7.4 LTS** utilizando a arquitetura clássica MVC com serviços de domínio dedicados, repositórios de consulta otimizados e Doctrine ORM 3.
 
 ```
                   ┌─────────────────────────────────┐

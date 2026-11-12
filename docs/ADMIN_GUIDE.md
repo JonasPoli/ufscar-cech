@@ -7,6 +7,9 @@ Manual de operações, rotinas de gerenciamento, indexação cienciométrica e a
 ## 🔐 1. Acesso e Autenticação
 
 - **URL de Acesso**: `/admin` (redireciona para `/login` se não autenticado).
+- **Senha**: a senha nova precisa ter no mínimo 12 caracteres.
+- **Tentativas de login**: depois de 5 tentativas erradas em 15 minutos, o login é bloqueado até passar o prazo.
+- **Outro site**: as ações que alteram dados no admin só funcionam a partir do próprio portal. Pedidos vindos de outro site recebem 403.
 - **Primeiro acesso**: nada no código cria um usuário padrão. O primeiro administrador é criado pelo terminal, com `php bin/console app:admin-user <usuario> <senha>` (veja abaixo).
 
 ### Criação e Gerenciamento de Administradores via Console
@@ -110,7 +113,7 @@ Ferramenta para exportação completa, migração e segurança do banco de dados
   ```bash
   unzip backup_cech_*.sql.zip
   mysql -u root -p cech < backup_cech_*.sql
-  php bin/console app:admin-user admin 12345678
+  php bin/console app:admin-user admin "uma-senha-com-12-ou-mais"
   ./build.sh
   ```
 
@@ -180,15 +183,15 @@ Ferramenta para exportação completa, migração e segurança do banco de dados
 
 ## 🧹 12. Cache de páginas (`/admin/cache`)
 
-As páginas públicas ficam guardadas em disco por até 30 dias, para abrirem rápido. A tela mostra o que está em cache e limpa tudo. Use depois de mudanças que não passaram por um comando. O equivalente no terminal é `app:cache:clear`. Importar um currículo pelo admin ou pelo navegador, excluir um currículo, mesclar ou excluir revistas, mudar Qualis ou bases de uma revista, salvar as configurações de SEO e restaurar um backup já limpam o cache sozinhos. O `app:import:lattes` pelo terminal não limpa: quem limpa é o `bin/import-curriculos.sh`, no fim.
+As páginas públicas ficam guardadas em disco, compactadas, por até 30 dias, para abrirem rápido. O espaço tem um teto, `PAGE_CACHE_MAX_MB` (padrão 2048 MB): passando dele, as páginas vencidas e as mais antigas são descartadas sozinhas. A tela mostra o que está em cache, o espaço usado e o teto, e limpa tudo. Use depois de mudanças que não passaram por um comando. O equivalente no terminal é `app:cache:clear`; com `--prune`, ele só aplica o teto. Importar um currículo pelo admin ou pelo navegador, excluir um currículo, mesclar ou excluir revistas, mudar Qualis ou bases de uma revista, salvar as configurações de SEO e restaurar um backup já limpam o cache sozinhos. O `app:import:lattes` pelo terminal não limpa: quem limpa é o `bin/import-curriculos.sh`, no fim.
 
 ## 👤 13. Usuários (`/admin/users`)
 
 Cria, edita e exclui os usuários do painel. No terminal: `app:admin-user`.
 
-## 🧪 14. Telas de teste (`/admin/test/database`, `/admin/super/test/fields`)
+## 🧪 14. Telas de teste (removidas)
 
-São telas geradas para testar o gerador de CRUD do projeto. Não fazem parte do portal, e nenhum recurso depende delas.
+As telas `/admin/test/database` e `/admin/super/test/fields`, geradas para testar o gerador de CRUD, saíram do admin em 12/11/2026, junto com as tabelas.
 
 ## 📝 15. Mudanças de comportamento nas telas de revistas e currículos (outubro de 2026)
 

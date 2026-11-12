@@ -91,7 +91,7 @@ Inspirado na arquitetura e design do sistema *Somos UFMG* e integrado ao ecossis
 
 ## 🛠️ Tecnologias Utilizadas
 
-- **Backend**: PHP 8.2+, Symfony 7.2, Doctrine ORM 3, Doctrine DBAL 4.
+- **Backend**: PHP 8.2+, Symfony 7.4 LTS, Doctrine ORM 3, Doctrine DBAL 4.
 - **Banco de Dados**: MySQL 8.0 (charset `utf8mb4_unicode_ci`).
 - **Frontend**: Twig, Tailwind CSS, Shoelace Web Components, Chart.js, jQuery DataTables.
 - **Processamento e Exportação**: League CSV, Dompdf, SimpleXML, ZipArchive.

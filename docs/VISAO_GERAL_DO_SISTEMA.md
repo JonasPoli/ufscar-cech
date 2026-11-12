@@ -144,16 +144,25 @@ php bin/console app:index:journals                        # periódicos canônic
 php bin/console app:index:topics                          # vocabulário da pesquisa temática
 php bin/console app:database:dump                         # superdump .sql.zip
 php bin/console app:database:restore --latest             # restaura o backup mais recente
-php bin/console app:cache:clear                           # limpa o cache HTML de páginas públicas
+php bin/console app:cache:clear                           # limpa o cache HTML de páginas públicas (--prune só aplica o teto)
 php bin/console app:admin-user <usuario> <senha>          # cria administrador
 ```
 
 ## 7. Pontos de atenção operacionais
 
-- **Cache de páginas públicas** — respostas HTML são gravadas em `var/cache/public_pages` por até
-  30 dias, controlado por `PAGE_CACHE_ENABLED`. Após importar ou reindexar dados, limpe o cache
+- **Cache de páginas públicas** — respostas HTML são gravadas em gzip (`<md5>.html.gz`) em
+  `var/cache/public_pages` por até 30 dias, controlado por `PAGE_CACHE_ENABLED`. A chave é o endereço
+  canônico: no perfil do docente, fora de `aba=busca`, os parâmetros não entram, e há uma só cópia por
+  docente. O espaço tem teto, `PAGE_CACHE_MAX_MB` (padrão 2048 MB), com descarte automático das páginas
+  vencidas e das mais antigas; `app:cache:clear --prune` roda só o descarte. A página em cache é servida
+  por `public/index.php` antes do Symfony (`PageCacheFastPath`), com `ETag` e resposta 304, e só se o
+  marcador `.enabled` existir na pasta do cache. Após importar ou reindexar dados, limpe o cache
   (`app:cache:clear` ou `/admin/cache`), senão o portal continua exibindo a versão antiga.
   Requisições com cookie de sessão e as rotas `/admin`, `/login`, `/api` e `/busca` nunca são cacheadas.
+- **Freio para robôs** — fora do cache, cada robô (nome no User-Agent) pode pedir até 30 páginas por
+  minuto; acima disso recebe 429 com `Retry-After: 60`. `robots.txt` e `sitemap.xml` ficam de fora.
+  O `robots.txt` padrão proíbe `/busca`, `/api/` e as URLs com parâmetros de filtro, com `Crawl-delay: 5`.
+  Em 12/11/2026 o cache sem teto, sob varredura de robôs, encheu o disco da produção.
 - **Token de sincronização** — o bookmarklet e o script de console usam `POST /api/curriculum/import-html`,
   que exige o cabeçalho `X-Cech-Sync-Token`. O token é derivado do `APP_SECRET` e aparece pronto,
   dentro do script, em `/admin/curriculum/new`. Trocar o `APP_SECRET` invalida os bookmarklets salvos.
@@ -163,7 +172,7 @@ php bin/console app:admin-user <usuario> <senha>          # cria administrador
 
 ## 8. Stack
 
-PHP 8.2+ · Symfony 7.2 · Doctrine ORM 3 · MySQL 8.0 (`utf8mb4_unicode_ci`) · Twig · Tailwind CSS ·
+PHP 8.2+ · Symfony 7.4 LTS · Doctrine ORM 3 · MySQL 8.0 (`utf8mb4_unicode_ci`) · Twig · Tailwind CSS ·
 Shoelace · Chart.js · DataTables · Dompdf · PhpSpreadsheet · League CSV · PHPUnit.
 
 ## 9. Para onde ir depois

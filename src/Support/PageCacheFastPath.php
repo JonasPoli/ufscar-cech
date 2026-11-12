@@ -114,6 +114,7 @@ final class PageCacheFastPath
         }
 
         $etag = self::etag($file, $mtime);
+        self::sendSecurityHeaders($server);
         header('X-Page-Cache: HIT');
         header('Cache-Control: no-cache');
         header('ETag: ' . $etag);
@@ -199,8 +200,27 @@ final class PageCacheFastPath
         return $count > self::BOT_REQUESTS_PER_MINUTE;
     }
 
+    /**
+     * Os mesmos cabeçalhos do {@see \App\EventListener\SecurityHeadersSubscriber}, para as respostas que saem
+     * daqui sem passar pelo Symfony.
+     *
+     * @param array<string, mixed> $server $_SERVER
+     */
+    public static function sendSecurityHeaders(array $server): void
+    {
+        header('Referrer-Policy: strict-origin-when-cross-origin');
+        header('X-Content-Type-Options: nosniff');
+        header('X-Frame-Options: SAMEORIGIN');
+
+        $https = strtolower((string)($server['HTTPS'] ?? ''));
+        if (($https !== '' && $https !== 'off') || (string)($server['SERVER_PORT'] ?? '') === '443') {
+            header('Strict-Transport-Security: max-age=15552000');
+        }
+    }
+
     public static function sendTooManyRequests(): void
     {
+        self::sendSecurityHeaders($_SERVER);
         http_response_code(429);
         header('Retry-After: 60');
         header('Content-Type: text/plain; charset=UTF-8');

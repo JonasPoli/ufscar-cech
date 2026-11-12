@@ -2,6 +2,8 @@
 
 Análise de 31/10/2026. Até 41,5 mil currículos os números são medidos; acima disso, são estimativas e estão marcados como tal.
 
+> **Nota de 12/11/2026.** O limite real apareceu antes do previsto e por outro caminho. Em 12/11/2026 o disco da produção (49 GB) encheu: o cache de páginas chegou a 26 GB em 23.209 arquivos, porque robôs de IA varreram `/explorar/assunto/*` e `/professor/{slug}?tema=...` e cada `?tema=` gravava outra cópia do perfil (1,5 a 6 MB). Com o disco cheio, o MySQL não gravou temporários e `/sitemap.xml`, `/api/v1/metricas` e `/projetos?q=` deram erro 500. Esta análise olhava o tamanho dos dados e o tempo das consultas, não o crescimento do cache. O que mudou: o cache agora é gzip, tem chave canônica e teto de 2048 MB (`PAGE_CACHE_MAX_MB`); cada robô é limitado a 30 páginas por minuto; o `robots.txt` proíbe os parâmetros de filtro; e várias consultas ficaram mais rápidas (por exemplo `/api/v1/metricas` de 2,6 s para 1,2 s, medido no Mac). Detalhes em [CODE_REVIEW.md](CODE_REVIEW.md). O servidor continua com 1 vCPU, 2 GB e 50 GB, dividido com outros aplicativos.
+
 ## Resposta
 
 | Pergunta | Resposta |
