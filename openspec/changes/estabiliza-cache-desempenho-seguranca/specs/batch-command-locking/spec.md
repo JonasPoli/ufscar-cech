@@ -5,11 +5,15 @@ Impedir que dois processos do mesmo comando de escrita em lote rodem ao mesmo te
 ## ADDED Requirements
 
 ### Requirement: Execução única dos comandos de escrita em lote
-Os comandos `app:import:lattes`, `app:import:repository`, `app:index:topics`, `app:curriculum:normalize`, `app:thesaurus:sync-authors`, `app:journals:pipeline`, `app:database:restore` e `app:index:projects` MUST NOT rodar em duplicidade no mesmo servidor. Enquanto um deles roda, uma segunda execução do mesmo comando SHALL sair na hora, sem alterar o banco, avisando que o comando já está em execução.
+Os comandos `app:import:lattes`, `app:import:repository`, `app:index:topics`, `app:curriculum:normalize`, `app:thesaurus:sync-authors`, `app:journals:pipeline`, `app:database:restore`, `app:index:projects` e `app:cache:warm` MUST NOT rodar em duplicidade no mesmo servidor. Enquanto um deles roda, uma segunda execução do mesmo comando SHALL sair na hora, sem alterar o banco, avisando que o comando já está em execução.
 
 #### Scenario: Importação disparada duas vezes
 - **WHEN** `app:import:lattes` está rodando e o administrador o inicia de novo em outro terminal
 - **THEN** a segunda execução avisa que o comando já está em execução e termina sem importar nada
+
+#### Scenario: Aquecimento disparado duas vezes
+- **WHEN** `app:cache:warm` está rodando e o administrador o inicia de novo
+- **THEN** a segunda execução avisa que o comando já está em execução, sem pedir nenhuma página, e sai com falha
 
 #### Scenario: Comandos diferentes
 - **WHEN** `app:index:topics` está rodando e o administrador inicia `app:index:projects`

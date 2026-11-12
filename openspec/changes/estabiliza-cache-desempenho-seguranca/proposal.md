@@ -56,12 +56,13 @@ Medições locais (modo prod, sem cache de página, antes → depois): `/api/v1/
 
 - `bot-throttling`: limite de páginas por minuto para cada robô nas requisições fora do cache.
 - `research-query-performance`: chave da obra única e palavras-chave calculadas pelo banco, índices da coautoria e resultados iguais aos de antes.
-- `batch-command-locking`: execução única dos comandos de escrita em lote.
-- `security-headers`: cabeçalhos de segurança HTTP em todas as respostas.
+- `batch-command-locking`: execução única dos comandos de escrita em lote (inclui `app:cache:warm`).
+- `security-headers`: cabeçalhos de segurança HTTP em todas as respostas e hosts aceitos (`TRUSTED_HOSTS`).
+- `frontend-assets`: recursos de terceiros com versão exata e integridade (SRI), `graph.js` só onde há rede de coautoria e imagens abaixo da dobra com `loading=lazy`.
 
 ### Modified Capabilities
 
-- `page-cache`: gzip, endereço canônico, teto com descarte, entrega antes do Symfony, revalidação e marcador `.enabled`.
+- `page-cache`: gzip, endereço canônico, teto com descarte, entrega antes do Symfony, revalidação, marcador `.enabled` e aquecimento (`app:cache:warm`, `app:cache:clear --aquecer`).
 - `seo`: `robots.txt` padrão mais restritivo e `Cache-Control` em `robots.txt` e `sitemap.xml`.
 - `professor-profile`: HTML do perfil igual para qualquer `tema`, com o filtro preenchido pelo navegador.
 - `indicators`: resumo global no cache da pesquisa e pares da aba Redes calculados uma vez.
@@ -69,29 +70,62 @@ Medições locais (modo prod, sem cache de página, antes → depois): `/api/v1/
 - `department-page`: contagem das produções do corpo docente numa consulta.
 - `thematic-search`: `Cache-Control` nas APIs de temas.
 - `journal-catalog`: listas guardadas no cache da pesquisa (condicional).
-- `admin-access`: verificação de origem, limite de login, senha mínima e remoção das telas de teste.
-- `sync-api`: CORS só com GET, POST e OPTIONS.
+- `admin-access`: verificação de origem, limite de login, senha mínima, remoção das telas de teste, login em português e `app:admin-user` sem imprimir senha nem hash.
+- `sync-api`: CORS só com GET, POST e OPTIONS e, fora da leitura pública, só com a lista de origens permitidas.
 - `database-backup`: dump sem colunas geradas, download inexistente com 404 e fim da rota coringa.
-- `lattes-import`: importação por HTML em transação e XML sem acesso à rede.
+- `lattes-import`: importação por HTML em transação, sem duplicar produções na reimportação, e XML sem acesso à rede.
+- `curriculum-normalization`: a fila de nomes de periódicos é reconstruída uma vez ao fim do lote.
+- `profile-photos`: o crawler de fotos do CNPq verifica o TLS, usa só HTTPS e segue no máximo 3 redirecionamentos.
 - `research-thesauri`: chaves estrangeiras religadas depois da limpeza do tesauro de autores.
+
+## Segunda fase (12/11/2026, ainda não publicada)
+
+Uma segunda rodada de correções, do mesmo code review, entra neste change.
+
+**Importação, perfil e consultas**
+- Parser HTML: depois da transação, `em->clear()` e novo `find()` do docente, como no XML. A normalização e a contagem de produções veem só as produções novas, sem duplicar na reimportação.
+- Perfil: os fragmentos `orientations` e `activities` não carregam autores, e a consulta `MAX(year)` redundante saiu. O sitemap lê só `slug`, `id_lattes`, `last_lattes_update` e `updated_at` por DBAL. O HTML e o XML não mudam.
+- `ResearchMetricsService` guarda o núcleo (`metrics_core`) e as pontes (`metrics_bridges`) em chaves separadas, com o mesmo resultado.
+- `normalizeResearcher(Researcher, bool $rebuildQueue = true)` e `rebuildNameQueue()`: `app:curriculum:normalize` reconstrói a fila de nomes de periódicos uma vez ao fim do lote.
+
+**Aquecimento do cache**
+- Novo `app:cache:warm`: pede, uma a uma, as páginas principais (`--url` ou `DEFAULT_URI`, `--pausa=1`, `--apenas`, `--em-processo`), com trava, status e tempo por página; não para em erro e sai com falha se alguma falhar. `app:cache:clear --aquecer [--url=]` chama-o depois de limpar.
+
+**Segurança e configuração**
+- `trusted_hosts` pela variável `TRUSTED_HOSTS` (padrão: `localhost`, `127.0.0.1`, `cech.wab.com.br`, `www.cech.wab.com.br`); host fora da lista recebe 400. `trusted_proxies` não foi configurado.
+- CORS com lista de origens (`buscatextual.cnpq.br`, `lattes.cnpq.br`, `cech.wab.com.br`, o próprio host e `localhost` só em dev e teste). `GET` em `/api/v1/*` e `/api/temas/*` continua com `*`.
+- O crawler de fotos do CNPq verifica o certificado TLS, usa só HTTPS e segue no máximo 3 redirecionamentos.
+- `app:admin-user` não imprime mais a senha nem o hash. `default_locale: pt_BR`: o login mostra as mensagens em português.
+- Doctrine com `server_version: '8.0.40'`. O exemplo de `DATABASE_URL` em `.env` e `.env.test` não traz credenciais reais; as reais ficam em `.env.test.local`, ignorado pelo Git.
+
+**Dependências e higiene**
+- `composer.json`: `php ^8.3` e `config.platform.php` 8.3.0. Saem `symfony/doctrine-messenger` e `symfony/notifier` (sem uso). `composer audit` sem alertas em produção.
+- Saem do Git `composer.phar`, `node_modules/` e `scripts/node_modules/` (5.189 arquivos; continuam no disco e entram no `.gitignore`; nada em produção os usa). Saem o gerador de CRUD (`src/Maker`, `GenerateIndexCommand`, `CrudPolisher`, `TemplateService`, `EnumExtension`). `GEMINI.md` aponta para `AGENTS.md`; o README pede PHP 8.3+.
+
+**Esquema**
+- Migration `Version20261112180000`: remove as chaves estrangeiras manuais duplicadas de `qualis_journal_academic_database` (`FK_QJ_JOURNAL`, `FK_QJ_DATABASE`; ficam as do Doctrine, com `ON DELETE CASCADE`, agora declarado na entidade `QualisJournal`) e a tabela `messenger_messages` (vazia, sem uso).
+
+**Front-end**
+- Versões fixas e SRI (SHA-384): Shoelace 2.19.1, Chart.js 4.4.7, D3 7.9.0, d3-sankey 0.12.3, ECharts 5.5.1, jQuery 3.7.1 e DataTables 1.13.7. `graph.js` só nas páginas com rede de coautoria. Imagens abaixo da dobra com `loading=lazy` e dimensões. Outfit sem o peso 500 e um `preconnect` a menos.
 
 ## Non-Goals
 
 Ficam fora deste change (o motivo de cada um está em `design.md`):
 
-- Trocar o Shoelace servido por CDN e pôr SRI nos scripts.
-- Tirar do Git `public/uploads`, `node_modules` e `composer.phar`.
-- Rotacionar a chave do TinyMCE que ficou no histórico do Git.
-- `server_version` do Doctrine e credenciais do `.env.test`.
-- Renomear as chaves estrangeiras de `qualis_journal_academic_database` (diferença no `doctrine:schema:validate`).
-- Verificação de TLS no crawler de fotos do CNPq.
-- `trusted_hosts` e `trusted_proxies`.
-- Lista de origens permitidas no CORS.
+- Tirar `public/uploads` do Git: o deploy é `git pull` e apagaria as fotos do servidor.
+- Rotacionar a chave do TinyMCE e a senha de root do MySQL que esteve no `.env.test` (continua no histórico do Git).
+- `trusted_proxies`.
 - Limite de taxa no nginx.
 - `opcache.max_accelerated_files` (7963, baixo) e preload no `php.ini` do RunCloud.
-- Dividir o `StatisticsService`.
+- Dividir o `StatisticsService` (2.000 linhas).
 - Cache dos resultados de `/busca`.
-- Aquecer o cache depois de uma limpeza.
+- Trocar o Shoelace por SVG próprio e servir as fontes localmente.
+- Banner de consentimento do Google Analytics (decisão do Jonas).
+- Zerar o `doctrine:schema:validate` (colunas geradas `work_key` e `keywords_text`).
+- Decidir o destino do `symfony/mailer`, sem uso aparente.
+- Trocar `serverVersion=8.0` por `8.0.40` na `DATABASE_URL` dos `.env.local` do desenvolvimento e do servidor.
+- Normalizar fora do parser HTML e XML em `app:import:lattes` (a fila de nomes ainda é reconstruída por docente nesse comando).
+- Índices extras em `production_items`: medidos e descartados (ver `design.md`).
 - Trocar o servidor (1 vCPU, 2 GB, 50 GB divididos com outros aplicativos).
 
 ## Impact
@@ -102,3 +136,11 @@ Ficam fora deste change (o motivo de cada um está em `design.md`):
 - Configuração: `PAGE_CACHE_MAX_MB` (opcional), `LOCK_DSN=flock`, `config/packages/lock.yaml`, `login_throttling` em `security.yaml`, canal de avisos no `monolog.yaml`.
 - Dependências: Symfony 7.4 LTS, Twig 3.2x, PhpSpreadsheet, `symfony/rate-limiter`, `symfony/lock`.
 - Produção: depois do deploy, `app:cache:clear --all` é obrigatório (as páginas antigas não estão em gzip). Robôs bem-comportados deixam de varrer as variações por parâmetro; os demais recebem 429 acima de 30 páginas por minuto.
+
+Segunda fase:
+
+- Código: `LattesHtmlParserService`, `CurriculumNormalizationService`, `NormalizeCurriculumsCommand`, `ResearchMetricsService`, `SeoController` (sitemap) e o controlador do perfil, `CacheWarmCommand` (novo), `AppCacheClearCommand`, `CorsListener`, `LattesPhotoCrawlerService`, `AdminUserCommand`, `QualisJournal`, `base.html.twig` e templates com `graph_script`, imagens e recursos de terceiros.
+- Removidos: `src/Maker`, `GenerateIndexCommand`, `CrudPolisher`, `TemplateService`, `EnumExtension`, `composer.phar`, `node_modules/` e `scripts/node_modules/` do Git.
+- Banco: migration `Version20261112180000`.
+- Configuração: `TRUSTED_HOSTS`, `server_version` do Doctrine, `DATABASE_URL` de exemplo sem credenciais, `composer.json` (PHP 8.3).
+- Produção: o `git pull` da segunda fase remove `composer.phar` e `node_modules` do servidor (não usados). Trocar `serverVersion` no `.env.local` do servidor, se existir, e conferir que `TRUSTED_HOSTS` cobre todos os acessos ao servidor.

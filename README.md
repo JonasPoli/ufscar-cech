@@ -91,8 +91,8 @@ Inspirado na arquitetura e design do sistema *Somos UFMG* e integrado ao ecossis
 
 ## 🛠️ Tecnologias Utilizadas
 
-- **Backend**: PHP 8.2+, Symfony 7.4 LTS, Doctrine ORM 3, Doctrine DBAL 4.
-- **Banco de Dados**: MySQL 8.0 (charset `utf8mb4_unicode_ci`).
+- **Backend**: PHP 8.3+, Symfony 7.4 LTS, Doctrine ORM 3, Doctrine DBAL 4.
+- **Banco de Dados**: MySQL 8.0 ou superior (8.4 em produção; charset `utf8mb4_unicode_ci`).
 - **Frontend**: Twig, Tailwind CSS, Shoelace Web Components, Chart.js, jQuery DataTables.
 - **Processamento e Exportação**: League CSV, Dompdf, SimpleXML, ZipArchive.
 - **Padronização**: Padrão PSR-12, arquitetura em camadas e boas práticas cienciométricas.
@@ -111,7 +111,7 @@ composer install
 ### 2. Configurar variáveis de ambiente
 Crie ou edite o arquivo `.env.local`:
 ```env
-DATABASE_URL="mysql://root:sua_senha@127.0.0.1:3306/cech?serverVersion=8.0&charset=utf8mb4"
+DATABASE_URL="mysql://root:sua_senha@127.0.0.1:3306/cech?serverVersion=8.0.40&charset=utf8mb4"
 ```
 
 ### 3. Criar o banco de dados e executar as migrações

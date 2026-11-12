@@ -29,3 +29,18 @@ Nas respostas a requisições feitas por HTTPS, o sistema SHALL enviar `Strict-T
 #### Scenario: Ambiente local por HTTP
 - **WHEN** o desenvolvedor abre o portal em `http://localhost:8000`
 - **THEN** a resposta não traz `Strict-Transport-Security`
+
+### Requirement: Hosts aceitos
+O sistema SHALL aceitar apenas requisições cujo `Host` case com a expressão de `TRUSTED_HOSTS`; o padrão cobre `localhost`, `127.0.0.1`, `cech.wab.com.br` e `www.cech.wab.com.br`. Um `Host` fora da lista MUST receber 400. `trusted_proxies` MUST NOT ser configurado sem confirmar os proxies reais do RunCloud.
+
+#### Scenario: Host conhecido
+- **WHEN** um visitante abre `https://cech.wab.com.br/`
+- **THEN** a página é servida normalmente
+
+#### Scenario: Host desconhecido
+- **WHEN** uma requisição chega com `Host: outro.example`
+- **THEN** a resposta é 400
+
+#### Scenario: Novo domínio
+- **WHEN** o administrador inclui o domínio novo na variável `TRUSTED_HOSTS`
+- **THEN** o portal passa a responder nesse domínio

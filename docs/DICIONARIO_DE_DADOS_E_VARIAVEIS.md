@@ -366,6 +366,8 @@ Cadastro de revistas. Linhas da mesma revista formam uma família por `canonical
 
 `id` integer, `title` varchar(500), `issn` varchar(50), `normalized_issn` varchar(50), `issn_e` varchar(50), `normalized_issn_e` varchar(50), `issn_l` varchar(50), `normalized_issn_l` varchar(50), `issn_imp` varchar(50), `normalized_issn_imp` varchar(50), `qualis` varchar(10), `area` text.
 
+A tabela de ligação `qualis_journal_academic_database` tem só as chaves estrangeiras do Doctrine, com `ON DELETE CASCADE` (declarado na entidade). A migration `Version20261112180000` removeu as duplicadas `FK_QJ_JOURNAL` e `FK_QJ_DATABASE`.
+
 ### `ResearchProject` (Tabela: `research_projects`)
 
 Projetos do Lattes. `is_coordinator` vem de `FLAG-RESPONSAVEL`.
@@ -407,7 +409,16 @@ Usuários do painel administrativo.
 | Variável | Padrão | Descrição |
 |---|---|---|
 | `PAGE_CACHE_ENABLED` | `true` no `.env` | Liga o cache de páginas públicas. Ligado, cria o marcador `.enabled` na pasta do cache, que autoriza o atalho em `public/index.php`. |
+| `TRUSTED_HOSTS` | regex no `.env` (localhost, 127.0.0.1, cech.wab.com.br e www) | Hosts aceitos pela aplicação (`framework.trusted_hosts`); outro `Host` recebe 400. |
 | `PAGE_CACHE_MAX_MB` | `2048` | Teto de espaço de `var/cache/public_pages`, em MB. O descarte automático leva o cache a 80% do teto. |
 | `LOCK_DSN` | `flock` | Armazenamento das travas (`symfony/lock`) dos comandos de escrita em lote. |
 
-As tabelas `test_database` e `super_test_fields` foram removidas pela migration `Version20261112160000`.
+As tabelas `test_database` e `super_test_fields` foram removidas pela migration `Version20261112160000`. A tabela `messenger_messages` (vazia, sem uso) foi removida pela `Version20261112180000`, junto com os pacotes `symfony/doctrine-messenger` e `symfony/notifier`.
+
+`doctrine:schema:validate` mostra o mapeamento OK, mas o banco aparece "not in sync" só pelas colunas geradas `work_key` e `keywords_text`: o Doctrine não compara bem um `columnDefinition` de coluna gerada. Não é diferença real.
+
+Índices extras em `production_items` — `(item_type, qualis_journal_id, year)` e `(researcher_id, year)` — foram medidos e não criados, por falta de ganho relevante.
+
+`DATABASE_URL`: o exemplo em `.env` e `.env.test` não traz credenciais reais (as reais ficam em `.env.test.local`, ignorado pelo Git). O Doctrine fixa `server_version: '8.0.40'`; um `serverVersion=` na URL do `.env.local` tem precedência, então use `8.0.40` nele.
+
+A CORS de `/api/` usa uma lista de origens (`buscatextual.cnpq.br`, `lattes.cnpq.br`, `cech.wab.com.br`, o próprio host e `localhost` só em dev e teste); `GET` em `/api/v1/*` e `/api/temas/*` continua com `*`.

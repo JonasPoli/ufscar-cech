@@ -66,11 +66,43 @@ git pull --ff-only
 
 As migrations criam colunas geradas e índices em `production_items` e `production_authors`: podem levar alguns minutos. O `app:cache:clear --all` apaga as páginas antigas, que não estão em gzip.
 
+### Deploy da segunda fase de 12/11/2026 (ainda não publicada)
+
+Inclui a migration `Version20261112180000` (remove as chaves estrangeiras manuais duplicadas de `qualis_journal_academic_database` e a tabela `messenger_messages`, vazia).
+
+**Aviso:** o `git pull` desta fase remove no servidor `composer.phar`, `node_modules/` e `scripts/node_modules/`, que saíram do Git. Nada em produção os usa.
+
+```bash
+git pull --ff-only
+/RunCloud/Packages/php84rc/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader
+/RunCloud/Packages/php84rc/bin/php bin/console doctrine:migrations:migrate --no-interaction --env=prod
+./build.sh
+/RunCloud/Packages/php84rc/bin/php bin/console cache:clear --env=prod
+/RunCloud/Packages/php84rc/bin/php bin/console app:cache:clear --all --env=prod
+```
+
+Antes ou logo depois:
+
+- Se o `.env.local` do servidor tiver `serverVersion=8.0` na `DATABASE_URL`, troque por `serverVersion=8.0.40`. O parâmetro da URL vale mais que o `server_version` do `doctrine.yaml`.
+- Confira que `TRUSTED_HOSTS` cobre todos os acessos ao servidor (o padrão já traz `localhost`, `127.0.0.1`, `cech.wab.com.br` e `www.cech.wab.com.br`). Qualquer outro nome recebe 400, inclusive um `--url` do aquecimento.
+- Não há `trusted_proxies` configurado: depende de confirmar os proxies do RunCloud.
+
+Depois do deploy, aqueça o cache (uma página por vez, com pausa de 1 s; leva alguns minutos):
+
+```bash
+/RunCloud/Packages/php84rc/bin/php bin/console app:cache:warm --url=https://cech.wab.com.br --env=prod
+# ou, de uma vez: limpar e aquecer
+/RunCloud/Packages/php84rc/bin/php bin/console app:cache:clear --all --aquecer --url=https://cech.wab.com.br --env=prod
+```
+
+Conferência: uma segunda visita a uma página com `X-Page-Cache: HIT`; `Host` desconhecido com 400; uma página com gráfico e outra com rede de coautoria sem erro de integridade (SRI) no console do navegador. O `doctrine:schema:validate` ainda aponta só as colunas geradas `work_key` e `keywords_text`: é uma limitação do Doctrine, sem diferença real.
+
 Variáveis do `.env.local` (opcionais):
 
 | Variável | Padrão | O que faz |
 |---|---|---|
 | `PAGE_CACHE_ENABLED` | `true` | Liga o cache de páginas e o atalho que serve a página antes do Symfony. |
+| `TRUSTED_HOSTS` | regex dos hosts aceitos (`.env`) | Hosts permitidos (`framework.trusted_hosts`); um `Host` fora da lista recebe 400. Ajuste ao trocar de domínio. |
 | `PAGE_CACHE_MAX_MB` | `2048` | Teto de espaço do cache de páginas. Acima dele, o descarte remove as páginas vencidas e as mais antigas. |
 | `LOCK_DSN` | `flock` | Armazenamento das travas dos comandos de escrita em lote. |
 

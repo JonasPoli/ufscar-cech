@@ -17,6 +17,10 @@ O sistema SHALL importar um currículo a partir do HTML da página pública do L
 - **WHEN** o HTML traz uma data de atualização anterior à gravada
 - **THEN** o currículo é importado assim mesmo
 
+#### Scenario: Reimportação do mesmo HTML
+- **WHEN** o mesmo HTML é importado duas vezes
+- **THEN** a normalização e a contagem de produções do relatório veem só os itens recém-gravados, e o docente não fica com produções duplicadas
+
 #### Scenario: Falha no meio do HTML
 - **WHEN** a gravação dos itens de um HTML falha no meio, pelo painel ou pelo marcador
 - **THEN** as produções, orientações e demais itens anteriores do docente permanecem como estavam, e a falha é informada

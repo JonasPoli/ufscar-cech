@@ -22,19 +22,19 @@ O motivo está em `proposal.md` (Why). Restrições que moldam a solução:
 
 **Non-Goals (pendências, com o motivo):**
 
-- **Shoelace por CDN e SRI nos scripts**: trocar o carregamento mexe em todas as páginas e pede uma rodada própria de testes visuais.
-- **Uploads, `node_modules` e `composer.phar` fora do Git**: o deploy é por `git pull`; tirar `public/uploads` do repositório apagaria as fotos do servidor no pull seguinte. Exige antes mudar o processo de deploy.
-- **Rotacionar a chave do TinyMCE do histórico**: depende de gerar uma chave nova na conta do TinyMCE; reescrever o histórico do Git não resolve sozinho.
-- **`server_version` do Doctrine e credenciais do `.env.test`**: ajuste de configuração sem relação com o incidente; fica para uma revisão de configuração.
-- **Renomear as FKs de `qualis_journal_academic_database`**: só corrige a diferença do `doctrine:schema:validate`; mexe em tabela usada pelo pipeline de periódicos e pede migration própria.
-- **TLS no crawler de fotos do CNPq**: precisa testar a cadeia de certificados do CNPq no servidor antes de ligar a verificação.
-- **`trusted_hosts` e `trusted_proxies`**: dependem de confirmar com o RunCloud os hosts e proxies reais; errar derruba o site.
-- **Lista de origens permitidas no CORS**: o marcador e o script de console rodam na página do Lattes, com origem do CNPq; antes é preciso listar as origens usadas.
+- **Uploads de fotos no Git**: o deploy é por `git pull`; tirar `public/uploads` do repositório apagaria as fotos do servidor no pull seguinte. Exige antes mover as fotos para fora do repositório e mudar o deploy.
+- **Rotacionar a chave do TinyMCE e a senha de root do MySQL do `.env.test`**: a chave já não é citada no código, mas depende de gerar outra na conta do TinyMCE; a senha do MySQL continua no histórico do Git, e reescrever o histórico não resolve sozinho. Trocar as duas é ação manual do Jonas.
+- **`trusted_proxies`**: depende de confirmar com o RunCloud os proxies reais; errar faria o portal enxergar o endereço e o esquema errados.
 - **Limite de taxa no nginx**: a configuração do nginx fica no painel do RunCloud, fora do repositório.
-- **`opcache.max_accelerated_files` e preload**: ajuste no `php.ini` do RunCloud, compartilhado com outros aplicativos.
-- **Dividir o `StatisticsService`**: refatoração grande, sem ganho direto para o incidente.
-- **Cache dos resultados de `/busca`**: texto livre gera chaves sem fim; precisa de outra estratégia (teto por chave, LRU).
-- **Aquecer o cache depois de limpar**: sem cron, o aquecimento teria de ser manual; fica para quando houver agendador.
+- **`opcache.max_accelerated_files` (7963) e preload**: ajuste no `php.ini` do RunCloud, compartilhado com outros aplicativos.
+- **Dividir o `StatisticsService` (2.000 linhas)**: refatoração grande, sem ganho de desempenho imediato.
+- **Cache dos resultados de `/busca`**: decisão da spec `page-cache`: texto livre gera chaves sem fim e não vai para cache; o freio por robô cobre o abuso.
+- **Shoelace por SVG próprio e fontes locais**: trocar mexe em todas as páginas e pede rodada própria de testes visuais; as versões fixas e o SRI já cobrem o risco principal.
+- **Banner de consentimento do Google Analytics**: decisão do Jonas.
+- **`doctrine:schema:validate` zerado**: o mapeamento está OK, mas o banco aparece "not in sync" só pelas colunas geradas `work_key` e `keywords_text`. O Doctrine não compara bem um `columnDefinition` de coluna gerada e sugere recriá-las. Não é diferença real; fica registrado como pendência conhecida.
+- **`symfony/mailer` sem uso aparente**: o pacote ficou; a decisão de remover depende de confirmar que nenhum fluxo de e-mail é planejado.
+- **`serverVersion=8.0` na `DATABASE_URL` dos `.env.local`** (desenvolvimento e servidor): o parâmetro da URL tem precedência sobre o `server_version` do `doctrine.yaml`; trocar por `8.0.40` é edição manual de arquivos fora do Git.
+- **Parser HTML e XML normalizam dentro do parser em `app:import:lattes`**: por isso a fila de nomes de periódicos ainda é reconstruída por docente nesse comando; separar a normalização do parser é mudança maior.
 - **Trocar o servidor**: decisão de custo, fora do código.
 
 ## Decisions
@@ -140,6 +140,34 @@ O `LattesHtmlParserService` passa a apagar e regravar os itens do docente dentro
 - `bin/publish-journals.sh` roda `app:cache:clear` depois do pipeline, para não servir páginas montadas antes dos dados novos (o `cache:clear` do Symfony não toca no cache de páginas).
 - Leitura de XML (`simplexml_load_file`, `simplexml_load_string`) com `LIBXML_NONET` no parser do Lattes, em `app:sync:keywords`, em `app:projects:backfill-members` e na importação de arquivos do tesauro.
 
+### D12. Segunda fase: aquecimento, CORS, hosts e configuração
+
+**Aquecimento (`app:cache:warm`).** Sem cron, quem limpa o cache deixa a primeira visita real pagar a geração (13 s a frio na home). O comando pede as páginas principais uma de cada vez, por HTTP no endereço do site (`--url` ou `DEFAULT_URI`), com pausa de 1 s (`--pausa`), para ficar abaixo do freio de robôs e do que a CPU única aguenta. Usa a trava dos comandos de lote (D8), relata status e tempo, não para em erro e sai com falha se alguma página falhar. `--apenas` filtra por trecho do caminho. `--em-processo` chama o kernel sem rede, para ambientes sem URL. A página só entra no cache se a resposta é lida até o fim, por isso o comando lê o corpo inteiro. `app:cache:clear --aquecer` encadeia os dois, e a falha do aquecimento não muda o resultado da limpeza. As páginas de assunto e de perfil não entram na lista: são milhares, e o teto do cache não comportaria aquecê-las todas.
+
+**CORS com lista de origens.** O `CorsListener` devolvia a origem de qualquer um em `/api/`, inclusive nas rotas de escrita. Agora, `GET` em `/api/v1/*` e `/api/temas/*` continua com `*` (API pública de leitura, sem cookie). As demais rotas só recebem `Allow-Origin` para `buscatextual.cnpq.br`, `lattes.cnpq.br`, `cech.wab.com.br`, o próprio host e, em dev e teste, `localhost` e `127.0.0.1`. Quem não está na lista não recebe o cabeçalho, e o navegador bloqueia; o token de sincronização continua exigido. Chamadas sem `Origin` (curl, servidor a servidor) não são afetadas.
+
+**`trusted_hosts` e `trusted_proxies`.** `trusted_hosts` vem da variável `TRUSTED_HOSTS` (regex; padrão com `localhost`, `127.0.0.1`, `cech.wab.com.br` e `www.cech.wab.com.br`). Um `Host` forjado recebe 400, o que protege links gerados a partir do `Host`. `trusted_proxies` não foi configurado: sem confirmar os proxies do RunCloud, o risco de errar o esquema e o IP do cliente é maior que o ganho.
+
+**TLS do crawler.** O crawler de fotos do CNPq deixou de usar `VERIFYPEER=false`: verifica o certificado, aceita só HTTPS (inclusive em redirecionamentos) e segue no máximo 3 redirecionamentos.
+
+**Credenciais e senha.** `.env` e `.env.test` trazem só um exemplo de `DATABASE_URL`; as credenciais reais ficam em `.env.test.local`, ignorado pelo Git. `app:admin-user` não imprime senha nem hash. `default_locale: pt_BR` traduz as mensagens de login (`Credenciais inválidas.`). `server_version: '8.0.40'` no Doctrine evita consultar o servidor para descobrir a versão.
+
+### D13. Segunda fase: parser HTML, perfil, sitemap e métricas
+
+- **Parser HTML**: depois da transação, o `LattesHtmlParserService` chama `em->clear()` e recarrega o docente com `find()`, como o parser XML. Antes, a coleção de produções do docente ainda guardava os itens apagados na memória, e a normalização e `productionsCount` viam itens velhos e novos juntos.
+- **Perfil** (sem comportamento novo, por isso sem requisito): os fragmentos `orientations` e `activities` chamam `findWithAllDetails($slug, withAuthors)` sem os autores, que eles não mostram, e a consulta `MAX(year)` redundante saiu. O HTML é idêntico.
+- **Sitemap** (sem requisito): lê só `slug`, `id_lattes`, `last_lattes_update` e `updated_at` por DBAL, sem hidratar entidades. O XML é idêntico.
+- **`ResearchMetricsService`** (sem requisito): o núcleo (`metrics_core`) e as pontes (`metrics_bridges`) ficam em chaves de cache separadas; quem pede só o núcleo não paga as pontes. O resultado é o mesmo.
+- **Normalização**: `normalizeResearcher(Researcher, bool $rebuildQueue = true)` e `rebuildNameQueue()` públicos. O comando `app:curriculum:normalize` passa `false` e reconstrói a fila uma vez ao fim do lote, em vez de uma por docente. Chamadas isoladas (painel e importação) mantêm o comportamento anterior.
+
+### D14. Segunda fase: dependências, higiene, esquema e front-end
+
+- **composer**: `php ^8.3` e `config.platform.php` 8.3.0 (o local roda 8.3; produção usa 8.4). Saem `symfony/doctrine-messenger` e `symfony/notifier`, sem uso; o `messenger.yaml` e o `notifier.yaml` saem junto. O `symfony/mailer` fica, pendente de decisão. `composer audit` sem alertas em produção.
+- **Git**: saem `composer.phar`, `node_modules/` e `scripts/node_modules/` (5.189 arquivos; continuam no disco e entram no `.gitignore`). Nada em produção os usa. Saem também o gerador de CRUD (`src/Maker`, `GenerateIndexCommand`, `CrudPolisher`, `TemplateService`, `EnumExtension`).
+- **Esquema**: `Version20261112180000` remove `FK_QJ_JOURNAL` e `FK_QJ_DATABASE` de `qualis_journal_academic_database`, duplicadas das chaves do Doctrine, e a tabela `messenger_messages` (vazia). Fica a chave do Doctrine com `ON DELETE CASCADE`, declarado agora na entidade `QualisJournal`.
+- **Índices extras em `production_items` (decisão: não criar)**: `(item_type, qualis_journal_id, year)` e `(researcher_id, year)` foram medidos e não trouxeram ganho relevante nas consultas lentas; cada índice a mais custa espaço e tempo de gravação nas importações. Se uma consulta nova mostrar o contrário, medir de novo antes de criar.
+- **Front-end**: versões fixas e SRI (SHA-384) em Shoelace 2.19.1 (autoloader, `light.css`, `dark.css`), Chart.js 4.4.7, D3 7.9.0, d3-sankey 0.12.3, ECharts 5.5.1, jQuery 3.7.1 e DataTables 1.13.7. Os módulos que o autoloader do Shoelace importa em tempo de execução ficam sem SRI, porque o navegador os busca por `import()` e o autoloader não aceita o atributo. `graph.js` sai do layout e entra pelo bloco `graph_script`, só no perfil, no departamento, em `/coautorias` e no escopo do Explorar. Imagens abaixo da dobra com `loading="lazy"` e dimensões; Outfit sem o peso 500 e um `preconnect` a menos.
+
 ## Risks / Trade-offs
 
 - [ETag e compressão do nginx] Se o nginx compactar ou alterar a resposta, ele enfraquece o `ETag` (`W/"..."`), e a comparação exata com `If-None-Match` deixa de dar 304. → O atalho já manda gzip pronto com `Content-Encoding`, e o nginx não recompacta. Conferir em produção com `curl -I` e `If-None-Match`; se o `W/` aparecer, aceitar a comparação fraca. O pior caso é uma resposta 200 completa, nunca conteúdo errado.
@@ -152,6 +180,12 @@ O `LattesHtmlParserService` passa a apagar e regravar os itens do docente dentro
 - [Cabeçalhos no atalho] HIT, 304 e 429 não passam pelo ouvinte de resposta do Symfony. → O `PageCacheFastPath` envia os mesmos cabeçalhos; teste cobre os três casos.
 - [HSTS] Depois do primeiro acesso, o navegador só aceita HTTPS no domínio pelo `max-age`. → O portal já funciona só em HTTPS; começar com um `max-age` moderado (ver Open Questions).
 - [Symfony 7.4] Avisos de depreciação e mudanças de comportamento. → Suíte completa, `lint:twig`, `lint:yaml` e navegação manual pelo painel; rollback pelo `composer.lock` anterior.
+- [Segunda fase: `git pull` remove arquivos] `composer.phar`, `node_modules/` e `scripts/node_modules/` saem do Git e o `git pull` os apaga no servidor. → Nada em produção os usa; avisar antes do pull.
+- [Segunda fase: `TRUSTED_HOSTS`] Um acesso por outro nome (IP do servidor, domínio de teste) passa a receber 400. → Conferir que a variável cobre todos os acessos, inclusive o do `app:cache:warm --url`, antes de publicar.
+- [Segunda fase: `serverVersion` na URL] Um `.env.local` com `serverVersion=8.0` na `DATABASE_URL` vence o `server_version` do `doctrine.yaml`. → Trocar por `8.0.40` onde existir; sem a troca nada quebra, só fica a versão menos precisa.
+- [Segunda fase: SRI] Hash errado faz o navegador recusar o recurso e a página perder o gráfico. → Conferir no navegador, com o console aberto, uma página de cada tipo depois do deploy.
+- [Segunda fase: CORS] Uma origem de uso legítimo que não esteja na lista perde o acesso às rotas de escrita. → Lista cobre o marcador, o script do Lattes e o portal; acrescentar a origem em `CorsListener` se surgir outra.
+- [Segunda fase: aquecimento] O comando ocupa a CPU única por alguns minutos. → Rodar fora do horário de pico; pausa de 1 s entre as páginas.
 
 ## Migration Plan
 
@@ -185,6 +219,27 @@ Rollback:
 2. `git checkout <commit anterior>`
 3. `composer install --no-dev --optimize-autoloader`
 4. `./build.sh`, `bin/console cache:clear --env=prod` e `bin/console app:cache:clear --all --env=prod` (o código antigo ignora os `.html.gz`, que só ocupariam espaço).
+
+## Plano da segunda fase
+
+A segunda fase ainda não foi publicada. Antes: `df -h /` e backup (`app:database:dump --filename=antes_segunda_fase_<data> --env=prod`).
+
+Em `/home/runcloud/webapps/ufscar-cech`, com `/RunCloud/Packages/php84rc/bin/php`:
+
+1. Avisar que o `git pull` remove no servidor `composer.phar` e `node_modules` (não usados).
+2. `git pull --ff-only`
+3. `composer install --no-dev --optimize-autoloader`
+4. `bin/console doctrine:migrations:migrate --no-interaction --env=prod` (aplica `Version20261112180000`)
+5. `./build.sh`
+6. `bin/console cache:clear --env=prod`
+7. `bin/console app:cache:clear --all --env=prod`
+8. Se o `.env.local` do servidor tiver `serverVersion=8.0` na `DATABASE_URL`, trocar por `serverVersion=8.0.40`.
+9. Conferir que `TRUSTED_HOSTS` cobre todos os acessos ao servidor.
+10. `bin/console app:cache:warm --url=https://cech.wab.com.br --env=prod`
+
+Conferência: o `app:cache:warm` termina sem falha; uma página mostra `X-Page-Cache: HIT` na segunda visita; `curl -sI -H 'Host: outro.example' <ip>` responde 400; uma página com gráfico e outra com rede de coautoria abrem sem erro de integridade no console; `doctrine:schema:validate` só aponta `work_key` e `keywords_text`.
+
+Rollback: antes do checkout, `doctrine:migrations:migrate 'DoctrineMigrations\Version20261112160000' --env=prod` (recria `messenger_messages` vazia e as duas chaves duplicadas); depois `git checkout <commit anterior>`, `composer install --no-dev --optimize-autoloader`, `./build.sh`, `cache:clear` e `app:cache:clear --all`.
 
 ## Open Questions
 

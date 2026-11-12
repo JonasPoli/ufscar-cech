@@ -137,3 +137,33 @@ O cache SHALL ter um teto de espaço definido por `PAGE_CACHE_MAX_MB` (padrão 2
 #### Scenario: Teto no painel
 - **WHEN** o administrador abre `/admin/cache`
 - **THEN** a tela mostra o espaço ocupado e o teto configurado
+
+### Requirement: Aquecimento das páginas principais
+O sistema SHALL oferecer `app:cache:warm`, que pede uma de cada vez as páginas principais: início, `/indicadores` e as 4 abas, `/periodicos`, `/periodicos/geral` e as 5 bases, `/departamentos` e cada departamento, `/coautorias`, `/explorar` e as listas, `/temas`, `/projetos`, `/sobre`, `/sobre-os-dados` e `/novidades`. Mostra status e tempo de cada uma, não para num erro e sai com falha se alguma falhar.
+
+#### Scenario: Aquecimento pelo endereço do site
+- **WHEN** o administrador roda `app:cache:warm --url=https://cech.wab.com.br`
+- **THEN** cada página é pedida em sequência, com a pausa de `--pausa` segundos (padrão 1) entre elas, e o comando informa status e tempo de cada uma e o total
+
+#### Scenario: Uma página falha
+- **WHEN** uma das páginas responde 500 ou excede o tempo
+- **THEN** as demais continuam sendo pedidas, e o comando termina com falha
+
+#### Scenario: Filtro e modo sem rede
+- **WHEN** o comando roda com `--apenas=/periodicos` ou com `--em-processo`
+- **THEN** só os caminhos que contêm o texto são pedidos, e com `--em-processo` o pedido é feito ao kernel da aplicação, sem rede
+
+#### Scenario: Sem endereço
+- **WHEN** não há `--url`, nem `DEFAULT_URI`, nem `--em-processo`
+- **THEN** o comando avisa que falta o endereço e termina com falha
+
+### Requirement: Aquecimento depois da limpeza
+`app:cache:clear --aquecer` SHALL chamar `app:cache:warm` depois de limpar, aceitando `--url` para o endereço do site. A falha do aquecimento MUST NOT alterar o resultado da limpeza.
+
+#### Scenario: Limpar e aquecer
+- **WHEN** o administrador roda `app:cache:clear --all --aquecer --url=https://cech.wab.com.br`
+- **THEN** o cache é limpo e, em seguida, as páginas principais são pedidas
+
+#### Scenario: Limpar sem aquecer
+- **WHEN** `app:cache:clear` roda sem `--aquecer`
+- **THEN** nenhuma página é pedida

@@ -82,13 +82,13 @@ Catálogo de tudo o que roda no terminal. Em produção, use `/RunCloud/Packages
 
 ## Banco, cache e manutenção
 
-**Trava:** os comandos de escrita em lote (importação, normalização, indexação) não rodam em duplicidade. Se já houver uma execução em andamento, a segunda sai avisando.
+**Trava:** os comandos de escrita em lote (importação, normalização, indexação) e o `app:cache:warm` não rodam em duplicidade. Se já houver uma execução em andamento, a segunda sai avisando.
 
 | Comando | O que faz | Opções | Guia |
 |---|---|---|---|
 | `app:database:dump` | Gera um backup do banco em `var/backups`. | `--no-zip`, `--filename` |  |
 | `app:database:restore` | Restaura um backup. **Substitui o banco.** | `--latest`, `--force` |  |
-| `app:cache:clear` | Limpa o cache das páginas públicas e o da pesquisa (panorama, rede). Com `--all`, esvazia também o `cache.app`: índices dos tesauros, Pesquisa Temática e catálogos. O cache compilado do Symfony é limpo com `cache:clear`. Com `--prune`, não limpa nada: só descarta as páginas vencidas e as mais antigas até 80% do teto `PAGE_CACHE_MAX_MB`. | `--all`, `--prune` |  |
-| `app:admin-user` | Cria um usuário administrador. Se o usuário já existe, redefine a senha e garante `ROLE_ADMIN`. Argumentos: `<usuario> <senha>`. |  |  |
+| `app:cache:clear` | Limpa o cache das páginas públicas e o da pesquisa (panorama, rede). Com `--all`, esvazia também o `cache.app`: índices dos tesauros, Pesquisa Temática e catálogos. O cache compilado do Symfony é limpo com `cache:clear`. Com `--prune`, não limpa nada: só descarta as páginas vencidas e as mais antigas até 80% do teto `PAGE_CACHE_MAX_MB`. Com `--aquecer`, depois de limpar chama `app:cache:warm` (`--url` informa o endereço do site; padrão `DEFAULT_URI`); uma falha no aquecimento não muda o resultado da limpeza. | `--all`, `--prune`, `--aquecer`, `--url` |  |
+| `app:cache:warm` | Aquece o cache das páginas principais, uma por vez: início, `/indicadores` e as 4 abas, `/periodicos`, `/periodicos/geral` e as 5 bases, `/departamentos` e cada departamento, `/coautorias`, `/explorar` e as listas, `/temas`, `/projetos`, `/sobre`, `/sobre-os-dados` e `/novidades`. Mostra status e tempo de cada página, não para num erro e sai com falha se alguma falhar. Tem trava: uma segunda execução simultânea é recusada. Sem `--url` nem `DEFAULT_URI`, exige `--em-processo`. | `--url`, `--pausa=1`, `--apenas`, `--em-processo` | `app:cache:warm --url=https://cech.wab.com.br` |
+| `app:admin-user` | Cria um usuário administrador. Se o usuário já existe, redefine a senha e garante `ROLE_ADMIN`. Argumentos: `<usuario> <senha>`. Não imprime a senha nem o hash. |  |  |
 | `app:geography:seed-historical-countries` | Carrega países históricos, com anos de fundação e extinção. |  |  |
-| `app:generate-index` | Ferramenta de desenvolvimento: gera ou altera o `index.html.twig` de uma entidade. |  |  |

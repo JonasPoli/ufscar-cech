@@ -79,10 +79,13 @@ entradas:
           - Painel mais protegido. Ações enviadas a partir de outro site são recusadas, o login tem limite de tentativas e as senhas novas precisam de pelo menos 12 caracteres.
           - Telas de teste antigas foram removidas.
           - O portal foi atualizado para o Symfony 7.4, versão com suporte longo, e bibliotecas ganharam correções de segurança.
+          - Os recursos de terceiros usados nas páginas (gráficos, ícones) têm versão fixa e verificação de integridade, e a rede de coautoria só é carregada nas páginas que a mostram.
+          - A reimportação de um currículo pelo navegador não duplica mais as produções, e há um comando para aquecer as páginas depois de limpar o cache.
       commits:
           - {hash: "4e92d11", texto: "Atualização do Symfony para a versão 7.4 (com suporte longo) e de bibliotecas com correções de segurança."}
           - {hash: "78610cf", texto: "Segurança do painel: ações vindas de outro site são recusadas, limite de tentativas no login, senha com no mínimo 12 caracteres e telas de teste removidas."}
           - {hash: "7eb2bc2", texto: "Portal mais rápido e estável: páginas guardadas ocupam muito menos espaço, limite para robôs, buscas e indicadores mais rápidos e importação de currículo mais segura."}
+          - {hash: "b542b1f", texto: "Segunda rodada de correções: acesso à API só de origens conhecidas, verificação de certificados, bibliotecas de terceiros com versão fixa e integridade, e limpeza de arquivos e códigos sem uso."}
 
     - data: 2026-11-07
       titulo: Especialistas, coautorias, explorar e projetos

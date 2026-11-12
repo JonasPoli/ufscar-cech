@@ -63,8 +63,31 @@
 - [x] 6.8 Conferir em produção com `curl`: HIT, gzip e 304; `robots.txt` e `sitemap.xml` com o cabeçalho; 429 para robô acima de 30 páginas; cabeçalhos de segurança numa página gerada e numa do cache; 403 de origem; uma ação do painel funcionando; 404 nas telas de teste; tempos a frio. Verificar anotando os resultados no relato do deploy.
 - [ ] 6.9 Um dia depois do deploy, conferir `du -sh var/cache/public_pages` abaixo do teto e `var/log/prod-avisos.log` sem erro novo.
 
+## 7. Segunda fase
+
+- [x] 7.1 Parser HTML: `em->clear()` e `find()` do docente depois da transação; a normalização e `productionsCount` veem só as produções novas. Verificar com teste de reimportação do mesmo HTML sem duplicar.
+- [x] 7.2 Perfil sem autores nos fragmentos `orientations` e `activities`, sem a consulta `MAX(year)` redundante; sitemap por DBAL só com as quatro colunas. Verificar com os testes funcionais do perfil e do sitemap (HTML e XML idênticos).
+- [x] 7.3 `normalizeResearcher(..., bool $rebuildQueue = true)` e `rebuildNameQueue()`; `app:curriculum:normalize` reconstrói a fila uma vez ao fim do lote. Verificar com teste do comando e do serviço.
+- [x] 7.4 `ResearchMetricsService` com `metrics_core` e `metrics_bridges` em chaves separadas e o mesmo resultado. Verificar com os testes de `tests/Service/Research`.
+- [x] 7.5 `app:cache:warm` (`--url`, `--pausa`, `--apenas`, `--em-processo`, trava, status e tempo, sai com falha se alguma página falhar) e `app:cache:clear --aquecer [--url=]`. Verificar com teste do comando e rodando `--em-processo --apenas=/sobre` no ambiente local.
+- [x] 7.6 Índices extras em `production_items`: medidos e descartados (decisão em `design.md`).
+- [x] 7.7 `server_version: '8.0.40'` no Doctrine; `DATABASE_URL` de exemplo em `.env` e `.env.test` sem credenciais reais (as reais em `.env.test.local`, ignorado pelo Git). Verificar com `lint:container` e a suíte.
+- [x] 7.8 `trusted_hosts` pela variável `TRUSTED_HOSTS`; host fora da lista com 400; `trusted_proxies` não configurado. Verificar com teste funcional de host conhecido e desconhecido.
+- [x] 7.9 CORS com lista de origens (leitura pública com `*`; `localhost` só em dev e teste). Verificar com teste do `CorsListener` (origem listada, não listada, leitura pública, preflight).
+- [x] 7.10 Crawler de fotos do CNPq com verificação de TLS, só HTTPS e no máximo 3 redirecionamentos. Verificar com `grep` sem `VERIFYPEER` falso e com o teste do serviço.
+- [x] 7.11 `app:admin-user` sem imprimir senha nem hash; `default_locale: pt_BR`. Verificar com teste do comando e do login com senha errada.
+- [x] 7.12 `composer.json` com `php ^8.3` e `config.platform.php` 8.3.0; saem `symfony/doctrine-messenger` e `symfony/notifier`. Verificar com `composer install` limpo e `composer audit --no-dev` sem alertas.
+- [x] 7.13 Higiene: `composer.phar`, `node_modules/` e `scripts/node_modules/` fora do Git e no `.gitignore`; removidos o gerador de CRUD, `GenerateIndexCommand`, `CrudPolisher`, `TemplateService` e `EnumExtension`; `GEMINI.md` aponta para `AGENTS.md`; README com PHP 8.3+. Verificar com `git status` e `debug:container` sem erro.
+- [x] 7.14 Migration `Version20261112180000`: remove `FK_QJ_JOURNAL` e `FK_QJ_DATABASE` e a tabela `messenger_messages`; `ON DELETE CASCADE` declarado em `QualisJournal`. Verificar com `migrate`, volta e `migrate` no ambiente local; `doctrine:schema:validate` com mapeamento OK e só `work_key` e `keywords_text` apontados (pendência conhecida).
+- [x] 7.15 Front-end: versões fixas e SRI (Shoelace 2.19.1, Chart.js 4.4.7, D3 7.9.0, d3-sankey 0.12.3, ECharts 5.5.1, jQuery 3.7.1, DataTables 1.13.7); `graph.js` só pelo bloco `graph_script`; imagens abaixo da dobra com `loading=lazy` e dimensões; Outfit sem o peso 500. Verificar com `lint:twig` e conferindo o HTML das páginas.
+- [x] 7.16 Suíte completa (919 testes) passando, `lint:twig`, `lint:yaml` e `lint:container` sem erro, `composer audit` sem alertas.
+- [x] 7.17 Documentar a segunda fase em `docs/` (`COMANDOS.md`, `DEPLOY_E_PRODUCAO.md`, `CODE_REVIEW.md`, `DICIONARIO_DE_DADOS_E_VARIAVEIS.md`) e neste change. Verificar com `openspec validate estabiliza-cache-desempenho-seguranca --strict`.
+- [ ] 7.18 Publicar a segunda fase pelo plano de `design.md`: aviso do `git pull`, `git pull --ff-only`, `composer install --no-dev --optimize-autoloader`, `doctrine:migrations:migrate` (`Version20261112180000`), `./build.sh`, `cache:clear`, `app:cache:clear --all`, `serverVersion` no `.env.local`, conferir `TRUSTED_HOSTS` e `app:cache:warm --url=https://cech.wab.com.br`.
+- [ ] 7.19 Conferir em produção depois da publicação: HIT na segunda visita, 400 para host desconhecido, páginas com gráfico e rede sem erro de integridade no console, `app:cache:warm` sem falha, `doctrine:schema:validate` só com `work_key` e `keywords_text`.
+
 ## Workflow follow-up
 
 - Ao arquivar, sincronizar os deltas com as specs principais.
 - Ao arquivar, tirar do Purpose de `openspec/specs/admin-access/spec.md` a menção às telas de teste do gerador de CRUD (o delta não altera o Purpose).
 - A tarefa 2.8 foi feita: manter `specs/journal-catalog/`.
+- Ao arquivar, a capability `frontend-assets` nasce das specs do change (nova), e `curriculum-normalization` e `profile-photos` são alteradas por MODIFIED.

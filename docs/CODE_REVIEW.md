@@ -66,7 +66,9 @@ usa `SameSite=Lax` por padrão, o que bloqueia o ataque nos navegadores atuais, 
 Recomendação: adotar Symfony Forms (CSRF automático) nesses CRUDs ou repetir o par
 `csrf_token()` + `isCsrfTokenValid()`.
 
-### 1.7 ⏳ Baixo — Segredos e endereços no repositório
+### 1.7 ⏳ Baixo — Segredos e endereços no repositório (`.env.test` resolvido em 12/11/2026)
+
+**12/11/2026:** `.env` e `.env.test` passaram a trazer só um exemplo de `DATABASE_URL`, sem credenciais reais; as reais ficam em `.env.test.local`, ignorado pelo Git. A senha de root do MySQL que esteve no `.env.test` continua no histórico do Git: trocá-la é pendência (seção 5). Seguem pendentes o `APP_SECRET` e os endereços do servidor.
 
 - `.env` versionado traz `APP_SECRET` de desenvolvimento — aceitável se produção sobrescrever via
   `.env.local`; confirme que sobrescreve, porque esse valor assina a sessão **e agora o token de sincronização**.
@@ -99,11 +101,11 @@ para instalações que já a tenham), aplicada em `cech` e `cech_test`.
 **Ação necessária em produção:** rodar `doctrine:migrations:migrate --env=prod`.
 **Regra para o futuro:** `IF NOT EXISTS` em migration esconde divergência de esquema — evitar.
 
-### 2.3 ⏳ Baixo — README descreve comandos que não existem
+### 2.3 ✅ Baixo — README descreve comandos que não existem (resolvido em 12/11/2026)
 
 `app:index:curriculums` e `app:index-thematic-terms` não são nomes válidos. Os comandos reais são
 `app:curriculum:normalize` e `app:index:topics` (alias `app:index:thematic-terms`). Corrigido em
-[`VISAO_GERAL_DO_SISTEMA.md`](VISAO_GERAL_DO_SISTEMA.md); o `README.md` ainda precisa de ajuste.
+[`VISAO_GERAL_DO_SISTEMA.md`](VISAO_GERAL_DO_SISTEMA.md). **12/11/2026:** o `README.md` foi ajustado (comandos reais e PHP 8.3+).
 
 ### 2.4 ⏳ Baixo — Cache público não é invalidado após reindexação (resolvido em parte)
 
@@ -150,22 +152,23 @@ Estão protegidos por `ROLE_ADMIN`, mas deveriam sair do repositório.
 
 ### 3.5 ⏳ Classes grandes demais
 
-`StatisticsService` (2.074 linhas), `GenerateIndexCommand` (1.709), `LattesHtmlParserService` (1.006),
+**12/11/2026:** o `GenerateIndexCommand` saiu com o gerador de CRUD. O `StatisticsService` continua pendente.
+
+`StatisticsService` (2.074 linhas), `LattesHtmlParserService` (1.006),
 `LattesXmlParserService` (999) e `ProfessorController` (750). O caso mais crítico é o
 `StatisticsService`: concentra as 18 figuras em SQL bruto, sem cache de resultado — daí o
 `ini_set('memory_limit', '512M')` espalhado pelos controllers. Sugestão: quebrar por bloco temático
 (corpo docente, formação, produção, redes) e materializar os agregados mais caros.
 
-### 3.6 ⏳ Arquivos que não deveriam estar no Git
+### 3.6 ✅ Arquivos que não deveriam estar no Git (resolvido em 12/11/2026)
 
 `.DS_Store`, `docs/.DS_Store` e `scratch_lattes_415.html` (192 KB, cópia de um currículo real com dados
 pessoais) foram **removidos do índice** nesta rodada (permanecem em disco) e `.gitignore` foi atualizado.
-`composer.phar` (3,5 MB) segue versionado — a linha correspondente no `.gitignore` está comentada;
-decidir se é intencional.
+`composer.phar` (3,5 MB) estava versionado. **12/11/2026:** `composer.phar`, `node_modules/` e `scripts/node_modules/` (5.189 arquivos) saíram do Git, continuam no disco e entraram no `.gitignore`. Os uploads de fotos continuam versionados (seção 5).
 
 ### 3.7 ⏳ Observações menores
 
-**12/11/2026:** a rota coringa de download de backup foi removida (arquivo inexistente responde 404) e o CORS de `/api/` ficou só com GET, POST e OPTIONS. Seguem pendentes a allowlist de origens, o `server_version` e o `phpunit.xml.dist`.
+**12/11/2026:** a rota coringa de download de backup foi removida (arquivo inexistente responde 404), o CORS de `/api/` ficou só com GET, POST e OPTIONS e passou a ter lista de origens permitidas, e o Doctrine fixa `server_version: '8.0.40'`. Segue como está o `phpunit.xml.dist`.
 
 - `AdminDatabaseBackupController::download()` tem três rotas com `requirements: ['filename' => '.+']`,
   incluindo `/admin/database/{filename}` como *catch-all* — qualquer GET não previsto sob
@@ -182,13 +185,18 @@ decidir se é intencional.
 
 ---
 
-## 4. O que fazer em seguida (sugestão de ordem)
+## 4. O que fazer em seguida
 
-1. Aplicar a migration em produção (`2.2`) e confirmar que `/admin/academic-databases` volta a abrir.
-2. Publicar o novo bookmarklet a partir de `/admin/curriculum/new` (o antigo, sem token, passa a receber 401).
-3. Conferir se produção sobrescreve `APP_SECRET` em `.env.local` (`1.7`).
-4. Adicionar CSRF aos formulários administrativos restantes (`1.6`).
-5. Limpar o scaffolding de teste (`3.4`) e revisar o cache pós-importação (`2.4`).
+O que resta, em ordem de prioridade (o motivo de cada um está na seção 5):
+
+1. Publicar a segunda fase de 12/11/2026 (`docs/DEPLOY_E_PRODUCAO.md`, "Segunda fase") e conferir em produção.
+2. Rotacionar a chave do TinyMCE e trocar a senha de root do MySQL que esteve no `.env.test` (continua no histórico do Git).
+3. Trocar `serverVersion=8.0` por `8.0.40` na `DATABASE_URL` dos `.env.local` (desenvolvimento e servidor).
+4. Mover `public/uploads` para fora do repositório, junto com a mudança do deploy.
+5. Pedir ao RunCloud o limite de taxa no nginx, o `opcache.max_accelerated_files` e o preload, e confirmar os proxies para `trusted_proxies`.
+6. Decidir o destino do `symfony/mailer` e do banner de consentimento do Google Analytics.
+7. Dividir o `StatisticsService` quando houver tempo para uma refatoração grande.
+8. Adicionar token CSRF aos formulários do painel, aos poucos (hoje vale a verificação de origem).
 
 ---
 
@@ -211,17 +219,49 @@ Em 12/11/2026 o disco da produção (49 GB) encheu. O cache de páginas (`var/ca
 
 ### O que ficou pendente
 
-- Shoelace carregado de CDN e falta de SRI nos scripts.
-- Uploads, `node_modules` e `composer.phar` no Git (o deploy é por `git pull`).
+Da primeira fase, ficaram pendentes os itens abaixo. Os que a segunda fase fechou estão marcados e detalhados na seção "Segunda fase".
+
+- ~~Shoelace carregado de CDN e falta de SRI nos scripts~~ (SRI e versões fixas na segunda fase; Shoelace por SVG próprio segue pendente).
+- Uploads no Git (o deploy é por `git pull`). `node_modules` e `composer.phar` saíram na segunda fase.
 - Rotacionar a chave do TinyMCE, que ficou no histórico do Git.
-- `server_version` do Doctrine e credenciais no `.env.test`.
-- Chaves estrangeiras de `qualis_journal_academic_database` fora do padrão: `doctrine:schema:validate` nunca fica verde.
-- TLS desligado no crawler de fotos do CNPq.
-- `trusted_hosts` e `trusted_proxies`.
-- Allowlist de origens no CORS.
+- ~~`server_version` do Doctrine e credenciais no `.env.test`~~ (feito na segunda fase).
+- ~~Chaves estrangeiras de `qualis_journal_academic_database` fora do padrão~~ (removidas as duplicadas; `schema:validate` ainda acusa as colunas geradas).
+- ~~TLS desligado no crawler de fotos do CNPq~~ (feito na segunda fase).
+- ~~`trusted_hosts`~~ (feito na segunda fase) e `trusted_proxies` (pendente).
+- ~~Allowlist de origens no CORS~~ (feito na segunda fase).
 - Limite de taxa no nginx, além do freio da aplicação.
 - `opcache.max_accelerated_files` baixo (7963) e sem preload.
 - `StatisticsService` com 2 mil linhas.
 - `/busca` sem cache de resultado.
-- Aquecimento do cache depois de limpar: a primeira visita a cada página volta a ser lenta.
+- ~~Aquecimento do cache depois de limpar~~ (`app:cache:warm`, na segunda fase).
 - Servidor de 1 vCPU, 2 GB de RAM e 50 GB de disco, dividido com outros aplicativos.
+
+## Segunda fase (12/11/2026, ainda não publicada)
+
+### Segunda fase: o que foi corrigido
+
+1. **Importação e normalização.** O parser HTML limpa o `EntityManager` e recarrega o docente depois da transação, como o XML: a normalização e a contagem de produções não duplicam na reimportação. `app:curriculum:normalize` reconstrói a fila de nomes de periódicos uma vez ao fim do lote, não a cada docente.
+2. **Desempenho sem mudar o resultado.** O perfil não carrega autores nos fragmentos `orientations` e `activities` e não faz a consulta `MAX(year)` redundante. O sitemap lê só quatro colunas por DBAL. O `ResearchMetricsService` guarda o núcleo (`metrics_core`) e as pontes (`metrics_bridges`) em chaves separadas.
+3. **Aquecimento do cache.** Novo `app:cache:warm` e `app:cache:clear --aquecer`.
+4. **Segurança e configuração.** `trusted_hosts` pela variável `TRUSTED_HOSTS` (host fora da lista recebe 400). CORS com lista de origens (a leitura pública em `/api/v1/*` e `/api/temas/*` continua com `*`). Crawler de fotos do CNPq com verificação de TLS, só HTTPS e no máximo 3 redirecionamentos. `app:admin-user` não imprime senha nem hash. Login em português (`default_locale: pt_BR`). `server_version: '8.0.40'`. `.env` e `.env.test` sem credenciais reais.
+5. **Dependências.** `php ^8.3` e plataforma 8.3.0 no `composer.json`; saíram `symfony/doctrine-messenger` e `symfony/notifier`. `composer audit` sem alertas em produção.
+6. **Higiene.** Saíram do Git `composer.phar`, `node_modules/` e `scripts/node_modules/`. Saiu o gerador de CRUD (`src/Maker`, `GenerateIndexCommand`, `CrudPolisher`, `TemplateService`, `EnumExtension`). `GEMINI.md` aponta para `AGENTS.md`.
+7. **Esquema.** A migration `Version20261112180000` remove as chaves estrangeiras manuais duplicadas de `qualis_journal_academic_database` e a tabela `messenger_messages`. Índices extras em `production_items` foram medidos e descartados (sem ganho relevante).
+8. **Front-end.** Versões fixas e SRI em Shoelace, Chart.js, D3, d3-sankey, ECharts, jQuery e DataTables. `graph.js` só nas páginas com rede de coautoria. Imagens abaixo da dobra com `loading=lazy`.
+
+Verificação: suíte completa com 919 testes passando, `lint:twig`, `lint:yaml` e `lint:container` sem erro, `composer audit` sem alertas.
+
+### Segunda fase: pendências conhecidas
+
+- Uploads de fotos continuam no Git: o deploy é `git pull` e apagaria as fotos do servidor. Exige mover as fotos para fora do repositório.
+- Rotacionar a chave do TinyMCE (já não há referência no código) e a senha de root do MySQL que esteve no `.env.test` (continua no histórico).
+- `trusted_proxies`: falta confirmar os proxies do RunCloud.
+- `serverVersion=8.0` na `DATABASE_URL` dos `.env.local` (desenvolvimento e servidor): o parâmetro da URL vence o `server_version` do `doctrine.yaml`; trocar por `8.0.40`.
+- Limite de taxa no nginx, `opcache.max_accelerated_files` (7963) e preload: configuração do RunCloud, fora do repositório.
+- `StatisticsService` com 2 mil linhas: refatoração grande, sem ganho imediato.
+- `/busca` sem cache de resultado: decisão da spec `page-cache` (texto livre não vai para cache; o freio por robô cobre o abuso).
+- Shoelace por SVG próprio e fontes locais.
+- Banner de consentimento do Google Analytics (decisão do Jonas).
+- `doctrine:schema:validate` não zera: o mapeamento está OK, mas o banco aparece "not in sync" só pelas colunas geradas `work_key` e `keywords_text`, porque o Doctrine não compara bem um `columnDefinition` de coluna gerada. Não é diferença real.
+- `symfony/mailer` sem uso aparente: decidir se sai.
+- Em `app:import:lattes`, o parser normaliza por dentro, e a fila de nomes ainda é reconstruída por docente nesse comando.

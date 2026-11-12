@@ -15,6 +15,40 @@ Toda rota cujo caminho começa por `/admin` MUST exigir o papel `ROLE_ADMIN`. Vi
 - **WHEN** um visitante sem sessão abre `/admin/test/database` ou `/admin/super/test/fields`
 - **THEN** a resposta é 404, porque essas telas não existem mais
 
+### Requirement: Login por formulário
+O sistema SHALL autenticar usuários em `/login` por nome de usuário e senha, com token CSRF obrigatório, mostrando em português a mensagem do erro de autenticação e o último usuário digitado. Após o login, o usuário SHALL ser levado à página protegida que tentou abrir ou, sem ela, ao painel `/admin/`. As senhas MUST ser guardadas como hash.
+
+#### Scenario: Login válido
+- **WHEN** um administrador informa usuário e senha corretos em `/login`
+- **THEN** ele é autenticado e levado ao painel `/admin/`
+
+#### Scenario: Senha errada
+- **WHEN** alguém informa uma senha errada
+- **THEN** o formulário volta com a mensagem de erro e o usuário digitado preenchido
+
+#### Scenario: Mensagem em português
+- **WHEN** alguém informa uma senha errada
+- **THEN** a mensagem de erro aparece em português, como "Credenciais inválidas.", e não em inglês
+
+#### Scenario: Envio sem token CSRF
+- **WHEN** o formulário de login é enviado sem um token CSRF válido
+- **THEN** a autenticação é recusada
+
+### Requirement: Comando de usuário administrador
+O sistema SHALL oferecer o comando `app:admin-user [usuário] [senha]`, que lista os usuários existentes com seus papéis e cria o usuário informado ou, se ele já existir, redefine a senha dele. Em ambos os casos o usuário SHALL ficar com o papel `ROLE_ADMIN`. Sem argumentos, o comando SHALL perguntar o usuário (padrão `admin`) e a senha. O comando MUST NOT imprimir a senha nem o hash dela.
+
+#### Scenario: Usuário novo
+- **WHEN** o comando é executado com `novoadmin` e uma senha
+- **THEN** o usuário `novoadmin` é criado com `ROLE_ADMIN` e consegue entrar no painel
+
+#### Scenario: Usuário existente
+- **WHEN** o comando é executado com um usuário que já existe e uma senha nova
+- **THEN** a senha desse usuário é trocada e o papel passa a ser `ROLE_ADMIN`
+
+#### Scenario: Saída sem segredos
+- **WHEN** o comando termina
+- **THEN** a saída não contém a senha informada nem o hash gravado
+
 ## REMOVED Requirements
 
 ### Requirement: Telas de teste do gerador de CRUD
