@@ -4,6 +4,7 @@
 Página pública `/periodicos`, que lista os periódicos em que os docentes do CECH publicaram artigos registrados no Lattes, agrupados pelas cinco bases de indexação (Scopus, PubMed, SciELO, Web of Science e Latindex) e por uma lista das bases somadas, com filtro por área CAPES, selo Qualis e nota metodológica. A página mede presença nas bases e quantidade de artigos, sem juízo de qualidade sobre os periódicos.
 
 ## Requirements
+
 ### Requirement: Rotas públicas de periódicos
 O sistema SHALL servir, só pelo método GET, a visão geral em `/periodicos` (H1 "Periódicos em que o CECH publica"), a lista completa das bases somadas em `/periodicos/geral` e a lista completa de uma base em `/periodicos/{base}`, em que `base` MUST ser `scopus`, `pubmed`, `scielo`, `wos` ou `latindex`. As listas completas não têm paginação e trazem um link de volta para `/periodicos` que mantém a área escolhida.
 
@@ -164,3 +165,14 @@ Toda página de periódicos SHALL mostrar a caixa "Como esta página é feita" a
 #### Scenario: Nota da lista da base
 - **WHEN** a seção da Scopus é exibida
 - **THEN** ela mostra "Lista de títulos de jul./2026" abaixo dos contadores
+
+### Requirement: Listas guardadas no cache da pesquisa
+As listas de periódicos de cada base e das bases somadas, para cada área do filtro, SHALL ser calculadas uma vez e guardadas no cache da pesquisa por até um dia. Elas MUST ser recalculadas depois que o cache de páginas públicas é limpo, como ao fim do pipeline de periódicos.
+
+#### Scenario: Visão geral e lista completa
+- **WHEN** um visitante abre `/periodicos` e outro abre `/periodicos/scopus` no mesmo dia, ambas fora do cache de páginas
+- **THEN** a lista da Scopus é calculada uma vez e as duas páginas mostram os mesmos periódicos e totais
+
+#### Scenario: Pipeline publicado
+- **WHEN** o pipeline de periódicos termina com o passo cache-clear
+- **THEN** a próxima visita a `/periodicos` recalcula as listas com os vínculos novos

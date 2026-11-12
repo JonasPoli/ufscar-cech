@@ -150,3 +150,14 @@ O sistema SHALL exportar os tesauros de autores, instituições e países (`/adm
 #### Scenario: Reimportação do mesmo arquivo
 - **WHEN** o mesmo arquivo é importado duas vezes
 - **THEN** autores e instituições não ganham variantes repetidas, enquanto cada variante de país é gravada de novo a cada importação
+
+### Requirement: Chaves estrangeiras religadas depois da limpeza do tesauro
+Ao apagar o tesauro de autores (`app:thesaurus:sync-authors --clean`), o sistema SHALL religar a verificação de chaves estrangeiras da conexão ao fim da limpeza, inclusive quando um dos comandos da limpeza falha. A falha SHALL ser informada.
+
+#### Scenario: Falha no meio da limpeza
+- **WHEN** um dos comandos que apagam o tesauro de autores falha
+- **THEN** a verificação de chaves estrangeiras volta a valer na conexão e o comando informa o erro
+
+#### Scenario: Limpeza concluída
+- **WHEN** `--clean` é confirmado e a limpeza termina sem erro
+- **THEN** a verificação de chaves estrangeiras está ligada quando a sincronização começa

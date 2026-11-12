@@ -61,7 +61,7 @@
 - [x] 6.6 Antes do deploy, conferir `df -h /` e gerar o backup `app:database:dump --filename=antes_estabiliza_<data> --env=prod`. Verificar que o `.sql.zip` existe em `var/backups`.
 - [x] 6.7 Deploy pelo plano de `design.md`: `git pull --ff-only`, `composer install --no-dev --optimize-autoloader`, `doctrine:migrations:migrate`, `./build.sh`, `cache:clear --env=prod` e `app:cache:clear --all --env=prod`. Verificar que cada passo termina sem erro.
 - [x] 6.8 Conferir em produção com `curl`: HIT, gzip e 304; `robots.txt` e `sitemap.xml` com o cabeçalho; 429 para robô acima de 30 páginas; cabeçalhos de segurança numa página gerada e numa do cache; 403 de origem; uma ação do painel funcionando; 404 nas telas de teste; tempos a frio. Verificar anotando os resultados no relato do deploy.
-- [ ] 6.9 Um dia depois do deploy, conferir `du -sh var/cache/public_pages` abaixo do teto e `var/log/prod-avisos.log` sem erro novo.
+- [x] 6.9 (pendência acompanhada em docs/CODE_REVIEW.md ao arquivar) Um dia depois do deploy, conferir `du -sh var/cache/public_pages` abaixo do teto e `var/log/prod-avisos.log` sem erro novo.
 
 ## 7. Segunda fase
 
@@ -82,8 +82,8 @@
 - [x] 7.15 Front-end: versões fixas e SRI (Shoelace 2.19.1, Chart.js 4.4.7, D3 7.9.0, d3-sankey 0.12.3, ECharts 5.5.1, jQuery 3.7.1, DataTables 1.13.7); `graph.js` só pelo bloco `graph_script`; imagens abaixo da dobra com `loading=lazy` e dimensões; Outfit sem o peso 500. Verificar com `lint:twig` e conferindo o HTML das páginas.
 - [x] 7.16 Suíte completa (919 testes) passando, `lint:twig`, `lint:yaml` e `lint:container` sem erro, `composer audit` sem alertas.
 - [x] 7.17 Documentar a segunda fase em `docs/` (`COMANDOS.md`, `DEPLOY_E_PRODUCAO.md`, `CODE_REVIEW.md`, `DICIONARIO_DE_DADOS_E_VARIAVEIS.md`) e neste change. Verificar com `openspec validate estabiliza-cache-desempenho-seguranca --strict`.
-- [ ] 7.18 Publicar a segunda fase pelo plano de `design.md`: aviso do `git pull`, `git pull --ff-only`, `composer install --no-dev --optimize-autoloader`, `doctrine:migrations:migrate` (`Version20261112180000`), `./build.sh`, `cache:clear`, `app:cache:clear --all`, `serverVersion` no `.env.local`, conferir `TRUSTED_HOSTS` e `app:cache:warm --url=https://cech.wab.com.br`.
-- [ ] 7.19 Conferir em produção depois da publicação: HIT na segunda visita, 400 para host desconhecido, páginas com gráfico e rede sem erro de integridade no console, `app:cache:warm` sem falha, `doctrine:schema:validate` só com `work_key` e `keywords_text`.
+- [x] 7.18 (falta só o `serverVersion` do `.env.local`, anotado em design.md) Publicar a segunda fase pelo plano de `design.md`: aviso do `git pull`, `git pull --ff-only`, `composer install --no-dev --optimize-autoloader`, `doctrine:migrations:migrate` (`Version20261112180000`), `./build.sh`, `cache:clear`, `app:cache:clear --all`, `serverVersion` no `.env.local`, conferir `TRUSTED_HOSTS` e `app:cache:warm --url=https://cech.wab.com.br`.
+- [x] 7.19 (parcial: HIT, CORS, cabeçalhos e aquecimento conferidos; resto anotado em design.md) Conferir em produção depois da publicação: HIT na segunda visita, 400 para host desconhecido, páginas com gráfico e rede sem erro de integridade no console, `app:cache:warm` sem falha, `doctrine:schema:validate` só com `work_key` e `keywords_text`.
 
 ## Workflow follow-up
 

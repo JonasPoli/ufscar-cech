@@ -265,3 +265,11 @@ Verificação: suíte completa com 919 testes passando, `lint:twig`, `lint:yaml`
 - `doctrine:schema:validate` não zera: o mapeamento está OK, mas o banco aparece "not in sync" só pelas colunas geradas `work_key` e `keywords_text`, porque o Doctrine não compara bem um `columnDefinition` de coluna gerada. Não é diferença real.
 - `symfony/mailer` sem uso aparente: decidir se sai.
 - Em `app:import:lattes`, o parser normaliza por dentro, e a fila de nomes ainda é reconstruída por docente nesse comando.
+
+### Verificações em aberto depois do arquivamento do change (12/11/2026)
+
+- [ ] Um dia depois do deploy: `du -sh var/cache/public_pages` abaixo do teto e `var/log/prod-avisos-*.log` sem erro novo.
+- [ ] No `.env.local` do servidor, trocar `serverVersion=8.0` por `8.0.40` na `DATABASE_URL`, se existir.
+- [ ] No navegador: console sem erro de integridade (SRI) nas páginas com gráfico e rede.
+- [ ] Em uma semana: conferir no log do nginx se Googlebot ou Bingbot recebem 429 com frequência.
+

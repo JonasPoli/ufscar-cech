@@ -4,6 +4,7 @@
 Ligar o currículo importado de cada docente às entidades do portal (coautores a docentes e ao tesauro de autores, artigos a periódicos, formações e atuações a instituições) e deduzir a situação do vínculo com a UFSCar, gravando tudo em colunas próprias e sem tocar no dado do Lattes.
 
 ## Requirements
+
 ### Requirement: Normalização ao final de cada importação
 O sistema SHALL normalizar o docente logo depois de gravar o seu currículo, em toda importação de XML ou HTML; na importação de XML, o índice de docentes usado para reconhecer coautores SHALL ser renovado antes da normalização.
 
@@ -16,7 +17,7 @@ O sistema SHALL normalizar o docente logo depois de gravar o seu currículo, em 
 - **THEN** a normalização roda ao final, como na importação de XML
 
 ### Requirement: Comando de normalização em lote
-O sistema SHALL oferecer o comando `app:curriculum:normalize`, que normaliza os docentes em ordem de nome, com filtro por departamento (`--dept`, por código ou nome), opção de processar só os nunca normalizados (`--only-pending`) e de limpar antes os índices em cache de autores, periódicos e instituições (`--clear-cache`), e que termina com um resumo de docentes, produções, autores, coautores do CECH, Qualis e instituições.
+O sistema SHALL oferecer o comando `app:curriculum:normalize`, que normaliza os docentes em ordem de nome, com filtro por departamento (`--dept`, por código ou nome), opção de processar só os nunca normalizados (`--only-pending`) e de limpar antes os índices em cache de autores, periódicos e instituições (`--clear-cache`), e que termina com um resumo de docentes, produções, autores, coautores do CECH, Qualis e instituições. A fila de nomes de periódicos sem vínculo SHALL ser reconstruída uma só vez, ao fim do lote, e não a cada docente.
 
 #### Scenario: Somente pendentes de um departamento
 - **WHEN** o comando roda com `--dept=ED --only-pending`
@@ -25,6 +26,10 @@ O sistema SHALL oferecer o comando `app:curriculum:normalize`, que normaliza os 
 #### Scenario: Nenhum docente para os critérios
 - **WHEN** nenhum docente atende aos filtros
 - **THEN** o comando informa que não encontrou docentes e termina com sucesso
+
+#### Scenario: Fila de nomes reconstruída uma vez
+- **WHEN** o comando normaliza 100 docentes
+- **THEN** a fila de nomes de periódicos sem vínculo é reconstruída uma só vez, depois do último docente, com o mesmo conteúdo que teria se fosse reconstruída a cada docente
 
 ### Requirement: Normalização pelo painel
 O sistema SHALL oferecer a administradores, em `/admin/indexing`, um panorama da normalização filtrável por departamento, uma fila de docentes (`/admin/indexing/queue`, com opção `only_pending`) e a normalização de um docente por vez (`POST /admin/indexing/step/{id}`), que responde em JSON com as estatísticas e o tempo gasto.
@@ -53,7 +58,7 @@ Para cada autor de cada produção, o sistema SHALL procurar a identidade pelo n
 - **THEN** as ligações que ele já tinha não mudam e ele é marcado como normalizado
 
 ### Requirement: Ligação dos artigos aos periódicos
-Na normalização por docente, o sistema SHALL recalcular `journal_name_normalized` de toda produção e SHALL ligar a periódico apenas as produções do tipo `ARTIGO` que têm nome de periódico ou ISSN, gravando `qualis_journal_id`, `qualis` e `indexed_databases`; as demais produções MUST ficar sem esses três valores. Ao final, a fila de nomes de periódicos sem vínculo é atualizada, e uma falha nessa fila não interrompe a normalização.
+Na normalização por docente, o sistema SHALL recalcular `journal_name_normalized` de toda produção e SHALL ligar a periódico apenas as produções do tipo `ARTIGO` que têm nome de periódico ou ISSN, gravando `qualis_journal_id`, `qualis` e `indexed_databases`; as demais produções MUST ficar sem esses três valores. A fila de nomes de periódicos sem vínculo é atualizada ao final da normalização de um docente isolado ou, no comando em lote, uma vez ao fim do lote; uma falha nessa fila não interrompe a normalização.
 
 #### Scenario: Artigo sem vínculo seguro
 - **WHEN** o periódico de um artigo não é reconhecido ou é ambíguo
@@ -63,6 +68,10 @@ Na normalização por docente, o sistema SHALL recalcular `journal_name_normaliz
 #### Scenario: Capítulo com título de livro igual ao de uma revista
 - **WHEN** um capítulo tem em `journal_name` um título de livro que coincide com o nome de uma revista
 - **THEN** o capítulo não recebe periódico, Qualis nem bases
+
+#### Scenario: Docente normalizado isoladamente
+- **WHEN** um docente é normalizado pelo painel ou ao fim de uma importação
+- **THEN** a fila de nomes de periódicos é atualizada ao final dessa normalização
 
 ### Requirement: Ligação das instituições
 O sistema SHALL ligar à instituição do tesauro (`institution_id`) cada formação e cada atuação profissional do docente cujo nome de instituição seja reconhecido; o nome que não é reconhecido mantém a ligação que já tinha.

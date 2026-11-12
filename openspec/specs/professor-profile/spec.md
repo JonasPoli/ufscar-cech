@@ -4,6 +4,7 @@
 Perfil público de cada docente do CECH em `/professor/{slugOrId}`: identificação, vínculo e período no Centro, assuntos em destaque, coautores no CECH, indicadores rápidos, quatro abas (produção, orientações e formação, projetos e atuação, métricas) e a aba "Publicações da busca" quando o perfil é aberto a partir da busca, além das exportações do currículo.
 
 ## Requirements
+
 ### Requirement: Endereço do perfil
 O sistema SHALL servir o perfil em `GET /professor/{slugOrId}`, localizando o docente pelo slug, pelo ID Lattes ou, quando o valor é numérico, também pelo id interno. Docente não encontrado MUST responder 404. O endereço `/docentes/{slugOrId}` SHALL redirecionar com 301 para `/professor/{slugOrId}`. Os links internos para o perfil SHALL usar o slug e, sem slug, o ID Lattes.
 
@@ -138,3 +139,18 @@ O perfil SHALL usar como título o nome do docente, como descrição os primeiro
 #### Scenario: Compartilhamento do perfil
 - **WHEN** o link de um perfil com foto é compartilhado numa rede social
 - **THEN** a prévia usa o nome do docente, o início do resumo e a foto dele
+
+### Requirement: HTML do perfil independente do filtro
+Fora de `aba=busca`, o HTML do perfil enviado pelo servidor MUST ser o mesmo para qualquer valor de `tema`, `keyword` ou `q`. O preenchimento da caixa de busca e a escolha da aba descritos no filtro global do perfil SHALL ser feitos pelo navegador, a partir da URL.
+
+#### Scenario: Dois temas para o mesmo docente
+- **WHEN** o servidor gera `/professor/maria-silva?tema=letramento` e `/professor/maria-silva?tema=ensino`
+- **THEN** os dois HTML são iguais ao de `/professor/maria-silva`
+
+#### Scenario: Caixa preenchida no navegador
+- **WHEN** o visitante abre `/professor/maria-silva?tema=letramento` com JavaScript ligado
+- **THEN** a caixa de busca mostra "letramento" e os itens aparecem filtrados, como antes
+
+#### Scenario: Perfil aberto pela busca
+- **WHEN** o visitante abre `/professor/maria-silva?aba=busca&q=alfabetização`
+- **THEN** o servidor monta a aba "Publicações da busca" com o filtro, como antes

@@ -4,6 +4,7 @@
 Trazer para o portal os currículos Lattes dos docentes do CECH, a partir do XML exportado do CNPq, do HTML da página pública do Lattes ou da planilha institucional, mantendo o dado do Lattes como veio e substituindo por inteiro o currículo de cada docente a cada nova importação.
 
 ## Requirements
+
 ### Requirement: Importação de XML pela linha de comando
 O sistema SHALL oferecer o comando `app:import:lattes`, que importa os arquivos `*.xml` de uma pasta (`--dir`, padrão `docs/banco/CECH`, incluindo subpastas, em ordem de nome) ou um único arquivo (`--file`), processa cada arquivo de forma independente e termina com código de falha quando algum arquivo não foi importado.
 
@@ -165,7 +166,7 @@ O sistema SHALL permitir que administradores (`ROLE_ADMIN`) importem um docente 
 - **AND** o XML sem `NUMERO-IDENTIFICADOR` usa os 16 dígitos do nome original do arquivo
 
 ### Requirement: Importação do HTML da página do Lattes
-O sistema SHALL importar um currículo a partir do HTML da página pública do Lattes, colado em `/admin/curriculum/new` ou recebido pela API de sincronização, com a mesma substituição de itens e a mesma preservação das orientações do Repositório, mas sem conferir a data de atualização e com menos dados que o XML.
+O sistema SHALL importar um currículo a partir do HTML da página pública do Lattes, colado em `/admin/curriculum/new` ou recebido pela API de sincronização, com a mesma substituição de itens, numa única transação, e a mesma preservação das orientações do Repositório, mas sem conferir a data de atualização e com menos dados que o XML.
 
 #### Scenario: Descoberta do ID na página
 - **WHEN** o ID Lattes não é informado
@@ -180,6 +181,14 @@ O sistema SHALL importar um currículo a partir do HTML da página pública do L
 #### Scenario: HTML de data antiga
 - **WHEN** o HTML traz uma data de atualização anterior à gravada
 - **THEN** o currículo é importado assim mesmo
+
+#### Scenario: Reimportação do mesmo HTML
+- **WHEN** o mesmo HTML é importado duas vezes
+- **THEN** a normalização e a contagem de produções do relatório veem só os itens recém-gravados, e o docente não fica com produções duplicadas
+
+#### Scenario: Falha no meio do HTML
+- **WHEN** a gravação dos itens de um HTML falha no meio, pelo painel ou pelo marcador
+- **THEN** as produções, orientações e demais itens anteriores do docente permanecem como estavam, e a falha é informada
 
 ### Requirement: Relatório de alterações da importação
 O sistema SHALL produzir, a cada importação de currículo (XML ou HTML), um relatório que compara o currículo antes e depois, lista as produções (por tipo), orientações, projetos e prêmios novos e traz uma frase de resumo, mostrada na tela e devolvida pela API.
@@ -242,3 +251,14 @@ O sistema SHALL oferecer o comando `app:import:excel`, que lê a planilha de doc
 #### Scenario: Opção removida
 - **WHEN** o comando recebe `--prod-file`
 - **THEN** a opção é ignorada com um aviso de que o Qualis vem do cadastro de periódicos
+
+### Requirement: Leitura do XML sem acesso à rede
+O sistema MUST ler os XML do Lattes (importação, `app:sync:keywords` e `app:projects:backfill-members`) sem acesso à rede: DTD e entidades externas citadas no arquivo MUST NOT ser buscadas. O conteúdo do próprio arquivo SHALL ser lido normalmente.
+
+#### Scenario: XML que cita um endereço externo
+- **WHEN** um XML de currículo declara uma DTD ou entidade externa com endereço `http://`
+- **THEN** nenhuma conexão é aberta para esse endereço durante a leitura
+
+#### Scenario: XML comum do CNPq
+- **WHEN** um XML exportado do Lattes é importado
+- **THEN** o currículo é importado como antes

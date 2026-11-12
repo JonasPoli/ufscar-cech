@@ -4,6 +4,7 @@
 Manter a foto de cada docente, obtida da plataforma Lattes, enviada pelo administrador ou importada em lote, guardada com o ID Lattes como nome e acompanhada de versões WebP leves para as páginas públicas.
 
 ## Requirements
+
 ### Requirement: Gravação da foto do docente
 O sistema SHALL aceitar como foto apenas imagens JPEG, PNG, GIF ou WebP com pelo menos 600 bytes, convertendo GIF e WebP para JPEG, e SHALL gravá-la em `public/uploads/photos/<ID Lattes>.jpg` (ou `.png`), apontando a foto do docente para `/uploads/photos/<ID Lattes>.<extensão>`.
 
@@ -27,7 +28,7 @@ Ao gravar uma foto, o sistema SHALL gerar `<ID Lattes>.webp` (qualidade 80) e `<
 - **THEN** o comando termina com erro sem processar nenhuma foto
 
 ### Requirement: Busca automática da foto no CNPq
-O sistema SHALL tentar obter a foto oficial de um docente resolvendo o K-ID a partir da página `lattes.cnpq.br/<ID Lattes>` e consultando os serviços de foto do CNPq, primeiro pelo K-ID e depois pelo ID Lattes, gravando a primeira resposta que for uma imagem válida.
+O sistema SHALL tentar obter a foto oficial de um docente resolvendo o K-ID a partir da página `lattes.cnpq.br/<ID Lattes>` e consultando os serviços de foto do CNPq, primeiro pelo K-ID e depois pelo ID Lattes, gravando a primeira resposta que for uma imagem válida. As consultas SHALL verificar o certificado TLS, usar só HTTPS (inclusive nos redirecionamentos) e seguir no máximo 3 redirecionamentos.
 
 #### Scenario: Proteção contra robôs
 - **WHEN** nenhum serviço devolve uma imagem válida
@@ -41,6 +42,14 @@ O sistema SHALL tentar obter a foto oficial de um docente resolvendo o K-ID a pa
 #### Scenario: Comando para um docente
 - **WHEN** `app:crawl:lattes-photos --id=<ID Lattes ou slug>` aponta para um docente inexistente
 - **THEN** o comando termina com erro
+
+#### Scenario: Certificado inválido ou redirecionamento para HTTP
+- **WHEN** o serviço apresenta um certificado que não passa na verificação, ou redireciona para um endereço `http://`
+- **THEN** a consulta é recusada e nada é gravado
+
+#### Scenario: Redirecionamentos demais
+- **WHEN** a resposta encadeia mais de 3 redirecionamentos
+- **THEN** a consulta termina sem imagem
 
 ### Requirement: Foto pelo painel administrativo
 O sistema SHALL permitir a administradores enviar a foto de um docente (`POST /admin/curriculum/{id}/photo`), pedir a busca da foto oficial de um docente (`POST /admin/curriculum/{id}/crawl-photo`) ou de todos os docentes sem foto (`POST /admin/curriculum/sync-all-photos`), buscar a foto ao cadastrar um docente em `/admin/curriculum/new` (opção marcada por padrão) e gravar uma foto recebida em base64 (`POST /admin/curriculum/api/quick-photo`, com `idLattes` e `photoData`).

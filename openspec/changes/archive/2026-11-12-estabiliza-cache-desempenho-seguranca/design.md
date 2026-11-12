@@ -245,3 +245,12 @@ Rollback: antes do checkout, `doctrine:migrations:migrate 'DoctrineMigrations\Ve
 
 - Valor do `max-age` do HSTS (decidido em 12/11/2026): `max-age=15552000` (6 meses), sem `includeSubDomains` nem `preload`, porque outros sistemas da UFSCar podem estar em subdomínios. Pode ser ajustado sem mudar a spec.
 - Limite de 30 páginas por minuto: confirmar no log de acesso, uma semana depois do deploy, se algum robô útil (Googlebot, Bingbot) está recebendo 429 com frequência.
+
+## Pendências no arquivamento (12/11/2026)
+
+O change foi arquivado com o código publicado em produção e três verificações abertas, que passam a ser acompanhadas em `docs/CODE_REVIEW.md`:
+
+- **Um dia depois do deploy (antiga tarefa 6.9):** `du -sh var/cache/public_pages` abaixo do teto e `var/log/prod-avisos-*.log` sem erro novo.
+- **`serverVersion` no `.env.local` do servidor (antiga 7.18):** trocar `serverVersion=8.0` por `8.0.40` na `DATABASE_URL`, se existir. Os avisos de depreciação do DBAL continuam até lá.
+- **Conferência no navegador (antiga 7.19):** console sem erro de integridade (SRI) nas páginas com gráfico e rede; resposta 400 para host fora de `TRUSTED_HOSTS` direto na aplicação (o nginx responde antes para hosts que não são do site).
+
